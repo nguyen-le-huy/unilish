@@ -3,6 +3,8 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import MarketingLayout from '@/components/layouts/MarketingLayout';
 import DashboardHome from '@/pages/dashboard/DashboardHome';
 import HomePage from '@/pages/marketing/home/HomePage';
+import LoginPage from '@/pages/auth/LoginPage';
+import RegisterPage from '@/pages/auth/RegisterPage';
 
 export const router = createBrowserRouter([
     {
@@ -34,5 +36,13 @@ export const router = createBrowserRouter([
                 element: <DashboardHome />,
             },
         ],
+    },
+    {
+        path: '/login',
+        element: <LoginPage />,
+    },
+    {
+        path: '/register',
+        element: <RegisterPage />,
     },
 ]);

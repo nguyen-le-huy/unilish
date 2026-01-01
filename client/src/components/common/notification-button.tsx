@@ -39,43 +39,52 @@ const NotificationButton = () => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant='outline' className='relative'>
-          <BellIcon />
-          Thông báo
+        <Button
+          variant='outline'
+          size="sm"
+          className='relative h-8 sm:h-9 px-2 sm:px-3'
+        >
+          <BellIcon className="h-4 w-4" />
+          <span className="hidden sm:inline ml-1">Thông báo</span>
           {unreadCount > 0 && (
-            <Badge variant='destructive' className='absolute -top-2.5 -right-2.5 h-5 min-w-5 rounded-full px-1 tabular-nums flex items-center justify-center'>
+            <Badge
+              variant='destructive'
+              className='absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 h-4 sm:h-5 min-w-4 sm:min-w-5 rounded-full px-1 text-[10px] sm:text-xs tabular-nums flex items-center justify-center'
+            >
               {unreadCount}
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className='w-80 p-0' align="end">
+      <PopoverContent className='w-[calc(100vw-2rem)] sm:w-80 p-0' align="end">
         <div className='grid'>
-          <div className='flex items-center justify-between gap-2 px-4 py-2.5'>
-            <span className='font-medium'>Thông báo</span>
+          <div className='flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-2.5'>
+            <span className='font-medium text-sm sm:text-base'>Thông báo</span>
             <Button
               variant='secondary'
-              className='h-7 rounded-full px-2 py-1 text-xs'
+              className='h-6 sm:h-7 rounded-full px-2 py-1 text-[10px] sm:text-xs'
               onClick={() => setReadMessages(notifications.map(item => item.id))}
             >
               Đánh dấu đã đọc
             </Button>
           </div>
-          <Separator className='' />
-          <ul className='grid gap-1 p-2 max-h-[300px] overflow-y-auto'>
+          <Separator />
+          <ul className='grid gap-1 p-1.5 sm:p-2 max-h-[250px] sm:max-h-[300px] overflow-y-auto'>
             {notifications.map(item => (
               <li
                 key={item.id}
-                className={`hover:bg-accent flex items-start gap-3 rounded-lg px-2 py-2 cursor-pointer transition-colors ${!readMessages.includes(item.id) ? 'bg-accent/50' : ''}`}
+                className={`hover:bg-accent flex items-start gap-2 sm:gap-3 rounded-lg px-2 py-1.5 sm:py-2 cursor-pointer transition-colors ${!readMessages.includes(item.id) ? 'bg-accent/50' : ''}`}
                 onClick={() => setReadMessages(prev => [...prev, item.id])}
               >
-                <Avatar className='h-9 w-9 border'>
+                <Avatar className='h-7 w-7 sm:h-9 sm:w-9 border shrink-0'>
                   <AvatarImage src={item.image} alt={item.fallback} />
-                  <AvatarFallback>{item.fallback}</AvatarFallback>
+                  <AvatarFallback className="text-xs">{item.fallback}</AvatarFallback>
                 </Avatar>
-                <div className='flex-1 space-y-1'>
-                  <div className={`text-sm ${!readMessages.includes(item.id) ? 'font-semibold' : 'font-medium'}`}>{item.message}</div>
-                  <p className='text-muted-foreground text-xs'>{item.time} trước</p>
+                <div className='flex-1 space-y-0.5 sm:space-y-1 min-w-0'>
+                  <div className={`text-xs sm:text-sm line-clamp-2 ${!readMessages.includes(item.id) ? 'font-semibold' : 'font-medium'}`}>
+                    {item.message}
+                  </div>
+                  <p className='text-muted-foreground text-[10px] sm:text-xs'>{item.time} trước</p>
                 </div>
                 {!readMessages.includes(item.id) && (
                   <CircleIcon className='fill-primary text-primary size-2 self-center shrink-0' />
@@ -83,7 +92,7 @@ const NotificationButton = () => {
               </li>
             ))}
             {notifications.length === 0 && (
-              <li className="text-center text-sm text-muted-foreground py-4">
+              <li className="text-center text-xs sm:text-sm text-muted-foreground py-4">
                 Không có thông báo mới
               </li>
             )}

@@ -83,6 +83,10 @@
     --chart-4: 215 75% 25%;
     --chart-5: 215 70% 15%;
 
+    /* Brand Colors - Unilish Green #204E1E */
+    --brand: 130 45% 21%;
+    --brand-foreground: 0 0% 100%;
+
     --sidebar-background: 0 0% 98.5%;
     /* oklch(0.985 0 0) */
     --sidebar-foreground: 0 0% 12.5%;

@@ -1,22 +1,22 @@
 import * as React from "react"
 import { Link } from "react-router-dom"
+import UnilishLogo from "@/assets/Unilish.svg"
 import {
-  BookOpen,
+  GraduationCap,
   Handshake,
   LayoutDashboard,
-  LifeBuoy,
   Map,
+  MessageSquare,
   Mic,
   MonitorPlay,
   Newspaper,
-  Search,
-  Settings2,
   Trophy,
 } from "lucide-react"
 
 import { NavMain } from "@/components/layouts/sidebar/nav-main"
 import { NavSecondary } from "@/components/layouts/sidebar/nav-secondary"
 import { NavUser } from "@/components/layouts/sidebar/nav-user"
+import { UpgradeCard } from "@/components/layouts/sidebar/upgrade-card"
 import { Badge } from "@/components/ui/badge"
 import {
   Sidebar,
@@ -56,7 +56,7 @@ const data = {
   ],
   practice: [
     {
-      title: "Luyện nói AI",
+      title: "AI Speaking",
       url: "/speaking",
       icon: Mic,
       badge: <PremiumBadge />,
@@ -67,35 +67,34 @@ const data = {
       icon: Newspaper,
     },
     {
-      title: "Luyện nghe Video",
+      title: "Học với Youtube",
       url: "/youtube",
       icon: MonitorPlay,
     },
     {
-      title: "Video call",
+      title: "Talk to Strangers",
       url: "/connect",
       icon: Handshake,
     },
   ],
   community: [
     {
+      title: "Bảng tin",
+      url: "/feed",
+      icon: MessageSquare,
+    },
+    {
       title: "Bảng xếp hạng",
       url: "/leaderboard",
       icon: Trophy,
     },
-  ],
-  navSecondary: [
     {
-      title: "Cài đặt",
-      url: "/settings",
-      icon: Settings2,
-    },
-    {
-      title: "Trợ giúp",
-      url: "/help",
-      icon: LifeBuoy,
+      title: "Kỳ thi",
+      url: "/exams",
+      icon: GraduationCap,
     },
   ],
+  navSecondary: [],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -109,8 +108,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <Link to="/dashboard">
-                <BookOpen className="h-5 w-5" />
-                <span className="text-base font-semibold">Unilish</span>
+
+                <img
+                  src={UnilishLogo}
+                  alt="Unilish"
+                  className="h-5 dark:brightness-0 dark:invert"
+                />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -123,6 +126,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
+        <UpgradeCard />
         <NavUser user={data.user} />
       </SidebarFooter>
     </Sidebar>

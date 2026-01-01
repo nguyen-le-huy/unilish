@@ -32,7 +32,7 @@ export function NavMain({
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild tooltip={item.title}>
+              <SidebarMenuButton asChild tooltip={item.title} className="font-medium">
                 <Link to={item.url}>
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
