@@ -1,0 +1,68 @@
+
+
+services:
+  # 1. Redis Service (Local Cache)
+  redis:
+    image: redis:alpine
+    container_name: unilish-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - unilish-net
+
+  # 2. Server Service (Express API)
+  server:
+    build: ./server
+    container_name: unilish-server
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./server:/app             # Sync code for hot-reload
+      - /app/node_modules         # Prevent overwriting container modules
+    environment:
+      - PORT=5000
+      - REDIS_URI=redis://redis:6379
+      - MONGO_URI=${MONGO_URI}    # Injected from server/.env
+      - CLIENT_URL=http://localhost:5173
+    env_file:
+      - ./server/.env
+    depends_on:
+      - redis
+    networks:
+      - unilish-net
+
+  # 3. Client Service (User Frontend)
+  client:
+    build: ./client
+    container_name: unilish-client
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:5000
+    env_file:
+      - ./client/.env
+    networks:
+      - unilish-net
+
+  # 4. Admin Service (CMS Dashboard)
+  admin:
+    build: ./admin
+    container_name: unilish-admin
+    ports:
+      - "5174:5174"
+    volumes:
+      - ./admin:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:5000
+    env_file:
+      - ./admin/.env
+    networks:
+      - unilish-net
+
+networks:
+  unilish-net:
+    driver: bridge

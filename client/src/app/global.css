@@ -1,0 +1,187 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.625rem;
+    --font-sans: "Google Sans Flex", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+    /* Using OKLCH colors from request, adapted for Tailwind v3 variable usage */
+    --background: 100% 0 0;
+    /* oklch(1 0 0) converted to hsl-like or kept as is if using css vars directly */
+    /* Tailwind v3 with shadcn expects HSL values usually, but we can try direct color values if config allows. 
+       However, standard shadcn components use `hsl(var(--primary))` pattern. 
+       To safely use OKLCH, we should override the config or convert to HSL.
+       
+       Let's try to stick to the requested Modern Theme aesthetic but mapped to HSL for stability, 
+       OR update tailwind.config.js to remove `hsl()` wrapper.
+    */
+
+    /* Let's try to use the raw values and update tailwind.config.js to use them directly */
+    --background-raw: 1 0 0;
+    --foreground-raw: 0.145 0 0;
+
+    /* For safety and immediate result without breaking shadcn's opacity modifiers (bg-primary/20), 
+       we really should convert these to HSL or use the hex equivalents for now, 
+       OR update tailwind.config.js to allow generic values.
+       
+       Given the user pasted a specific v4 config, I will try to approximate the LOOK using standard HSL 
+       closest to these OKLCH values to ensure the app doesn't break.
+       
+       oklch(1 0 0) -> #ffffff -> 0 0% 100%
+       oklch(0.145 0 0) -> #202020 -> 0 0% 13%
+       oklch(0.205 0 0) -> #2b2b2b -> 0 0% 17%
+       oklch(0.985 0 0) -> #fbfbfb -> 0 0% 98%
+       oklch(0.97 0 0) -> #f7f7f7 -> 0 0% 97%
+       oklch(0.556 0 0) -> #878787 -> 0 0% 53%
+    */
+
+    --background: 0 0% 100%;
+    --foreground: 0 0% 12.5%;
+    /* oklch(0.145 0 0) approx */
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 12.5%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 12.5%;
+
+    --primary: 0 0% 17%;
+    /* oklch(0.205 0 0) approx */
+    --primary-foreground: 0 0% 98%;
+    /* oklch(0.985 0 0) */
+
+    --secondary: 0 0% 97%;
+    /* oklch(0.97 0 0) */
+    --secondary-foreground: 0 0% 17%;
+
+    --muted: 0 0% 97%;
+    --muted-foreground: 0 0% 53%;
+    /* oklch(0.556 0 0) */
+
+    --accent: 0 0% 97%;
+    --accent-foreground: 0 0% 17%;
+
+    --destructive: 10 85% 58%;
+    /* Approx for oklch(0.577 0.245 27.325) */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 5.9% 90%;
+    /* Zinc 100/200 blend for light mode - similar to zinc-200 */
+    --input: 240 5.9% 90%;
+
+    --ring: 0 0% 70%;
+    /* oklch(0.708 0 0) */
+
+    --radius: 0.625rem;
+
+    --chart-1: 215 90% 55%;
+    /* Blue 500 approx */
+    --chart-2: 215 85% 45%;
+    --chart-3: 215 80% 35%;
+    --chart-4: 215 75% 25%;
+    --chart-5: 215 70% 15%;
+
+    --sidebar-background: 0 0% 98.5%;
+    /* oklch(0.985 0 0) */
+    --sidebar-foreground: 0 0% 12.5%;
+    --sidebar-primary: 0 0% 17%;
+    --sidebar-primary-foreground: 0 0% 98.5%;
+    --sidebar-accent: 0 0% 97%;
+    --sidebar-accent-foreground: 0 0% 17%;
+    --sidebar-border: 0 0% 92%;
+    --sidebar-ring: 0 0% 70%;
+  }
+
+  .dark {
+    /* 
+       oklch(0.145 0 0) -> #202020 -> 0 0% 13%
+       oklch(0.985 0 0) -> #fbfbfb -> 0 0% 98%
+       oklch(0.205 0 0) -> #2b2b2b -> 0 0% 17%
+       oklch(0.922 0 0) -> #e8e8e8 -> 0 0% 91%
+       oklch(0.269 0 0) -> #3b3b3b -> 0 0% 23% 
+    */
+    --background: 0 0% 13%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 17%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 23%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 0% 91%;
+    --primary-foreground: 0 0% 17%;
+
+    --secondary: 0 0% 23%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 23%;
+    --muted-foreground: 0 0% 70%;
+
+    --accent: 0 0% 30%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 10 70% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 3.7% 15.9%;
+    /* Zinc 800 roughly (but user wanted 700: 240 5.2% 26.1%) */
+    /* Let's try 240 3.7% 15.9% first as it is standard dark border, but user specifically asked for "like zinc-700" which is lighter (26%) */
+    /* Standard shadcn dark border is often 240 3.7% 15.9% (zinc-900 border) or 240 5.9% 90% (zinc-100) */
+    /* Wait, zinc-700 is 240 5.2% 26.1%. */
+    --border: 240 5.2% 26.1%;
+    --input: 240 5.2% 26.1%;
+
+    --ring: 0 0% 55%;
+
+    --sidebar-background: 0 0% 17%;
+    /* oklch(0.205 0 0) */
+    --sidebar-foreground: 0 0% 98%;
+    /* Approximation for Blue-ish sidebar primary in dark mode */
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 23%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 100%;
+    --sidebar-ring: 0 0% 44%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Scrollbar override from request */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  html {
+    scrollbar-width: none;
+  }
+}
+
+@layer utilities {
+  .step {
+    counter-increment: step;
+    position: relative;
+  }
+
+  .step:before {
+    @apply text-muted-foreground right-0 mr-2 hidden size-7 items-center justify-center rounded-full text-center -indent-px font-mono text-sm font-medium md:absolute;
+    content: counter(step);
+  }
+
+  .border-grid {
+    @apply border-border/50 dark:border-border;
+  }
+}
