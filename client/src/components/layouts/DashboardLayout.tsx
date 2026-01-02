@@ -2,8 +2,12 @@ import { Outlet } from 'react-router-dom';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layouts/sidebar/app-sidebar';
 import { SiteHeader } from '@/components/layouts/sidebar/site-header';
+import { useAuthSync } from '@/features/auth/hooks/useAuthSync';
 
 export default function DashboardLayout() {
+    // Sync Clerk user with MongoDB backend on dashboard entry
+    useAuthSync();
+
     return (
         <SidebarProvider
             style={

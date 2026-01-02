@@ -10,7 +10,7 @@ RUN npm install
 COPY . .
 
 # Default Express Port
-EXPOSE 5000
+EXPOSE 5432
 
 # Start command (Ensure package.json has "dev": "nodemon ...")
 CMD ["npm", "run", "dev"]

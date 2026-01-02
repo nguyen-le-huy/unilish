@@ -139,6 +139,12 @@ All successful APIs MUST return this consistent format:
 3. **Environment:** Secrets MUST be validated by `config/env.ts` at startup.
 4. **Logging:** Use `logger` (Winston/Pino). NO `console.log`.
 
+### Environment Variables
+```env
+MONGO_URI=mongodb+srv://...
+N8N_WEBHOOK_URL=https://... (For OTP Email)
+```
+
 ---
 
 ## 5. Workflow: Adding a New Feature
@@ -158,5 +164,7 @@ Example: "Create a Lesson"
 
 4. **Step 4 (Route):** Define POST route in `routes/v1/lesson.route.ts` + attach Zod middleware.
 5. **Step 5 (Docs):** Add the endpoint definition to `docs/swagger.json`. 🆕
+
+*Last Updated: 2026-01-02*
 
 ```

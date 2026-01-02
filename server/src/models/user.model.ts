@@ -5,6 +5,8 @@ export interface IUser extends mongoose.Document {
     clerkId?: string;
     password?: string;
     authProvider: 'local' | 'google' | 'facebook';
+    otp?: string | undefined;
+    otpExpires?: Date | undefined;
     isVerified: boolean;
     role: 'student' | 'admin' | 'content_creator';
     fullName: string;
@@ -63,6 +65,14 @@ const UserSchema = new mongoose.Schema<IUser>(
             type: String,
             enum: ['local', 'google', 'facebook'],
             default: 'local',
+        },
+        otp: {
+            type: String,
+            select: false,
+        },
+        otpExpires: {
+            type: Date,
+            select: false,
         },
         isVerified: {
             type: Boolean,

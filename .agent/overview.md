@@ -9,6 +9,7 @@
 - **Learn with News:** Automated lesson generation from CNN news using **n8n** & **GPT-4o**.
 - **YouTube Gap-Fill:** Interactive listening exercises generated from YouTube video transcripts.
 - **Live Connect:** P2P Video calls for users using **PeerJS**.
+- **Email Verification (OTP):** Secure registration with n8n workflow.
 
 ## 3. Technology Stack (MERN + AI)
 
@@ -20,6 +21,7 @@
 | **Caching** | Redis | Queue (Matching), API Caching. |
 | **Vector DB** | Pinecone | Embeddings for RAG Chatbot. |
 | **Storage** | **Hybrid Model** | **Cloudinary** (Images) + **Cloudflare R2** (Audio/Video - Zero Egress Fees). |
+| **Workflow** | **n8n** | Email Automation, Content Gen. |
 | **Realtime** | Socket.io | Signaling, Chat, Status updates. |
 | **AI Models** | GPT-4o, Deepgram Nova-2 | Content Gen, STT, TTS. |
 
@@ -70,3 +72,5 @@ When generating code for UniLish, always prioritize:
 ```
 
 ```
+
+*Last Updated: 2026-01-02*

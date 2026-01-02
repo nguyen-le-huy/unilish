@@ -21,6 +21,7 @@
 | **Learn with News** | Automated lessons from CNN news | n8n, GPT-4o |
 | **YouTube Gap-Fill** | Interactive listening from video transcripts | Custom AI Pipeline |
 | **Live Connect** | P2P Video calls for practice | PeerJS, Socket.io |
+| **Email Verification** | Secure OTP registration flow | n8n Workflow, Nodemailer |
 
 ---
 
@@ -34,6 +35,7 @@
 | **Database** | MongoDB Atlas | Primary data storage |
 | **Caching** | Redis | Queue, API caching |
 | **Vector DB** | Pinecone | RAG embeddings |
+| **Workflow** | n8n | Email Automation |
 | **Realtime** | Socket.io | Live updates, signaling |
 
 ### Frontend
@@ -96,6 +98,7 @@ unilish/
 - **Docker** & Docker Compose
 - **MongoDB Atlas** account (or local MongoDB)
 - **Redis** (included in Docker)
+- **n8n** (Optional for Email)
 
 ### 1. Clone the repository
 
@@ -176,6 +179,7 @@ JWT_EXPIRES_IN=7d
 # URLs
 CLIENT_URL=http://localhost:5173
 ADMIN_URL=http://localhost:5174
+N8N_WEBHOOK_URL=https://... (For Email Service)
 
 # Cloudinary
 CLOUDINARY_CLOUD_NAME=xxx

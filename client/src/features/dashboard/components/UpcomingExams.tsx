@@ -67,10 +67,13 @@ export function UpcomingExams() {
                         </div>
 
                         {/* EXP */}
-                        <div className="shrink-0">
-                            <span className="text-sm sm:text-base font-semibold text-green-600 dark:text-green-400">
+                        <div className="shrink-0 flex items-center gap-4">
+                            <span className="text-xs sm:text-sm font-semibold text-green-600 dark:text-green-400">
                                 +{exam.exp} EXP
                             </span>
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] h-5 px-1.5 pointer-events-none">
+                                Upcoming
+                            </Badge>
                         </div>
 
                         {/* Arrow */}

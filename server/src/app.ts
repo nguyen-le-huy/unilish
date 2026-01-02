@@ -12,20 +12,27 @@ const app = express();
 
 // Middlewares
 app.use(helmet());
-app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
+app.use(cors({
+    origin: [env.CLIENT_URL, 'http://localhost:5174'],
+    credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(compression());
 
 // Sanitize data
 app.use((req, res, next) => {
-    req.body = mongoSanitize(req.body);
-    req.query = mongoSanitize(req.query);
-    req.params = mongoSanitize(req.params);
+    // req.body = mongoSanitize(req.body);
+    // req.query = mongoSanitize(req.query);
+    // req.params = mongoSanitize(req.params);
     next();
 });
 
+import authRouter from './routes/auth.route.js';
+
 // Routes
+app.use('/api/auth', authRouter);
+
 app.get('/', (req, res) => {
     res.status(HttpStatus.OK).json({
         status: 'success',

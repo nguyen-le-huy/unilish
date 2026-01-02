@@ -1,0 +1,49 @@
+{
+    "name": "Unilish OTP Email",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "send-email",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                0,
+                0
+            ],
+            "id": "webhook-node",
+            "name": "Webhook"
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $json.body.email }}",
+                "subject": "={{ $json.body.subject }}",
+                "emailType": "html",
+                "message": "=<div style=\"font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;\">\n  <h2 style=\"color: #4F46E5; text-align: center;\">Xác thực tài khoản Unilish</h2>\n  <hr style=\"border: 0; border-top: 1px solid #eee; margin: 20px 0;\">\n  \n  <p>Xin chào <strong>{{ $json.body.name }}</strong>,</p>\n  \n  <p>Cảm ơn bạn đã đăng ký tài khoản tại Unilish. Dưới đây là mã xác thực (OTP) của bạn:</p>\n  \n  <div style=\"background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #111827; border-radius: 6px; margin: 20px 0;\">\n    {{ $json.body.otp }}\n  </div>\n  \n  <p>Mã có hiệu lực trong <strong>10 phút</strong>. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>\n  \n  <p style=\"margin-top: 30px; font-size: 13px; color: #666;\">\n    Trân trọng,<br>\n    <strong>Đội ngũ Unilish</strong>\n  </p>\n</div>"
+            },
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                220,
+                0
+            ],
+            "id": "gmail-node",
+            "name": "Gmail"
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Gmail",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

@@ -1,6 +1,9 @@
 import * as React from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import UnilishLogo from "@/assets/Unilish.svg"
+import { useUser, useClerk } from "@clerk/clerk-react"
+import { getStoredUser, clearStoredAuth } from "@/features/auth/hooks/useAuthSync"
+
 import {
   GraduationCap,
   Handshake,
@@ -37,11 +40,6 @@ function PremiumBadge() {
 }
 
 const data = {
-  user: {
-    name: "Huy Nguyen",
-    email: "huy@unilish.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   main: [
     {
       title: "Tổng quan",
@@ -98,6 +96,26 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useUser()
+  const { signOut } = useClerk()
+  const navigate = useNavigate()
+
+  const localUser = getStoredUser()
+
+  const userData = {
+    name: user?.fullName || user?.firstName || localUser?.fullName || "Guest",
+    email: user?.primaryEmailAddress?.emailAddress || localUser?.email || "",
+    avatar: user?.imageUrl || localUser?.avatarUrl || "",
+  }
+
+  const handleLogout = async () => {
+    if (user) {
+      await signOut()
+    }
+    clearStoredAuth()
+    navigate("/login")
+  }
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -108,7 +126,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <Link to="/dashboard">
-
                 <img
                   src={UnilishLogo}
                   alt="Unilish"
@@ -127,7 +144,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <UpgradeCard />
-        <NavUser user={data.user} />
+        <NavUser user={userData} onLogout={handleLogout} />
       </SidebarFooter>
     </Sidebar>
   )

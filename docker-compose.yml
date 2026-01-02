@@ -15,12 +15,12 @@ services:
     build: ./server
     container_name: unilish-server
     ports:
-      - "5001:5000"
+      - "5432:5432"
     volumes:
       - ./server:/app             # Sync code for hot-reload
       - /app/node_modules         # Prevent overwriting container modules
     environment:
-      - PORT=5000
+      - PORT=5432
       - REDIS_URI=redis://redis:6379
       - MONGO_URI=${MONGO_URI}    # Injected from server/.env
       - CLIENT_URL=http://localhost:5173
@@ -41,7 +41,7 @@ services:
       - ./client:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:5000
+      - VITE_API_URL=http://localhost:5432
     env_file:
       - ./client/.env
     networks:
@@ -57,7 +57,7 @@ services:
       - ./admin:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:5000
+      - VITE_API_URL=http://localhost:5432
     env_file:
       - ./admin/.env
     networks:

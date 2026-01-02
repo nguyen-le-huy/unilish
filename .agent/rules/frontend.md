@@ -78,6 +78,10 @@ client/src/
 │   └── utils.ts              # Shadcn utils (cn wrapper)
 │
 ├── pages/                    # ROUTE ENTRY POINTS
+│   ├── auth/                 # AUTH PAGES
+│   │   ├── OTPPage.tsx
+│   │   ├── LoginPage.tsx
+│   │   └── RegisterPage.tsx
 │   ├── marketing/            # LANDING PAGES (Use CSS Modules)
 │   │   ├── home/             # HomePage.tsx + Home.module.css
 │   │   ├── about/
@@ -182,3 +186,5 @@ When generating code for a new feature (e.g., "YouTube Gap Fill"), follow this s
 4. **Data Hooks:** Create React Query hooks in `@/features/youtube-learning/hooks`.
 5. **UI Components:** Build Smart Components in `@/features/youtube-learning/components` using Shadcn.
 6. **Page Assembly:** Assemble components into a page in `@/pages/dashboard/YoutubePage.tsx`.
+
+*Last Updated: 2026-01-02*

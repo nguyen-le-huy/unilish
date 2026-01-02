@@ -50,7 +50,7 @@ RUN npm install
 COPY . .
 
 # Default Express Port
-EXPOSE 5000
+EXPOSE 5432
 
 # Start command (Ensure package.json has "dev": "nodemon ...")
 CMD ["npm", "run", "dev"]
@@ -123,16 +123,17 @@ services:
     build: ./server
     container_name: unilish-server
     ports:
-      - "5001:5000"
+      - "5432:5432"
     volumes:
       - ./server:/app             # Sync code for hot-reload
       - /app/node_modules         # Prevent overwriting container modules
     environment:
-      - PORT=5000
+      - PORT=5432
       - REDIS_URI=redis://redis:6379
       - MONGO_URI=${MONGO_URI}    # Injected from server/.env
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL} # Email Service
       - CLIENT_URL=http://localhost:5173
-      - VITE_API_URL=http://localhost:5001
+      - VITE_API_URL=http://localhost:5432
       - ./server/.env
     depends_on:
       - redis
@@ -149,7 +150,7 @@ services:
       - ./client:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:5001
+      - VITE_API_URL=http://localhost:5432
     env_file:
       - ./client/.env
     networks:
@@ -165,7 +166,7 @@ services:
       - ./admin:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:5001
+      - VITE_API_URL=http://localhost:5432
     env_file:
       - ./admin/.env
     networks:

@@ -9,7 +9,7 @@ export default function HomePage() {
                 Unilish combines vocabulary, grammar, listening, and speaking into a unified AI-powered learning experience.
             </p>
             <div className={styles.actions}>
-                <Link to="/app" className={styles.buttonPrimary}>
+                <Link to="/login" className={styles.buttonPrimary}>
                     Get Started
                 </Link>
                 <button className={styles.buttonOutline}>
