@@ -85,6 +85,7 @@ client/src/
 │   └── dashboard/            # APP PAGES (Use Tailwind)
 │       ├── DashboardHome.tsx
 │       └── LearningSession.tsx
+│   └── NotFoundPage.tsx      # 404 Page (Global)
 │
 ├── stores/                   # GLOBAL CLIENT STATE (Zustand)
 └── types/                    # GLOBAL TYPES
@@ -128,6 +129,7 @@ admin/src/
 ├── hooks/                # Global hooks (useUpload)
 ├── lib/                  # Axios (Admin instance), Utils
 ├── pages/                # Route Entry Points (UsersPage, LessonsPage)
+│   └── NotFoundPage.tsx  # 404 Page
 ├── stores/               # Admin State (Sidebar toggle)
 └── types/                # Global Types
 

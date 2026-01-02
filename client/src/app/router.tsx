@@ -7,9 +7,12 @@ import HomePage from '@/pages/marketing/home/HomePage';
 import LoginPage from '@/pages/auth/LoginPage';
 import RegisterPage from '@/pages/auth/RegisterPage';
 import OTPPage from '@/pages/auth/OTPPage';
+import NotFoundPage from '@/pages/NotFoundPage';
 import { AuthGuard } from '@/features/auth/components/AuthGuard';
 
 export const router = createBrowserRouter([
+    // ... (existing routes can be kept, but I will target specific insertion point for route)
+
     {
         path: '/',
         element: <MarketingLayout />,
@@ -90,5 +93,9 @@ export const router = createBrowserRouter([
     {
         path: '/sso-callback',
         element: <AuthenticateWithRedirectCallback />,
+    },
+    {
+        path: '*',
+        element: <NotFoundPage />,
     },
 ]);

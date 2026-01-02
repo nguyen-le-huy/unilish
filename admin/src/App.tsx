@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import AdminLayout from "@/components/layouts/AdminLayout"
 import LoginPage from "@/pages/auth/LoginPage"
 import DashboardHome from "@/pages/dashboard/DashboardHome"
+import NotFoundPage from "@/pages/NotFoundPage"
 import { AuthGuard } from "@/components/common/AuthGuard"
 
 function App() {
@@ -32,8 +33,12 @@ function App() {
           <Route path="transactions" element={<PlaceholderPage title="Giao dịch" />} />
           <Route path="ai-config" element={<PlaceholderPage title="AI & Prompts" />} />
           <Route path="media" element={<PlaceholderPage title="Media / Files" />} />
+
           <Route path="settings" element={<PlaceholderPage title="Cấu hình" />} />
         </Route>
+
+        {/* 404 Route */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )

@@ -24,7 +24,7 @@ export default function LoginPage() {
                 <img
                     src={LoginImage}
                     alt="Login Background"
-                    className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.4] dark:grayscale"
+                    className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.4]"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10" />
                 <div className="absolute bottom-10 left-10 right-10 z-20 text-white">
