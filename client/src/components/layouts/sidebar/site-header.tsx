@@ -2,6 +2,7 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ModeToggle } from "@/components/common/mode-toggle"
 import NotificationButton from "@/components/common/notification-button"
+import MessageButton from "@/components/common/message-button"
 
 export function SiteHeader() {
   return (
@@ -16,8 +17,9 @@ export function SiteHeader() {
       </div>
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
         <ModeToggle />
+        <MessageButton />
         <NotificationButton />
       </div>
-    </header>
+    </header >
   )
 }

@@ -20,10 +20,10 @@ export default function NotFoundPage() {
         <div className="flex min-h-screen flex-col items-center justify-center bg-background">
             <Empty>
                 <EmptyHeader>
-                    <img src={NotFoundImage} alt="404" className="w-20" />
+                    <img src={NotFoundImage} alt="404" className="w-16" />
                     <EmptyTitle>404 - Không tìm thấy trang</EmptyTitle>
                     <EmptyDescription>
-                        Trang bạn đang tìm kiếm không tồn tại. Hãy thử tìm kiếm nội dung bạn cần bên dưới.
+                        Trang bạn đang tìm kiếm không tồn tại.<br />Hãy thử tìm kiếm nội dung bạn cần bên dưới.
                     </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
@@ -43,6 +43,6 @@ export default function NotFoundPage() {
                     </EmptyDescription>
                 </EmptyContent>
             </Empty>
-        </div>
+        </div >
     )
 }

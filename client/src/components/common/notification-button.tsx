@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { BellIcon, CircleIcon } from 'lucide-react'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
@@ -41,19 +40,14 @@ const NotificationButton = () => {
       <PopoverTrigger asChild>
         <Button
           variant='outline'
-          size="sm"
-          className='relative h-8 sm:h-9 px-2 sm:px-3'
+          size='icon'
+          className='relative h-8 w-8 sm:h-9 sm:w-9'
         >
-          <BellIcon className="h-4 w-4" />
-          <span className="hidden sm:inline ml-1">Thông báo</span>
+          <BellIcon className='h-4 w-4' />
           {unreadCount > 0 && (
-            <Badge
-              variant='destructive'
-              className='absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 h-4 sm:h-5 min-w-4 sm:min-w-5 rounded-full px-1 text-[10px] sm:text-xs tabular-nums flex items-center justify-center'
-            >
-              {unreadCount}
-            </Badge>
+            <span className='absolute -top-0.5 -right-0.5 size-2 animate-bounce rounded-full bg-sky-600 dark:bg-sky-400' />
           )}
+          <span className='sr-only'>Notifications</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className='w-[calc(100vw-2rem)] sm:w-80 p-0' align="end">

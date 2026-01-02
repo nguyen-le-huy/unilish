@@ -4,6 +4,7 @@ import { User } from '../models/user.model.js';
 import { AppError } from '../utils/app-error.js';
 import { EmailService } from './email.service.js';
 import { z } from 'zod';
+import { env } from '../config/env.js';
 
 const registerSchema = z.object({
     email: z.string().email(),
@@ -181,9 +182,9 @@ export class AuthService {
     }
 
     private static signToken(userId: string, role: string) {
-        const secret = process.env.JWT_SECRET || 'secret';
+        const secret = env.JWT_SECRET;
         const options: jwt.SignOptions = {
-            expiresIn: (process.env.JWT_EXPIRY || '7d') as any,
+            expiresIn: env.JWT_EXPIRES_IN as any,
         };
         return jwt.sign({ id: userId, role }, secret, options);
     }
