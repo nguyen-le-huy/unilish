@@ -3,30 +3,12 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/user.model.js';
 import { AppError } from '../utils/app-error.js';
 import { EmailService } from './email.service.js';
-import { z } from 'zod';
 import { env } from '../config/env.js';
-
-const registerSchema = z.object({
-    email: z.string().email(),
-    password: z.string().min(6),
-    fullName: z.string().min(2),
-});
-
-const loginSchema = z.object({
-    email: z.string().email(),
-    password: z.string(),
-});
-
-type RegisterInput = z.infer<typeof registerSchema>;
-type LoginInput = z.infer<typeof loginSchema>;
-
-// Type for Clerk user sync
-interface ClerkUserInput {
-    clerkId: string;
-    email: string;
-    fullName?: string;
-    avatarUrl?: string;
-}
+import type {
+    RegisterInput,
+    LoginInput,
+    SyncClerkInput
+} from '../validations/auth.validation.js';
 
 export class AuthService {
     static async register(input: RegisterInput) {
@@ -194,7 +176,7 @@ export class AuthService {
      * Called after successful Clerk OAuth login
      * Creates new user if not exists, updates if exists
      */
-    static async syncWithClerk(clerkUser: ClerkUserInput) {
+    static async syncWithClerk(clerkUser: SyncClerkInput) {
         const { clerkId, email, fullName, avatarUrl } = clerkUser;
 
         // Find user by clerkId first, then by email

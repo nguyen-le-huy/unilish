@@ -21,7 +21,7 @@ export default function DashboardHome() {
             {/* Interactive Chart */}
             <InteractiveChart />
 
-            {/* Two Column Layout */}
+            {/* Two Column Layout - Stacks on mobile/tablet */}
             <div className="grid gap-6 lg:grid-cols-2">
                 {/* Left Column */}
                 <div className="space-y-6">

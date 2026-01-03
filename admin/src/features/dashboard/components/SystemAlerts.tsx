@@ -47,11 +47,11 @@ export function SystemAlerts() {
                                 <div className={`flex h-8 w-8 items-center justify-center rounded-full ${alertColors[alert.type]}`}>
                                     <Icon className="h-4 w-4" />
                                 </div>
-                                <div className="flex-1 space-y-1">
-                                    <p className="text-sm font-medium leading-none">{alert.title}</p>
-                                    <p className="text-xs text-muted-foreground">{alert.message}</p>
+                                <div className="flex-1 space-y-1 min-w-0">
+                                    <p className="text-sm font-medium leading-none truncate">{alert.title}</p>
+                                    <p className="text-xs text-muted-foreground truncate">{alert.message}</p>
                                 </div>
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline-block">
                                     {alert.time}
                                 </span>
                             </div>

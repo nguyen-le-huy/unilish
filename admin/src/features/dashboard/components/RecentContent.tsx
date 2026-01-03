@@ -62,19 +62,19 @@ export function RecentContent() {
                                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
                                     <Icon className="h-4 w-4 text-muted-foreground" />
                                 </div>
-                                <div className="flex-1 space-y-1">
-                                    <p className="text-sm font-medium leading-none truncate max-w-[200px]">
+                                <div className="flex-1 space-y-1 min-w-0">
+                                    <p className="text-sm font-medium leading-none truncate block">
                                         {item.title}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground truncate">
                                         {typeLabels[item.type]} • {item.author}
                                     </p>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 shrink-0">
                                     <Badge variant="outline" className={statusColors[item.status]}>
                                         {statusLabels[item.status]}
                                     </Badge>
-                                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                    <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline-block">
                                         {item.updatedAt}
                                     </span>
                                 </div>

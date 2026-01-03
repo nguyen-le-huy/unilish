@@ -49,15 +49,15 @@ export function RecentUsers() {
                                     {user.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                                 </AvatarFallback>
                             </Avatar>
-                            <div className="flex-1 space-y-1">
-                                <p className="text-sm font-medium leading-none">{user.name}</p>
-                                <p className="text-xs text-muted-foreground">{user.email}</p>
+                            <div className="flex-1 space-y-1 min-w-0">
+                                <p className="text-sm font-medium leading-none truncate">{user.name}</p>
+                                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 shrink-0">
                                 <Badge variant="outline" className={planColors[user.plan]}>
                                     {planLabels[user.plan]}
                                 </Badge>
-                                <span className="text-xs text-muted-foreground">{user.joinedAt}</span>
+                                <span className="text-xs text-muted-foreground hidden sm:inline-block">{user.joinedAt}</span>
                             </div>
                         </div>
                     ))}

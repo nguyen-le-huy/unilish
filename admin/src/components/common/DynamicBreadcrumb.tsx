@@ -44,7 +44,7 @@ export function DynamicBreadcrumb() {
 
                     return (
                         <React.Fragment key={to}>
-                            <BreadcrumbSeparator className="hidden md:block" />
+                            <BreadcrumbSeparator className={index === 0 ? "hidden md:block" : ""} />
                             <BreadcrumbItem>
                                 {isLast ? (
                                     <BreadcrumbPage>{label}</BreadcrumbPage>

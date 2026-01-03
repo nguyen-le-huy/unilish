@@ -2,11 +2,11 @@ import { useId } from "react"
 import { Moon, Sun } from "lucide-react"
 
 import { Switch } from "@/components/ui/switch"
-import { useTheme } from "@/app/theme-provider"
+import { useThemeStore } from "@/stores/theme-store"
 
 export function ModeToggle() {
     const id = useId()
-    const { theme, setTheme } = useTheme()
+    const { theme, setTheme } = useThemeStore()
     const isDark = theme === "dark"
 
     const toggleTheme = (checked: boolean) => {
