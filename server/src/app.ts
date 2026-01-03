@@ -29,9 +29,11 @@ app.use((req, res, next) => {
 });
 
 import authRouter from './routes/auth.route.js';
+import uploadRouter from './routes/upload.route.js';
 
 // Routes
 app.use('/api/auth', authRouter);
+app.use('/api/upload', uploadRouter);
 
 app.get('/', (req, res) => {
     res.status(HttpStatus.OK).json({
