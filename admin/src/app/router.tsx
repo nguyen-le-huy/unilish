@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import LoginPage from "@/pages/auth/LoginPage";
 import DashboardHome from "@/pages/dashboard/DashboardHome";
+import SettingsPage from "@/pages/system/SettingsPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import { AuthGuard } from "@/components/common/AuthGuard";
 import { PlaceholderPage } from "@/components/common/PlaceholderPage";
@@ -42,7 +43,7 @@ export const router = createBrowserRouter([
             { path: "transactions", element: <PlaceholderPage title="Giao dịch" /> },
             { path: "ai-config", element: <PlaceholderPage title="AI & Prompts" /> },
             { path: "media", element: <PlaceholderPage title="Media / Files" /> },
-            { path: "settings", element: <PlaceholderPage title="Cấu hình" /> },
+            { path: "settings", element: <SettingsPage /> },
         ],
     },
 

@@ -158,6 +158,10 @@ export class AuthService {
                 currentLevel: user.currentLevel,
                 stats: user.stats,
                 subscription: user.subscription,
+                phoneNumber: user.phoneNumber,
+                bio: user.bio,
+                address: user.address,
+                dateOfBirth: user.dateOfBirth,
             },
             token,
         };
@@ -230,6 +234,10 @@ export class AuthService {
                 currentLevel: user.currentLevel,
                 stats: user.stats,
                 subscription: user.subscription,
+                phoneNumber: user.phoneNumber,
+                bio: user.bio,
+                address: user.address,
+                dateOfBirth: user.dateOfBirth,
             },
             token,
         };

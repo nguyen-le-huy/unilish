@@ -14,6 +14,13 @@ export interface UnilishUser {
     avatarUrl: string;
     role: string;
     currentLevel: string;
+    phoneNumber?: string;
+    bio?: string;
+    address?: {
+        country: string;
+        city: string;
+    };
+    dateOfBirth?: string;
     stats: {
         xp: number;
         coins: number;

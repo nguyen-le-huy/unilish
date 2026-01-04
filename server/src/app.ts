@@ -30,10 +30,14 @@ app.use((req, res, next) => {
 
 import authRouter from './routes/auth.route.js';
 import uploadRouter from './routes/upload.route.js';
+import settingRouter from './routes/system-setting.route.js';
+import userRouter from './routes/user.route.js';
 
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/settings', settingRouter);
+app.use('/api/users', userRouter);
 
 app.get('/', (req, res) => {
     res.status(HttpStatus.OK).json({

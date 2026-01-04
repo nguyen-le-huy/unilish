@@ -12,7 +12,7 @@ import {
 import type { UserStats } from "../types"
 
 interface StatsOverviewProps {
-    stats: UserStats
+    stats?: UserStats
 }
 
 // Mock activity data for the week (hours per day)

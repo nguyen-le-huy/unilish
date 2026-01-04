@@ -67,8 +67,8 @@ export function DailyQuests({ quests }: DailyQuestsProps) {
                                     disabled={!isCompleted}
                                     className={
                                         isCompleted
-                                            ? "bg-purple-600 hover:bg-purple-700 text-white rounded-full px-4 text-xs"
-                                            : "bg-muted text-muted-foreground rounded-full px-4 text-xs cursor-not-allowed"
+                                            ? "bg-purple-600 hover:bg-purple-700 text-white rounded-md px-4 text-xs"
+                                            : "bg-muted text-muted-foreground rounded-md px-4 text-xs cursor-not-allowed"
                                     }
                                 >
                                     Nhận thưởng

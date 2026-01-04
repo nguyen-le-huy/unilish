@@ -20,5 +20,6 @@ const upload = multer({
  * @access Private
  */
 router.post('/', protect, upload.single('file'), UploadController.uploadFile);
+router.post('/image', protect, upload.single('file'), UploadController.uploadFile);
 
 export default router;

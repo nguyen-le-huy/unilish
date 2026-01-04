@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { GameLevelUtils } from '../utils/game-level.js';
 
 export interface IUser extends mongoose.Document {
     email: string;
@@ -14,6 +15,11 @@ export interface IUser extends mongoose.Document {
     dateOfBirth?: Date;
     gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
     phoneNumber?: string;
+    bio?: string;
+    address?: {
+        country: string;
+        city: string;
+    };
     currentLevel: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
     targetLevel: string;
     placementTestScore: number;
@@ -107,6 +113,15 @@ const UserSchema = new mongoose.Schema<IUser>(
             type: String,
             default: null,
         },
+        bio: {
+            type: String,
+            default: '',
+            trim: true,
+        },
+        address: {
+            country: { type: String, default: 'Việt Nam' },
+            city: { type: String, default: 'Hà Nội' },
+        },
 
         // --- 3. NHÓM HỌC TẬP (ACADEMIC STATUS) ---
         currentLevel: {
@@ -161,8 +176,30 @@ const UserSchema = new mongoose.Schema<IUser>(
     },
     {
         timestamps: true,
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true },
     }
 );
+
+// Pre-save hook to enforce Admin Stats
+// Nếu là Admin, luôn set chỉ số Max trước khi lưu vào DB
+UserSchema.pre('save', async function () {
+    if (this.role === 'admin') {
+        this.stats.xp = 20000;
+        this.stats.coins = 999999;
+        this.stats.streak = 365;
+        this.stats.longestStreak = 365;
+        this.currentLevel = 'C2';
+    }
+});
+
+// Virtual: Tính Level game (RPG) từ XP
+// Sử dụng logic chuẩn doanh nghiệp từ utils
+UserSchema.virtual('gameLevel').get(function () {
+    const xp = this.stats.xp || 0;
+    const { level } = GameLevelUtils.calculateLevelFromXp(xp);
+    return level;
+});
 
 // Method: Tính toán Streak
 UserSchema.methods.updateStreak = async function () {

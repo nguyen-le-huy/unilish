@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom"
 import {
   BellIcon,
   CreditCardIcon,
@@ -39,6 +40,7 @@ export function NavUser({
   onLogout?: () => void
 }) {
   const { isMobile } = useSidebar()
+  const navigate = useNavigate()
 
   return (
     <SidebarMenu>
@@ -84,7 +86,7 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/dashboard/profile")}>
                 <UserCircleIcon />
                 Tài khoản
               </DropdownMenuItem>
