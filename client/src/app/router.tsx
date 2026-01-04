@@ -11,6 +11,7 @@ import OTPPage from '@/pages/auth/OTPPage';
 import ProfilePage from '@/pages/dashboard/ProfilePage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import { AuthGuard } from '@/features/auth/components/AuthGuard';
+import SubscriptionPage from '@/pages/dashboard/SubscriptionPage';
 
 export const router = createBrowserRouter([
     {
@@ -58,6 +59,10 @@ export const router = createBrowserRouter([
                     {
                         path: 'profile',
                         element: <ProfilePage />,
+                    },
+                    {
+                        path: 'subscription',
+                        element: <SubscriptionPage />,
                     },
                 ],
             },

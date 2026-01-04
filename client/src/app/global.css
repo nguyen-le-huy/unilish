@@ -188,4 +188,23 @@
   .border-grid {
     @apply border-border/50 dark:border-border;
   }
+
+  @keyframes border-rotate {
+    0% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
+
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  .animate-border-rotate {
+    background-size: 200% 200%;
+    animation: border-rotate 4s ease infinite;
+  }
 }

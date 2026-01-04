@@ -57,7 +57,7 @@ export function UpgradeCard() {
                 asChild
                 className="w-full bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur-sm"
             >
-                <Link to="/pricing">
+                <Link to="/dashboard/subscription">
                     Nâng cấp ngay
                 </Link>
             </Button>
