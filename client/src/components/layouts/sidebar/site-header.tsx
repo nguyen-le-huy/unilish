@@ -11,6 +11,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/dashboard/courses": "Khóa học",
   "/dashboard/learning": "Học tập",
   "/dashboard/settings": "Cài đặt",
+  "/dashboard/subscription": "Nâng cấp gói",
 }
 
 export function SiteHeader() {

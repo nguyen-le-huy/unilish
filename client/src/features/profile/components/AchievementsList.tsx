@@ -50,7 +50,7 @@ export function AchievementsList() {
         <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 px-6 pt-6 pb-2">
                 <CardTitle className="text-lg font-bold">Thành tích</CardTitle>
-                <Link to="#" className="text-sm font-semibold text-blue-600 hover:underline">
+                <Link to="#" className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
                     Xem tất cả
                 </Link>
             </CardHeader>

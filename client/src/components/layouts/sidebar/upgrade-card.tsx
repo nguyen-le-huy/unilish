@@ -31,7 +31,7 @@ export function UpgradeCard() {
             <div className="flex items-center gap-2 mb-2">
                 <h3 className="font-semibold text-base">Upgrade to PRO</h3>
                 <Badge variant="secondary" className="bg-white/20 text-white text-[10px] px-1.5 py-0.5 hover:bg-white/30">
-                    20% OFF
+                    30% OFF
                 </Badge>
             </div>
 
@@ -46,8 +46,8 @@ export function UpgradeCard() {
             {/* Price */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-bold">299K</span>
-                    <span className="text-sm text-white/80">/tháng</span>
+                    <span className="text-lg font-bold">336K</span>
+                    <span className="text-sm text-white/80">/năm</span>
                 </div>
                 <ChevronDown className="h-5 w-5 text-white/70" />
             </div>
