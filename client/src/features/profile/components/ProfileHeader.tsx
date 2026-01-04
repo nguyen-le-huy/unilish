@@ -47,7 +47,7 @@ export function ProfileHeader() {
     };
 
     return (
-        <Card className="w-full h-full border-none shadow-none">
+        <Card className="w-full h-full border-none shadow-none bg-transparent">
             <CardContent className="p-6 sm:p-8 h-full flex items-center">
                 <div className="flex flex-col sm:flex-row gap-6 w-full items-center sm:items-start">
                     {/* Avatar & Level Section */}
