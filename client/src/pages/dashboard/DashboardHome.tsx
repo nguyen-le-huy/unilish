@@ -1,17 +1,17 @@
+import { HeroSection } from "@/features/dashboard/components/HeroSection"
+import { WeeklyStreak } from "@/features/dashboard/components/WeeklyStreak"
+import { DailyQuests } from "@/features/dashboard/components/DailyQuests"
+import { UpcomingExams } from "@/features/dashboard/components/UpcomingExams"
+import { StatsOverview } from "@/features/dashboard/components/StatsOverview"
+import { SkillRadarChart } from "@/features/dashboard/components/SkillRadarChart"
+import { MiniLeaderboard } from "@/features/dashboard/components/MiniLeaderboard"
 import {
-  HeroSection,
-  WeeklyStreak,
-  DailyQuests,
-  UpcomingExams,
-  StatsOverview,
-  SkillRadarChart,
-  MiniLeaderboard,
   userData,
   skillData,
   dailyQuests,
   leaderboard,
   userRank,
-} from "@/features/dashboard"
+} from "@/features/dashboard/data"
 
 function getGreeting(): string {
   const hour = new Date().getHours()
