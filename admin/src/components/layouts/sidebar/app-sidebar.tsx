@@ -80,11 +80,6 @@ const sidebarData = {
           url: "/users",
           description: "Quản lý user, tiến độ học",
         },
-        {
-          title: "Phân quyền",
-          url: "/staffs",
-          description: "Tài khoản nhân viên",
-        },
       ],
     },
     // KINH DOANH

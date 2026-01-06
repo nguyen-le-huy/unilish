@@ -6,7 +6,7 @@ export const settingsApi = {
         return res.data.data; // { key, value }
     },
 
-    updateSetting: async (key: string, value: any, description?: string) => {
+    updateSetting: async (key: string, value: unknown, description?: string) => {
         const res = await apiClient.put(`/settings/${key}`, { value, description });
         return res.data.data;
     },

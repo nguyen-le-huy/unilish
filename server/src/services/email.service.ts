@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../utils/logger.js';
 
 export class EmailService {
     static async sendOTP(email: string, otp: string, name: string) {
@@ -6,7 +7,7 @@ export class EmailService {
 
         // Development mode: Log OTP if no webhook
         if (!webhookUrl) {
-            console.log(`[EMAIL DEV] OTP for ${email}: ${otp}`);
+            logger.debug(`[EMAIL DEV] OTP for ${email}: ${otp}`);
             return;
         }
 
@@ -19,7 +20,7 @@ export class EmailService {
                 type: 'verify_email',
             });
         } catch (error) {
-            console.error('Failed to send email via n8n:', error);
+            logger.error('Failed to send email via n8n:', error);
         }
     }
 }

@@ -2,15 +2,40 @@ import { z } from 'zod';
 
 export const updateProfileSchema = z.object({
     body: z.object({
-        fullName: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự').optional(),
-        phoneNumber: z.string().optional().nullable(),
-        bio: z.string().max(500, 'Bio không được quá 500 ký tự').optional(),
-        address: z.object({
-            country: z.string().optional(),
-            city: z.string().optional(),
-        }).optional(),
-        dateOfBirth: z.coerce.date().optional(),
+        fullName: z.string().min(2).max(50).optional(),
+        bio: z.string().max(200).optional(),
+        phoneNumber: z.string().optional(),
+        targetLevel: z.string().optional(),
+        gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
+        address: z
+            .object({
+                country: z.string(),
+                city: z.string(),
+            })
+            .optional(),
     }),
 });
 
-export type UpdateProfileInput = z.infer<typeof updateProfileSchema>['body'];
+export const getUsersSchema = z.object({
+    query: z.object({
+        page: z.string().optional(),
+        limit: z.string().optional(),
+        search: z.string().optional(),
+        plan: z.enum(['FREE', 'PLUS', 'PRO']).optional(),
+        level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).optional(),
+        role: z.enum(['student', 'admin', 'content_creator']).optional(),
+    }),
+});
+
+export const updateSubscriptionSchema = z.object({
+    body: z.object({
+        plan: z.enum(['FREE', 'PLUS', 'PRO']),
+        period: z.enum(['monthly', 'yearly']),
+    }),
+});
+
+export const updateRoleSchema = z.object({
+    body: z.object({
+        role: z.enum(['student', 'admin', 'content_creator']),
+    }),
+});
