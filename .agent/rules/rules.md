@@ -5,10 +5,10 @@ trigger: always_on
 # UNILISH PROJECT RULES
 
 ## 1. Core Philosophy
-- **Performance First:** Optimize for Time to Interactive
-- **Feature-Sliced Design:** FSD architecture
-- **Type Safety:** TypeScript strict mode, no `any`
-- **Zero Tech Debt:** Refactor immediately
+- **Performance First:** Optimize for Time to Interactive.
+- **Feature-Sliced Design:** Adhere to FSD architecture.
+- **Type Safety:** TypeScript strict mode, absolute NO `any`.
+- **Zero Tech Debt:** Refactor as you go.
 
 ---
 
@@ -17,96 +17,94 @@ trigger: always_on
 ### Rendering & Bundle
 | Rule | Implementation |
 |------|----------------|
-| Code Splitting | `React.lazy()` for routes |
-| Heavy Libs | Lazy load with `useInView` |
-| Lists > 50 items | Use `react-window` |
-| Imports | Direct file imports, avoid barrel files |
+| **Code Splitting** | `React.lazy()` for all routes & heavy modals. |
+| **Virtualization** | Use `react-window` for lists > 50 items. |
+| **Imports** | Direct file imports, avoid barrel files. |
+| **Images** | `loading="lazy"` (below fold), `fetchpriority="high"` (LCP). |
+| **Events** | Debounce search/resize (>300ms), Throttle scroll. |
 
-### State Management
-| Tool | Rule |
-|------|------|
-| React Query | Use `select` option, `staleTime > 0` |
-| Zustand | Atomic selectors: `useStore(s => s.isOpen)` |
-| Props | Use `useMemo` for stable objects/arrays |
+### State Management Strategy
+| Type | Tool | Purpose |
+|------|------|---------|
+| **Server State** | **React Query** | API data, Caching. `staleTime: 5m` for static data. |
+| **Global Client** | **Zustand** | Theme, Auth, Language, Global UI (Sidebar). |
+| **Local State** | **useState** | Form inputs, simple toggles, component-isolated state. |
+| **Forms** | **React Hook Form** | Complex forms & validation (Zod). |
 
-### Media
-- Images: Cloudinary with `f_auto,q_auto`, explicit dimensions
-- Fonts: `font-display: swap`
+### Performance & Optimization
+- **Memoization:**
+  - Use `useMemo` for expensive computations or reference stability (objects/arrays).
+  - Use `useCallback` for functions passed to purely functional child components.
+  - Use `React.memo` for heavy UI components that re-render often with same props.
+- **Context API:** Split `StateContext` and `DispatchContext` to prevent unnecessary re-renders.
+
+### Media & Assets
+- **Images:** Cloudinary/R2 with `format=auto,quality=auto`, exact dimensions.
+- **Fonts:** Self-host or optimized CDN with `font-display: swap`.
 
 ---
 
 ## 3. Backend Rules
 
-### MongoDB
+### MongoDB & Data Access
 | Rule | Implementation |
 |------|----------------|
-| Indexes | Required for all queries |
-| GET requests | Always `.lean()` |
-| Projections | Always `.select('-password -__v')` |
+| **Indexes** | Mandatory for query fields. Check with `explain()`. |
+| **Read Ops** | Always `.lean()` for GET requests. |
+| **Projections** | Always `.select(...)` to fetch ONLY needed fields. |
+| **N+1** | Use Aggregation Pipelines (`$lookup`) or virtuals. |
+| **Pagination** | Mandatory. Cursor-based preferred or Offset (limit 20-50). |
 
-### API
-- Compression: Gzip/Brotli enabled
-- Parallelism: `Promise.all()` for independent ops
-- Pagination: Always paginate lists
-- Rate Limiting: Required for public endpoints
+### Redis Caching
+| Data | Strategy | TTL |
+|------|----------|-----|
+| Sessions | Write-through | 7 days |
+| Config | Cache-aside | 24 hrs |
+| API Lists | Cache-aside + Invalidate | 5 mins |
+
+### API Performance
+- **Compression:** Gzip/Brotli enabled (>1KB).
+- **Concurrency:** `Promise.all()` for independent I/O.
+- **Timeouts:** Strict 5s for external APIs.
+- **Queues:** Offload Email/AI tasks to Message Queue.
 
 ---
 
 ## 4. Code Standards
 
 ### Component Structure
-```
-1. Imports (External → Internal → Styles)
-2. Types/Interfaces
-3. Component Definition
-4. Hooks → Computed → Effects → Handlers
-5. Return JSX
+```tsx
+// 1. Imports
+// 2. Types/Interfaces
+// 3. Component Definition
+// 4. Hooks (State -> Queries -> Computed -> Effects)
+// 5. Handlers
+// 6. Return JSX
 ```
 
 ### Logic Extraction
-- Component > 150 lines → Extract to custom hook
-- UI components = "dumb" (visuals only)
+- **>150 lines:** Extract to custom hook or sub-component.
+- **UI Components:** "Dumb" (Visuals only, no business logic).
 
 ---
 
 ## 5. Notifications (Sonner)
 
-### When to Use
-| ✅ Show Toast | ❌ Don't Use Toast |
-|---------------|-------------------|
-| Login success/failure | Form validation errors |
-| Profile updated | Critical actions (use Modal) |
-| Network errors | Every state change |
-
-### Duration
-| Type | Duration |
-|------|----------|
-| Success | 3000ms |
-| Error | 5000ms |
-| Loading | Until resolved |
-
-### Centralized Service
-```typescript
-// src/lib/notification.ts
-notify.auth.loginSuccess()
-notify.auth.loginError(message)
-notify.learning.streakSaved(days)
-```
+- **Use Toast:** Login status, Network errors, Success actions.
+- **Don't Use Toast:** Form validation (inline), Critical (Modal).
+- **Service:** Centralized via `lib/notification.ts`.
 
 ---
 
 ## 6. Strict DON'Ts
 
-| ❌ Forbidden | ✅ Use Instead |
-|-------------|----------------|
-| `useEffect` for fetching | React Query |
-| `useEffect` to sync state | Derived state |
-| `console.log` in commits | Logger/Remove |
-| `any` type | `unknown` + Zod |
-| Magic numbers/strings | `constants/` folder |
-| `alert()` / `confirm()` | Toast/Modal |
-| Mix CSS Modules + Tailwind | Separate by page type |
+- ❌ `useEffect` for data fetching (Use React Query).
+- ❌ `useEffect` for syncing state (Use Derived State).
+- ❌ `console.log` in production.
+- ❌ `any` type (Use `unknown` + Zod).
+- ❌ Magic strings/numbers (Use constants).
+- ❌ Mixing CSS Modules & Tailwind (Stick to page type rule).
 
 ---
 
-*Last Updated: 2026-01-02*
+*Last Updated: 2026-01-06*
