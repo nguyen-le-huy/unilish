@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { loginWithEmail, registerWithEmail, type AuthResponse } from '../api/auth-api';
 import type { LoginFormData, RegisterFormData } from '../types/auth.schema';
@@ -34,15 +35,17 @@ export const useTraditionalAuth = () => {
             notify.auth.loginSuccess();
             navigate('/dashboard');
             return response;
-        } catch (error: any) {
+        } catch (error: unknown) {
             // Handle Unverified Account (403)
-            if (error.response?.status === 403) {
+            if (error instanceof AxiosError && error.response?.status === 403) {
                 notify.auth.otpSent(data.email); // Reuse OTP sent notification
                 navigate(`/verify-otp?email=${encodeURIComponent(data.email)}`);
                 return;
             }
 
-            const message = error.response?.data?.message || 'Đăng nhập thất bại';
+            const message = error instanceof AxiosError
+                ? (error.response?.data as { message?: string })?.message || 'Đăng nhập thất bại'
+                : 'Đăng nhập thất bại';
             notify.auth.loginError(message);
             throw error;
         } finally {
@@ -63,8 +66,10 @@ export const useTraditionalAuth = () => {
             notify.auth.otpSent(data.email);
             navigate(`/verify-otp?email=${encodeURIComponent(data.email)}`);
             return response;
-        } catch (error: any) {
-            const message = error.response?.data?.message || 'Đăng ký thất bại';
+        } catch (error: unknown) {
+            const message = error instanceof AxiosError
+                ? (error.response?.data as { message?: string })?.message || 'Đăng ký thất bại'
+                : 'Đăng ký thất bại';
             notify.auth.registerError(message);
             throw error;
         } finally {

@@ -14,9 +14,9 @@ export const useGoogleAuth = () => {
                 redirectUrl: "/sso-callback",
                 redirectUrlComplete: "/dashboard",
             })
-        } catch (err: any) {
-            console.error("Error signing in with Google:", err)
-            notify.auth.loginError(err.message || "Failed to sign in with Google")
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to sign in with Google";
+            notify.auth.loginError(message)
         }
     }
 

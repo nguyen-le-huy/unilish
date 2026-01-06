@@ -56,8 +56,9 @@ export function OTPForm() {
 
             notify.auth.loginSuccess(); // Re-use login success toast
             navigate("/dashboard");
-        } catch (error: any) {
-            const message = error.response?.data?.message || "Xác thực thất bại";
+        } catch (error: unknown) {
+            const axiosError = error as { response?: { data?: { message?: string } } };
+            const message = axiosError.response?.data?.message || "Xác thực thất bại";
             notify.auth.loginError(message);
             form.setError("pin", { message: message });
         }

@@ -12,9 +12,9 @@ export const useGoogleSignUp = () => {
                 redirectUrl: "/sso-callback",
                 redirectUrlComplete: "/dashboard",
             })
-        } catch (err: any) {
-            console.error("Error signing up with Google:", err)
-            notify.auth.registerError(err.message || "Failed to sign up with Google")
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to sign up with Google";
+            notify.auth.registerError(message)
         }
     }
 

@@ -1,32 +1,43 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { SignedIn, SignedOut, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import RootLayout from '@/components/layouts/RootLayout';
 import MarketingLayout from '@/components/layouts/MarketingLayout';
-import DashboardHome from '@/pages/dashboard/DashboardHome';
-import HomePage from '@/pages/marketing/home/HomePage';
-import LoginPage from '@/pages/auth/LoginPage';
-import RegisterPage from '@/pages/auth/RegisterPage';
-import OTPPage from '@/pages/auth/OTPPage';
-import ProfilePage from '@/pages/dashboard/ProfilePage';
-import NotFoundPage from '@/pages/NotFoundPage';
 import { AuthGuard } from '@/features/auth/components/AuthGuard';
-import SubscriptionPage from '@/pages/dashboard/SubscriptionPage';
+
+// Lazy load pages for code splitting
+const DashboardHome = lazy(() => import('@/pages/dashboard/DashboardHome'));
+const HomePage = lazy(() => import('@/pages/marketing/home/HomePage'));
+const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
+const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'));
+const OTPPage = lazy(() => import('@/pages/auth/OTPPage'));
+const ProfilePage = lazy(() => import('@/pages/dashboard/ProfilePage'));
+const SubscriptionPage = lazy(() => import('@/pages/dashboard/SubscriptionPage'));
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
+
+// Loading fallback component
+const PageLoader = () => (
+    <div className="flex h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+);
 
 export const router = createBrowserRouter([
     {
         element: <RootLayout />,
         children: [
-
-            // ... (existing routes can be kept, but I will target specific insertion point for route)
-
             {
                 path: '/',
                 element: <MarketingLayout />,
                 children: [
                     {
                         index: true,
-                        element: <HomePage />,
+                        element: (
+                            <Suspense fallback={<PageLoader />}>
+                                <HomePage />
+                            </Suspense>
+                        ),
                     },
                 ],
             },
@@ -40,7 +51,11 @@ export const router = createBrowserRouter([
                 children: [
                     {
                         index: true,
-                        element: <DashboardHome />,
+                        element: (
+                            <Suspense fallback={<PageLoader />}>
+                                <DashboardHome />
+                            </Suspense>
+                        ),
                     },
                 ],
             },
@@ -54,15 +69,27 @@ export const router = createBrowserRouter([
                 children: [
                     {
                         index: true,
-                        element: <DashboardHome />,
+                        element: (
+                            <Suspense fallback={<PageLoader />}>
+                                <DashboardHome />
+                            </Suspense>
+                        ),
                     },
                     {
                         path: 'profile',
-                        element: <ProfilePage />,
+                        element: (
+                            <Suspense fallback={<PageLoader />}>
+                                <ProfilePage />
+                            </Suspense>
+                        ),
                     },
                     {
                         path: 'subscription',
-                        element: <SubscriptionPage />,
+                        element: (
+                            <Suspense fallback={<PageLoader />}>
+                                <SubscriptionPage />
+                            </Suspense>
+                        ),
                     },
                 ],
             },
@@ -74,7 +101,9 @@ export const router = createBrowserRouter([
                             <Navigate to="/dashboard" replace />
                         </SignedIn>
                         <SignedOut>
-                            <LoginPage />
+                            <Suspense fallback={<PageLoader />}>
+                                <LoginPage />
+                            </Suspense>
                         </SignedOut>
                     </>
                 ),
@@ -87,7 +116,9 @@ export const router = createBrowserRouter([
                             <Navigate to="/dashboard" replace />
                         </SignedIn>
                         <SignedOut>
-                            <RegisterPage />
+                            <Suspense fallback={<PageLoader />}>
+                                <RegisterPage />
+                            </Suspense>
                         </SignedOut>
                     </>
                 ),
@@ -100,7 +131,9 @@ export const router = createBrowserRouter([
                             <Navigate to="/dashboard" replace />
                         </SignedIn>
                         <SignedOut>
-                            <OTPPage />
+                            <Suspense fallback={<PageLoader />}>
+                                <OTPPage />
+                            </Suspense>
                         </SignedOut>
                     </>
                 ),
@@ -111,8 +144,13 @@ export const router = createBrowserRouter([
             },
             {
                 path: '*',
-                element: <NotFoundPage />,
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <NotFoundPage />
+                    </Suspense>
+                ),
             },
         ],
     },
 ]);
+
