@@ -41,10 +41,11 @@ flowchart TD
     end
     
     subgraph Server["🖥️ Backend"]
-        E[/api/auth/sync-clerk]
-        F[/api/auth/register]
-        G[/api/auth/verify-otp]
-        H[/api/auth/login]
+        %% Thêm dấu ngoặc kép cho các node bắt đầu bằng /
+        E["/api/auth/sync-clerk"]
+        F["/api/auth/register"]
+        G["/api/auth/verify-otp"]
+        H["/api/auth/login"]
     end
     
     C --> E
