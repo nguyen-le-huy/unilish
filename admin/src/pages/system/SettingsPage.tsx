@@ -1,4 +1,5 @@
 import { LevelIconManager } from "@/features/system/components/LevelIconManager";
+import { SubscriptionSettings } from "@/features/system/components/SubscriptionSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function SettingsPage() {
@@ -12,12 +13,18 @@ export default function SettingsPage() {
             <Tabs defaultValue="levels" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="levels">Cấp độ & XP</TabsTrigger>
+                    <TabsTrigger value="plans">Gói dịch vụ</TabsTrigger>
                     <TabsTrigger value="general">Chung</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="levels" className="space-y-4">
                     {/* Level Asset Manager */}
                     <LevelIconManager />
+                </TabsContent>
+
+                <TabsContent value="plans" className="space-y-4">
+                    {/* Subscription Plans Manager */}
+                    <SubscriptionSettings />
                 </TabsContent>
 
                 <TabsContent value="general">

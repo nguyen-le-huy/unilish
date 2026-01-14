@@ -16,12 +16,12 @@
 
 | Feature | Description | Technology |
 |---------|-------------|------------|
-| **AI Speaking Coach** | Real-time 1:1 conversation with <500ms latency | OpenAI Realtime API, Deepgram |
+| **AI Speaking Coach** | Real-time 1:1 conversation with <500ms latency | **gpt-realtime-mini**, **Azure AI Speech** |
 | **RAG Chatbot (Uni-Assistant)** | Intelligent tutor using curriculum data | LangChain, Pinecone |
-| **Learn with News** | Automated lessons from CNN news | n8n, GPT-4o |
+| **Learn with News** | Automated lessons from CNN news | n8n, **gpt-4.1** |
 | **YouTube Gap-Fill** | Interactive listening from video transcripts | Custom AI Pipeline |
 | **Live Connect** | P2P Video calls for practice | PeerJS, Socket.io |
-| **Email Verification** | Secure OTP registration flow | n8n Workflow, Nodemailer |
+| **Email Verification** | Secure OTP registration flow | n8n Workflow, Gmail |
 
 ---
 
@@ -41,7 +41,7 @@
 ### Frontend
 | App | Framework | Styling Strategy |
 |-----|-----------|------------------|
-| **Client** | React 18 (Vite) | Hybrid: CSS Modules (Marketing) + Tailwind/Shadcn (Dashboard) |
+| **Client** | React 18 (Vite) | CSS Modules + Custom Components (NO UI Libs) |
 | **Admin** | React 18 (Vite) | Tailwind CSS + Shadcn/UI |
 
 ### Storage (Hybrid Model)
@@ -49,6 +49,17 @@
 |------|---------|--------|
 | **Images** | Cloudinary | Transformations, optimization |
 | **Audio/Video** | Cloudflare R2 | Zero egress fees |
+
+
+## AI & Machine Learning Ecosystem (Lõi thông minh)
+
+| Phân hệ AI | Công nghệ / Model | Vai trò cụ thể |
+| :--- | :--- | :--- |
+| **Xử lý Logic & Text** | **gpt-4.1-2025-04-14** | Chấm điểm bài Viết (Writing), sinh kịch bản Roleplay khó, giải thích lỗi ngữ pháp chuyên sâu. |
+| | **gpt-4.1-mini-2025-04-14** | Sinh từ vựng, bài đọc, tạo Quiz trắc nghiệm, phân tích dữ liệu học tập (Tối ưu chi phí). |
+| **Voice AI (Hội thoại)** | **gpt-realtime-mini-2025-12-15** | "Trái tim" của Speaking Coach. Xử lý trọn gói quy trình Nghe-Hiểu-Nói với độ trễ siêu thấp (<500ms). Thay thế hoàn toàn STT/TTS rời rạc. |
+| **Chấm điểm (Examiner)** | **Azure AI Speech** | Chuyên gia chấm điểm phát âm (Pronunciation Assessment). Phân tích độ trôi chảy (Fluency), ngữ điệu (Prosody) và bắt lỗi từng từ. |
+| **Giọng đọc bổ trợ** | **gpt-4o-mini-tts-2025-12-15** / **Elevenlabs** | Tạo giọng đọc cảm xúc chất lượng cao (High Definition) cho các bài Listening thụ động hoặc Podcast bài học. |
 
 ---
 
@@ -193,7 +204,9 @@ R2_BUCKET_NAME=xxx
 
 # AI Services
 OPENAI_API_KEY=xxx
-DEEPGRAM_API_KEY=xxx
+AZURE_SPEECH_KEY=xxx
+AZURE_SPEECH_REGION=eastus
+ELEVENLABS_API_KEY=xxx
 ```
 
 ### Client/Admin (`client/.env`, `admin/.env`)

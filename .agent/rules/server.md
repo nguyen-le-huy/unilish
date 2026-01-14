@@ -147,6 +147,12 @@ All successful APIs MUST return this consistent format:
 ```env
 MONGO_URI=mongodb+srv://...
 N8N_WEBHOOK_URL=https://... (For OTP Email)
+
+# AI Service Keys
+OPENAI_API_KEY=sk-...
+AZURE_SPEECH_KEY=...
+AZURE_SPEECH_REGION=eastus
+ELEVENLABS_API_KEY=...
 ```
 
 ---
@@ -169,6 +175,6 @@ Example: "Create a Lesson"
 4. **Step 4 (Route):** Define POST route in `routes/v1/lesson.route.ts` + attach Zod middleware.
 5. **Step 5 (Docs):** Add the endpoint definition to `docs/swagger.json`. 🆕
 
-*Last Updated: 2026-01-02*
+*Last Updated: 2026-01-14*
 
 ```

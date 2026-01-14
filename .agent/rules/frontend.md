@@ -2,7 +2,6 @@
 trigger: always_on
 ---
 
-
 # UNILISH PROJECT ARCHITECTURE & CONTEXT
 
 ## 1. Project Identity
@@ -19,7 +18,7 @@ trigger: always_on
 | :--- | :--- | :--- |
 | **Framework** | React 18+ (Vite) | React 18+ (Vite) |
 | **Language** | TypeScript (Strict) | TypeScript (Strict) |
-| **Styling Strategy** | **Hybrid:**<br>1. Marketing Pages: **CSS Modules**<br>2. App Dashboard: **Tailwind + Shadcn/UI** | **Unified:**<br>100% **Tailwind + Shadcn/UI** |
+| **Styling Strategy** | **Strict:**<br>100% **Custom (CSS Modules)**.<br>NO External UI Libraries. | **Unified:**<br>100% **Tailwind + Shadcn/UI** |
 | **Server State** | TanStack Query (React Query) v5 | TanStack Query (React Query) v5 |
 | **Client State** | Zustand | Zustand |
 | **Routing** | React Router Dom v6+ | React Router Dom v6+ |
@@ -37,7 +36,7 @@ client/src/
 ├── app/                      # GLOBAL CONFIGURATION
 │   ├── router.tsx            # Route definitions
 │   ├── providers.tsx         # Provider Wrappers (QueryClient, Auth, Theme)
-│   └── global.css            # Tailwind directives + CSS Reset
+│   └── global.css            
 │
 ├── assets/                   # STATIC ASSETS
 │   ├── fonts/
@@ -86,7 +85,7 @@ client/src/
 │   │   ├── home/             # HomePage.tsx + Home.module.css
 │   │   ├── about/
 │   │   └── components/       # Marketing-specific UI components
-│   └── dashboard/            # APP PAGES (Use Tailwind)
+│   └── dashboard/            # APP PAGES
 │       ├── DashboardHome.tsx
 │       └── LearningSession.tsx
 │
@@ -143,9 +142,9 @@ admin/src/
 
 ### A. Styling Rules 🎨
 
-1. **Client/Marketing:** MUST use **CSS Modules** (`.module.css`) for high-fidelity, custom designs. DO NOT use Tailwind utility classes for layout in marketing pages unless necessary for basic flex/grid.
-2. **Client/Dashboard:** MUST use **Tailwind CSS** and **Shadcn/UI**.
-3. **Admin:** MUST use **Tailwind CSS** and **Shadcn/UI** exclusively.
+1. **Client (User App):** MUST use **CSS Modules** (`.module.css`) and **Custom Components**.
+   > **CRITICAL:** DO NOT use Tailwind CSS, Shadcn, Material UI, or any other UI component library in the Client application. All UI components (Buttons, Inputs, Cards) must be built from scratch.
+2. **Admin (CMS):** MUST use **Tailwind CSS** and **Shadcn/UI** exclusively.
 
 ### B. State Management Rules 🧠
 
@@ -187,4 +186,4 @@ When generating code for a new feature (e.g., "YouTube Gap Fill"), follow this s
 5. **UI Components:** Build Smart Components in `@/features/youtube-learning/components` using Shadcn.
 6. **Page Assembly:** Assemble components into a page in `@/pages/dashboard/YoutubePage.tsx`.
 
-*Last Updated: 2026-01-02*
+*Last Updated: 2026-01-14*

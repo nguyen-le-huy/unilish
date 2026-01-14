@@ -44,7 +44,7 @@ export function PricingCard({ plan, isAnnual }: PricingCardProps) {
 
                 {/* Popular Badge */}
                 {isPopular && (
-                    <Badge className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-0 px-3 py-1 rounded-full text-xs font-semibold shadow-none dark:bg-indigo-500/10 dark:text-indigo-400">
+                    <Badge className="bg-gradient-to-r from-indigo-500 to-pink-500 bg-center [background-size:105%] text-white border-0 px-3 py-1 rounded-md text-xs font-semibold shadow-none">
                         Phổ biến nhất
                     </Badge>
                 )}

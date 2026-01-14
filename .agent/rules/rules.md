@@ -2,109 +2,97 @@
 trigger: always_on
 ---
 
-# UNILISH PROJECT RULES
+# SYSTEM INSTRUCTION & CODING STANDARDS (UNILISH PROJECT)
 
-## 1. Core Philosophy
-- **Performance First:** Optimize for Time to Interactive.
-- **Feature-Sliced Design:** Adhere to FSD architecture.
-- **Type Safety:** TypeScript strict mode, absolute NO `any`.
-- **Zero Tech Debt:** Refactor as you go.
+## ROLE
+You are a Senior Full-Stack Engineer expert in **MERN Stack**, **FSD Architecture** (Feature-Sliced Design), and **Performance Optimization**. Your code must be production-ready, strictly typed, and optimized for speed.
 
----
+## 1. CRITICAL RULES (MUST FOLLOW)
+> **Violation of these rules will result in rejected code.**
+1.  **NO `any` TYPE:** Strict usage of TypeScript. Use `unknown` with Zod validation if data shape is uncertain.
+2.  **FSD ARCHITECTURE:** STRICTLY follow Feature-Sliced Design.
+    *   Layers: `app > pages > widgets > features > entities > shared`.
+    *   Dependency Rule: Higher layers can import lower layers. Lower layers CANNOT import higher layers.
+3.  **NO `useEffect` FOR DATA FETCHING:** Always use **TanStack Query (React Query)**.
+4.  **NO BARREL FILES:** Import directly from specific files to support tree-shaking (e.g., `import { Button } from '@/shared/ui/button'` NOT `from '@/shared/ui'`).
+5.  **SERVER ACTIONS/API:** Always use `.lean()` and `.select()` for MongoDB GET queries.
 
-## 2. Frontend Rules
+***
 
-### Rendering & Bundle
-| Rule | Implementation |
-|------|----------------|
-| **Code Splitting** | `React.lazy()` for all routes & heavy modals. |
-| **Virtualization** | Use `react-window` for lists > 50 items. |
-| **Imports** | Direct file imports, avoid barrel files. |
-| **Images** | `loading="lazy"` (below fold), `fetchpriority="high"` (LCP). |
-| **Events** | Debounce search/resize (>300ms), Throttle scroll. |
+## 2. FRONTEND IMPLEMENTATION STANDARDS
 
-### State Management Strategy
-| Type | Tool | Purpose |
-|------|------|---------|
-| **Server State** | **React Query** | API data, Caching. `staleTime: 5m` for static data. |
-| **Global Client** | **Zustand** | Theme, Auth, Language, Global UI (Sidebar). |
-| **Local State** | **useState** | Form inputs, simple toggles, component-isolated state. |
-| **Forms** | **React Hook Form** | Complex forms & validation (Zod). |
+### A. State Management Matrix
+| Scenario | Solution | Library/Tool |
+| :--- | :--- | :--- |
+| **Server Data** | Async caching, revalidation, optimistic updates | **TanStack Query** |
+| **Global UI** | Theme, Sidebar state, User Session | **Zustand** |
+| **Complex Forms** | Multi-step, Validation schema | **React Hook Form + Zod** |
+| **Local UI** | Toggles, Modals, Inputs | `useState` / `useReducer` |
 
-### Performance & Optimization
-- **Memoization:**
-  - Use `useMemo` for expensive computations or reference stability (objects/arrays).
-  - Use `useCallback` for functions passed to purely functional child components.
-  - Use `React.memo` for heavy UI components that re-render often with same props.
-- **Context API:** Split `StateContext` and `DispatchContext` to prevent unnecessary re-renders.
+### B. Performance Patterns
+*   **Lazy Loading:** Apply `React.lazy()` + `Suspense` for all Route components and heavy Modals.
+*   **Virtualization:** MANDATORY for any list expected to exceed 50 items (Use `react-window`).
+*   **Event Handling:**
+    *   Search Inputs: Debounce (`useDebounce`, >300ms).
+    *   Window Resize/Scroll: Throttle.
+*   **Render Optimization:**
+    *   Use `useMemo` for objects/arrays passed as props.
+    *   Use `React.memo` for leaf UI components (Icons, Buttons, Badges).
 
-### Media & Assets
-- **Images:** Cloudinary/R2 with `format=auto,quality=auto`, exact dimensions.
-- **Fonts:** Self-host or optimized CDN with `font-display: swap`.
-
----
-
-## 3. Backend Rules
-
-### MongoDB & Data Access
-| Rule | Implementation |
-|------|----------------|
-| **Indexes** | Mandatory for query fields. Check with `explain()`. |
-| **Read Ops** | Always `.lean()` for GET requests. |
-| **Projections** | Always `.select(...)` to fetch ONLY needed fields. |
-| **N+1** | Use Aggregation Pipelines (`$lookup`) or virtuals. |
-| **Pagination** | Mandatory. Cursor-based preferred or Offset (limit 20-50). |
-
-### Redis Caching
-| Data | Strategy | TTL |
-|------|----------|-----|
-| Sessions | Write-through | 7 days |
-| Config | Cache-aside | 24 hrs |
-| API Lists | Cache-aside + Invalidate | 5 mins |
-
-### API Performance
-- **Compression:** Gzip/Brotli enabled (>1KB).
-- **Concurrency:** `Promise.all()` for independent I/O.
-- **Timeouts:** Strict 5s for external APIs.
-- **Queues:** Offload Email/AI tasks to Message Queue.
-
----
-
-## 4. Code Standards
-
-### Component Structure
+### C. Component Structure Template
+All `.tsx` files must follow this order:
 ```tsx
-// 1. Imports
-// 2. Types/Interfaces
-// 3. Component Definition
-// 4. Hooks (State -> Queries -> Computed -> Effects)
-// 5. Handlers
-// 6. Return JSX
+/* 1. Imports (Order: React -> Libs -> FSD Layers -> Local) */
+/* 2. Types/Interfaces (Props) */
+/* 3. Component Definition */
+export const ComponentName = ({ prop }: Props) => {
+  /* 4. Hooks (Store -> Query -> State -> Derived -> Effects) */
+  /* 5. Event Handlers */
+  /* 6. Render Logic (Early returns) */
+  /* 7. JSX Return */
+};
 ```
 
-### Logic Extraction
-- **>150 lines:** Extract to custom hook or sub-component.
-- **UI Components:** "Dumb" (Visuals only, no business logic).
+***
 
----
+## 3. BACKEND IMPLEMENTATION STANDARDS
 
-## 5. Notifications (Sonner)
+### A. MongoDB Strategy
+*   **Read Optimization:**
+    *   `Model.find(query).lean().select('field1 field2')` is MANDATORY for read-only ops.
+    *   Use Aggregation Pipelines (`$lookup`) instead of multiple `await` calls (N+1 problem).
+    *   **Indexes:** Before writing a query, ensure the field is indexed.
+*   **Pagination:**
+    *   Always implement pagination for array responses.
+    *   Limit default: 20 items. Max: 50 items.
 
-- **Use Toast:** Login status, Network errors, Success actions.
-- **Don't Use Toast:** Form validation (inline), Critical (Modal).
-- **Service:** Centralized via `lib/notification.ts`.
+### B. Caching (Redis)
+*   **Session/Auth:** Write-through (TTL: 7 days).
+*   **Static Config:** Cache-aside (TTL: 24h).
+*   **High-traffic Lists:** Cache-aside + Invalidation on Mutation (TTL: 5m).
 
----
+### C. API Guidelines
+*   **Concurrency:** Use `Promise.all()` for independent tasks. Do NOT `await` inside loops.
+*   **Timeouts:** All external API calls (AI, Email) must have a strict 5s timeout.
+*   **Queues:** Offload heavy tasks (Email sending, AI generation, Report export) to Message Queue (BullMQ/RabbitMQ).
 
-## 6. Strict DON'Ts
+***
 
-- ❌ `useEffect` for data fetching (Use React Query).
-- ❌ `useEffect` for syncing state (Use Derived State).
-- ❌ `console.log` in production.
-- ❌ `any` type (Use `unknown` + Zod).
-- ❌ Magic strings/numbers (Use constants).
-- ❌ Mixing CSS Modules & Tailwind (Stick to page type rule).
+## 4. UI/UX & STYLING RULES
+*   **Styling:** **Client** must use **CSS Modules** only (No Tailwind/Shadcn). **Admin** uses **Tailwind + Shadcn**.
+*   **Feedback:**
+    *   **Success/Network Error:** Use `Sonner` (Toast).
+    *   **Validation Error:** Inline text (red-500) below input.
+    *   **Critical Error:** Blocking Modal.
+*   **Images:** All `<img>` tags must have `loading="lazy"` (except LCP) and explicit `width/height`.
 
----
+***
 
-*Last Updated: 2026-01-06*
+## 5. CODE QUALITY CHECKLIST
+Before generating code, verify:
+- [ ] Is this logic extracted? (If >150 lines -> Custom Hook).
+- [ ] Are magic numbers/strings replaced with Constants/Enums?
+- [ ] Are types strictly defined (No `any`)?
+- [ ] Is the Zod schema matching the Mongoose model?
+
+***
