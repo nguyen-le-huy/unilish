@@ -18,7 +18,7 @@ export const loginSchema = z.object({
 export const verifyOtpSchema = z.object({
     body: z.object({
         email: z.string().email('Email không hợp lệ'),
-        otp: z.string().length(6, 'Mã OTP phải có 6 chữ số'),
+        otp: z.string().length(4, 'Mã OTP phải có 4 chữ số'),
     }),
 });
 

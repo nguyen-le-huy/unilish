@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { GameLevelUtils } from '../utils/game-level.js';
+import type { ILanguage } from './language.model.js';
 
 export interface IUser extends mongoose.Document {
     email: string;
@@ -40,8 +41,18 @@ export interface IUser extends mongoose.Document {
     };
     settings: {
         notification: boolean;
-        nativeLanguage: string;
+        // TODO: Chuyển lại sang ObjectId khi đã migrate dữ liệu
+        nativeLanguage?: string; // mongoose.Types.ObjectId | ILanguage;
+        activeLanguage?: string; // mongoose.Types.ObjectId | ILanguage;
     };
+    // MULTI-LANGUAGE SUPPORT
+    learningProfiles: Array<{
+        language: mongoose.Types.ObjectId | ILanguage;
+        level: string;
+        xp: number;
+        streak: number;
+        lastActiveAt: Date;
+    }>;
     createdAt: Date;
     updatedAt: Date;
     updateStreak(): Promise<IUser>;
@@ -171,8 +182,21 @@ const UserSchema = new mongoose.Schema<IUser>(
         // --- 6. SETTINGS (CÀI ĐẶT) ---
         settings: {
             notification: { type: Boolean, default: true },
-            nativeLanguage: { type: String, default: 'vi' },
-        }
+            // TODO: Chuyển lại sang ObjectId khi đã migrate dữ liệu
+            nativeLanguage: { type: String }, // { type: mongoose.Schema.Types.ObjectId, ref: 'Language' },
+            activeLanguage: { type: String }, // { type: mongoose.Schema.Types.ObjectId, ref: 'Language' },
+        },
+
+        // --- 7. ĐA NGÔN NGỮ (MULTI-LANGUAGE PROFILES) ---
+        learningProfiles: [
+            {
+                language: { type: mongoose.Schema.Types.ObjectId, ref: 'Language', required: true },
+                level: { type: String, default: 'A1' },
+                xp: { type: Number, default: 0 },
+                streak: { type: Number, default: 0 },
+                lastActiveAt: { type: Date, default: Date.now }
+            }
+        ]
     },
     {
         timestamps: true,

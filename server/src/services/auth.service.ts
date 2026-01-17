@@ -24,7 +24,7 @@ export class AuthService {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Generate OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
+        const otp = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digits
         const hashedOtp = await bcrypt.hash(otp, 10);
 
         // Create user
@@ -54,7 +54,7 @@ export class AuthService {
         return {
             status: 'success',
             message: 'Đăng ký thành công. Vui lòng kiểm tra email để nhập mã xác thực.',
-            email: user.email,
+            email: email, // Use input email directly
         };
     }
 
@@ -128,7 +128,7 @@ export class AuthService {
         // Check verification
         if (!user.isVerified) {
             // Regenerate OTP
-            const otp = Math.floor(100000 + Math.random() * 900000).toString();
+            const otp = Math.floor(1000 + Math.random() * 9000).toString();
             const hashedOtp = await bcrypt.hash(otp, 10);
 
             user.otp = hashedOtp;

@@ -1,0 +1,35 @@
+.container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+}
+
+.input {
+    width: 60px;
+    height: 60px;
+    border: 1px solid var(--dark-grey);
+    border-radius: 12px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    outline: none;
+    background: transparent;
+    font-family: var(--font-family);
+}
+
+.input:focus,
+.input:not(:placeholder-shown) {
+    border: 2px solid black;
+}
+
+/* Remove spinner for number input */
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.input[type=number] {
+    -moz-appearance: textfield;
+}

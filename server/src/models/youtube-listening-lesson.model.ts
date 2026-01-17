@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import type { IUnit } from './unit.model.js';
 import type { IUser } from './user.model.js';
+import type { ILanguage } from './language.model.js';
 
 interface IGap {
     word: string;
@@ -24,6 +25,7 @@ export interface IYoutubeListeningLesson extends mongoose.Document {
     videoId: string;
     thumbnailUrl?: string;
     level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+    language: mongoose.Types.ObjectId | ILanguage;
     topic?: 'Daily Life' | 'Technology' | 'Business' | 'Entertainment' | 'News';
     tags: string[];
     unitId?: mongoose.Types.ObjectId | IUnit;
@@ -81,6 +83,11 @@ const YoutubeListeningLessonSchema = new mongoose.Schema(
             type: String,
             enum: ['Daily Life', 'Technology', 'Business', 'Entertainment', 'News'],
             index: true,
+        },
+        language: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Language',
+            index: true
         },
         tags: [{ type: String }],
 

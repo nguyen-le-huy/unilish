@@ -1,0 +1,52 @@
+.container {
+    padding: 10px;
+}
+
+.right {
+    background-image: url('@/assets/images/auth/auth.webp');
+    background-size: cover;
+    height: 100%;
+    border-radius: 20px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.feedback p {
+    color: white;
+}
+
+.feedback {
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.content {
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.author {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.name {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.jobAndLocation {
+    font-size: 16px;
+}

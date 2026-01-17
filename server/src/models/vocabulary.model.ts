@@ -4,6 +4,7 @@ import type { IUnit } from './unit.model.js';
 export interface IVocabulary extends mongoose.Document {
     unitId: mongoose.Types.ObjectId | IUnit;
     word: string;
+    transliteration?: string; // e.g. Pinyin, Romaji, Hiragana
     ipa?: string;
     pos: 'noun' | 'verb' | 'adjective' | 'adverb' | 'preposition' | 'phrase' | 'idiom';
     audioUrl: string;
@@ -37,6 +38,7 @@ const VocabularySchema = new mongoose.Schema<IVocabulary>(
             required: true,
             trim: true,
         },
+        transliteration: { type: String }, // NEW: Hỗ trợ ngôn ngữ tượng hình (Nhật, Trung)
         ipa: {
             type: String,
         },

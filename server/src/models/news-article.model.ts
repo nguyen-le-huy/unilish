@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import type { ILanguage } from './language.model.js';
 
 interface INewsVocab {
     word: string;
@@ -26,6 +27,7 @@ export interface INewsArticle extends mongoose.Document {
     audioUrl?: string;
     difficultyLevel?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
     category?: 'TECHNOLOGY' | 'BUSINESS' | 'HEALTH' | 'TRAVEL' | 'WORLD';
+    language: mongoose.Types.ObjectId | ILanguage;
     readTimeMinutes: number;
     vocabulary: INewsVocab[];
     quizzes: INewsQuiz[];
@@ -100,6 +102,11 @@ const NewsArticleSchema = new mongoose.Schema(
         readTimeMinutes: { type: Number, default: 3 },
 
         // --- 4. TÀI NGUYÊN HỌC TẬP (EMBEDDED) ---
+        language: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Language',
+            index: true
+        },
         vocabulary: [NewsVocabSchema],
         quizzes: [NewsQuizSchema],
 

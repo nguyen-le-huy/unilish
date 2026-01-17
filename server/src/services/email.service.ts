@@ -5,9 +5,12 @@ export class EmailService {
     static async sendOTP(email: string, otp: string, name: string) {
         const webhookUrl = process.env.N8N_WEBHOOK_URL;
 
+        // Always log OTP in Dev mode for quick testing
+        logger.info(`[EMAIL SERVICE] Sending OTP to ${email}: ${otp}`);
+
         // Development mode: Log OTP if no webhook
         if (!webhookUrl) {
-            logger.debug(`[EMAIL DEV] OTP for ${email}: ${otp}`);
+            logger.debug(`[EMAIL DEV] No Webhook URL provided.`);
             return;
         }
 

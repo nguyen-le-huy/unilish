@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import type { IUser } from './user.model.js';
 import type { IUnit } from './unit.model.js';
 import type { IModule } from './module.model.js';
+import type { ILanguage } from './language.model.js';
 
 interface IChatMessage {
     role: 'user' | 'assistant' | 'system';
@@ -23,6 +24,7 @@ export interface IChatSession extends mongoose.Document {
         unitId?: mongoose.Types.ObjectId | IUnit;
         moduleId?: mongoose.Types.ObjectId | IModule;
         topic?: string;
+        language?: mongoose.Types.ObjectId | ILanguage;
     };
     messages: IChatMessage[];
     isActive: boolean;
@@ -83,7 +85,8 @@ const ChatSessionSchema = new mongoose.Schema(
         context: {
             unitId: { type: mongoose.Schema.Types.ObjectId, ref: 'Unit' },
             moduleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Module' },
-            topic: String
+            topic: String,
+            language: { type: mongoose.Schema.Types.ObjectId, ref: 'Language' }
         },
 
         // --- 4. NỘI DUNG ---

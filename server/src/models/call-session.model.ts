@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import type { IUser } from './user.model.js';
+import type { ILanguage } from './language.model.js';
 
 interface IReview {
     reviewerId: mongoose.Types.ObjectId | IUser;
@@ -15,7 +16,7 @@ export interface ICallSession extends mongoose.Document {
     receiverId: mongoose.Types.ObjectId | IUser;
     topic: string;
     targetLevel?: string;
-    language: string;
+    language: mongoose.Types.ObjectId | ILanguage;
     status: 'ONGOING' | 'COMPLETED' | 'MISSED' | 'DECLINED' | 'ERROR';
     startTime: Date;
     endTime?: Date;
@@ -66,7 +67,8 @@ const CallSessionSchema = new mongoose.Schema(
         targetLevel: {
             type: String,
         },
-        language: { type: String, default: 'en' },
+
+        language: { type: mongoose.Schema.Types.ObjectId, ref: 'Language', required: true },
 
         // --- 3. TRẠNG THÁI & THỜI GIAN ---
         status: {
