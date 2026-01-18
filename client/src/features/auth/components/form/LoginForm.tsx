@@ -10,6 +10,7 @@ import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 import { LoginPayload, LoginSchema } from '../../types';
 import { Link } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
+import { useCallback } from 'react';
 
 const LoginForm = () => {
     const { register, handleSubmit, formState: { errors } } = useForm<LoginPayload>({
@@ -19,9 +20,9 @@ const LoginForm = () => {
     const { mutate: login, isPending: isLoginPending } = useLogin();
     const { signInWithGoogle, isSyncing } = useGoogleAuth();
 
-    const onSubmit = (data: LoginPayload) => {
+    const onSubmit = useCallback((data: LoginPayload) => {
         login(data);
-    };
+    }, [login]);
 
     const isPending = isLoginPending || isSyncing;
 

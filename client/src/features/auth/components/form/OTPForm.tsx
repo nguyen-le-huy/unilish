@@ -5,7 +5,7 @@ import { Button } from '@/components/common/button';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
 import { useVerifyOTP } from "../../hooks/useVerifyOTP";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Loading } from '@/components/common/loading/Loading';
 
 const OTPForm = () => {
@@ -18,12 +18,16 @@ const OTPForm = () => {
         return <Navigate to={PATHS.AUTH.LOGIN} replace />;
     }
 
-    const handleSubmit = (e?: React.FormEvent) => {
+    const handleSubmit = useCallback((e?: React.FormEvent) => {
         e?.preventDefault();
+        // Since otp is in dependency array, this will recreate
+        // But we need current otp value.
+        // In this specific case, cleaner is to pass otp to verify directly
+        // But the check `if (otp.length === 4)` needs otp.
         if (otp.length === 4) {
             verify({ email, otp });
         }
-    };
+    }, [otp, email, verify]);
 
     return (
         <div className={styles.content}>

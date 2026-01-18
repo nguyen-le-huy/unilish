@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useNavigate } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
 import { toast } from 'sonner';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { AxiosError } from 'axios';
 
 interface ApiErrorResponse {
@@ -59,7 +59,7 @@ export const useGoogleAuth = () => {
         }
     }, [isLoaded, isSignedIn, user, isAuthenticated, syncMutation.isPending, syncMutation.isSuccess]);
 
-    const signInWithGoogle = async () => {
+    const signInWithGoogle = useCallback(async () => {
         if (!isLoaded) return;
 
         try {
@@ -81,7 +81,7 @@ export const useGoogleAuth = () => {
                 toast.error(clerkError.errors?.[0]?.message || 'Google Sign In initiation failed');
             }
         }
-    };
+    }, [isLoaded, isSignedIn, clerk, signIn]);
 
     return {
         signInWithGoogle,

@@ -37,6 +37,7 @@ You are a Senior Full-Stack Engineer expert in **MERN Stack**, **FSD Architectur
     *   Window Resize/Scroll: Throttle.
 *   **Render Optimization:**
     *   Use `useMemo` for objects/arrays passed as props.
+    *   Use `useCallback` for functions passed to child components.
     *   Use `React.memo` for leaf UI components (Icons, Buttons, Badges).
 
 ### C. Component Structure Template

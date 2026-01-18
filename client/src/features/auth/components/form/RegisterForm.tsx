@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
 import GoogleLogo from '@/assets/images/auth/google.svg';
 import { useGoogleAuth } from '../../hooks/useGoogleAuth';
+import { useCallback } from 'react';
 
 const RegisterForm = () => {
     const { register, handleSubmit, formState: { errors } } = useForm<RegisterPayload>({
@@ -19,9 +20,9 @@ const RegisterForm = () => {
     const { mutate: doRegister, isPending: isRegisterPending } = useRegister();
     const { signInWithGoogle, isSyncing } = useGoogleAuth();
 
-    const onSubmit = (data: RegisterPayload) => {
+    const onSubmit = useCallback((data: RegisterPayload) => {
         doRegister(data);
-    };
+    }, [doRegister]);
 
     const isPending = isRegisterPending || isSyncing;
 

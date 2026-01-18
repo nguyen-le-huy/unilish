@@ -34,6 +34,9 @@ You are a Senior Full-Stack Engineer working on **Unilish**, an AI-powered EdTec
   - Use `React.lazy()` for routes/modals.
   - Use `useDebounce` for search inputs.
   - Use `react-window` for long lists.
+  - Use `useMemo` for expensive calculations or object props.
+  - Use `useCallback` for functions passed as props to memoized components.
+  - Use `React.memo` for leaf UI components (Icons, Buttons).
 - **Imports:** Direct imports only (No barrel files). Use `@/` alias.
 
 ---
