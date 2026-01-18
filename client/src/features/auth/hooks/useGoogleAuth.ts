@@ -6,6 +6,16 @@ import { useNavigate } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
 import { toast } from 'sonner';
 import { useEffect, useRef } from 'react';
+import { AxiosError } from 'axios';
+
+interface ApiErrorResponse {
+    message?: string;
+}
+
+interface ClerkError {
+    status?: number;
+    errors?: Array<{ code?: string; message?: string }>;
+}
 
 export const useGoogleAuth = () => {
     const { signIn } = useSignIn();
@@ -23,10 +33,9 @@ export const useGoogleAuth = () => {
             toast.success('Signed in with Google successfully');
             navigate(PATHS.DASHBOARD.HOME);
         },
-        onError: (error: any) => {
+        onError: (error: AxiosError<ApiErrorResponse>) => {
             const message = error.response?.data?.message || 'Failed to sync with Google';
             toast.error(message);
-            // If sync fails, maybe we should sign out from Clerk to retry?
             clerk.signOut();
         },
     });
@@ -64,13 +73,12 @@ export const useGoogleAuth = () => {
                 redirectUrl: '/auth/login',
                 redirectUrlComplete: '/auth/login'
             });
-        } catch (err: any) {
-            console.error("Clerk Error:", err);
-            // Check for 429 Rate Limit
-            if (err.status === 429 || err.errors?.[0]?.code === 'rate_limit_exceeded') {
+        } catch (err: unknown) {
+            const clerkError = err as ClerkError;
+            if (clerkError.status === 429 || clerkError.errors?.[0]?.code === 'rate_limit_exceeded') {
                 toast.error('Too many requests. Please wait a moment before trying again.');
             } else {
-                toast.error(err.errors?.[0]?.message || 'Google Sign In initiation failed');
+                toast.error(clerkError.errors?.[0]?.message || 'Google Sign In initiation failed');
             }
         }
     };

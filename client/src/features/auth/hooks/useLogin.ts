@@ -5,6 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
 import { LoginPayload } from '../types';
 import { toast } from 'sonner';
+import { AxiosError } from 'axios';
+
+interface ApiErrorResponse {
+    message?: string;
+}
 
 export const useLogin = () => {
     const setAuth = useAuthStore((state) => state.setAuth);
@@ -17,7 +22,7 @@ export const useLogin = () => {
             toast.success('Signed in successfully');
             navigate(PATHS.DASHBOARD.HOME);
         },
-        onError: (error: any, variables) => {
+        onError: (error: AxiosError<ApiErrorResponse>, variables) => {
             const message = error.response?.data?.message || 'Failed to sign in';
             toast.error(message);
 

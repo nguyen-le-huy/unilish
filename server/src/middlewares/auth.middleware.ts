@@ -24,8 +24,10 @@ export const protect = catchAsync(async (req: Request, res: Response, next: Next
     // 2. Verify token
     const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
 
-    // 3. Check if user still exists
-    const currentUser = await User.findById(decoded.id);
+    // 3. Check if user still exists (use lean for read optimization)
+    const currentUser = await User.findById(decoded.id)
+        .select('_id email fullName role avatarUrl currentLevel stats')
+        .lean();
     if (!currentUser) {
         return next(
             new AppError('The user belonging to this token does no longer exist.', HttpStatus.UNAUTHORIZED),

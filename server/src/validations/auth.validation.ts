@@ -25,7 +25,7 @@ export const verifyOtpSchema = z.object({
 export const syncClerkSchema = z.object({
     body: z.object({
         clerkId: z.string().min(1, 'Clerk ID là bắt buộc'),
-        email: z.string().email('Email não hợp lệ'),
+        email: z.string().email('Email không hợp lệ'),
         fullName: z.string().optional(),
         avatarUrl: z.string().url('Avatar URL không hợp lệ').optional(),
     }),

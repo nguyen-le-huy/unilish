@@ -4,19 +4,25 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useNavigate } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
 import { toast } from 'sonner';
+import { AxiosError } from 'axios';
+import { VerifyOTPPayload } from '../types';
+
+interface ApiErrorResponse {
+    message?: string;
+}
 
 export const useVerifyOTP = () => {
     const setAuth = useAuthStore((state) => state.setAuth);
     const navigate = useNavigate();
 
     return useMutation({
-        mutationFn: (data: { email: string; otp: string }) => verifyOTP(data.email, data.otp),
+        mutationFn: (data: VerifyOTPPayload) => verifyOTP(data.email, data.otp),
         onSuccess: (data) => {
             setAuth(data.user, data.token);
             toast.success('Account verified successfully!', { id: 'verify-otp-success' });
             navigate(PATHS.DASHBOARD.HOME);
         },
-        onError: (error: any) => {
+        onError: (error: AxiosError<ApiErrorResponse>) => {
             const message = error.response?.data?.message || 'Verification failed';
             toast.error(message);
         },

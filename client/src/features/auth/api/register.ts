@@ -1,6 +1,6 @@
 import { api } from '@/lib/axios';
-import { RegisterPayload } from '../types';
+import { RegisterPayload, RegisterResponse } from '../types';
 
-export const register = async (data: RegisterPayload): Promise<{ message: string; email: string }> => {
+export const register = async (data: RegisterPayload): Promise<RegisterResponse> => {
     return api.post('/auth/register', data);
 };

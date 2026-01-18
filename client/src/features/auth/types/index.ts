@@ -7,15 +7,43 @@ export const LoginSchema = z.object({
 
 export type LoginPayload = z.infer<typeof LoginSchema>;
 
+export interface User {
+    _id: string;
+    email: string;
+    fullName: string;
+    role: string;
+    avatarUrl?: string;
+    currentLevel?: string;
+    stats?: UserStats;
+    subscription?: unknown;
+    phoneNumber?: string;
+    bio?: string;
+    address?: string;
+    dateOfBirth?: string;
+}
+
+export interface UserStats {
+    xp: number;
+    coins: number;
+    streak: number;
+    longestStreak: number;
+    lastActiveAt: string;
+}
+
 export interface AuthResponse {
     token: string;
-    user: {
-        _id: string;
-        email: string;
-        fullName: string;
-        role: string;
-        avatar?: string;
-    };
+    user: User;
+}
+
+export interface RegisterResponse {
+    status: string;
+    message: string;
+    email: string;
+}
+
+export interface VerifyOTPPayload {
+    email: string;
+    otp: string;
 }
 
 export interface SyncClerkPayload {

@@ -1,13 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-
-interface User {
-    _id: string;
-    email: string;
-    fullName: string;
-    role: string;
-    avatar?: string;
-}
+import { persist, createJSONStorage } from 'zustand/middleware';
+import type { User } from '@/features/auth/types';
 
 interface AuthState {
     user: User | null;
@@ -24,17 +17,20 @@ export const useAuthStore = create<AuthState>()(
             token: null,
             isAuthenticated: false,
             setAuth: (user, token) => {
-                localStorage.setItem('token', token);
                 set({ user, token, isAuthenticated: true });
             },
             logout: () => {
-                localStorage.removeItem('token');
                 set({ user: null, token: null, isAuthenticated: false });
             },
         }),
         {
             name: 'unilish-auth-storage',
-            partialize: (state) => ({ user: state.user, token: state.token, isAuthenticated: !!state.token }),
+            storage: createJSONStorage(() => localStorage),
+            partialize: (state) => ({ 
+                user: state.user, 
+                token: state.token, 
+                isAuthenticated: state.isAuthenticated 
+            }),
         }
     )
 );
