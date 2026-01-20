@@ -30,8 +30,8 @@ const LoginForm = () => {
         <div className={styles.content}>
             <img src={Logo} alt="Unilish" />
             <div className={styles.title}>
-                <h3>Sign into your account</h3>
-                <p>New gigs personalized for you are waiting.</p>
+                <h3>Đăng nhập vào tài khoản</h3>
+                <p>Hành trình chinh phục tiếng Anh đang chờ bạn.</p>
             </div>
             <Button
                 variant="ghost"
@@ -40,11 +40,11 @@ const LoginForm = () => {
                 onClick={signInWithGoogle}
                 disabled={isPending}
             >
-                {isSyncing ? <Loading variant="inline" size="sm" /> : 'Continue with Google'}
+                {isSyncing ? <Loading variant="inline" size="sm" /> : 'Tiếp tục với Google'}
             </Button>
             <div className={styles.or}>
                 <div className={styles.line}></div>
-                <p>or</p>
+                <p>hoặc</p>
                 <div className={styles.line}></div>
             </div>
             <form className={styles.form} onSubmit={handleSubmit(onSubmit)}>
@@ -53,23 +53,23 @@ const LoginForm = () => {
                     <input
                         type="email"
                         id="email"
-                        placeholder='Enter your email'
+                        placeholder='Nhập email của bạn'
                         {...register('email')}
                         disabled={isPending}
                     />
                     {errors.email && <span className={styles.error}>{errors.email.message}</span>}
                 </div>
                 <div className={styles.inputGroup}>
-                    <label htmlFor="password">Password</label>
+                    <label htmlFor="password">Mật khẩu</label>
                     <input
                         type="password"
                         id="password"
-                        placeholder='Enter your password'
+                        placeholder='Nhập mật khẩu của bạn'
                         {...register('password')}
                         disabled={isPending}
                     />
                     {errors.password && <span className={styles.error}>{errors.password.message}</span>}
-                    <p className={styles.forgotPassword}>Forgot password?</p>
+                    <p className={styles.forgotPassword}>Quên mật khẩu?</p>
                 </div>
                 <Button
                     type="submit"
@@ -77,11 +77,11 @@ const LoginForm = () => {
                     size="full"
                     disabled={isPending}
                 >
-                    {isLoginPending ? <Loading variant="inline" size="sm" /> : 'Sign in'}
+                    {isLoginPending ? <Loading variant="inline" size="sm" /> : 'Đăng nhập'}
                 </Button>
-                <p className={styles.resetPassword}>Can't sign in? <span>Reset password</span></p>
+                <p className={styles.resetPassword}>Không thể đăng nhập? <span>Đặt lại mật khẩu</span></p>
             </form>
-            <p className={styles.signUp}>Don't have an account? <span><Link to={PATHS.AUTH.REGISTER}>Sign up</Link></span></p>
+            <p className={styles.signUp}>Chưa có tài khoản? <span><Link to={PATHS.AUTH.REGISTER}>Đăng ký ngay</Link></span></p>
         </div>
     );
 };

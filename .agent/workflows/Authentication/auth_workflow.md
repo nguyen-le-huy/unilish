@@ -2,171 +2,161 @@
 description: Authentication Implementation Workflow
 ---
 
-# Luồng hoạt động Authentication
+# Luồng hoạt động Authentication (Chi tiết)
 
-Tài liệu này mô tả chi tiết các luồng xác thực trong hệ thống.
+Tài liệu này mô tả chi tiết từng bước, từ tương tác UI cho đến xử lý Database, của hệ thống xác thực.
 
 ---
 
 ## 1. Google Login Flow (Client)
 
-```mermaid
-sequenceDiagram
-    participant U as 👤 User
-    participant C as 📱 Client
-    participant CK as 🔐 Clerk
-    participant S as 🖥️ Server
-    participant DB as 💾 MongoDB
+### A. Client Side Interaction
+1. **UI Trigger:**
+   * **Page:** `client/src/pages/auth/Login.tsx` (hoặc Register).
+   * **Action:** User bấm nút **"Tiếp tục với Google"** (được render bởi `<SignIn />` hoặc nút custom gọi Clerk).
+   * **Code:** `useGoogleAuth.ts` -> `signInWithGoogle()`.
+   * **Clerk Process:** Redirect user sang Google -> Auth -> Redirect về URL app.
 
-    U->>C: Click "Continue with Google"
-    C->>CK: Open OAuth Popup
-    CK->>CK: Google Authentication
-    CK-->>C: Return Clerk Session
-    C->>C: Extract clerkId, email, fullName
-    C->>S: POST /api/auth/sync-clerk
-    S->>DB: Find by email OR clerkId
-    alt User exists
-        S->>DB: Update clerkId, avatar
-    else New user
-        S->>DB: Create new User
-    end
-    S->>S: Generate JWT
-    S-->>C: Return { token, user }
-    C->>C: Store JWT in localStorage
-    C-->>U: Redirect to Dashboard ✅
-```
+2. **Sync Process (Client):**
+   * **Hook:** `client/src/features/auth/hooks/useGoogleAuth.ts`.
+   * **Logic:** `useEffect` lắng nghe `user` từ Clerk. Nếu `isSignedIn` (Clerk) nhưng `!isAuthenticated` (Hệ thống):
+     * Trigger API Sync.
+   * **API Call:** `client/src/features/auth/api/sync-clerk.ts` -> `api.post('/auth/sync-clerk')`.
+   * **Payload:** `{ clerkId, email, fullName, avatarUrl }`.
 
-### Code Files
-| Step | File | Function |
-|------|------|----------|
-| 1-3 | [useGoogleAuth.ts](file:///Users/nguyenlehuy/Downloads/unilish/client/src/features/auth/hooks/useGoogleAuth.ts) | Clerk integration |
-| 4-5 | [auth-api.ts](file:///Users/nguyenlehuy/Downloads/unilish/client/src/features/auth/api/auth-api.ts) | `syncClerk()` |
-| 6-10 | [auth.service.ts](file:///Users/nguyenlehuy/Downloads/unilish/server/src/services/auth.service.ts#L178-244) | `syncWithClerk()` |
+### B. Server Side Processing
+1. **Route:** `POST /api/auth/sync-clerk`.
+2. **Controller:** `server/src/controllers/auth.controller.ts` -> `syncClerkUser`.
+   * Validate input (clerkId, email).
+   * Call `AuthService.syncWithClerk()`.
+3. **Service Logic:** `server/src/services/auth.service.ts`.
+   * **Check:** Tìm User theo `clerkId` HOẶC `email`.
+   * **Update (Nếu tồn tại):** Cập nhật `clerkId`, `avatarUrl`, set `authProvider = 'google'`, `isVerified = true`.
+   * **Create (Nếu mới):** Tạo User mới với `role: 'student'`, `stats` mặc định.
+   * **Generate Token:** Tạo JWT (7 ngày).
+4. **Response:** JSON `{ status: 'success', data: { user, token } }`.
+
+### C. Client Completion
+* **Hook onSuccess:**
+  * Update Zustand: `authStore.setAuth(user, token)`.
+  * Toast: "Signed in with Google successfully".
+  * Navigate: `/dashboard`.
 
 ---
 
 ## 2. Traditional Registration Flow (Client)
 
-```mermaid
-sequenceDiagram
-    participant U as 👤 User
-    participant C as 📱 Client
-    participant S as 🖥️ Server
-    participant N as 📧 n8n
-    participant DB as 💾 MongoDB
+### A. Client Side Interaction
+1. **UI Trigger:**
+   * **Page:** `client/src/pages/auth/Register.tsx`.
+   * **Component:** `client/src/features/auth/components/form/RegisterForm.tsx`.
+   * **Fields:** Email, Full Name, Password, Confirm Password.
+   * **Action:** Submit Form (`onSubmit`).
+2. **Hook Execution:**
+   * **Hook:** `client/src/features/auth/hooks/useRegister.ts`.
+   * **API Call:** `client/src/features/auth/api/register.ts` -> `api.post('/auth/register')`.
+   * **Payload:** `{ email, password, fullName }`.
 
-    U->>C: Fill Register Form
-    C->>C: Zod Validation
-    C->>S: POST /api/auth/register
-    S->>DB: Check email exists?
-    alt Email taken
-        S-->>C: Error 400
-    else Available
-        S->>S: Generate 6-digit OTP
-        S->>S: Hash OTP (Bcrypt)
-        S->>DB: Create User (isVerified: false)
-        S->>N: Webhook: Send OTP Email
-        S-->>C: Success 200
-        C-->>U: Redirect to /verify-otp
-    end
-```
+### B. Server Side Processing
+1. **Route:** `POST /api/auth/register`.
+2. **Controller:** `server/src/controllers/auth.controller.ts` -> `register`.
+3. **Service Logic:** `server/src/services/auth.service.ts`.
+   * **Check Duplicate:** `User.findOne({ email })`. Nếu có -> Throw error 400.
+   * **Process:**
+     * Hash Password (`bcrypt`).
+     * Generate OTP (4 số ngẫu nhiên).
+     * Hash OTP.
+     * Create User: `isVerified: false`, `otpExpires`: +10 phút.
+   * **Side Effect:** Gọi `EmailService.sendOTP(email, otp)` (Trigger n8n/webhook).
+4. **Response:** JSON `{ status: 'success', message: '...', email: '...' }`.
 
-### Code Files
-| Step | File | Function |
-|------|------|----------|
-| 2 | [auth.schema.ts](file:///Users/nguyenlehuy/Downloads/unilish/client/src/features/auth/types/auth.schema.ts) | `registerSchema` |
-| 3 | [useTraditionalAuth.ts](file:///Users/nguyenlehuy/Downloads/unilish/client/src/features/auth/hooks/useTraditionalAuth.ts) | `register()` |
-| 4-10 | [auth.service.ts](file:///Users/nguyenlehuy/Downloads/unilish/server/src/services/auth.service.ts#L14-59) | `register()` |
-| 9 | [email.service.ts](file:///Users/nguyenlehuy/Downloads/unilish/server/src/services/email.service.ts) | `sendOTP()` |
+### C. Client Completion
+* **Hook onSuccess:**
+  * Toast: "Check your email".
+  * Navigate: `/auth/verify-otp` (mang theo `state: { email }`).
 
 ---
 
 ## 3. OTP Verification Flow (Client)
 
-```mermaid
-sequenceDiagram
-    participant U as 👤 User
-    participant C as 📱 Client
-    participant S as 🖥️ Server
-    participant DB as 💾 MongoDB
+### A. Client Side Interaction
+1. **UI Trigger:**
+   * **Page:** `client/src/pages/auth/OTP.tsx`.
+   * **Component:** `client/src/features/auth/components/form/OTPForm.tsx`.
+   * **Inputs:** 6 ô nhập liệu (Input OTP).
+   * **Action:** Auto-submit khi đủ 6 ký tự hoặc bấm Verify.
+2. **Hook Execution:**
+   * **Hook:** `client/src/features/auth/hooks/useVerifyOTP.ts`.
+   * **API Call:** `client/src/features/auth/api/verify-otp.ts` -> `api.post('/auth/verify-otp')`.
+   * **Payload:** `{ email, otp }`.
 
-    U->>U: Check email, copy OTP
-    U->>C: Enter 6-digit code
-    C->>S: POST /api/auth/verify-otp
-    S->>DB: Find user by email
-    S->>S: Check OTP expiry (10 mins)
-    S->>S: bcrypt.compare(input, hashedOTP)
-    alt Match
-        S->>DB: Set isVerified: true
-        S->>S: Generate JWT
-        S-->>C: Return { token, user }
-        C-->>U: Login success ✅
-    else No match
-        S-->>C: Error 400
-    end
-```
+### B. Server Side Processing
+1. **Route:** `POST /api/auth/verify-otp`.
+2. **Controller:** `server/src/controllers/auth.controller.ts` -> `verifyOTP`.
+3. **Service Logic:** `server/src/services/auth.service.ts`.
+   * Find User by Email.
+   * **Checks:**
+     * User có tồn tại?
+     * `otpExpires` còn hạn?
+     * `bcrypt.compare(otpInput, user.otpHash)`?
+   * **Action:**
+     * Set `isVerified = true`.
+     * Clear `otp`, `otpExpires`.
+     * Generate JWT.
+4. **Response:** JSON `{ status: 'success', data: { user, token } }`.
 
-### Code Files
-| Step | File | Function |
-|------|------|----------|
-| 2-3 | [OTPForm.tsx](file:///Users/nguyenlehuy/Downloads/unilish/client/src/features/auth/components/OTPForm.tsx) | UI Component |
-| 4-10 | [auth.service.ts](file:///Users/nguyenlehuy/Downloads/unilish/server/src/services/auth.service.ts#L61-111) | `verifyOTP()` |
-
----
-
-## 4. Admin Login Flow (Admin Portal)
-
-```mermaid
-sequenceDiagram
-    participant A as 👨‍💼 Admin
-    participant AD as 🖥️ Admin App
-    participant S as 🖥️ Server
-    participant DB as 💾 MongoDB
-
-    A->>AD: Enter Email/Password
-    AD->>AD: Zod Validation
-    AD->>S: POST /api/auth/login
-    S->>DB: Find user + password
-    S->>S: bcrypt.compare()
-    alt Password correct
-        S->>S: Check isVerified
-        alt Verified
-            S->>S: Generate JWT
-            S-->>AD: Return { token, user }
-            AD->>AD: Check user.role
-            alt role === 'admin'
-                AD->>AD: Store in Zustand
-                AD-->>A: Redirect to Dashboard ✅
-            else role !== 'admin'
-                AD-->>A: "Access Denied" Toast ❌
-            end
-        else Not verified
-            S->>S: Resend OTP
-            S-->>AD: Error 403
-        end
-    else Wrong password
-        S-->>AD: Error 401
-    end
-```
-
-### Code Files
-| Step | File | Function |
-|------|------|----------|
-| 1-3 | [LoginForm.tsx](file:///Users/nguyenlehuy/Downloads/unilish/admin/src/features/auth/components/LoginForm.tsx) | UI Component |
-| 3 | [useAuth.ts](file:///Users/nguyenlehuy/Downloads/unilish/admin/src/features/auth/hooks/useAuth.ts) | Login mutation |
-| 4-8 | [auth.service.ts](file:///Users/nguyenlehuy/Downloads/unilish/server/src/services/auth.service.ts#L113-168) | `login()` |
+### C. Client Completion
+* **Hook onSuccess:**
+  * Update Zustand: `authStore.setAuth(user, token)`.
+  * Navigate: `/dashboard`.
 
 ---
 
-## 5. Key Technical Decisions
+## 4. Login Flow (Client & Admin)
 
-| Quyết định | Lý do |
-|------------|-------|
-| **Hybrid Auth** | Giảm rào cản (Google) + Duy trì accessibility (Email) |
-| **JWT** | Stateless, scale tốt, hoạt động trên mobile/web |
-| **Hashed OTP** | Bảo mật - DB leak không lộ OTP |
-| **n8n Email** | Tách biệt email logic khỏi core server |
+### A. Client Side Interaction
+1. **UI Trigger:**
+   * **Client:** `client/src/features/auth/components/form/LoginForm.tsx`.
+   * **Admin:** `admin/src/features/auth/components/LoginForm.tsx`.
+   * **Fields:** Email, Password.
+2. **Hook Execution:**
+   * **Client Hook:** `client/src/features/auth/hooks/useLogin.ts`.
+   * **Admin Hook:** `admin/src/features/auth/hooks/useAuth.ts` (useLogin).
+   * **API Call:** `api.post('/auth/login')`.
+   * **Payload:** `{ email, password }`.
+
+### B. Server Side Processing
+1. **Route:** `POST /api/auth/login`.
+2. **Controller:** `server/src/controllers/auth.controller.ts` -> `login`.
+3. **Service Logic:** `server/src/services/auth.service.ts`.
+   * Find User (`+password`).
+   * Compare Password (`bcrypt`).
+   * **Check Verified:**
+     * Nếu `isVerified === false`: Tạo OTP mới -> Gửi Email -> Throw 403 "Unverified".
+   * **Action:** Update `lastActiveAt`, Generate JWT.
+4. **Response:** JSON `{ status: 'success', data: { user, token } }`.
+
+### C. Client Completion
+* **Client App:**
+  * Check Role (Optional but handles permission).
+  * Update Zustand, Navigate `/dashboard`.
+* **Admin Portal:**
+  * **Role Check:** `if (user.role !== 'admin')` -> Toast Error "Access Denied" -> Không lưu Token.
+  * Nếu OK -> Update Zustand -> Navigate `/dashboard`.
 
 ---
 
-*Cập nhật: 2026-01-06*
+## 5. Technical Stack References
+
+| Component | Library/Tech | File Location |
+|-----------|--------------|---------------|
+| **Form Handling** | React Hook Form + Zod | `components/form/*` |
+| **API Client** | Axios + Interceptors | `lib/axios.ts` |
+| **State Sync** | TanStack Query (v5) | `features/auth/hooks/*` |
+| **Global State** | Zustand | `stores/auth.store.ts` |
+| **Email Service** | n8n Webhook | `server/src/services/email.service.ts` |
+| **Auth Provider** | Clerk (Google Only) | `features/auth/hooks/useGoogleAuth.ts` |
+
+---
+
+*Last Updated: 2026-01-20*

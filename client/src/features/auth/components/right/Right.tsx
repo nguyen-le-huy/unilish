@@ -5,10 +5,10 @@ const Right = () => {
         <div className={styles.container}>
             <div className={styles.right}>
                 <div className={styles.feedback}>
-                    <p className={styles.content}>I booked two high-paying shoots in my first week—more than I’d made in the previous month. I’m genuinely blown away and now have too much work!</p>
+                    <p className={styles.content}>Tôi từng rất ngại giao tiếp, nhưng nhờ AI Speaking Coach của Unilish, tôi đã tự tin nói tiếng Anh chỉ sau 2 tuần. Phản xạ nhanh hơn, phát âm chuẩn hơn và không còn sợ sai nữa. Một trải nghiệm học tập tuyệt vời!</p>
                     <div className={styles.author}>
-                        <p className={styles.name}>Sienna Hart</p>
-                        <p className={styles.jobAndLocation}>Photographer | Lisbon, Portugal</p>
+                        <p className={styles.name}>Minh Anh</p>
+                        <p className={styles.jobAndLocation}>Học viên | Hà Nội, Việt Nam</p>
                     </div>
                 </div>
             </div>

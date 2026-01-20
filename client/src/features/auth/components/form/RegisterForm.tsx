@@ -30,8 +30,8 @@ const RegisterForm = () => {
         <div className={styles.content}>
             <img src={Logo} alt="Unilish" />
             <div className={styles.title}>
-                <h3>Create a new account</h3>
-                <p>Join Unilish to improve your English skills.</p>
+                <h3>Tạo tài khoản mới</h3>
+                <p>Tham gia Unilish để cải thiện kỹ năng tiếng Anh của bạn.</p>
             </div>
 
             <Button
@@ -41,21 +41,21 @@ const RegisterForm = () => {
                 onClick={signInWithGoogle}
                 disabled={isPending}
             >
-                {isSyncing ? <Loading variant="inline" size="sm" /> : 'Continue with Google'}
+                {isSyncing ? <Loading variant="inline" size="sm" /> : 'Tiếp tục với Google'}
             </Button>
             <div className={styles.or}>
                 <div className={styles.line}></div>
-                <p>or</p>
+                <p>hoặc</p>
                 <div className={styles.line}></div>
             </div>
 
             <form className={styles.form} onSubmit={handleSubmit(onSubmit)}>
                 <div className={styles.inputGroup}>
-                    <label htmlFor="fullName">Full Name</label>
+                    <label htmlFor="fullName">Họ và tên</label>
                     <input
                         type="text"
                         id="fullName"
-                        placeholder='Enter your full name'
+                        placeholder='Nhập họ và tên của bạn'
                         {...register('fullName')}
                         disabled={isPending}
                     />
@@ -67,18 +67,18 @@ const RegisterForm = () => {
                     <input
                         type="email"
                         id="email"
-                        placeholder='Enter your email'
+                        placeholder='Nhập email của bạn'
                         {...register('email')}
                         disabled={isPending}
                     />
                     {errors.email && <span className={styles.error}>{errors.email.message}</span>}
                 </div>
                 <div className={styles.inputGroup}>
-                    <label htmlFor="password">Password</label>
+                    <label htmlFor="password">Mật khẩu</label>
                     <input
                         type="password"
                         id="password"
-                        placeholder='Enter your password'
+                        placeholder='Nhập mật khẩu của bạn'
                         {...register('password')}
                         disabled={isPending}
                     />
@@ -90,10 +90,10 @@ const RegisterForm = () => {
                     size="full"
                     disabled={isPending}
                 >
-                    {isRegisterPending ? <Loading variant="inline" size="sm" /> : 'Sign up'}
+                    {isRegisterPending ? <Loading variant="inline" size="sm" /> : 'Đăng ký'}
                 </Button>
             </form>
-            <p className={styles.signUp}>Already have an account? <span><Link to={PATHS.AUTH.LOGIN}>Sign in</Link></span></p>
+            <p className={styles.signUp}>Đã có tài khoản? <span><Link to={PATHS.AUTH.LOGIN}>Đăng nhập</Link></span></p>
         </div>
     );
 };

@@ -75,9 +75,9 @@ flowchart TD
 ### Client (`/client`)
 | File | Chức năng | Link |
 |------|-----------|------|
-| `features/auth/hooks/useGoogleAuth.ts` | Sync Clerk với backend | [View](file:///Users/nguyenlehuy/Downloads/unilish/client/src/features/auth/hooks/useGoogleAuth.ts) |
-| `features/auth/hooks/useTraditionalAuth.ts` | Register, Login, OTP | [View](file:///Users/nguyenlehuy/Downloads/unilish/client/src/features/auth/hooks/useTraditionalAuth.ts) |
-| `features/auth/components/AuthGuard.tsx` | Route protection | [View](file:///Users/nguyenlehuy/Downloads/unilish/client/src/features/auth/components/AuthGuard.tsx) |
+| `features/auth/hooks/useGoogleAuth.ts` | Sync Clerk với backend | [View](client/src/features/auth/hooks/useGoogleAuth.ts) |
+| `features/auth/hooks/*` | Hooks: `useRegister`, `useLogin`, `useVerifyOTP` | [Open Folder](client/src/features/auth/hooks/) |
+| `app/ProtectedRoute.tsx` | Route protection (Check Login) | [View](client/src/app/ProtectedRoute.tsx) |
 
 ### Admin (`/admin`)
 | File | Chức năng | Link |

@@ -33,8 +33,8 @@ const OTPForm = () => {
         <div className={styles.content}>
             <img src={Logo} alt="Unilish" />
             <div className={styles.title}>
-                <h3>Confirm your email</h3>
-                <p>We sent a code to {email}</p>
+                <h3>Xác nhận email của bạn</h3>
+                <p>Chúng tôi đã gửi mã xác thực tới {email}</p>
             </div>
             <form onSubmit={handleSubmit} className={styles.form}>
                 <OTPInput length={4} onComplete={setOtp} />
@@ -45,10 +45,10 @@ const OTPForm = () => {
                     variant="primary"
                     disabled={isPending || otp.length < 4}
                 >
-                    {isPending ? <Loading variant="inline" size="sm" /> : 'Confirm Account'}
+                    {isPending ? <Loading variant="inline" size="sm" /> : 'Xác thực tài khoản'}
                 </Button>
             </form>
-            <p className={styles.resetPassword}>Don't have an account? <span><Link to={PATHS.AUTH.REGISTER}>Sign up</Link></span></p>
+            <p className={styles.resetPassword}>Chưa có tài khoản? <span><Link to={PATHS.AUTH.REGISTER}>Đăng ký ngay</Link></span></p>
         </div>
     );
 };
