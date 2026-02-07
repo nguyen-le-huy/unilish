@@ -2,47 +2,48 @@
 description: MongoDB Atlas Connection Guide
 ---
 
-# Hướng dẫn Kết nối MongoDB Atlas
+# Hướng dẫn kết nối MongoDB Atlas
 
-Tài liệu này mô tả chi tiết quy trình kết nối Server với MongoDB Atlas, từ việc lấy Connection String đến implementation trong code.
-
----
-
-## 1. Thiết lập trên MongoDB Atlas (Cloud)
-
-Trước khi chạy code, bạn cần có một Cluster trên MongoDB Atlas.
-
-### Bước 1: Lấy Connection String
-1.  Đăng nhập vào [MongoDB Atlas Dashboard](https://cloud.mongodb.com/).
-2.  Chọn Cluster dự án của bạn (ví dụ: `Cluster0`).
-3.  Bấm nút **Connect**.
-4.  Chọn **Drivers** (Node.js, version mới nhất).
-5.  Copy chuỗi kết nối (`Connection String`).
-    *   Dạng: `mongodb+srv://<username>:<password>@cluster0.abcde.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
-
-### Bước 2: Cấu hình User & Network Access
-1.  **Database Access:** Vào tab "Database Access" -> "Add New Database User" -> Tạo user/pass (ví dụ: `huynl`/`...`).
-2.  **Network Access:** Vào tab "Network Access" -> "Add IP Address" -> Chọn "Allow Access from Anywhere" (0.0.0.0/0) để dev local, hoặc whitelist IP Server cụ thể.
+Tài liệu này hướng dẫn quy trình kết nối MongoDB Atlas theo chuẩn doanh nghiệp, tập trung vào bảo mật, độ tin cậy, và vận hành ổn định.
 
 ---
 
-## 2. Cấu hình Code Local (`/server`)
+## 1. Thiết lập trên MongoDB Atlas
 
-### Bước 1: Cập nhật biến môi trường
-Mở file `server/.env` và cập nhật biến `MONGO_URI`.
+### 1.1 Tạo Cluster
+1. Dang nhap [MongoDB Atlas Dashboard](https://cloud.mongodb.com/).
+2. Tao cluster theo moi truong (dev, staging, production) va bat backup tu dong.
+3. Dat ten cluster theo convention (vi du: unilish-dev, unilish-prod).
+
+### 1.2 Tao Database User (Least Privilege)
+1. Vao Database Access -> Add New Database User.
+2. Tao user rieng cho tung moi truong, khong dung chung tai khoan.
+3. Phan quyen toi thieu can thiet (readWrite cho dev, readWriteAnyDatabase chi khi bat buoc).
+
+### 1.3 Cau hinh Network Access
+1. Vao Network Access -> Add IP Address.
+2. Dev: chi allow IP cua developer, khong dung 0.0.0.0/0.
+3. Prod: allow IP cua server hoac VPC peering theo guideline an ninh.
+
+### 1.4 Lay Connection String
+1. Chon cluster -> Connect -> Drivers -> Node.js.
+2. Copy Connection String, mau:
+   `mongodb+srv://<username>:<password>@cluster0.abcde.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
+3. Them ten database sau domain (vi du: `/unilish`).
+
+---
+
+## 2. Cau hinh ung dung (Server)
+
+### 2.1 Bien moi truong
+Cap nhat `server/.env` (khong commit len Git).
 
 ```env
-# server/.env
-# Thay <password> bằng mật khẩu thật, <username> bằng tên user đã tạo.
-# Thêm tên database vào sau dấu / (ví dụ: ...mongodb.net/unilish?...)
-MONGO_URI=mongodb+srv://huynl:PASSWORD_CUA_BAN@cluster0.xdwjh69.mongodb.net/unilish?appName=Cluster0
+MONGO_URI=mongodb+srv://unilish_user:PASSWORD@cluster0.xdwjh69.mongodb.net/unilish?appName=Cluster0
 ```
 
-### Bước 2: Kiểm tra Code Kết nối
-Code kết nối đã được cài đặt sẵn tại `server/src/config/db.ts` và `server/src/server.ts`.
-
-#### `server/src/config/db.ts`
-Đây là nơi thực hiện logic kết nối sử dụng thư viện Mongoose.
+### 2.2 Ket noi trong code
+Code ket noi da duoc cau hinh san tai `server/src/config/database.mongo.ts` va `server/src/server.ts`.
 
 ```typescript
 import mongoose from 'mongoose';
@@ -51,62 +52,69 @@ import { logger } from '../utils/logger.js';
 
 export const connectDB = async () => {
     try {
-        // Mongoose 6+ không cần các options deprecated (useNewUrlParser, etc)
         const conn = await mongoose.connect(env.MONGO_URI);
         logger.info(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
-        // Nếu lỗi kết nối, log và tắt server ngay lập tức để báo động
         logger.error('Error connecting to MongoDB:', error);
         process.exit(1);
     }
 };
 ```
 
-#### `server/src/server.ts`
-Hàm `connectDB()` được gọi khi khởi động server, đảm bảo database kết nối thành công TRƯỚC KHI server bắt đầu lắng nghe request.
-
 ```typescript
 const startServer = async () => {
-    // 1. Kết nối DB
-    await connectDB(); 
-    
-    // 2. Kết nối Redis
+    await connectDB();
     await connectRedis();
-
-    // 3. Start Express Server
     const server = app.listen(PORT, () => { ... });
+    // Graceful shutdown closes MongoDB and Redis connections.
 };
 ```
 
 ---
 
-## 3. Debug & Troubleshooting
+## 3. Van hanh va bao mat
 
-### Lỗi thường gặp:
+### 3.1 Tieu chuan bao mat
+- Khong commit `.env` va khong hardcode credentials.
+- Su dung user rieng cho moi moi truong.
+- Bat MFA cho tai khoan Atlas admin.
+- Su dung IP allowlist hoac VPC peering cho prod.
 
-1.  **`MongoServerError: bad auth : Authentication failed`**
-    *   **Nguyên nhân:** Sai `username` hoặc `password` trong `MONGO_URI`.
-    *   **Sửa:** Kiểm tra kỹ password trong file `.env`. Lưu ý nếu password có ký tự đặc biệt (`@`, `:`, `/`) cần được [URL Encode](https://www.urlencoder.org/) (ví dụ `@` thành `%40`).
+### 3.2 Backup va phuc hoi
+- Bat automated backups cho production.
+- Kiem tra restore point hang thang.
+- Ghi ro RPO/RTO cho tung moi truong.
 
-2.  **`MongoNetworkError: connection timed out`**
-    *   **Nguyên nhân:** IP của máy bạn chưa được Whitelist trên MongoDB Atlas.
-    *   **Sửa:** Vào Atlas -> Network Access -> Add Current IP Address.
-
-3.  **`MongooseServerSelectionError: connect ECONNREFUSED`**
-    *   **Nguyên nhân:** Mạng chặn port 27017 hoặc Connection String sai host.
-    *   **Sửa:** Thử đổi mạng (một số Wifi công ty firewall chặn MongoDB).
+### 3.3 Giam sat va canh bao
+- Bat Atlas Alerts (CPU, memory, disk, connections).
+- Ghi nhan slow queries va index suggestion tu Atlas.
 
 ---
 
-## 4. Best Practices
+## 4. Debug va Troubleshooting
 
-*   **Security:** KHÔNG BAO GIỜ commit file `.env` lên Git.
-*   **Performance:**
-    *   Trong `read` operations, luôn dùng `.lean()` để trả về Plain JS Object thay vì Mongoose Document nặng nề.
-    *   Luôn dùng `.select()` để chỉ lấy các field cần thiết.
-    *   Đánh Index cho các field hay query (ví dụ: `email`, `slug`).
+1. `MongoServerError: bad auth : Authentication failed`
+   - Nguyen nhan: Sai username/password.
+   - Xu ly: Kiem tra `.env`, neu password co ky tu dac biet can URL Encode.
+
+2. `MongoNetworkError: connection timed out`
+   - Nguyen nhan: IP chua duoc allowlist.
+   - Xu ly: Cap nhat Network Access tren Atlas.
+
+3. `MongooseServerSelectionError: connect ECONNREFUSED`
+   - Nguyen nhan: Connection String sai host hoac mang chan port 27017.
+   - Xu ly: Kiem tra DNS, doi mang, hoac kiem tra firewall cong ty.
+
+---
+
+## 5. Best Practices (Enterprise)
+
+- Luon su dung `.lean()` va `.select()` cho truy van read.
+- Tao index cho cac truong query nhieu (email, role, subscription.plan).
+- Giam so luong field tra ve de toi uu bang thong.
 
 ```typescript
-// Ví dụ Query tốt
-const user = await User.findOne({ email }).select('fullName role').lean();
+const user = await User.findOne({ email })
+    .select('fullName role subscription')
+    .lean();
 ```

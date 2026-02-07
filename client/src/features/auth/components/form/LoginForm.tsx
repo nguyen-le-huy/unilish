@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import GoogleLogo from '@/assets/images/auth/google.svg';
@@ -5,12 +6,12 @@ import Logo from '@/assets/images/Unilish.svg';
 import styles from "./AuthForm.module.css";
 import { Button } from '@/components/core/Button';
 import { Loading } from '@/components/common/Loading/Loading';
+import { env } from '@/config/env';
 import { useLogin } from '../../hooks/useLogin';
 
 import { LoginPayload, LoginSchema } from '../../types';
 import { Link } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
-import { useCallback } from 'react';
 
 const LoginForm = () => {
     const { register, handleSubmit, formState: { errors } } = useForm<LoginPayload>({
@@ -24,7 +25,7 @@ const LoginForm = () => {
     }, [login]);
 
     const signInWithGoogle = () => {
-        window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5432/api'}/auth/google`;
+        window.location.href = `${env.API_URL}/auth/google`;
     };
 
     return (

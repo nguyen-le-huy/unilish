@@ -1,8 +1,13 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/auth-store';
 
+const normalizeApiUrl = (rawUrl: string): string => {
+    const trimmed = rawUrl.replace(/\/+$/, '');
+    return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+};
+
 const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5432/api',
+    baseURL: normalizeApiUrl(import.meta.env.VITE_API_URL || 'http://localhost:5432/api'),
     headers: {
         'Content-Type': 'application/json',
     },
