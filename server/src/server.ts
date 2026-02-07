@@ -3,12 +3,14 @@ import app from './app.js';
 import { env } from './config/env.js';
 import { connectDB } from './config/database.mongo.js';
 import redisClient, { connectRedis } from './config/redis.js';
+import neo4jDriver, { connectNeo4j } from './config/database.neo4j.js';
 import { logger } from './utils/logger.js';
 
 const startServer = async () => {
     // Connect to Databases
     await connectDB();
     await connectRedis();
+    await connectNeo4j();
 
     const PORT = env.PORT;
 
@@ -28,15 +30,21 @@ const startServer = async () => {
     // Graceful Shutdown
     const gracefulShutdown = async () => {
         logger.info('SIGTERM/SIGINT received. Shutting down gracefully...');
+
         server.close(async () => {
             logger.info('Http server closed.');
             try {
                 await mongoose.connection.close(false);
                 logger.info('MongoDB connection closed.');
+
                 if (redisClient.isOpen) {
                     await redisClient.quit();
                     logger.info('Redis connection closed.');
                 }
+
+                await neo4jDriver.close();
+                logger.info('Neo4j connection closed.');
+
                 process.exit(0);
             } catch (err) {
                 logger.error('Error during shutdown', err);

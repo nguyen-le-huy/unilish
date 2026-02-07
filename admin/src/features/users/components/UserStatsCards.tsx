@@ -26,7 +26,7 @@ export function UserStatsCards({ stats }: UserStatsCardsProps) {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{stats.premiumUsers}</div>
-                    <p className="text-xs text-muted-foreground">User đang dùng gói PLUS/PRO</p>
+                    <p className="text-xs text-muted-foreground">User đang dùng gói PREMIUM</p>
                 </CardContent>
             </Card>
             <Card>

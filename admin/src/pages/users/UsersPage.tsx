@@ -54,6 +54,7 @@ export default function UsersPage() {
 
             <UserFilterBar filter={filter} onChange={setFilter} />
 
+            {/* Data Table */}
             <UserTable
                 users={userResponse?.users || []}
                 loading={isLoading}

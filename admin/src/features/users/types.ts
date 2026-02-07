@@ -1,63 +1,51 @@
 export interface User {
-    id: string; // Mapped from _id
     _id: string;
     email: string;
-    fullName: string;
-    avatarUrl: string;
+    googleId?: string;
+    authProvider: 'local' | 'google';
+    isVerified: boolean;
     role: 'student' | 'admin' | 'content_creator';
 
-    // Auth & Identity
-    authProvider?: 'local' | 'google' | 'facebook';
-    isVerified?: boolean;
-    dateOfBirth?: string;
-    gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+    // Profile
+    fullName: string;
+    avatarUrl: string;
+    dateOfBirth?: string; // Date string
     phoneNumber?: string;
-    bio?: string;
-    address?: {
-        country: string;
-        city: string;
-    };
+    gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+    lastActiveAt?: string; // Date string
 
-    // Academic
-    currentLevel: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
-    targetLevel?: string;
-    placementTestScore?: number;
+    // Contextual Learning
+    currentLevel: 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+    targetLevel: 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+    learningGoal: 'general_communication' | 'exam_thptqg' | 'exam_ielts' | 'exam_toeic' | 'business_work' | 'travel_survival' | string;
+    interests?: string[];
     weakSkills?: string[];
+    placementTestScore?: number;
 
-    // Subscription
+    // System Status
     subscription: {
-        plan: 'FREE' | 'PLUS' | 'PRO';
-        status: 'active' | 'expired' | 'cancelled';
-        startDate?: string;
-        endDate?: string;
-        autoRenew?: boolean;
+        plan: 'FREE' | 'PREMIUM';
+        endDate?: string; // Date string
+        status: 'active' | 'expired';
     };
 
-    // Stats
-    stats: {
-        xp: number;
-        streak: number;
-        longestStreak?: number;
-        coins: number;
-    };
-
-    // Settings
     settings?: {
         notification: boolean;
-        nativeLanguage: string;
+        dailyGoalMinutes: number;
     };
 
+    isSyncedToGraph: boolean;
+
     createdAt: string;
-    updatedAt?: string;
-    lastActiveAt?: string;
+    updatedAt: string;
 }
 
 export interface UserFilter {
     page?: number;
     limit?: number;
     search?: string;
-    plan?: 'FREE' | 'PLUS' | 'PRO';
-    level?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+    plan?: 'FREE' | 'PREMIUM';
+    level?: 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
     role?: 'student' | 'admin' | 'content_creator';
 }
 
@@ -74,7 +62,7 @@ export interface UserResponse {
 }
 
 export interface UpdateSubscriptionPayload {
-    plan: 'FREE' | 'PLUS' | 'PRO';
+    plan: 'FREE' | 'PREMIUM';
     period: 'monthly' | 'yearly';
 }
 

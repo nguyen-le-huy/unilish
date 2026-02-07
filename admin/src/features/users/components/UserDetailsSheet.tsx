@@ -13,13 +13,11 @@ import type { User } from "../types";
 import {
     Mail,
     Phone,
-    MapPin,
     Calendar,
     Target,
     Clock,
     User as UserIcon,
     Shield,
-    BookOpen,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
@@ -72,7 +70,7 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                 <Badge variant="outline" className="capitalize">
                                     {user.role}
                                 </Badge>
-                                <Badge variant={user.subscription.plan === 'PRO' ? 'default' : 'secondary'}>
+                                <Badge variant={user.subscription.plan === 'PREMIUM' ? 'default' : 'secondary'}>
                                     {user.subscription.plan}
                                 </Badge>
                             </div>
@@ -94,12 +92,6 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                     value={user.gender === 'male' ? 'Nam' : user.gender === 'female' ? 'Nữ' : 'Khác'}
                                 />
                                 <InfoRow icon={Calendar} label="Ngày sinh" value={formatDate(user.dateOfBirth)} />
-                                <InfoRow
-                                    icon={MapPin}
-                                    label="Địa chỉ"
-                                    value={user.address ? `${user.address.city}, ${user.address.country}` : null}
-                                />
-                                <InfoRow icon={BookOpen} label="Giới thiệu" value={user.bio} />
                             </div>
                         </div>
                     </div>
@@ -107,20 +99,7 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                     {/* Right Column: Academic, Stats, Subscription */}
                     <div className="md:col-span-2 space-y-8">
                         {/* Stats Cards */}
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="text-center p-4 border rounded-xl bg-muted/20">
-                                <div className="text-3xl font-bold text-orange-500">🔥 {user.stats.streak}</div>
-                                <div className="text-sm text-muted-foreground mt-1 font-medium">Chuỗi ngày</div>
-                            </div>
-                            <div className="text-center p-4 border rounded-xl bg-muted/20">
-                                <div className="text-3xl font-bold text-blue-500">💎 {user.stats.xp}</div>
-                                <div className="text-sm text-muted-foreground mt-1 font-medium">Tổng XP</div>
-                            </div>
-                            <div className="text-center p-4 border rounded-xl bg-muted/20">
-                                <div className="text-3xl font-bold text-yellow-500">🪙 {user.stats.coins}</div>
-                                <div className="text-sm text-muted-foreground mt-1 font-medium">Coins</div>
-                            </div>
-                        </div>
+
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {/* Academic Status */}
@@ -132,11 +111,27 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="p-3 bg-muted/40 rounded-lg">
                                         <div className="text-muted-foreground text-[10px] uppercase font-bold mb-1">Level hiện tại</div>
-                                        <div className="text-xl font-bold text-primary">{user.currentLevel}</div>
+                                        <div className="text-xl font-bold text-primary">{user.currentLevel || 'A0'}</div>
                                     </div>
                                     <div className="p-3 bg-muted/40 rounded-lg">
                                         <div className="text-muted-foreground text-[10px] uppercase font-bold mb-1">Mục tiêu</div>
-                                        <div className="text-xl font-bold">{user.targetLevel}</div>
+                                        <div className="text-xl font-bold">{user.targetLevel || 'N/A'}</div>
+                                    </div>
+                                    <div className="p-3 bg-muted/40 rounded-lg col-span-2">
+                                        <div className="text-muted-foreground text-[10px] uppercase font-bold mb-1">Chương trình học</div>
+                                        <div className="text-sm font-medium">
+                                            {(() => {
+                                                const labels: Record<string, string> = {
+                                                    general_communication: 'Giao tiếp tổng quát (Communication)',
+                                                    exam_thptqg: 'Luyện thi THPTQG',
+                                                    exam_ielts: 'Luyện thi IELTS',
+                                                    exam_toeic: 'Luyện thi TOEIC',
+                                                    business_work: 'Tiếng Anh công sở (Business)',
+                                                    travel_survival: 'Tiếng Anh du lịch (Travel)',
+                                                };
+                                                return user.learningGoal ? (labels[user.learningGoal] || user.learningGoal) : 'Chưa chọn';
+                                            })()}
+                                        </div>
                                     </div>
                                     <div className="p-3 bg-muted/40 rounded-lg col-span-2">
                                         <div className="text-muted-foreground text-[10px] uppercase font-bold mb-1">Kỹ năng yếu</div>
@@ -191,6 +186,24 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                         icon={Clock}
                                         label="Hoạt động gần nhất"
                                         value={user.lastActiveAt ? format(new Date(user.lastActiveAt), "HH:mm - dd/MM/yyyy") : "Chưa hoạt động"}
+                                        className="py-1"
+                                    />
+                                    <Separator />
+                                    <InfoRow
+                                        icon={Shield}
+                                        label="Auth Provider"
+                                        value={<Badge variant="outline">{user.authProvider}</Badge>}
+                                        className="py-1"
+                                    />
+                                    <Separator />
+                                    <InfoRow
+                                        icon={Shield}
+                                        label="Sync Graph"
+                                        value={
+                                            <Badge variant={user.isSyncedToGraph ? "default" : "destructive"}>
+                                                {user.isSyncedToGraph ? "Yes" : "No"}
+                                            </Badge>
+                                        }
                                         className="py-1"
                                     />
                                 </div>

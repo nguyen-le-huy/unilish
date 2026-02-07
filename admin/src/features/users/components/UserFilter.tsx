@@ -50,8 +50,7 @@ export function UserFilterBar({ filter, onChange }: UserFilterProps) {
                     <SelectContent>
                         <SelectItem value="all">Tất cả gói</SelectItem>
                         <SelectItem value="FREE">FREE</SelectItem>
-                        <SelectItem value="PLUS">PLUS</SelectItem>
-                        <SelectItem value="PRO">PRO</SelectItem>
+                        <SelectItem value="PREMIUM">PREMIUM</SelectItem>
                     </SelectContent>
                 </Select>
 
@@ -66,6 +65,7 @@ export function UserFilterBar({ filter, onChange }: UserFilterProps) {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Tất cả Level</SelectItem>
+                        <SelectItem value="A0">A0</SelectItem>
                         <SelectItem value="A1">A1</SelectItem>
                         <SelectItem value="A2">A2</SelectItem>
                         <SelectItem value="B1">B1</SelectItem>

@@ -21,15 +21,15 @@ export const getUsersSchema = z.object({
         page: z.string().optional(),
         limit: z.string().optional(),
         search: z.string().optional(),
-        plan: z.enum(['FREE', 'PLUS', 'PRO']).optional(),
-        level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).optional(),
+        plan: z.enum(['FREE', 'PREMIUM']).optional(),
+        level: z.enum(['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']).optional(),
         role: z.enum(['student', 'admin', 'content_creator']).optional(),
     }),
 });
 
 export const updateSubscriptionSchema = z.object({
     body: z.object({
-        plan: z.enum(['FREE', 'PLUS', 'PRO']),
+        plan: z.enum(['FREE', 'PREMIUM']),
         period: z.enum(['monthly', 'yearly']),
     }),
 });
@@ -37,5 +37,11 @@ export const updateSubscriptionSchema = z.object({
 export const updateRoleSchema = z.object({
     body: z.object({
         role: z.enum(['student', 'admin', 'content_creator']),
+    }),
+});
+
+export const updateLevelSchema = z.object({
+    body: z.object({
+        level: z.enum(['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']),
     }),
 });

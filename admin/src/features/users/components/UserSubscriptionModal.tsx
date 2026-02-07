@@ -26,12 +26,12 @@ interface UserSubscriptionModalProps {
 
 export function UserSubscriptionModal({ user, open, onClose }: UserSubscriptionModalProps) {
     const { mutate: updateSubscription, isPending } = useUpdateSubscription();
-    const [plan, setPlan] = useState<"FREE" | "PLUS" | "PRO">("FREE");
+    const [plan, setPlan] = useState<"FREE" | "PREMIUM">("FREE");
     const [period, setPeriod] = useState<"monthly" | "yearly">("monthly");
 
     useEffect(() => {
-        if (user) {
-            setPlan(user.subscription.plan);
+        if (user && user.subscription) {
+            setPlan(user.subscription.plan || "FREE");
             // Default period to monthly as we don't track period in User model explicitly for UI default
             // unless we prefer yearly.
         }
@@ -63,14 +63,13 @@ export function UserSubscriptionModal({ user, open, onClose }: UserSubscriptionM
                 <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <label className="text-right text-sm font-medium">Gói cước</label>
-                        <Select value={plan} onValueChange={(v) => setPlan(v as "FREE" | "PLUS" | "PRO")}>
+                        <Select value={plan} onValueChange={(v) => setPlan(v as "FREE" | "PREMIUM")}>
                             <SelectTrigger className="col-span-3">
                                 <SelectValue placeholder="Chọn gói" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="FREE">FREE (Miễn phí)</SelectItem>
-                                <SelectItem value="PLUS">PLUS (Cơ bản)</SelectItem>
-                                <SelectItem value="PRO">PRO (Nâng cao)</SelectItem>
+                                <SelectItem value="PREMIUM">PREMIUM (Trả phí)</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

@@ -1,101 +1,68 @@
-import { User } from '../models/mongo/user.model.js';
+import { User, ESubscriptionStatus, ESubscriptionPlan } from '../models/mongo/user.model.js';
 import { z } from 'zod';
 import type { updateProfileSchema, getUsersSchema, updateSubscriptionSchema } from '../validations/user.validation.js';
 import { AppError } from '../utils/app-error.js';
 import { HttpStatus } from '../constants/http-status.js';
+import { UserMongoRepository } from '../repositories/mongo/user.mongo.repository.js';
+import { UserGraphRepository } from '../repositories/neo4j/user.graph.repository.js';
+import { logger } from '../utils/logger.js';
 
 type UpdateProfileInput = z.infer<typeof updateProfileSchema>['body'];
 type GetUsersQuery = z.infer<typeof getUsersSchema>['query'];
 type UpdateSubscriptionInput = z.infer<typeof updateSubscriptionSchema>['body'];
 
 export class UserService {
-    static async updateProfile(userId: string, data: UpdateProfileInput) {
-        const user = await User.findByIdAndUpdate(userId, data, {
-            new: true,
-            runValidators: true
-        }).lean();
+    constructor(
+        private readonly userRepo: UserMongoRepository,
+        private readonly graphRepo: UserGraphRepository
+    ) { }
+
+    async updateProfile(userId: string, data: UpdateProfileInput) {
+        // Use Model directly if specific options like runValidators are needed, 
+        // OR rely on Zod and use repo.update(). 
+        // Here we stick to repo.update for consistency, assuming Zod handles validation.
+        // If strictly need runValidators, we can use this.userRepo.model (as it is protected/public depending on implementation, usually protected so technically not accessible unless getter used? BaseMongoRepository defines protected model. So subclasses can access it. But UserService is not a subclass.
+        // BUT, we can just use the update method of the repo.
+        const user = await this.userRepo.update(userId, data);
 
         if (!user) {
             throw new AppError('User not found', HttpStatus.NOT_FOUND);
         }
 
+        // Sync to Neo4j
+        try {
+            // @ts-ignore
+            await this.graphRepo.syncUser({
+                userId: user._id.toString(),
+                email: user.email,
+                fullName: user.fullName,
+                gender: user.gender,
+                // other fields that might have changed
+            });
+        } catch (error) {
+            logger.error(`[Neo4j] Failed to sync user update for ${userId}`, error);
+        }
+
         return user;
     }
 
-    static async getProfile(userId: string) {
-        const user = await User.findById(userId).lean();
+    async getProfile(userId: string) {
+        const user = await this.userRepo.findById(userId);
         if (!user) {
             throw new AppError('User not found', HttpStatus.NOT_FOUND);
         }
         return user;
     }
 
-    static async getUsers(query: GetUsersQuery) {
-        const { page = '1', limit = '10', search, plan, level, role } = query;
-        const skip = (Number(page) - 1) * Number(limit);
-
-        const filter: any = {};
-
-        if (search) {
-            filter.$or = [
-                { email: { $regex: search, $options: 'i' } },
-                { fullName: { $regex: search, $options: 'i' } }
-            ];
-        }
-
-        if (plan) filter['subscription.plan'] = plan;
-        if (level) filter.currentLevel = level;
-        if (role) filter.role = role;
-
-        const [users, total] = await Promise.all([
-            User.find(filter)
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(Number(limit))
-                .select('-password -__v')
-                .lean(),
-            User.countDocuments(filter)
-        ]);
-
-        return {
-            users,
-            pagination: {
-                page: Number(page),
-                limit: Number(limit),
-                total,
-                pages: Math.ceil(total / Number(limit))
-            }
-        };
+    async getUsers(query: GetUsersQuery) {
+        return this.userRepo.findAllWithPagination(query);
     }
 
-    static async getUserStats() {
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-        const [totalUsers, premiumUsers, newUsersToday, activeLearners] = await Promise.all([
-            User.countDocuments({}),
-            User.countDocuments({
-                'subscription.status': 'active',
-                'subscription.plan': { $in: ['PLUS', 'PRO'] }
-            }),
-            User.countDocuments({
-                createdAt: { $gte: startOfToday }
-            }),
-            User.countDocuments({
-                'stats.lastActiveAt': { $gte: twentyFourHoursAgo }
-            })
-        ]);
-
-        return {
-            totalUsers,
-            premiumUsers,
-            newUsersToday,
-            activeLearners
-        };
+    async getUserStats() {
+        return this.userRepo.getStats();
     }
 
-    static async updateSubscription(userId: string, data: UpdateSubscriptionInput) {
+    async updateSubscription(userId: string, data: UpdateSubscriptionInput) {
         const { plan, period } = data;
         const now = new Date();
         const endDate = new Date();
@@ -106,17 +73,13 @@ export class UserService {
             endDate.setDate(endDate.getDate() + 365);
         }
 
-        const user = await User.findByIdAndUpdate(
-            userId,
-            {
-                'subscription.plan': plan,
-                'subscription.startDate': now,
-                'subscription.endDate': endDate,
-                'subscription.status': 'active',
-                'subscription.autoRenew': false
-            },
-            { new: true }
-        ).lean();
+        const user = await this.userRepo.update(userId, {
+            'subscription.plan': plan,
+            'subscription.startDate': now,
+            'subscription.endDate': endDate,
+            'subscription.status': ESubscriptionStatus.ACTIVE,
+            'subscription.autoRenew': false
+        });
 
         if (!user) {
             throw new AppError('User not found', HttpStatus.NOT_FOUND);
@@ -125,25 +88,72 @@ export class UserService {
         return user;
     }
 
-    static async updateRole(userId: string, role: string) {
-        const user = await User.findByIdAndUpdate(
-            userId,
-            { role },
-            { new: true }
-        ).lean();
+    async updateRole(userId: string, role: string) {
+        const user = await this.userRepo.update(userId, { role });
 
         if (!user) {
             throw new AppError('User not found', HttpStatus.NOT_FOUND);
         }
 
+        // Sync to Neo4j
+        try {
+            // @ts-ignore
+            await this.graphRepo.syncUser({
+                userId: user._id.toString(),
+                role: user.role
+            });
+        } catch (error) {
+            logger.error(`[Neo4j] Failed to sync role update for ${userId}`, error);
+        }
+
         return user;
     }
 
-    static async getUserById(userId: string) {
-        const user = await User.findById(userId).lean();
+    async updateLevel(userId: string, level: string) {
+        const user = await this.userRepo.update(userId, { currentLevel: level });
+
+        if (!user) {
+            throw new AppError('User not found', HttpStatus.NOT_FOUND);
+        }
+
+        // Sync to Neo4j
+        try {
+            // @ts-ignore
+            await this.graphRepo.syncUser({
+                userId: user._id.toString(),
+                currentLevel: user.currentLevel
+            });
+        } catch (error) {
+            logger.error(`[Neo4j] Failed to sync level update for ${userId}`, error);
+        }
+
+        return user;
+    }
+
+    async deleteUser(userId: string) {
+        const deleted = await this.userRepo.delete(userId);
+
+        if (!deleted) {
+            throw new AppError('User not found', HttpStatus.NOT_FOUND);
+        }
+
+        // Sync to Neo4j
+        try {
+            await this.graphRepo.deleteUser(userId);
+        } catch (error) {
+            logger.error(`[Neo4j] Failed to delete user ${userId}`, error);
+        }
+
+        return true;
+    }
+
+    async getUserById(userId: string) {
+        const user = await this.userRepo.findById(userId);
         if (!user) {
             throw new AppError('User not found', HttpStatus.NOT_FOUND);
         }
         return user;
     }
 }
+
+export const userService = new UserService(new UserMongoRepository(), new UserGraphRepository());

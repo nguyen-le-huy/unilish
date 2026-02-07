@@ -8,4 +8,6 @@ export interface IUserRepository extends IBaseRepository<IUser> {
     findByEmailWithOTP(email: string): Promise<IUser | null>;
     findByGoogleIdOrEmail(googleId: string, email: string): Promise<IUser | null>;
     findByClerkIdOrEmail(clerkId: string, email: string): Promise<IUser | null>;
+    findAllWithPagination(query: any): Promise<{ users: IUser[], pagination: any }>;
+    getStats(): Promise<any>;
 }

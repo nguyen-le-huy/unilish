@@ -18,7 +18,7 @@ export abstract class BaseMongoRepository<T extends Document> implements IBaseRe
     }
 
     async update(id: string, data: any): Promise<T | null> {
-        return this.model.findByIdAndUpdate(id, data, { new: true }).lean().exec() as Promise<T | null>;
+        return this.model.findByIdAndUpdate(id, data, { new: true, runValidators: true }).lean().exec() as Promise<T | null>;
     }
 
     async delete(id: string): Promise<boolean> {

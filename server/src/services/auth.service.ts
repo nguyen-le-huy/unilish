@@ -10,10 +10,15 @@ import type {
 } from '../validations/auth.validation.js';
 import type { IUserRepository } from '../interfaces/repositories/user.repository.interface.js';
 import { UserMongoRepository } from '../repositories/mongo/user.mongo.repository.js';
+import { UserGraphRepository } from '../repositories/neo4j/user.graph.repository.js';
 import type { IUser } from '../models/mongo/user.model.js';
+import { EUserRole, EAuthProvider, ELevel } from '../models/mongo/user.model.js';
 
 export class AuthService {
-    constructor(private readonly userRepo: IUserRepository) { }
+    constructor(
+        private readonly userRepo: IUserRepository,
+        private readonly graphRepo: UserGraphRepository
+    ) { }
 
     async register(input: RegisterInput) {
         const { email, password, fullName } = input;
@@ -31,25 +36,38 @@ export class AuthService {
         const otp = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digits
         const hashedOtp = await bcrypt.hash(otp, 10);
 
-        // Create user
-        await this.userRepo.create({
+        // Create user in MongoDB
+        const newUser = await this.userRepo.create({
             email,
             password: hashedPassword,
             fullName,
-            role: 'student',
+            role: EUserRole.STUDENT,
             isVerified: false,
             otp: hashedOtp,
             otpExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-            authProvider: 'local',
-            currentLevel: 'A1',
-            stats: {
-                xp: 0,
-                coins: 100, // Welcome bonus
-                streak: 0,
-                longestStreak: 0,
-                lastActiveAt: new Date(),
-            },
+            authProvider: EAuthProvider.LOCAL,
+            currentLevel: ELevel.A1,
+            lastActiveAt: new Date(),
         } as Partial<IUser>);
+
+        // Sync to Neo4j (Best practice: wrap in try/catch to not block registration if graph fails, or use queue)
+        // For now, we will log error but allow registration to succeed
+        try {
+            if (newUser && newUser._id) {
+                await this.graphRepo.syncUser({
+                    userId: newUser._id.toString(),
+                    email: newUser.email,
+                    fullName: newUser.fullName,
+                    role: newUser.role,
+                    currentLevel: newUser.currentLevel,
+                    createdAt: new Date().toISOString(),
+                    lastActiveAt: new Date().toISOString()
+                });
+            }
+        } catch (error) {
+            logger.error(`Failed to sync user to Neo4j during register: ${email}`, error);
+            // Optional: revert mongo creation or push to retry queue
+        }
 
         // Send Email with OTP (Async to not block response)
         EmailService.sendOTP(email, otp, fullName).catch(err => logger.error('Error sending OTP:', err));
@@ -112,7 +130,6 @@ export class AuthService {
                 avatarUrl: user.avatarUrl,
                 role: user.role,
                 currentLevel: user.currentLevel,
-                stats: user.stats,
                 subscription: user.subscription,
             }
         };
@@ -154,7 +171,7 @@ export class AuthService {
         // Update last active
         // @ts-ignore
         await this.userRepo.update(user._id as string, {
-            'stats.lastActiveAt': new Date()
+            lastActiveAt: new Date()
         } as any);
 
         // Generate Token
@@ -169,11 +186,7 @@ export class AuthService {
                 avatarUrl: user.avatarUrl,
                 role: user.role,
                 currentLevel: user.currentLevel,
-                stats: user.stats,
                 subscription: user.subscription,
-                phoneNumber: user.phoneNumber,
-                bio: user.bio,
-                address: user.address,
                 dateOfBirth: user.dateOfBirth,
             },
             token,
@@ -199,12 +212,12 @@ export class AuthService {
             // Update existing user (Account Linking)
             const updates: Partial<IUser> = {
                 googleId: googleId,
-                authProvider: 'google',
+                authProvider: EAuthProvider.GOOGLE,
                 isVerified: true,
             };
 
             const updateObj: any = { ...updates };
-            updateObj['stats.lastActiveAt'] = new Date();
+            updateObj.lastActiveAt = new Date();
 
             // Only update avatar if default or not set
             if (!user.avatarUrl || user.avatarUrl.includes('default_avatar')) {
@@ -221,29 +234,37 @@ export class AuthService {
 
         } else {
             // Create new user (using create method)
-            // Need to cast to match IUserRepository.create signature which might expect specific type or Partial<IUser>
-            // Assuming create takes Partial<IUser>
             user = await this.userRepo.create({
                 googleId,
                 email,
                 fullName,
                 avatarUrl: avatarUrl || 'https://res.cloudinary.com/demo/image/upload/v1/default_avatar.png',
-                authProvider: 'google',
+                authProvider: EAuthProvider.GOOGLE,
                 isVerified: true,
-                role: 'student',
-                currentLevel: 'A1',
-                stats: {
-                    xp: 0,
-                    coins: 100,
-                    streak: 0,
-                    longestStreak: 0,
-                    lastActiveAt: new Date(),
-                },
+                role: EUserRole.STUDENT,
+                currentLevel: ELevel.A1,
+                lastActiveAt: new Date(),
             } as any);
         }
 
         if (!user) {
             throw new AppError('Failed to process Google login', 500);
+        }
+
+        // Sync to Neo4j
+        try {
+            await this.graphRepo.syncUser({
+                userId: (user._id as unknown) as string,
+                email: user.email,
+                fullName: user.fullName,
+                role: user.role,
+                currentLevel: user.currentLevel,
+                createdAt: new Date().toISOString(),
+                lastActiveAt: new Date().toISOString(),
+                // gender is optional, check if existing user has it
+            });
+        } catch (error) {
+            logger.error(`Failed to sync Google user to Neo4j: ${email}`, error);
         }
 
         // Generate JWT token
@@ -258,11 +279,8 @@ export class AuthService {
                 avatarUrl: user.avatarUrl,
                 role: user.role,
                 currentLevel: user.currentLevel,
-                stats: user.stats,
                 subscription: user.subscription,
                 phoneNumber: user.phoneNumber,
-                bio: user.bio,
-                address: user.address,
                 dateOfBirth: user.dateOfBirth,
             },
             token,
@@ -270,4 +288,4 @@ export class AuthService {
     }
 }
 
-export const authService = new AuthService(new UserMongoRepository());
+export const authService = new AuthService(new UserMongoRepository(), new UserGraphRepository());
