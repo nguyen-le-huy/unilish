@@ -1,7 +1,7 @@
 import { RouterProvider } from 'react-router-dom';
 import { router } from '@/app/router';
 import { Providers } from '@/app/providers';
-import { MobileBlocker } from './components/common/mobile-blocker/MobileBlocker';
+import { MobileBlocker } from '@/components/common/MobileBlocker/MobileBlocker';
 
 function App() {
   return (

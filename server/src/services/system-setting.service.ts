@@ -1,4 +1,4 @@
-import { SystemSetting } from '../models/system-setting.model.js';
+import { SystemSetting } from '../models/mongo/system-setting.model.js';
 import { AppError } from '../utils/app-error.js';
 import { HttpStatus } from '../constants/http-status.js';
 

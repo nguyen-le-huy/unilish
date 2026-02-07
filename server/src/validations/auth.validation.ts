@@ -22,16 +22,6 @@ export const verifyOtpSchema = z.object({
     }),
 });
 
-export const syncClerkSchema = z.object({
-    body: z.object({
-        clerkId: z.string().min(1, 'Clerk ID là bắt buộc'),
-        email: z.string().email('Email không hợp lệ'),
-        fullName: z.string().optional(),
-        avatarUrl: z.string().url('Avatar URL không hợp lệ').optional(),
-    }),
-});
-
 export type RegisterInput = z.infer<typeof registerSchema>['body'];
 export type LoginInput = z.infer<typeof loginSchema>['body'];
 export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>['body'];
-export type SyncClerkInput = z.infer<typeof syncClerkSchema>['body'];

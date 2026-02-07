@@ -5,134 +5,150 @@ trigger: always_on
 # UNILISH PROJECT ARCHITECTURE & CONTEXT
 
 ## 1. Project Identity
+
 **Unilish** is a comprehensive EdTech platform offering Contextual Learning.
-- **Architecture:** Monorepo-style (Client, Admin, Server).
-- **Core Stack:** MERN (MongoDB, Express, React, Node.js).
-- **Key Features:** AI Speaking Coach, RAG Chatbot, YouTube Gap-Fill, Contextual Lessons.
+
+* **Architecture:** Monorepo-style (Client, Admin, Server).
+* **Core Stack:** MERN (MongoDB, Express, React, Node.js).
 
 ---
 
 ## 2. Technology Stack (Frontend)
 
 | Category | Client (User App) | Admin (CMS) |
-| :--- | :--- | :--- |
-| **Framework** | React 18+ (Vite) | React 18+ (Vite) |
-| **Language** | TypeScript (Strict) | TypeScript (Strict) |
-| **Styling Strategy** | **Strict:**<br>100% **Custom (CSS Modules)**.<br>NO External UI Libraries. | **Unified:**<br>100% **Tailwind + Shadcn/UI** |
-| **Server State** | TanStack Query (React Query) v5 | TanStack Query (React Query) v5 |
-| **Client State** | Zustand | Zustand |
-| **Routing** | React Router Dom v6+ | React Router Dom v6+ |
-| **Forms** | React Hook Form + Zod | React Hook Form + Zod |
-| **Media Handling** | Cloudinary (Images) + R2 (Audio/Video) | Custom `FileUploader` (Hybrid) |
+| --- | --- | --- |
+| **Core Framework** | **React 18+ (Vite)**<br>
+
+<br>*(Build siêu tốc, HMR tức thì)* | **React 18+ (Vite)** |
+| **Language** | **TypeScript (Strict)**<br>
+
+<br>*(Bắt buộc để dễ maintain)* | **TypeScript (Strict)** |
+| **Styling** | **CSS Modules** (`*.module.css`)<br>
+
+<br>*(Scoped styles, tránh xung đột 100%)* | **Tailwind CSS + Shadcn/UI**<br>
+
+<br>*(Phát triển nhanh)* |
+| **State Management** | **TanStack Query** (Server State)<br>
+
+<br>**Zustand** (Global UI State) | **TanStack Query**<br>
+
+<br>**Zustand** |
+| **Form Handling** | **React Hook Form + Zod**<br>
+
+<br>*(Hiệu năng cao, validate chặt)* | **React Hook Form + Zod** |
+| **Animation** | **GSAP**<br>
+
+<br>*(Hiệu ứng phức tạp, mượt mà)* | CSS Transitions cơ bản |
+| **Realtime/Media** | **Socket.io** (Signaling)<br>
+
+<br>**LiveKit** (WebRTC Infrastructure) | Custom FileUploader |
+| **Testing** | **Vitest + React Testing Library**<br>
+
+<br>*(Bắt buộc cho Logic & Components)* | N/A |
 
 ---
 
 ## 3. Directory Structure: CLIENT (`/client`)
 
-We follow a **Feature-Sliced Design (Lite)** approach.
+**Strategy:** Feature-Sliced Design (Lite) + CSS Modules + Testing.
 
 ```text
 client/src/
-├── app/                      # GLOBAL CONFIGURATION
+├── app/                      # CORE CONFIG
+│   ├── App.tsx               # Root Component (MobileBlocker, RouterProvider)
+│   ├── ProtectedRoute.tsx    # Auth Guard Component
 │   ├── router.tsx            # Route definitions
-│   ├── providers.tsx         # Provider Wrappers (QueryClient, Auth, Theme)
-│   └── global.css            
+│   ├── providers.tsx         # Wrappers (QueryClient, Clerk Auth, Toaster)
+│   └── main.tsx              # Entry point
 │
-├── assets/                   # STATIC ASSETS
+├── assets/                   # ASSETS & GLOBAL STYLES
 │   ├── fonts/
 │   ├── icons/
-│   └── images/
+│   └── styles/               # CSS ARCHITECTURE
+│       ├── _variables.css    # Colors, Spacing, Radius (--primary: #007bff)
+│       ├── _reset.css        # CSS Reset
+│       ├── _typography.css   # Global Font Sizes
+│       ├── _animations.css   # Global Keyframes
+│       └── global.css        # Main import file
 │
-├── components/               # DUMB COMPONENTS (UI Library - Reusable)
-│   ├── ui/                   # Shadcn UI (Button, Input, Card...)
-│   ├── common/               # App-specific shared UI (Logo, Loading, ThemeToggle)
+├── components/               # SHARED DUMB COMPONENTS
+│   ├── core/                 # CUSTOM DESIGN SYSTEM (CSS Modules)
+│   │   ├── Button/           # Isolated Component
+│   │   │   ├── Button.tsx
+│   │   │   ├── Button.module.css
+│   │   │   └── Button.test.tsx # Unit Test (Vitest)
+│   │   ├── Input/
+│   │   ├── Modal/
+│   │   └── Skeleton/
+│   │
+│   ├── common/               # App-specific Shared UI
+│   │   ├── Logo/
+│   │   ├── PageLoader/       # Dùng GSAP cho loading animation
+│   │   └── ErrorBoundary/
+│   │
 │   └── layouts/              # Layout Wrappers
-│       ├── MarketingLayout.tsx  # Header/Footer for Landing
-│       └── DashboardLayout.tsx  # Sidebar/Navbar for App
+│       ├── MarketingLayout/
+│       └── DashboardLayout/
 │
-├── config/                   # ENVIRONMENTAL CONFIG
-│   ├── env.ts                # Environment validations (API_URL)
-│   └── paths.ts              # Route path constants
+├── config/                   # CONSTANTS
+│   ├── env.ts                # Validate ENV (LiveKit URL, API URL)
+│   └── paths.ts
 │
-├── features/                 # BUSINESS MODULES (Smart Components + Logic)
-│   ├── auth/                 # Login, Register
-│   ├── courses/              # Course listing, details
-│   ├── learning/             # Lesson logic (Video, Quiz, Recorder)
-│   ├── chat/                 # AI Chatbot logic
+├── features/                 # BUSINESS MODULES
+│   ├── auth/
+│   ├── learning/
+│   │   ├── api/              # lessonService.ts
+│   │   ├── hooks/            # useLessonQuery.ts
+│   │   ├── components/
+│   │   │   ├── VideoPlayer/  # Logic LiveKit/Video
+│   │   │   │   ├── VideoPlayer.tsx
+│   │   │   │   └── VideoPlayer.module.css
+│   │   ├── types/            # ILesson.ts
+│   │   └── index.ts          # Public API
 │   └── ...
-│       ├── api/              # Axios calls specific to feature
-│       ├── hooks/            # React Query hooks (useLesson, useSubmitQuiz)
-│       ├── components/       # UI components specific to feature
-│       ├── types/            # TypeScript interfaces specific to feature
-│       └── index.ts          # Public export
 │
-├── hooks/                    # GLOBAL CUSTOM HOOKS
+├── hooks/                    # GLOBAL HOOKS
 │   ├── useDebounce.ts
 │   └── useOnClickOutside.ts
 │
-├── lib/                      # CORE LIBRARIES CONFIG
-│   ├── axios.ts              # Custom Axios Instance (Interceptors)
-│   ├── react-query.ts        # QueryClient Configuration
-│   ├── socket.ts             # Socket.io Client Instance
-│   └── utils.ts              # Shadcn utils (cn wrapper)
+├── lib/                      # UTILITIES
+│   ├── axios.ts              # Axios Instance
+│   ├── react-query.ts        # React Query Config
+│   └── utils.ts              # Class merging utility (cn)
 │
 ├── pages/                    # ROUTE ENTRY POINTS
-│   ├── auth/                 # AUTH PAGES
-│   │   ├── OTPPage.tsx
-│   │   ├── LoginPage.tsx
-│   │   └── RegisterPage.tsx
-│   ├── marketing/            # LANDING PAGES (Use CSS Modules)
-│   │   ├── home/             # HomePage.tsx + Home.module.css
-│   │   ├── about/
-│   │   └── components/       # Marketing-specific UI components
-│   └── dashboard/            # APP PAGES
-│       ├── DashboardHome.tsx
-│       └── LearningSession.tsx
+│   ├── marketing/
+│   └── dashboard/
 │
-├── stores/                   # GLOBAL CLIENT STATE (Zustand)
-└── types/                    # GLOBAL TYPES
-├── App.tsx                   # Root Component
-└── main.tsx                  # Application Entry Point
+├── stores/                   # GLOBAL STATE (Zustand)
+│   └── auth.store.ts         # Auth state (Zustand)
+│
+├── types/                    # GLOBAL TYPES
+└── test/                     # TEST SETUP
+    └── setup.ts              # Vitest config
+
 ```
 
 ---
 
 ## 4. Directory Structure: ADMIN (`/admin`)
 
-Optimized for Data Management, Forms, and Content Editing.
+**Strategy:** Optimized for CRUD & Management speed.
 
 ```text
 admin/src/
-├── app/                  # Global configuration (Router, Providers)
-│
-├── components/           # SHARED DUMB COMPONENTS
-│   ├── ui/               # Shadcn UI (Matches Client's UI)
-│   ├── common/           # Admin-specific UI
-│   │   ├── DataTable.tsx # Reusable TanStack Table wrapper
-│   │   ├── PageHeader.tsx
-│   │   └── FileUploader.tsx # Hybrid upload (R2/Cloudinary)
-│   └── layouts/          # AdminLayout (Sidebar, Header)
-│
-├── config/               # Navigation items, Env
-│
-├── features/             # CMS MODULES
-│   ├── auth/             # Admin Login
-│   ├── users/            # User Management (Table, Ban, Edit)
-│   ├── lessons/          # CONTENT EDITOR (Complex Logic)
-│   │   ├── components/
-│   │   │   ├── editors/  # Specialized Editors
-│   │   │   │   ├── GapFillEditor.tsx (Youtube Gap-Fill Tool)
-│   │   │   │   └── QuizEditor.tsx
-│   │   │   └── LessonForm.tsx
-│   │   └── ...
-│   ├── analytics/        # Charts & Stats
-│   └── ...
-│
-├── hooks/                # Global hooks (useUpload)
-├── lib/                  # Axios (Admin instance), Utils
-├── pages/                # Route Entry Points (UsersPage, LessonsPage)
-├── stores/               # Admin State (Sidebar toggle)
-└── types/                # Global Types
+├── app/
+├── components/               # SHARED COMPONENTS
+│   ├── ui/                   # SHADCN UI (Button, Input, Table...)
+│   ├── common/               # Admin specific (DataTable, PageHeader)
+│   └── layouts/              # AdminLayout
+├── features/                 # CMS MODULES
+│   ├── users/
+│   ├── lessons/              # Lesson Editor
+│   └── analytics/
+├── lib/                      # UTILITIES
+│   └── utils.ts              # Shadcn utility (cn)
+└── ...
 
 ```
 
@@ -140,50 +156,54 @@ admin/src/
 
 ## 5. Coding Rules & Guidelines (Strict Compliance)
 
-### A. Styling Rules 🎨
+### A. Styling Rules
 
-1. **Client (User App):** MUST use **CSS Modules** (`.module.css`) and **Custom Components**.
-   > **CRITICAL:** DO NOT use Tailwind CSS, Shadcn, Material UI, or any other UI component library in the Client application. All UI components (Buttons, Inputs, Cards) must be built from scratch.
-2. **Admin (CMS):** MUST use **Tailwind CSS** and **Shadcn/UI** exclusively.
-
-### B. State Management Rules 🧠
-
-1. **Async Data (API):** ALWAYS use **React Query** custom hooks (placed in `features/*/hooks`).
-* *Example:* `useCourses` (Query), `useSubmitLesson` (Mutation).
+1. **Client (User App):**
+* **MUST** use **CSS Modules** (`.module.css`).
+* **MUST** use CSS Variables from `@/assets/styles/_variables.css`.
+* **Animation:** Use **GSAP** for complex interactions (Page transitions, Hero effects).
+* *Naming:* camelCase for classes (e.g., `.submitButton`, `.isActive`).
 
 
-2. **UI State:** Use **Zustand** for global UI state (Sidebar, Modals).
-3. **No Redux:** Do not use Redux.
-
-### C. Component Architecture 🏗️
-
-1. **Smart vs. Dumb:**
-* **Dumb Components (`src/components`):** UI only, receive props, reusable, no API logic.
-* **Smart Components (`src/features/*/components`):** Connect to stores, call hooks, handle business logic.
+2. **Admin (CMS):**
+* **MUST** use **Tailwind CSS** + **Shadcn/UI**.
 
 
-2. **Co-location:** Keep logic, styles, and types close to where they are used (inside `features/`).
 
-### D. Imports & Types 📝
+### B. State Management Rules
 
-1. **Absolute Imports:** Always use `@/` alias.
-* ✅ `import { Button } from '@/components/ui/button'`
-* ❌ `import { Button } from '../../components/ui/button'`
+1. **Server State:** ALWAYS use **TanStack Query** (Caching, Deduplication).
+2. **Client State:** Use **Zustand** for UI state only.
+3. **Realtime State:** Use **LiveKit** SDK hooks for managing Room/Participant state (not Redux/Zustand).
 
+### C. Testing Strategy (Enterprise Mandatory)
 
-2. **Strict Typing:** No `any`. Define interfaces in `types.ts` within features.
+1. **Unit Tests:** Use **Vitest** for all generic utilities (`lib/`) and complex hooks (`hooks/`).
+2. **Component Tests:** Use **React Testing Library** for core UI components (`components/core`).
+3. **Rule:** Không merge code nếu coverage dưới 80% cho các module quan trọng.
 
 ---
 
 ## 6. AI Code Generation Workflow
 
-When generating code for a new feature (e.g., "YouTube Gap Fill"), follow this sequence:
+### **Scenario A: Generating for CLIENT (Visuals)**
 
-1. **Define Structure:** Create folder `@/features/youtube-learning`.
-2. **Types First:** Define data models in `@/features/youtube-learning/types`.
-3. **API Layer:** Create axios calls in `@/features/youtube-learning/api`.
-4. **Data Hooks:** Create React Query hooks in `@/features/youtube-learning/hooks`.
-5. **UI Components:** Build Smart Components in `@/features/youtube-learning/components` using Shadcn.
-6. **Page Assembly:** Assemble components into a page in `@/pages/dashboard/YoutubePage.tsx`.
+1. **Prompt:** "Create a landing page Hero section."
+2. **Requirement:** "Use **CSS Modules** for layout. Use **GSAP** to animate the headline entering from the left."
+3. **Process:**
+* `Hero.tsx` (Markup + GSAP `useGSAP` hook).
+* `Hero.module.css` (Static styling).
 
-*Last Updated: 2026-01-14*
+
+
+### **Scenario B: Generating for CLIENT (Realtime)**
+
+1. **Prompt:** "Create a Voice Room component."
+2. **Requirement:** "Use **LiveKit** React SDK."
+3. **Process:**
+* Implement `<LiveKitRoom>` provider.
+* Use `useTracks` hook to render audio tiles.
+
+
+
+*Last Updated: 2026-02-05*

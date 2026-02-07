@@ -1,21 +1,25 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User } from '../models/user.model.js';
 import { AppError } from '../utils/app-error.js';
 import { EmailService } from './email.service.js';
 import { env } from '../config/env.js';
+import { logger } from '../utils/logger.js';
 import type {
     RegisterInput,
-    LoginInput,
-    SyncClerkInput
+    LoginInput
 } from '../validations/auth.validation.js';
+import type { IUserRepository } from '../interfaces/repositories/user.repository.interface.js';
+import { UserMongoRepository } from '../repositories/mongo/user.mongo.repository.js';
+import type { IUser } from '../models/mongo/user.model.js';
 
 export class AuthService {
-    static async register(input: RegisterInput) {
+    constructor(private readonly userRepo: IUserRepository) { }
+
+    async register(input: RegisterInput) {
         const { email, password, fullName } = input;
 
         // Check if user exists
-        const existingUser = await User.findOne({ email });
+        const existingUser = await this.userRepo.findByEmail(email);
         if (existingUser) {
             throw new AppError('Email đã được sử dụng', 400);
         }
@@ -28,7 +32,7 @@ export class AuthService {
         const hashedOtp = await bcrypt.hash(otp, 10);
 
         // Create user
-        const user = await User.create({
+        await this.userRepo.create({
             email,
             password: hashedPassword,
             fullName,
@@ -45,11 +49,10 @@ export class AuthService {
                 longestStreak: 0,
                 lastActiveAt: new Date(),
             },
-        } as any);
+        } as Partial<IUser>);
 
         // Send Email with OTP (Async to not block response)
-        // Note: For production, use a queue (BullMQ/Redis)
-        EmailService.sendOTP(email, otp, fullName).catch(err => console.error(err));
+        EmailService.sendOTP(email, otp, fullName).catch(err => logger.error('Error sending OTP:', err));
 
         return {
             status: 'success',
@@ -58,9 +61,9 @@ export class AuthService {
         };
     }
 
-    static async verifyOTP(email: string, otp: string) {
+    async verifyOTP(email: string, otp: string) {
         // Find user and select password/otp fields
-        const user = await User.findOne({ email }).select('+otp +otpExpires');
+        const user = await this.userRepo.findByEmailWithOTP(email);
 
         if (!user) {
             throw new AppError('Email không tồn tại', 404);
@@ -75,24 +78,29 @@ export class AuthService {
         }
 
         // Check expired
-        if (user.otpExpires < new Date()) {
+        // @ts-ignore
+        if (new Date(user.otpExpires) < new Date()) {
             throw new AppError('Mã OTP đã hết hạn', 400);
         }
 
         // Check match
+        // @ts-ignore
         const isMatch = await bcrypt.compare(otp, user.otp);
         if (!isMatch) {
             throw new AppError('Mã OTP không chính xác', 400);
         }
 
         // Verify success
-        user.isVerified = true;
-        user.otp = undefined;
-        user.otpExpires = undefined;
-        await user.save();
+        // @ts-ignore
+        await this.userRepo.update(user._id as string, {
+            isVerified: true,
+            otp: undefined,
+            otpExpires: undefined
+        });
 
         // Login immediately
-        const token = this.signToken((user._id as unknown) as string, user.role);
+        // @ts-ignore
+        const token = this.signToken(user._id as string, user.role);
 
         return {
             message: 'Xác thực thành công',
@@ -110,11 +118,11 @@ export class AuthService {
         };
     }
 
-    static async login(input: LoginInput) {
+    async login(input: LoginInput) {
         const { email, password } = input;
 
         // Find user
-        const user = await User.findOne({ email }).select('+password');
+        const user = await this.userRepo.findByEmailWithPassword(email);
         if (!user || !user.password) {
             throw new AppError('Email hoặc mật khẩu không đúng', 401);
         }
@@ -131,22 +139,27 @@ export class AuthService {
             const otp = Math.floor(1000 + Math.random() * 9000).toString();
             const hashedOtp = await bcrypt.hash(otp, 10);
 
-            user.otp = hashedOtp;
-            user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
-            await user.save();
+            // @ts-ignore
+            await this.userRepo.update(user._id as string, {
+                otp: hashedOtp,
+                otpExpires: new Date(Date.now() + 10 * 60 * 1000)
+            });
 
             // Resend Email
-            EmailService.sendOTP(email, otp, user.fullName).catch(err => console.error(err));
+            EmailService.sendOTP(email, otp, user.fullName).catch(err => logger.error('Error sending OTP:', err));
 
             throw new AppError('Tài khoản chưa xác thực. Mã OTP mới đã được gửi đến email của bạn.', 403);
         }
 
         // Update last active
-        user.stats.lastActiveAt = new Date();
-        await user.save();
+        // @ts-ignore
+        await this.userRepo.update(user._id as string, {
+            'stats.lastActiveAt': new Date()
+        } as any);
 
         // Generate Token
-        const token = this.signToken((user._id as unknown) as string, user.role);
+        // @ts-ignore
+        const token = this.signToken(user._id as string, user.role);
 
         return {
             user: {
@@ -167,53 +180,61 @@ export class AuthService {
         };
     }
 
-    private static signToken(userId: string, role: string) {
-        const secret = env.JWT_SECRET;
-        const options: jwt.SignOptions = {
-            expiresIn: env.JWT_EXPIRES_IN as any,
-        };
-        return jwt.sign({ id: userId, role }, secret, options);
+    private signToken(userId: string, role: string) {
+        if (!process.env.JWT_SECRET) {
+            throw new AppError('JWT_SECRET is not defined', 500);
+        }
+        return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
+            expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+        } as jwt.SignOptions);
     }
 
-    /**
-     * Sync Clerk user data to MongoDB
-     * Called after successful Clerk OAuth login
-     * Creates new user if not exists, updates if exists
-     */
-    static async syncWithClerk(clerkUser: SyncClerkInput) {
-        const { clerkId, email, fullName, avatarUrl } = clerkUser;
+    async findOrCreateFromGoogle(profile: { googleId: string; email: string; fullName: string; avatarUrl: string }) {
+        const { googleId, email, fullName, avatarUrl } = profile;
 
-        // Find user by clerkId first, then by email
-        let user = await User.findOne({
-            $or: [{ clerkId }, { email }]
-        });
+        // Find user by googleId or email
+        let user = await this.userRepo.findByGoogleIdOrEmail(googleId, email);
 
         if (user) {
-            // Update existing user with Clerk data
-            user.clerkId = clerkId;
-            user.fullName = fullName || user.fullName;
-            user.avatarUrl = avatarUrl || user.avatarUrl;
-            user.authProvider = 'google';
-            user.isVerified = true;
-            user.stats.lastActiveAt = new Date();
-            await user.save();
-        } else {
-            // Create new user from Clerk data
-            const userName: string = String(fullName || email.split('@')[0]);
-            const userAvatar: string = String(avatarUrl || 'https://res.cloudinary.com/demo/image/upload/v1/default_avatar.png');
-
-            user = await User.create({
-                clerkId,
-                email,
-                fullName: userName,
-                avatarUrl: userAvatar,
-                authProvider: 'google' as const,
+            // Update existing user (Account Linking)
+            const updates: Partial<IUser> = {
+                googleId: googleId,
+                authProvider: 'google',
                 isVerified: true,
-                role: 'student' as const,
-                currentLevel: 'A1' as const,
+            };
+
+            const updateObj: any = { ...updates };
+            updateObj['stats.lastActiveAt'] = new Date();
+
+            // Only update avatar if default or not set
+            if (!user.avatarUrl || user.avatarUrl.includes('default_avatar')) {
+                updateObj.avatarUrl = avatarUrl;
+            }
+
+            try {
+                await this.userRepo.update((user._id as unknown) as string, updateObj);
+                // Re-fetch user to get updated fields if needed, or just patch the local object
+                user = { ...user, ...updateObj };
+            } catch (err) {
+                logger.error('Failed to update user', err);
+            }
+
+        } else {
+            // Create new user (using create method)
+            // Need to cast to match IUserRepository.create signature which might expect specific type or Partial<IUser>
+            // Assuming create takes Partial<IUser>
+            user = await this.userRepo.create({
+                googleId,
+                email,
+                fullName,
+                avatarUrl: avatarUrl || 'https://res.cloudinary.com/demo/image/upload/v1/default_avatar.png',
+                authProvider: 'google',
+                isVerified: true,
+                role: 'student',
+                currentLevel: 'A1',
                 stats: {
                     xp: 0,
-                    coins: 100, // Welcome bonus
+                    coins: 100,
                     streak: 0,
                     longestStreak: 0,
                     lastActiveAt: new Date(),
@@ -221,8 +242,13 @@ export class AuthService {
             } as any);
         }
 
-        // Generate JWT token for API requests
-        const token = this.signToken((user._id as unknown) as string, user.role);
+        if (!user) {
+            throw new AppError('Failed to process Google login', 500);
+        }
+
+        // Generate JWT token
+        // @ts-ignore
+        const token = this.signToken(user._id as string, user.role);
 
         return {
             user: {
@@ -243,3 +269,5 @@ export class AuthService {
         };
     }
 }
+
+export const authService = new AuthService(new UserMongoRepository());

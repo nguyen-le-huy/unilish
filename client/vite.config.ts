@@ -10,6 +10,9 @@ export default defineConfig({
     },
   },
   server: {
+    watch: {
+      usePolling: true, // Required for Docker hot-reload on some OS
+    },
     host: true,
     port: 5173,
     strictPort: true,

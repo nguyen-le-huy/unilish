@@ -1,29 +1,28 @@
-/**
- * Simple logger utility to replace console.log
- * Can be extended with Winston/Pino for production
- */
+import winston from 'winston';
+import { env } from '../config/env.js';
 
-const isDev = process.env.NODE_ENV !== 'production';
+const { combine, timestamp, printf, colorize, json } = winston.format;
 
-const formatMessage = (level: string, message: string, meta?: unknown): string => {
-    const timestamp = new Date().toISOString();
-    const metaStr = meta ? ` ${JSON.stringify(meta)}` : '';
-    return `[${timestamp}] [${level.toUpperCase()}] ${message}${metaStr}`;
-};
+const customFormat = printf(({ level, message, timestamp, ...meta }) => {
+    return `${timestamp} [${level}]: ${message} ${Object.keys(meta).length ? JSON.stringify(meta) : ''}`;
+});
 
-export const logger = {
-    info: (message: string, meta?: unknown) => {
-        console.info(formatMessage('info', message, meta));
-    },
-    warn: (message: string, meta?: unknown) => {
-        console.warn(formatMessage('warn', message, meta));
-    },
-    error: (message: string, meta?: unknown) => {
-        console.error(formatMessage('error', message, meta));
-    },
-    debug: (message: string, meta?: unknown) => {
-        if (isDev) {
-            console.debug(formatMessage('debug', message, meta));
-        }
+export const logger = winston.createLogger({
+    level: env.NODE_ENV === 'development' ? 'debug' : 'info',
+    format: combine(timestamp(), json()),
+    transports: [
+        new winston.transports.Console({
+            format: combine(
+                colorize(),
+                timestamp(),
+                customFormat
+            )
+        }),
+    ],
+});
+
+export const stream = {
+    write: (message: string) => {
+        logger.info(message.trim());
     },
 };

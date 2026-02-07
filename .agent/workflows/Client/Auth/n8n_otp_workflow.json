@@ -1,0 +1,63 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "send-email",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                -240,
+                -192
+            ],
+            "id": "1ee06ce2-7f90-4353-8815-bd51c47312e7",
+            "name": "Webhook",
+            "webhookId": "787db06d-16a1-4c11-8cd9-726afb95d71b"
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $json.body.email }}",
+                "subject": "={{ $json.body.subject }}",
+                "message": "=<!DOCTYPE html>\n<html lang=\"vi\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Xác thực tài khoản Unilish</title>\n</head>\n<body style=\"margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8f9fa;\">\n  \n  <table role=\"presentation\" style=\"width: 100%; border-collapse: collapse; background-color: #f8f9fa;\">\n    <tr>\n      <td style=\"padding: 40px 20px;\">\n        \n        <!-- Main Container -->\n        <table role=\"presentation\" style=\"max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); border: 1px solid #e9ecef;\">\n          <tr>\n            <td style=\"padding: 48px 40px;\">\n              \n              <!-- Logo -->\n              <div style=\"text-align: center; margin-bottom: 40px;\">\n                <h2 style=\"margin: 0; font-size: 32px; font-weight: 700; color: #204E1E; letter-spacing: -1px;\">\n                  Unilish\n                </h2>\n              </div>\n              \n              <!-- Title -->\n              <h1 style=\"margin: 0 0 24px; font-size: 28px; font-weight: 600; color: #1a1a1a; text-align: center; letter-spacing: -0.5px;\">\n                Xác thực tài khoản\n              </h1>\n              \n              <!-- Greeting -->\n              <p style=\"margin: 0 0 16px; font-size: 16px; color: #495057; line-height: 1.6; text-align: center;\">\n                Xin chào <strong style=\"color: #1a1a1a;\">{{ $json.body.name }}</strong>,\n              </p>\n              \n              <!-- Description -->\n              <p style=\"margin: 0 0 32px; font-size: 16px; color: #6c757d; line-height: 1.6; text-align: center;\">\n                Nhập mã xác thực bên dưới để hoàn tất đăng ký tài khoản của bạn\n              </p>\n              \n              <!-- OTP Code Box -->\n              <div style=\"background: linear-gradient(to bottom, #ffffff, #f8f9fa); border: 2px solid #e9ecef; border-radius: 12px; padding: 36px 24px; text-align: center; margin: 0 0 32px;\">\n                <div style=\"font-size: 42px; font-weight: 700; letter-spacing: 12px; color: #204E1E; font-family: 'SF Mono', 'Courier New', monospace; margin-bottom: 12px;\">\n                  {{ $json.body.otp }}\n                </div>\n                <div style=\"font-size: 14px; color: #868e96; font-weight: 500;\">\n                  Hiệu lực: 10 phút\n                </div>\n              </div>\n              \n              <!-- Security Notice -->\n              <div style=\"background-color: #f8f9fa; border-left: 4px solid #204E1E; border-radius: 6px; padding: 16px 20px; margin: 0 0 32px;\">\n                <p style=\"margin: 0; font-size: 14px; color: #495057; line-height: 1.6;\">\n                  <strong style=\"color: #1a1a1a;\">Lưu ý bảo mật:</strong> Không chia sẻ mã này với bất kỳ ai. Unilish sẽ không bao giờ yêu cầu mã xác thực qua điện thoại hoặc email.\n                </p>\n              </div>\n              \n              <!-- Help Text -->\n              <p style=\"margin: 0; font-size: 14px; color: #868e96; line-height: 1.6; text-align: center;\">\n                Bạn không yêu cầu mã này? Vui lòng bỏ qua email này hoặc <a href=\"#\" style=\"color: #204E1E; text-decoration: none; font-weight: 500;\">liên hệ hỗ trợ</a>\n              </p>\n              \n            </td>\n          </tr>\n        </table>\n        \n        <!-- Footer -->\n        <table role=\"presentation\" style=\"max-width: 560px; margin: 32px auto 0; text-align: center;\">\n          <tr>\n            <td style=\"padding: 0 20px;\">\n              <p style=\"margin: 0 0 8px; font-size: 14px; color: #868e96; font-weight: 500;\">\n                Đội ngũ Unilish\n              </p>\n              <p style=\"margin: 0; font-size: 13px; color: #adb5bd;\">\n                © 2026 Unilish. All rights reserved.\n              </p>\n              <p style=\"margin: 8px 0 0; font-size: 13px;\">\n                <a href=\"#\" style=\"color: #868e96; text-decoration: none; margin: 0 8px;\">Trung tâm hỗ trợ</a>\n                <span style=\"color: #dee2e6;\">•</span>\n                <a href=\"#\" style=\"color: #868e96; text-decoration: none; margin: 0 8px;\">Chính sách bảo mật</a>\n              </p>\n            </td>\n          </tr>\n        </table>\n        \n      </td>\n    </tr>\n  </table>\n  \n</body>\n</html>",
+                "options": {
+                    "appendAttribution": false
+                }
+            },
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                -16,
+                -192
+            ],
+            "id": "8555bf83-e809-4ba7-a578-cabff5c13a92",
+            "name": "Gmail",
+            "webhookId": "87a51575-b277-4995-858a-76db6e9737fd",
+            "credentials": {
+                "gmailOAuth2": {
+                    "id": "VTGVnr07sLl3XpX5",
+                    "name": "Gmail account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Gmail",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "fe2169d4b44c72baa3b147b70fc0000eeff440c5e6839cb32e590e7c1126112c"
+    }
+}

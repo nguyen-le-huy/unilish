@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import app from './app.js';
 import { env } from './config/env.js';
-import { connectDB } from './config/db.js';
+import { connectDB } from './config/database.mongo.js';
 import redisClient, { connectRedis } from './config/redis.js';
 import { logger } from './utils/logger.js';
 

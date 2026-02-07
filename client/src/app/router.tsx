@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import React, { Suspense } from 'react';
 import { PATHS } from '@/config/paths';
-import { Loading } from '@/components/common/loading/Loading';
+import { Loading } from '@/components/common/Loading/Loading';
 import { ProtectedRoute } from '@/app/ProtectedRoute';
 
 // Lazy load pages
@@ -9,6 +9,7 @@ const LoginPage = React.lazy(() => import('@/pages/auth/Login'));
 const RegisterPage = React.lazy(() => import('@/pages/auth/Register'));
 const HomePage = React.lazy(() => import('@/pages/dashboard/home/Home'));
 const OTPPage = React.lazy(() => import('@/pages/auth/OTP'));
+const AuthSuccessPage = React.lazy(() => import('@/pages/auth/AuthSuccess'));
 
 export const router = createBrowserRouter([
     {
@@ -36,6 +37,14 @@ export const router = createBrowserRouter([
         element: (
             <Suspense fallback={<Loading />}>
                 <OTPPage />
+            </Suspense>
+        ),
+    },
+    {
+        path: PATHS.AUTH.SUCCESS,
+        element: (
+            <Suspense fallback={<Loading />}>
+                <AuthSuccessPage />
             </Suspense>
         ),
     },

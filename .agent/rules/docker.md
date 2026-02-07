@@ -4,11 +4,13 @@ trigger: always_on
 
 # DOCKER SETUP INSTRUCTIONS FOR UNILISH
 
-## 1. Context & Architecture
+## 1. Context & Architecture (Enterprise Standard)
 - **Project Structure:** Monorepo (Server, Client, Admin).
+- **Core Strategy:** Multi-stage Builds (One Dockerfile per service for both Dev & Prod).
 - **Database:** MongoDB Atlas (Cloud) + Redis (Local Container).
-- **Environment:** Node.js 20 (Alpine Linux).
-- **Frontend Tooling:** Vite (Requires specific host binding).
+- **Orchestration:**
+  - **Dev:** `docker-compose.yml` (Hot-reload, Debugging, Auto-restart).
+  - **Prod:** `docker-compose.prod.yml` (Optimized, Nginx, Persistence, Security).
 
 ---
 
@@ -17,226 +19,118 @@ The AI Agent should verify or create the following files:
 
 ```text
 root/
-├── docker-compose.yml   # Orchestration for all services
-├── .dockerignore        # Ignore node_modules/dist
+├── docker-compose.yml       # DEVELOPMENT: Hot-reload, volumes mounted.
+├── docker-compose.prod.yml  # PRODUCTION: Static builds, Nginx, security.
+├── .dockerignore            # Ignore node_modules/dist
 ├── server/
-│   ├── Dockerfile
-│   └── .env             # Must contain MONGO_URI (Atlas)
+│   ├── Dockerfile           # Multi-stage: base > development > builder > production
+│   └── .env                 # Secrets (MONGO_URI, API Keys)
 ├── client/
-│   ├── Dockerfile
-│   └── vite.config.ts   # Must expose host
+│   ├── Dockerfile           # Multi-stage: base > development > builder > production (Nginx)
+│   └── .env                 # Vite Env Vars
 └── admin/
-    ├── Dockerfile
-    └── vite.config.ts   # Must expose host
+    ├── Dockerfile           # Multi-stage: base > development > builder > production (Nginx)
+    └── .env                 # Vite Env Vars
 
 ```
 
 ---
 
-## 3. Dockerfile Definitions
+## 3. Dockerfile Definitions (Multi-stage Strategy)
 
 ### A. Server (`server/Dockerfile`)
 
 ```dockerfile
-FROM node:20-alpine
-
+# Stage 1: Base
+FROM node:20-alpine AS base
 WORKDIR /app
-
-# Install dependencies first for caching
 COPY package*.json ./
 RUN npm install
 
-# Copy source code
+# Stage 2: Development (Hot-reload)
+FROM base AS development
 COPY . .
-
-# Default Express Port
 EXPOSE 5432
-
-# Start command (Ensure package.json has "dev": "nodemon ...")
 CMD ["npm", "run", "dev"]
 
+# Stage 3: Builder (Compile TS)
+FROM base AS builder
+COPY . .
+RUN npm run build
+
+# Stage 4: Production (Optimized)
+FROM node:20-alpine AS production
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --omit=dev
+COPY --from=builder /app/dist ./dist
+EXPOSE 5432
+CMD ["npm", "run", "start"]
 ```
 
-### B. Client (`client/Dockerfile`)
+### B. Client & Admin (React Apps)
 
-**Crucial:** Must use `--host` flag to expose Vite server.
+**Crucial:** Production stage uses Nginx to serve static files.
 
 ```dockerfile
-FROM node:20-alpine
-
+# Stage 1: Base
+FROM node:20-alpine AS base
 WORKDIR /app
-
 COPY package*.json ./
 RUN npm install
 
+# Stage 2: Development
+FROM base AS development
 COPY . .
-
-EXPOSE 5173
-
-# Start Vite with host exposure
+EXPOSE 5173 
 CMD ["npm", "run", "dev", "--", "--host"]
 
-```
-
-### C. Admin (`admin/Dockerfile`)
-
-**Crucial:** Runs on port **5174**.
-
-```dockerfile
-FROM node:20-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm install
-
+# Stage 3: Builder
+FROM base AS builder
 COPY . .
+# ARG/ENV are passed from docker-compose.prod.yml
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
+RUN npm run build
 
-EXPOSE 5174
-
-# Start Vite on port 5174 with host exposure
-CMD ["npm", "run", "dev", "--", "--port", "5174", "--host"]
-
+# Stage 4: Production (Nginx)
+FROM nginx:alpine AS production
+COPY --from=builder /app/dist /usr/share/nginx/html
+# Add SPA config (Try files $uri /index.html)
+RUN echo 'server { listen 80; location / { root /usr/share/nginx/html; index index.html index.htm; try_files $uri $uri/ /index.html; } }' > /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
 ```
 
 ---
 
-## 4. Docker Compose Configuration (`docker-compose.yml`)
+## 4. Orchestration Configuration
 
-**Note:** MongoDB is NOT included as a service because we use **MongoDB Atlas**.
+### A. Development (`docker-compose.yml`)
+*   **Target:** `development`
+*   **Volumes:** Mounted (`./server:/app`) for Hot-Reload.
+*   **Ports:** Exposed for debugging (e.g., DBs accessible via localhost).
+*   **Redis:** Healthcheck enabled.
 
-```yaml
-version: '3.8'
-
-services:
-  # 1. Redis Service (Local Cache)
-  redis:
-    image: redis:alpine
-    container_name: unilish-redis
-    ports:
-      - "6379:6379"
-    networks:
-      - unilish-net
-
-  # 2. Server Service (Express API)
-  server:
-    build: ./server
-    container_name: unilish-server
-    ports:
-      - "5432:5432"
-    volumes:
-      - ./server:/app             # Sync code for hot-reload
-      - /app/node_modules         # Prevent overwriting container modules
-    environment:
-      - PORT=5432
-      - REDIS_URI=redis://redis:6379
-      - MONGO_URI=${MONGO_URI}    # Injected from server/.env
-      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL} # Email Service
-      - CLIENT_URL=http://localhost:5173
-      - VITE_API_URL=http://localhost:5432
-      - ./server/.env
-    depends_on:
-      - redis
-    networks:
-      - unilish-net
-
-  # 3. Client Service (User Frontend)
-  client:
-    build: ./client
-    container_name: unilish-client
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./client:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:5432
-    env_file:
-      - ./client/.env
-    networks:
-      - unilish-net
-
-  # 4. Admin Service (CMS Dashboard)
-  admin:
-    build: ./admin
-    container_name: unilish-admin
-    ports:
-      - "5174:5174"
-    volumes:
-      - ./admin:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:5432
-    env_file:
-      - ./admin/.env
-    networks:
-      - unilish-net
-
-networks:
-  unilish-net:
-    driver: bridge
-
-```
+### B. Production (`docker-compose.prod.yml`)
+*   **Target:** `production`
+*   **Volumes:** NO code volumes (Static Images).
+*   **Restart:** `always`.
+*   **Ports:** 
+    *   Redis port **HIDDEN** (internal network only).
+    *   Web Apps map host ports to container port **80**.
+*   **Startup Order:** Client/Admin -> Server -> Redis (Checked via `condition: service_healthy`).
 
 ---
 
-## 5. Required Configuration Adjustments
+## 5. Execution Commands
 
-### A. Vite Config (`vite.config.ts`)
-
-For **BOTH** `client` and `admin`, ensure the `server` object is configured for Docker:
-
-```typescript
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    watch: {
-      usePolling: true, // Required for Docker hot-reload on some OS
-    },
-    host: true,         // Listen on 0.0.0.0
-    strictPort: true,
-    port: 5173,         // (Change to 5174 for Admin)
-  },
-});
-
-```
-
-### B. Environment Variables (`server/.env`)
-
-Ensure the connection string points to Atlas:
-
-```env
-MONGO_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/unilish?retryWrites=true&w=majority
-
-```
-
-### C. MongoDB Atlas Whitelist
-
-* Go to Atlas Dashboard > Network Access.
-* Add IP Address: `0.0.0.0/0` (Allow access from anywhere for Dev Docker).
-
----
-
-## 6. Execution Commands
-
-To start the development environment:
-
+### Development (Hot Reload)
 ```bash
-# Build and start all containers in detached mode
 docker-compose up -d --build
-
-# View logs to verify connections
-docker-compose logs -f
-
 ```
 
-To stop:
-
+### Production (Stable & Fast)
 ```bash
-docker-compose down
-
-```
-
-```
-
+docker-compose -f docker-compose.prod.yml up -d --build
 ```

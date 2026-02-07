@@ -10,6 +10,10 @@ import { AppError } from './utils/app-error.js';
 
 const app = express();
 
+import session from 'express-session';
+import passport from 'passport';
+import './config/passport.js';
+
 // Middlewares
 app.use(helmet());
 app.use(cors({
@@ -19,6 +23,22 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(compression());
+
+app.use(
+    session({
+        secret: env.SESSION_SECRET,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            secure: env.NODE_ENV === 'production',
+            httpOnly: true,
+            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        },
+    })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Sanitize data
 app.use((req, res, next) => {

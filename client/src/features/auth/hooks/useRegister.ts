@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { register } from '../api/register';
 import { useNavigate } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
-import { RegisterPayload, RegisterResponse } from '../types';
+import { RegisterPayload } from '../types';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 
@@ -15,8 +15,9 @@ export const useRegister = () => {
 
     return useMutation({
         mutationFn: (data: RegisterPayload) => register(data),
-        onSuccess: (response: RegisterResponse) => {
-            const { email, message } = response;
+        onSuccess: (response: any) => {
+            const email = response.data?.email || response.email;
+            const message = response.message || response.data?.message;
             toast.success(message || 'Registered successfully. Please check your email for OTP.');
             navigate(PATHS.AUTH.OTP, { state: { email } });
         },

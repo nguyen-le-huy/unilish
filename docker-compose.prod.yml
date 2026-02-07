@@ -1,0 +1,85 @@
+services:
+  # 1. Redis Service
+  redis:
+    image: redis:alpine
+    container_name: unilish-redis-prod
+    restart: always
+    # Security: No public ports in prod, only internal network
+    # ports:
+    #   - "6379:6379" 
+    networks:
+      - unilish-net-prod
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - redis_data:/data
+
+  # 2. Server Service
+  server:
+    build:
+      context: ./server
+      target: production
+    container_name: unilish-server-prod
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - PORT=5432
+      - REDIS_URI=redis://redis:6379
+      - CLIENT_URL=http://localhost:5173 
+      - VITE_API_URL=http://localhost:5432
+      - NODE_ENV=production
+    env_file:
+      - ./server/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - unilish-net-prod
+
+  # 3. Client Service
+  client:
+    build:
+      context: ./client
+      target: production
+      args:
+        - VITE_API_URL=http://localhost:5432
+        - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
+    container_name: unilish-client-prod
+    restart: always
+    ports:
+      - "5173:80"
+    env_file:
+      - ./client/.env
+    depends_on:
+      - server
+    networks:
+      - unilish-net-prod
+
+  # 4. Admin Service
+  admin:
+    build:
+      context: ./admin
+      target: production
+      args:
+        - VITE_API_URL=http://localhost:5432
+    container_name: unilish-admin-prod
+    restart: always
+    ports:
+      - "5174:80"
+    env_file:
+      - ./admin/.env
+    depends_on:
+      - server
+    networks:
+      - unilish-net-prod
+
+volumes:
+  redis_data:
+
+networks:
+  unilish-net-prod:
+    driver: bridge

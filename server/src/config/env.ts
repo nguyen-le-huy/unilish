@@ -1,7 +1,10 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import path from 'path';
 
-dotenv.config();
+// Load .env file
+dotenv.config({ path: path.join(process.cwd(), '.env') });
+
 
 const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -23,6 +26,15 @@ const envSchema = z.object({
     R2_SECRET_ACCESS_KEY: z.string().optional(),
     R2_BUCKET_NAME: z.string().optional(),
     R2_PUBLIC_DOMAIN: z.string().optional(),
+    // Neo4j
+    NEO4J_URI: z.string().default('bolt://localhost:7687'),
+    NEO4J_USER: z.string().default('neo4j'),
+    NEO4J_PASSWORD: z.string().default('password'),
+
+    // Auth
+    GOOGLE_CLIENT_ID: z.string().optional(),
+    GOOGLE_CLIENT_SECRET: z.string().optional(),
+    SESSION_SECRET: z.string().default('unilish-secret-key'),
 });
 
 const envServer = envSchema.safeParse(process.env);

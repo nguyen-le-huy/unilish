@@ -1,12 +1,12 @@
 import styles from "./AuthForm.module.css";
 import Logo from '@/assets/images/Unilish.svg';
 import OTPInput from '@/features/auth/components/OTPInput/OTPInput';
-import { Button } from '@/components/common/button';
+import { Button } from '@/components/core/Button';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
-import { useVerifyOTP } from "../../hooks/useVerifyOTP";
+import { useVerifyOTP } from "@/features/auth/hooks/useVerifyOTP";
 import { useState, useCallback } from "react";
-import { Loading } from '@/components/common/loading/Loading';
+import { Loading } from '@/components/common/Loading/Loading';
 
 const OTPForm = () => {
     const location = useLocation();

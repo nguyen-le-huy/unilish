@@ -1,0 +1,11 @@
+:root {
+  --font-family: "Google Sans", system-ui, sans-serif;
+
+  /* Color Variables */
+  --dark-green: #204E1E;
+  --light-grey: #F6F6F6;
+  --grey: #EEE;
+  --dark-grey: #848484;
+
+  --padding-btn: 15px 20px;
+}

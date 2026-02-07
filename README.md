@@ -1,301 +1,143 @@
-<p align="center">
-  <img src="https://img.shields.io/badge/Node.js-20-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js"/>
-  <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React"/>
-  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/>
-  <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB"/>
-  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/>
-</p>
+# UniLish - Adaptive & Hyper-Personalized Learning Platform
 
-# UniLish - Contextual English Learning Platform
+## Executive Summary
 
-**UniLish** is an advanced EdTech platform focusing on **Contextual Learning**. It solves rote memorization by interconnecting 6 English skills: Vocabulary, Grammar, Listening, Speaking, Reading, and Writing.
+UniLish is not merely a language learning application; it is a comprehensive **Adaptive Learning Ecosystem** designed to solve the "one-size-fits-all" problem in education. By leveraging Advanced AI and Knowledge Graphs, UniLish constructs a hyper-personalized learning pathway that adapts in real-time to the user's proficiency, professional background, and learning behaviors.
+
+The platform interconnects six core linguistic skills—Vocabulary, Reading, Grammar, Listening, Speaking, and Writing—into a seamless, context-aware flow, ensuring that learners acquire pragmatic competence suitable for Business, Academic, or Travel contexts.
 
 ---
 
-## Key Features
+## Core Architecture: The Adaptive Engine
 
-| Feature | Description | Technology |
-|---------|-------------|------------|
-| **AI Speaking Coach** | Real-time 1:1 conversation with <500ms latency | **gpt-realtime-mini**, **Azure AI Speech** |
-| **RAG Chatbot (Uni-Assistant)** | Intelligent tutor using curriculum data | LangChain, Pinecone |
-| **Learn with News** | Automated lessons from CNN news | n8n, **gpt-4.1** |
-| **YouTube Gap-Fill** | Interactive listening from video transcripts | Custom AI Pipeline |
-| **Live Connect** | P2P Video calls for practice | PeerJS, Socket.io |
-| **Email Verification** | Secure OTP registration flow | n8n Workflow, Gmail |
+The differentiator of UniLish is its proprietary Adaptive Engine, which orchestrates the learning experience based on real-time data analysis.
 
----
+### Dynamic Roadmaps via Knowledge Graphs
 
-## Technology Stack
+Unlike linear curriculums, UniLish utilizes **Neo4j** to model English knowledge as a graph. The system continuously evaluates learner performance. If a deficiency is detected (e.g., "Past Tense Construction"), the engine dynamically reroutes the curriculum, prioritizing remedial exercises before advancing to new concepts.
 
-### Backend
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| **Runtime** | Node.js 20, Express | RESTful API server |
-| **Language** | TypeScript (Strict) | Type safety |
-| **Database** | MongoDB Atlas | Primary data storage |
-| **Caching** | Redis | Queue, API caching |
-| **Vector DB** | Pinecone | RAG embeddings |
-| **Workflow** | n8n | Email Automation |
-| **Realtime** | Socket.io | Live updates, signaling |
+### Contextual Intelligence
 
-### Frontend
-| App | Framework | Styling Strategy |
-|-----|-----------|------------------|
-| **Client** | React 18 (Vite) | CSS Modules + Custom Components (NO UI Libs) |
-| **Admin** | React 18 (Vite) | Tailwind CSS + Shadcn/UI |
-
-### Storage (Hybrid Model)
-| Type | Service | Reason |
-|------|---------|--------|
-| **Images** | Cloudinary | Transformations, optimization |
-| **Audio/Video** | Cloudflare R2 | Zero egress fees |
-
-
-## AI & Machine Learning Ecosystem (Lõi thông minh)
-
-| Phân hệ AI | Công nghệ / Model | Vai trò cụ thể |
-| :--- | :--- | :--- |
-| **Xử lý Logic & Text** | **gpt-4.1-2025-04-14** | Chấm điểm bài Viết (Writing), sinh kịch bản Roleplay khó, giải thích lỗi ngữ pháp chuyên sâu. |
-| | **gpt-4.1-mini-2025-04-14** | Sinh từ vựng, bài đọc, tạo Quiz trắc nghiệm, phân tích dữ liệu học tập (Tối ưu chi phí). |
-| **Voice AI (Hội thoại)** | **gpt-realtime-mini-2025-12-15** | "Trái tim" của Speaking Coach. Xử lý trọn gói quy trình Nghe-Hiểu-Nói với độ trễ siêu thấp (<500ms). Thay thế hoàn toàn STT/TTS rời rạc. |
-| **Chấm điểm (Examiner)** | **Azure AI Speech** | Chuyên gia chấm điểm phát âm (Pronunciation Assessment). Phân tích độ trôi chảy (Fluency), ngữ điệu (Prosody) và bắt lỗi từng từ. |
-| **Giọng đọc bổ trợ** | **gpt-4o-mini-tts-2025-12-15** / **Elevenlabs** | Tạo giọng đọc cảm xúc chất lượng cao (High Definition) cho các bài Listening thụ động hoặc Podcast bài học. |
+The AI analyzes the user's profile (e.g., profession, interests) to tailor content. A software engineer receives learning materials derived from technology news, while a tourism professional interacts with cultural dialogue scenarios, ensuring maximum relevance and engagement.
 
 ---
 
-## Project Structure
+## Key Functional Modules
 
-```
-unilish/
-├── client/              # User Application (React + Vite)
-│   ├── src/
-│   │   ├── app/         # Global config (router, providers)
-│   │   ├── components/  # Reusable UI (Shadcn, layouts)
-│   │   ├── features/    # Business modules (auth, courses, chat)
-│   │   ├── hooks/       # Custom React hooks
-│   │   ├── lib/         # Axios, React Query config
-│   │   └── pages/       # Route entry points
-│   └── ...
-│
-├── admin/               # CMS Dashboard (React + Vite)
-│   ├── src/
-│   │   ├── components/  # Admin UI components
-│   │   ├── features/    # CMS modules (users, lessons, analytics)
-│   │   └── pages/       # Admin pages
-│   └── ...
-│
-├── server/              # Express API (Node.js)
-│   ├── src/
-│   │   ├── controllers/ # HTTP handlers (no business logic)
-│   │   ├── services/    # Business logic layer
-│   │   ├── models/      # Mongoose schemas
-│   │   ├── middlewares/ # Auth, validation, error handling
-│   │   ├── routes/      # API routing
-│   │   ├── socket/      # Realtime handlers
-│   │   └── utils/       # Helpers (AppError, catchAsync)
-│   └── ...
-│
-├── docker-compose.yml   # Development orchestration
-└── .agent/              # AI Agent documentation
-```
+### 1. Personalized Experience & Roadmap
+
+* **Adaptive Learning Roadmap:** Utilizes Knowledge Graphs to track progress at a granular level (specific vocabulary words or grammatical structures). It employs Spaced Repetition algorithms to identify and address knowledge gaps precisely when needed.
+* **Placement Test 2.0:** A comprehensive competency assessment combining standard TOEIC inputs (Listening/Reading) with an AI Interview (Speaking/Writing) to generate an accurate initial proficiency profile.
+
+### 2. Smart Content & Interaction
+
+* **Dynamic Content Automation:** Powered by **n8n** and **GPT-5.2**, this module automatically converts real-time news (CNN, BBC) into interactive lessons matched to the user's current level.
+* **Real-time AI Speaking Coach:** A 1:1 virtual coaching environment utilizing **OpenAI Realtime API** with sub-500ms latency. It provides immediate feedback on Pragmatic Competence, Prosody, and Fluency using **Azure AI Speech**, maintaining a history of errors for targeted improvement.
+
+### 3. Engagement Ecosystem
+
+* **YouTube Gap Fill Challenge:** Generates personalized listening exercises from YouTube video transcripts based on user interests.
+* **Live Connect P2P:** An intelligent matching algorithm pairs users with similar proficiency levels for real-time peer-to-peer communication practice.
+* **Competitive Exams:** Periodic standardized testing with real-time leaderboards to foster healthy competition.
+
+### 4. Utilities & Assistance
+
+* **Uni-Assistant (RAG Chatbot):** A 24/7 learning aide that understands the specific context of the user's current lesson. It supports data export (Vocabulary/Sentences) to Excel/CSV formats.
 
 ---
 
-## Getting Started
+## Technical Architecture
+
+The system is architected for high concurrency, data integrity, and low-latency AI processing.
+
+### AI & Data Layer
+
+| Component | Technology | Role |
+| --- | --- | --- |
+| **Logic & Text Processing** | GPT-5.2 | Writing assessment, complex roleplay generation, deep grammar analysis. |
+| **Voice AI (Conversational)** | OpenAI Realtime Mini API | End-to-end speech handling (Speech-to-Speech) with ultra-low latency (<500ms). |
+| **Pronunciation Assessment** | Azure AI Speech | Detailed scoring of Fluency, Prosody, and word-level accuracy. |
+| **Database (Hybrid)** | MongoDB + Neo4j | MongoDB stores content/metadata; Neo4j manages knowledge relationships and learning paths. |
+| **Workflow Automation** | n8n | Orchestration of content ingestion and background processes. |
+
+### Application Layer
+
+| Layer | Technology |
+| --- | --- |
+| **Backend** | Node.js 20, Express, TypeScript |
+| **Frontend (Client)** | React 18 (Vite), CSS Modules (Custom Architecture) |
+| **Frontend (Admin)** | React 18 (Vite), Tailwind CSS, Shadcn/UI |
+| **Realtime** | Socket.io, PeerJS |
+
+---
+
+## Operational Intelligence & Growth
+
+UniLish integrates automated operations modules to ensure scalability, cost-efficiency, and user retention.
+
+### Resource Intelligence & Monitoring
+
+* **Real-time Cost Optimization:** Monitors API token usage (OpenAI, Azure, ElevenLabs) in real-time to optimize operational costs.
+* **Automated Alerting:** A specialized bot triggers immediate alerts via Telegram upon detecting traffic anomalies or resource thresholds, enabling proactive incident response.
+
+### Automated Retention Engine
+
+* **Smart Re-engagement:** Cron jobs analyze user activity patterns. If a user is inactive for 24 hours, the system triggers personalized reminder emails.
+* **Weekly Insights:** Automatically generates and dispatches comprehensive weekly performance reports (Time spent, Vocabulary Gain, Articles read) to visualize progress and sustain motivation.
+
+### AI-Driven Community Safety
+
+* **Content Moderation Pipeline:** All user-generated content on the Social Hub/News Feed undergoes automated AI screening.
+* **Compliance:** Instant detection and blocking of toxic content, spam, or off-topic material to maintain a professional learning environment.
+
+---
+
+## Installation & Deployment
 
 ### Prerequisites
 
-- **Node.js** 20+
-- **Docker** & Docker Compose
-- **MongoDB Atlas** account (or local MongoDB)
-- **Redis** (included in Docker)
-- **n8n** (Optional for Email)
+* Node.js 20+
+* Docker & Docker Compose
+* MongoDB Atlas & Neo4j Database
 
-### 1. Clone the repository
+### Setup Instructions
 
+1. **Clone the Repository**
 ```bash
 git clone https://github.com/nguyen-le-huy/unilish.git
 cd unilish
+
 ```
 
-### 2. Set up environment variables
 
-Copy the example files and fill in your values:
-
+2. **Environment Configuration**
+Copy the example configuration files and populate the required API keys (OpenAI, Azure, Database URIs).
 ```bash
-# Root level (for Docker Compose)
 cp .env.example .env
-
-# Server
 cp server/.env.example server/.env
-
-# Client
 cp client/.env.example client/.env
 
-# Admin
-cp admin/.env.example admin/.env
 ```
 
-### 3. Start with Docker (Recommended)
 
+3. **Deployment via Docker**
 ```bash
-# Build and start all services
 docker-compose up -d --build
 
-# View logs
-docker-compose logs -f
 ```
 
-**Services will be available at:**
-| Service | URL |
-|---------|-----|
-| Client | http://localhost:5173 |
-| Admin | http://localhost:5174 |
-| Server API | http://localhost:5001 |
-| Redis | localhost:6379 |
 
-### 4. Start without Docker (Manual)
 
-```bash
-# Install dependencies for each app
-cd server && npm install
-cd ../client && npm install
-cd ../admin && npm install
+### Access Points
 
-# Run each in separate terminals
-cd server && npm run dev
-cd client && npm run dev
-cd admin && npm run dev -- --port 5174
-```
-
----
-
-## Environment Variables
-
-### Server (`server/.env`)
-
-```env
-# Server
-PORT=5000
-NODE_ENV=development
-
-# Database
-MONGO_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/unilish
-REDIS_URI=redis://localhost:6379
-
-# JWT
-JWT_SECRET=your-super-secret-key
-JWT_EXPIRES_IN=7d
-
-# URLs
-CLIENT_URL=http://localhost:5173
-ADMIN_URL=http://localhost:5174
-N8N_WEBHOOK_URL=https://... (For Email Service)
-
-# Cloudinary
-CLOUDINARY_CLOUD_NAME=xxx
-CLOUDINARY_API_KEY=xxx
-CLOUDINARY_API_SECRET=xxx
-
-# Cloudflare R2
-R2_ACCESS_KEY_ID=xxx
-R2_SECRET_ACCESS_KEY=xxx
-R2_BUCKET_NAME=xxx
-
-# AI Services
-OPENAI_API_KEY=xxx
-AZURE_SPEECH_KEY=xxx
-AZURE_SPEECH_REGION=eastus
-ELEVENLABS_API_KEY=xxx
-```
-
-### Client/Admin (`client/.env`, `admin/.env`)
-
-```env
-VITE_API_URL=http://localhost:5001
-```
-
----
-
-## Development Guidelines
-
-### Architecture Principles
-
-1. **Feature-Sliced Design** - Frontend follows FSD-lite pattern
-2. **Layered Architecture** - Backend: Controller → Service → Model
-3. **Type Safety** - TypeScript strict mode, no `any`
-4. **Performance First** - React Query, lazy loading, optimized queries
-
-### State Management
-
-| Type | Solution |
-|------|----------|
-| Server State | TanStack Query (React Query) v5 |
-| Client State | Zustand |
-
-### Coding Standards
-
-- **Files**: `kebab-case.ts` (e.g., `user.controller.ts`)
-- **Classes**: `PascalCase` (e.g., `UserService`)
-- **Functions/Variables**: `camelCase`
-- **Imports**: Always use `@/` alias
-
----
-
-## API Documentation
-
-API documentation is available via Swagger at:
-```
-http://localhost:5001/api-docs
-```
-
----
-
-## Docker Commands
-
-```bash
-# Start all services
-docker-compose up -d
-
-# Rebuild after code changes
-docker-compose up -d --build
-
-# Stop all services
-docker-compose down
-
-# View logs
-docker-compose logs -f [service_name]
-
-# Shell into container
-docker exec -it unilish-server sh
-```
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+* **Client Application:** http://localhost:5173
+* **Admin Dashboard:** http://localhost:5174
+* **API Server:** http://localhost:5001
 
 ---
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is proprietary and confidential. Unauthorized copying or distribution is strictly prohibited.
 
----
-
-## Author
-
-**Nguyen Le Huy**
-
-- GitHub: [@nguyen-le-huy](https://github.com/nguyen-le-huy)
-
----
-
-<p align="center">
-  Made with love for English learners worldwide
-</p>
+**Author:** Nguyen Le Huy | Hystudio

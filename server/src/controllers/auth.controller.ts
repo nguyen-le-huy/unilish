@@ -1,43 +1,36 @@
 import type { Request, Response, NextFunction } from 'express';
-import { AuthService } from '../services/auth.service.js';
+import { authService } from '../services/auth.service.js';
 import { sendResponse } from '../utils/send-response.js';
 import { catchAsync } from '../utils/catch-async.js';
+import { env } from '../config/env.js';
 
 export class AuthController {
     static login = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-        const result = await AuthService.login(req.body);
+        const result = await authService.login(req.body);
         sendResponse(res, 200, 'Login successfully', result);
     });
 
     static register = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-        const result = await AuthService.register(req.body);
+        const result = await authService.register(req.body);
         sendResponse(res, 201, 'Registered successfully', result);
     });
 
     static verifyOTP = catchAsync(async (req: Request, res: Response) => {
         const { email, otp } = req.body;
-        const result = await AuthService.verifyOTP(email, otp);
+        const result = await authService.verifyOTP(email, otp);
         sendResponse(res, 200, result.message, result);
     });
 
-    /**
-     * Sync Clerk user data to MongoDB
-     * Called from client after successful Clerk OAuth
-     */
-    static syncClerkUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-        const { clerkId, email, fullName, avatarUrl } = req.body;
+    static googleCallback = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+        // User is already authenticated by passport middleware
+        const { user, token } = req.user as any;
 
-        if (!clerkId || !email) {
-            return sendResponse(res, 400, 'clerkId and email are required', null);
+        // Set token in session (HttpOnly cookie by default via cookie-session)
+        if (req.session) {
+            req.session.token = token;
         }
 
-        const result = await AuthService.syncWithClerk({
-            clerkId,
-            email,
-            fullName,
-            avatarUrl,
-        });
-
-        sendResponse(res, 200, 'User synced successfully', result);
+        // Redirect to client
+        res.redirect(`${env.CLIENT_URL}/auth/success`);
     });
 }

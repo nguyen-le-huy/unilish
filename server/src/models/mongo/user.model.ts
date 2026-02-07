@@ -1,10 +1,11 @@
 import mongoose from 'mongoose';
-import { GameLevelUtils } from '../utils/game-level.js';
+import { GameLevelUtils } from '../../utils/game-level.js';
 import type { ILanguage } from './language.model.js';
 
 export interface IUser extends mongoose.Document {
     email: string;
     clerkId?: string;
+    googleId?: string;
     password?: string;
     authProvider: 'local' | 'google' | 'facebook';
     otp?: string | undefined;
@@ -70,6 +71,11 @@ const UserSchema = new mongoose.Schema<IUser>(
             index: true,
         },
         clerkId: {
+            type: String,
+            unique: true,
+            sparse: true,
+        },
+        googleId: {
             type: String,
             unique: true,
             sparse: true,

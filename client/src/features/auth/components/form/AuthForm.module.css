@@ -1,7 +1,7 @@
 .content {
     display: flex;
     max-width: 500px;
-    width: 400px;
+    width: 450px;
     padding: 10px;
     flex-direction: column;
     justify-content: center;
@@ -15,6 +15,7 @@
     justify-content: center;
     align-items: center;
     gap: 5px;
+    text-align: center;
 }
 
 .title>h3 {

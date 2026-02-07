@@ -3,10 +3,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import GoogleLogo from '@/assets/images/auth/google.svg';
 import Logo from '@/assets/images/Unilish.svg';
 import styles from "./AuthForm.module.css";
-import { Button } from '@/components/common/button';
-import { Loading } from '@/components/common/loading/Loading';
+import { Button } from '@/components/core/Button';
+import { Loading } from '@/components/common/Loading/Loading';
 import { useLogin } from '../../hooks/useLogin';
-import { useGoogleAuth } from '../../hooks/useGoogleAuth';
+
 import { LoginPayload, LoginSchema } from '../../types';
 import { Link } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
@@ -18,13 +18,14 @@ const LoginForm = () => {
     });
 
     const { mutate: login, isPending: isLoginPending } = useLogin();
-    const { signInWithGoogle, isSyncing } = useGoogleAuth();
 
     const onSubmit = useCallback((data: LoginPayload) => {
         login(data);
     }, [login]);
 
-    const isPending = isLoginPending || isSyncing;
+    const signInWithGoogle = () => {
+        window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5432/api'}/auth/google`;
+    };
 
     return (
         <div className={styles.content}>
@@ -38,9 +39,9 @@ const LoginForm = () => {
                 size="full"
                 leftIcon={GoogleLogo}
                 onClick={signInWithGoogle}
-                disabled={isPending}
+                disabled={isLoginPending}
             >
-                {isSyncing ? <Loading variant="inline" size="sm" /> : 'Tiếp tục với Google'}
+                Tiếp tục với Google
             </Button>
             <div className={styles.or}>
                 <div className={styles.line}></div>
@@ -55,7 +56,7 @@ const LoginForm = () => {
                         id="email"
                         placeholder='Nhập email của bạn'
                         {...register('email')}
-                        disabled={isPending}
+                        disabled={isLoginPending}
                     />
                     {errors.email && <span className={styles.error}>{errors.email.message}</span>}
                 </div>
@@ -66,7 +67,7 @@ const LoginForm = () => {
                         id="password"
                         placeholder='Nhập mật khẩu của bạn'
                         {...register('password')}
-                        disabled={isPending}
+                        disabled={isLoginPending}
                     />
                     {errors.password && <span className={styles.error}>{errors.password.message}</span>}
                     <p className={styles.forgotPassword}>Quên mật khẩu?</p>
@@ -75,7 +76,7 @@ const LoginForm = () => {
                     type="submit"
                     variant="primary"
                     size="full"
-                    disabled={isPending}
+                    disabled={isLoginPending}
                 >
                     {isLoginPending ? <Loading variant="inline" size="sm" /> : 'Đăng nhập'}
                 </Button>

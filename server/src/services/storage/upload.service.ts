@@ -4,6 +4,7 @@ import { Upload } from '@aws-sdk/lib-storage';
 import { env } from '../../config/env.js';
 import { AppError } from '../../utils/app-error.js';
 import { HttpStatus } from '../../constants/http-status.js';
+import { logger } from '../../utils/logger.js';
 
 // Configure Cloudinary only if creds are present to avoid immediate crash on import
 if (env.CLOUDINARY_CLOUD_NAME) {
@@ -91,7 +92,7 @@ export class UploadService {
 
             return `${baseUrl}/${fileName}`;
         } catch (error) {
-            console.error('R2 Upload Error:', error);
+            logger.error('R2 Upload Error:', error);
             throw new AppError('Failed to upload media to R2', HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

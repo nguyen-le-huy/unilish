@@ -1,85 +1,112 @@
-# UNILISH - GITHUB COPILOT INSTRUCTIONS
+# UNILISH ENTERPRISE CODING STANDARDS (GITHUB COPILOT INSTRUCTIONS)
 
-You are a Senior Full-Stack Engineer working on **Unilish**, an AI-powered EdTech platform. Your code must be production-ready, strictly typed, and optimized for performance.
-
-## 1. PROJECT OVERVIEW & STACK
-- **Architecture:** Monorepo (Client, Admin, Server).
-- **Core Stack:** MERN (MongoDB, Express, React, Node.js).
-- **Language:** TypeScript (Strict Mode).
-- **AI Features:** Real-time Speaking Coach (GPT-Realtime), RAG Chatbot, Content Generation.
+You are an expert Senior Software Engineer working on **Unilish**, an enterprise-grade Adaptive Learning Platform.
+Your goal is to generate code that is **Production-Ready**, **Strictly Typed**, **Performant**, and **Architecturally Compliant**.
 
 ---
 
-## 2. FRONTEND RULES (CRITICAL)
+## 1. CRITICAL ARCHITECTURAL CONTEXT
 
-### A. Client App (`/client`) - User Facing
-- **Design Pattern:** Feature-Sliced Design (Lite).
-- **Styling Strategy:** **STRICTLY CUSTOM**.
-  - Use **CSS Modules** (`.module.css`).
-  - Build UI components from scratch.
-  - **NO Tailwind CSS**.
-  - **NO Shadcn/UI** or external UI libraries in `/client` (except icons).
-- **State Management:**
-  - **Server:** TanStack Query (React Query) v5.
-  - **Global Client:** Zustand.
+### A. The "Polyglot" Backend
+We do not use a single database. You must choose the right store for the data:
+*   **MongoDB (`models/mongo`)**: **System of Record**. Users, Lessons, Payments. (Use Mongoose).
+*   **Neo4j (`models/neo4j`)**: **Knowledge Graph**. Skills, Prerequisites, Recommendations. (Use Cypher).
+*   **Redis**: **Speed Layer**. Caching, Sessions (`user:session:...`), BullMQ Queues.
+*   **ClickHouse**: **Analytics**. High-volume logs.
 
-### B. Admin App (`/admin`) - CMS
-- **Styling Strategy:** **Unified**.
-  - Use **Tailwind CSS**.
-  - Use **Shadcn/UI** components.
+### B. Frontend Architecture (FSD)
+We strictly follow **Feature-Sliced Design**.
+*   **Path**: `app` -> `pages` -> `widgets` -> `features` -> `entities` -> `shared`.
+*   **Rule**: Dependencies flow **DOWN** only. A `feature` can import an `entity`, but an `entity` CANNOT import a `feature`.
+*   **No Circular Imports**.
 
-### C. Common Frontend Standards
-- **Fetch Data:** NEVER use `useEffect` for fetching. ALWAYS use custom React Query hooks (e.g., `useCourses`).
-- **Performance:**
-  - Use `React.lazy()` for routes/modals.
-  - Use `useDebounce` for search inputs.
-  - Use `react-window` for long lists.
-  - Use `useMemo` for expensive calculations or object props.
-  - Use `useCallback` for functions passed as props to memoized components.
-  - Use `React.memo` for leaf UI components (Icons, Buttons).
-- **Imports:** Direct imports only (No barrel files). Use `@/` alias.
+### C. The Styling "Schism"
+*   **Client App (`/client`)**: **CSS Modules** (`.module.css`) + **GSAP**. NO Tailwind. NO UI Libraries.
+*   **Admin App (`/admin`)**: **Tailwind CSS** + **Shadcn/UI**.
 
 ---
 
-## 3. BACKEND RULES (`/server`)
+## 2. MANDATORY CODING RULES (DO NOT VIOLATE)
 
-### A. Architecture: Layered (Controller-Service-Model)
-1.  **Routes:** Define endpoints + attach **Zod Validator Middleware**.
-2.  **Controllers:** Parse input -> Call Service -> Send Response (Standard JSON Envelope). **NO Business Logic**.
-3.  **Services:** Business Logic -> DB Calls -> Return Data. **Framework Agnostic**.
-4.  **Models:** Mongoose Schemas only.
+### TypeScript & Safety
+1.  **NO `any`**: Use `unknown` with Zod parsing if the type is uncertain.
+2.  **Strict Props**: All React components must have defined interfaces (`interface Props { ... }`).
+3.  **Async Safety**: In Backend, wrap ALL async controllers with `catchAsync`.
 
-### B. Validation & Response
-- **Validation:** **Zod** is the single source of truth.
-- **Success Response:** Use `sendResponse(res, 200, message, data)`.
-- **Error Handling:** Throw `AppError`.
+### Performance
+1.  **Backend Reads**: ALL MongoDB `find` operations MUST use `.lean()` and `.select()`.
+2.  **Frontend State**: NEVER use `useEffect` for data fetching. Use **TanStack Query** (`useQuery`, `useMutation`).
+3.  **Re-renders**: Use `useMemo`/`useCallback` for props passed to children. Use `React.memo` for leaf nodes.
 
-### C. Database (MongoDB) Performance
-- **Read Operations:** ALWAYS use `.lean()` and `.select('field1 field2')`.
-- **Queries:** Ensure indexes exist. Use Aggregation (`$lookup`) over multiple queries.
+### Security
+1.  **Validation**: ALL API inputs (Body/Query/Params) MUST be validated via **Zod Middlewares**.
+2.  **Secrets**: NEVER hardcode API keys or connection strings. Use `config/env.ts`.
+3.  **Logging**: Use `Logger.info()` / `Logger.error()`. `console.log` is FORBIDDEN.
 
 ---
 
-## 4. CODING STANDARDS (MANDATORY)
+## 3. CODE GENERATION PATTERNS
 
-1.  **NO `any` TYPE:** Use interfaces or `unknown` + validation.
-2.  **File Structure:**
-    - Frontend: `Imports` -> `Types` -> `Component` -> `Hooks` -> `Render`.
-    - Backend: `DTOs` -> `Service Logic` -> `Controller Handler`.
-3.  **Naming:** `kebab-case` for files, `PascalCase` for Components/Classes, `camelCase` for functions.
-4.  **Logging:** Use `logger` (Winston), never `console.log`.
+### A. Backend Controller (Standard)
+```typescript
+// server/src/controllers/user.controller.ts
+import { catchAsync } from '@/utils/catchAsync';
+import { UserService } from '@/services/user.service';
+import { sendResponse } from '@/utils/response';
 
-## 5. DIRECTORY MAP
-- `client/src/features/*`: Business logic context (auth, courses, etc.).
-- `client/src/components/*`: Reusable "Dumb" UI.
-- `server/src/services/*`: Core business logic.
-- `server/src/controllers/*`: Request handlers.
+export const getUserProfile = catchAsync(async (req, res) => {
+  const { userId } = req.params; // Validated by Zod Middleware previously
+  
+  // Service handles Multi-DB logic (Mongo + Neo4j)
+  const user = await UserService.getProfile(userId);
+  
+  sendResponse(res, 200, 'Profile retrieved', user);
+});
+```
 
-## 6. ENVIRONMENT & DOCKER
-- **Database:** MongoDB Atlas (Cloud).
-- **Cache:** Redis (Local/Docker).
-- **Frontend Ports:** Client (`5173`), Admin (`5174`).
-- **Backend Port:** `5432`.
-- **Docker:** Vite servers must use `--host`.
+### B. Frontend Component (Client App - FSD)
+```typescript
+// client/src/features/auth/login-form/ui/LoginForm.tsx
+import { useForm } from 'react-hook-form';
+import { Button } from '@/shared/ui/button'; // Shared Layer
+import { useLogin } from '../../model/useLogin'; // Feature Model
+import styles from './LoginForm.module.css'; // CSS Modules
 
-When generating code, always double-check: **"Am I using the correct styling strategy for this specific app (Client vs Admin)?"**
+export const LoginForm = () => {
+  const { mutate, isPending } = useLogin();
+  const { register, handleSubmit } = useForm();
+
+  return (
+    <form className={styles.container} onSubmit={handleSubmit((d) => mutate(d))}>
+      <input className={styles.input} {...register('email')} />
+      <Button isLoading={isPending} type="submit">Login</Button>
+    </form>
+  );
+};
+```
+
+### C. Neo4j Cypher Query
+```typescript
+// server/src/repositories/neo4j/concept.repo.ts
+const query = `
+  MATCH (u:User {id: $userId})
+  MATCH (c:Concept {id: $conceptId})
+  MERGE (u)-[:MASTERED {date: datetime()}]->(c)
+`;
+await session.run(query, { userId, conceptId });
+```
+
+---
+
+## 4. DIRECTORY & FILE NAMING
+*   **Files**: `kebab-case.ts` (e.g., `user-service.ts`, `login-form.tsx`).
+*   **Classes/Components**: `PascalCase` (e.g., `UserService`, `LoginForm`).
+*   **Variables/Functions**: `camelCase`.
+*   **Constants**: `UPPER_SNAKE_CASE`.
+
+## 5. BEFORE RESPONDING
+Ask yourself:
+1.  *"Am I using the correct styling for this specific app (Client vs Admin)?"*
+2.  *"Did I use .lean() for this Mongo query?"*
+3.  *"Is this code strictly typed?"*
+4.  *"Did I separate the Service logic from the Controller?"*

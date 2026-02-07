@@ -3,13 +3,16 @@ import { env } from '@/config/env';
 
 export const api = axios.create({
     baseURL: env.API_URL,
+    withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
+import { useAuthStore } from '@/stores/auth.store';
+
 api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
+    const token = useAuthStore.getState().token;
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }

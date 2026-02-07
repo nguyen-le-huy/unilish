@@ -1,4 +1,4 @@
-import { User } from '../models/user.model.js';
+import { User } from '../models/mongo/user.model.js';
 import { z } from 'zod';
 import type { updateProfileSchema, getUsersSchema, updateSubscriptionSchema } from '../validations/user.validation.js';
 import { AppError } from '../utils/app-error.js';

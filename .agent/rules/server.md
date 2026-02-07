@@ -2,13 +2,15 @@
 trigger: always_on
 ---
 
-# UNILISH SERVER ARCHITECTURE & STANDARDS
+# UNILISH SERVER ARCHITECTURE & STANDARDS (ENTERPRISE)
 
 ## 1. Overview
-The Unilish Backend is built on **Node.js** and **Express**, following the **Layered Architecture** pattern (Controller-Service-Model).
-- **Goal:** Separation of concerns, scalability, testability, and type safety.
-- **Core Stack:** TypeScript, MongoDB (Mongoose), Redis, Zod, Socket.io.
-- **Documentation:** Swagger/OpenAPI.
+
+The Unilish Backend is built on **Node.js** and **Express**, following **Clean Architecture** with **Polyglot Persistence** (MongoDB + Neo4j).
+
+* **Goal:** High scalability, loose coupling, and type safety.
+* **Core Stack:** TypeScript, MongoDB (Mongoose), **Neo4j**, Redis (BullMQ + Socket Adapter), Zod.
+* **Documentation:** Swagger/OpenAPI (Auto-generated).
 
 ---
 
@@ -16,47 +18,83 @@ The Unilish Backend is built on **Node.js** and **Express**, following the **Lay
 
 ```text
 src/
-├── @types/               # TypeScript Type Definitions
-├── config/               # Configuration (Env, DB, Redis, Logger)
-├── constants/            # Magic Strings & HTTP Status
+├── @types/                   # Global Type Definitions
+├── config/                   # Configuration
+│   ├── env.ts                # Env validation (Zod)
+│   ├── database.mongo.ts     # Mongoose Connection
+│   ├── database.neo4j.ts     # Neo4j Driver Connection
+│   └── redis.ts              # Redis Client
 │
-├── controllers/          # HTTP LAYER
-│   # ⚠️ NO Business Logic. Only parse input -> call service -> send response.
+├── constants/                # Magic Strings, HTTP Status
+│
+├── controllers/              # HTTP ADAPTER LAYER
 │   ├── auth.controller.ts
 │   └── ...
 │
-├── docs/                 # API DOCUMENTATION 🆕
-│   ├── swagger.json      # OpenAPI Definition
-│   └── components.yaml   # Reusable Schemas
+├── interfaces/               # CONTRACT DEFINITIONS
+│   ├── services/             # Service Interfaces
+│   ├── repositories/         # Repository Interfaces
+│   │   ├── IUserRepository.ts
+│   │   └── IGraphRepository.ts
+│   └── ...
 │
-├── middlewares/          # Interceptors
+├── middlewares/              # HTTP INTERCEPTORS
+│   ├── security/             # Security Middlewares
+│   │   ├── helmet.ts         # Header Security
+│   │   ├── cors.ts           # CORS Config
+│   │   └── rate-limit.ts     # DDOS Protection
 │   ├── auth.middleware.ts
 │   ├── error.middleware.ts
 │   ├── validate.middleware.ts
+│   └── logger.middleware.ts
+│
+├── models/                   # DATA MODELS
+│   ├── mongo/                # Mongoose Schemas
+│   │   ├── user.model.ts
+│   │   └── lesson.model.ts
+│   └── neo4j/                # Graph Node Definitions
+│       └── knowledge-node.ts
+│
+├── repositories/             # DATA ACCESS LAYER (Polyglot)
+│   ├── base/                 # Generic Repository Bases
+│   │   ├── base.mongo.repo.ts
+│   │   └── base.neo4j.repo.ts
+│   ├── mongo/                # MongoDB Implementations
+│   │   └── user.mongo.repo.ts
+│   └── neo4j/                # Neo4j Implementations
+│       └── knowledge.graph.repo.ts
+│
+├── routes/                   # API ROUTING
+│
+├── services/                 # BUSINESS LOGIC LAYER
+│   # Orchestrates data between MongoRepo, GraphRepo and External APIs.
+│   ├── auth.service.ts
+│   ├── learning.service.ts   # Uses both Mongo (Lessons) & Neo4j (Context)
 │   └── ...
 │
-├── models/               # DATA LAYER (Schemas)
-├── routes/               # API ROUTING
+├── jobs/                     # BACKGROUND WORKERS (BullMQ)
+│   ├── queues/               # Queue Definitions
+│   │   └── email.queue.ts
+│   └── workers/              # Job Processors
+│       └── email.worker.ts
 │
-├── services/             # BUSINESS LOGIC LAYER (Core) ⭐️
-│   # Returns pure data. Throws errors. No req/res usage.
-│   ├── auth.service.ts
-│   ├── ai/
-│   └── storage/
+├── socket/                   # REALTIME LAYER
+│   ├── handlers/             # Event Handlers
+│   ├── middlewares/          # Socket Auth
+│   └── adapter.ts            # Redis Adapter Config (For Scaling)
 │
-├── jobs/                 # BACKGROUND JOBS (Queue/Cron) 🆕
-│   ├── email.queue.ts
-│   └── cleanup.cron.ts
+├── utils/                    # SHARED UTILITIES
+│   ├── logger.ts             # Winston (File + Console + Datadog transport)
+│   └── ...
 │
-├── socket/               # REALTIME HANDLERS
-├── utils/                # HELPERS
-│   ├── app-error.ts      # Error Class
-│   ├── catch-async.ts    # Wrapper
-│   └── send-response.ts  # Standard Response Wrapper 🆕
+├── validations/              # ZOD SCHEMAS
+├── tests/                    # TESTING
+│   ├── unit/
+│   ├── integration/
+│   └── factories/            # Test Data Factories
 │
-├── validations/          # ZOD SCHEMAS
-├── app.ts                # App Setup
-└── server.ts             # Entry Point
+├── app.ts                    # Express App Setup
+└── server.ts                 # Entry Point
 
 ```
 
@@ -64,117 +102,64 @@ src/
 
 ## 3. Architectural Patterns & Rules
 
-### A. The "Three-Layer" Rule
+### A. The "Polyglot Repository" Rule
 
-Data flow must strictly follow: `Route` -> `Controller` -> `Service` -> `Model`
+Since we use both MongoDB and Neo4j, strict separation is required:
 
-1. **Controller Layer:**
-* **Input:** `req` (Body, Query, Params).
-* **Action:** Call Service.
-* **Output:** `res` (Standardized JSON).
-* **Rule:** NEVER contain business logic (e.g., calculating scores, checking roles).
+1. **Service Layer:** The ONLY place that can talk to multiple repositories.
+* *Example:* `LearningService` fetches Lesson content from `MongoRepository` AND fetches related context nodes from `GraphRepository`.
 
 
-2. **Service Layer:**
-* **Input:** Typed Objects (DTOs inferred from Zod).
-* **Action:** Business Logic, Database Calls, 3rd Party APIs.
-* **Output:** Pure Data or Throw Error.
-* **Rule:** Framework agnostic (Doesn't know Express exists).
-
-
-3. **Data Layer (Models):**
-* **Action:** Database interactions only.
+2. **Repository Layer:**
+* **Mongo Repos:** Extends `BaseMongoRepository`. Only touches Mongoose.
+* **Neo4j Repos:** Extends `BaseNeo4jRepository`. Only touches Cypher queries.
 
 
 
-### B. Validation Strategy (Strict)
+### B. Validation & Security Strategy
 
-* **Zod** is the single source of truth for validation.
-* Every route MUST have a validator middleware.
-* **DTOs:** Use `z.infer<typeof Schema>` to type the Service inputs.
+1. **Zod:** Used for API Input validation AND Environment Variable validation.
+2. **Security First:** `Helmet`, `Cors`, and `Rate-limit` MUST be initialized in `app.ts` before any routes.
+3. **Strict Types:** No `any`. Use generics for Repository return types.
 
-### C. Response Standards (Envelope Pattern) 🆕
+### C. Realtime Scaling Rule
 
-**1. Error Response (Handled by `error.middleware`):**
-
-```json
-{
-  "status": "error",
-  "code": 400,
-  "message": "Invalid email format",
-  "stack": "..." (Dev only)
-}
-
-```
-
-**2. Success Response (Use `sendResponse` utility):**
-All successful APIs MUST return this consistent format:
-
-```json
-{
-  "status": "success",
-  "code": 200,
-  "message": "Login successfully",
-  "data": { ...object or array... },
-  "meta": { ...pagination info... } (Optional)
-}
-
-```
-
-### D. Hybrid Storage Strategy
-
-* **Images:** Cloudinary (via `upload.service.ts`).
-* **Media (Audio/Video):** Cloudflare R2 (via `upload.service.ts`).
+* **State:** Socket.io servers are stateless.
+* **Adapter:** MUST use `@socket.io/redis-adapter` to broadcast events across multiple server instances.
+* **Auth:** Socket connection MUST be authenticated via JWT in the handshake middleware.
 
 ---
 
 ## 4. Coding Standards
 
-### Naming Conventions
+### Logging (Winston)
 
-* **Files:** `kebab-case.ts` (e.g., `user.controller.ts`).
-* **Classes:** `PascalCase` (e.g., `UserService`).
-* **Functions/Vars:** `camelCase`.
+Logs must be structured (JSON) and transported correctly based on environment:
 
-### Performance & Security Rules
+* **Dev:** Console (Colorized).
+* **Prod:** File (Rotation) OR Monitoring Service (Datadog/Sentry).
+* **Rule:** `console.log` is FORBIDDEN. Use `Logger.info()`, `Logger.error()`.
 
-1. **Lean Queries:** Always use `.lean()` for GET requests.
-2. **Projections:** Always `.select()` fields explicitly.
-3. **Environment:** Secrets MUST be validated by `config/env.ts` at startup.
-4. **Logging:** Use `logger` (Winston/Pino). NO `console.log`.
+### Error Handling
 
-### Environment Variables
-```env
-MONGO_URI=mongodb+srv://...
-N8N_WEBHOOK_URL=https://... (For OTP Email)
-
-# AI Service Keys
-OPENAI_API_KEY=sk-...
-AZURE_SPEECH_KEY=...
-AZURE_SPEECH_REGION=eastus
-ELEVENLABS_API_KEY=...
-```
+* **Operational Errors:** Throw `AppError` (e.g., "User not found").
+* **Programmer Errors:** Let the Global Error Handler catch them (e.g., Crash).
+* **Async:** All Async Controller methods MUST be wrapped in `catchAsync()`.
 
 ---
 
-## 5. Workflow: Adding a New Feature
+## 5. Workflow: Adding a Contextual Lesson Feature
 
-Example: "Create a Lesson"
-
-1. **Step 1 (DTO/Validation):** Create `validations/lesson.validation.ts`.
-2. **Step 2 (Service):** Create `createLesson` in `services/lesson.service.ts`.
-* Define input type using `z.infer`.
-* Implement logic & DB calls.
+1. **Step 1 (Models):** Define `Lesson` in `models/mongo` and `ConceptNode` in `models/neo4j`.
+2. **Step 2 (Repos):**
+* Create `LessonMongoRepo` (CRUD content).
+* Create `ConceptGraphRepo` (Manage relationships).
 
 
-3. **Step 3 (Controller):** Create `createLesson` in `controllers/lesson.controller.ts`.
-* Call service.
-* Return using `sendResponse(res, 201, "Created", data)`.
+3. **Step 3 (Service):** Create `LessonService`. Inject both repos.
+* *Logic:* Save lesson to Mongo -> extract keywords -> create nodes in Neo4j -> link them.
 
 
-4. **Step 4 (Route):** Define POST route in `routes/v1/lesson.route.ts` + attach Zod middleware.
-5. **Step 5 (Docs):** Add the endpoint definition to `docs/swagger.json`. 🆕
+4. **Step 4 (Controller):** Validate input via Zod -> Call Service -> Return Response.
 
-*Last Updated: 2026-01-14*
-
-```
+*Last Updated: 2026-02-05*

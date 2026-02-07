@@ -2,14 +2,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Logo from '@/assets/images/Unilish.svg';
 import styles from "./AuthForm.module.css";
-import { Button } from '@/components/common/button';
-import { Loading } from '@/components/common/loading/Loading';
+import { Button } from '@/components/core/Button';
+import { Loading } from '@/components/common/Loading/Loading';
 import { useRegister } from '../../hooks/useRegister';
 import { RegisterPayload, RegisterSchema } from '../../types';
 import { Link } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
 import GoogleLogo from '@/assets/images/auth/google.svg';
-import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 import { useCallback } from 'react';
 
 const RegisterForm = () => {
@@ -18,13 +17,14 @@ const RegisterForm = () => {
     });
 
     const { mutate: doRegister, isPending: isRegisterPending } = useRegister();
-    const { signInWithGoogle, isSyncing } = useGoogleAuth();
 
     const onSubmit = useCallback((data: RegisterPayload) => {
         doRegister(data);
     }, [doRegister]);
 
-    const isPending = isRegisterPending || isSyncing;
+    const signInWithGoogle = () => {
+        window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5432/api'}/auth/google`;
+    };
 
     return (
         <div className={styles.content}>
@@ -39,9 +39,9 @@ const RegisterForm = () => {
                 size="full"
                 leftIcon={GoogleLogo}
                 onClick={signInWithGoogle}
-                disabled={isPending}
+                disabled={isRegisterPending}
             >
-                {isSyncing ? <Loading variant="inline" size="sm" /> : 'Tiếp tục với Google'}
+                Tiếp tục với Google
             </Button>
             <div className={styles.or}>
                 <div className={styles.line}></div>
@@ -57,7 +57,7 @@ const RegisterForm = () => {
                         id="fullName"
                         placeholder='Nhập họ và tên của bạn'
                         {...register('fullName')}
-                        disabled={isPending}
+                        disabled={isRegisterPending}
                     />
                     {errors.fullName && <span className={styles.error}>{errors.fullName.message}</span>}
                 </div>
@@ -69,7 +69,7 @@ const RegisterForm = () => {
                         id="email"
                         placeholder='Nhập email của bạn'
                         {...register('email')}
-                        disabled={isPending}
+                        disabled={isRegisterPending}
                     />
                     {errors.email && <span className={styles.error}>{errors.email.message}</span>}
                 </div>
@@ -80,7 +80,7 @@ const RegisterForm = () => {
                         id="password"
                         placeholder='Nhập mật khẩu của bạn'
                         {...register('password')}
-                        disabled={isPending}
+                        disabled={isRegisterPending}
                     />
                     {errors.password && <span className={styles.error}>{errors.password.message}</span>}
                 </div>
@@ -88,7 +88,7 @@ const RegisterForm = () => {
                     type="submit"
                     variant="primary"
                     size="full"
-                    disabled={isPending}
+                    disabled={isRegisterPending}
                 >
                     {isRegisterPending ? <Loading variant="inline" size="sm" /> : 'Đăng ký'}
                 </Button>
