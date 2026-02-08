@@ -253,16 +253,21 @@ export class AuthService {
 
         // Sync to Neo4j
         try {
-            await this.graphRepo.syncUser({
-                userId: (user._id as unknown) as string,
-                email: user.email,
-                fullName: user.fullName,
-                role: user.role,
-                currentLevel: user.currentLevel,
-                createdAt: new Date().toISOString(),
-                lastActiveAt: new Date().toISOString(),
-                // gender is optional, check if existing user has it
-            });
+            const userIdString = user._id ? user._id.toString() : '';
+            if (userIdString) {
+                await this.graphRepo.syncUser({
+                    userId: userIdString,
+                    email: user.email,
+                    fullName: user.fullName,
+                    role: user.role,
+                    currentLevel: user.currentLevel,
+                    createdAt: new Date().toISOString(),
+                    lastActiveAt: new Date().toISOString(),
+                });
+                logger.info(`Successfully synced Google user to Neo4j: ${email} (${userIdString})`);
+            } else {
+                logger.error(`Failed to sync Google user: User ID is missing for email ${email}`);
+            }
         } catch (error) {
             logger.error(`Failed to sync Google user to Neo4j: ${email}`, error);
         }

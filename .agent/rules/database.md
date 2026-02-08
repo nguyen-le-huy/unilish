@@ -26,9 +26,9 @@ UniLish adopts a **Polyglot Persistence** architecture. Instead of forcing all d
 <br>• **Point-in-time Recovery:** Allows restoring data to a specific second (critical for disaster recovery).<br>
 
 <br>• **Stores:** User Profiles, Course Content, Progress Logs. |
-| **Knowledge Graph** | **Neo4j** | **AuraDB (Managed)** | **Relationship Engine.**<br>
+| **Knowledge Graph** | **Neo4j** | **Self-hosted (Docker)** | **Relationship Engine.**<br>
 
-<br>• **Managed HA:** Ensures High Availability without manual clustering.<br>
+<br>• **Local/Self-hosted:** Runs via Docker for full control and zero cost during dev.<br>
 
 <br>• **Stores:** Complex relationships between Skills, Vocabulary, and Grammar points.<br>
 

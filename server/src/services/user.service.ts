@@ -97,11 +97,14 @@ export class UserService {
 
         // Sync to Neo4j
         try {
-            // @ts-ignore
+            const userIdStr = user._id ? user._id.toString() : userId;
+            logger.info(`Syncing role update to Neo4j for user ${userIdStr} with role ${role}`);
+
             await this.graphRepo.syncUser({
-                userId: user._id.toString(),
+                userId: userIdStr,
                 role: user.role
             });
+            logger.info(`Successfully synced role to Neo4j for user ${userIdStr}`);
         } catch (error) {
             logger.error(`[Neo4j] Failed to sync role update for ${userId}`, error);
         }

@@ -1,67 +1,61 @@
-
+import dotenv from 'dotenv';
+import path from 'path';
 import mongoose from 'mongoose';
-import { connectDB } from '../config/database.mongo.js';
-import driver from '../config/database.neo4j.js';
-import { User, EUserRole } from '../models/mongo/user.model.js';
+import neo4j from 'neo4j-driver';
+import { User } from '../models/mongo/user.model.js';
 import { logger } from '../utils/logger.js';
 
-const cleanNonAdminUsers = async () => {
+// Load env
+dotenv.config({ path: path.join(process.cwd(), '.env') });
+
+const cleanAllUsers = async () => {
+    let mongoConnected = false;
+    let neo4jDriver;
+
     try {
-        // 1. Connect to MongoDB
-        await connectDB();
+        console.log('🚀 Starting clean up script...');
 
-        // 2. Connect to Neo4j
-        await driver.verifyConnectivity();
-        logger.info('Neo4j Connected');
+        // 1. Connect MongoDB
+        if (!process.env.MONGO_URI) throw new Error('MONGO_URI is missing');
+        await mongoose.connect(process.env.MONGO_URI);
+        mongoConnected = true;
+        console.log('✅ Connected to MongoDB');
 
-        // 3. Find non-admin users
-        logger.info('Finding non-admin users...');
-        const allUsers = await User.find({}).select('_id email role');
-        logger.info(`Total users in DB: ${allUsers.length}`);
+        // 2. Connect Neo4j
+        const neo4jUri = process.env.NEO4J_URI || 'neo4j://localhost:7687';
+        const neo4jUser = process.env.NEO4J_USER || 'neo4j';
+        const neo4jPassword = process.env.NEO4J_PASSWORD || 'password';
 
-        const usersToDelete = allUsers.filter(u => u.role !== EUserRole.ADMIN);
+        neo4jDriver = neo4j.driver(
+            neo4jUri,
+            neo4j.auth.basic(neo4jUser, neo4jPassword)
+        );
+        await neo4jDriver.verifyConnectivity();
+        console.log('✅ Connected to Neo4j');
 
-        const count = usersToDelete.length;
-        if (count === 0) {
-            logger.info('No non-admin users found.');
-            process.exit(0);
-        }
+        // 3. Delete ALL Users in MongoDB
+        const mongoResult = await User.deleteMany({});
+        console.log(`🗑️  Deleted ${mongoResult.deletedCount} users from MongoDB`);
 
-        const userIds = usersToDelete.map(u => u._id.toString());
-        logger.info(`Found ${count} users to delete.`);
-
-        // 4. Delete from MongoDB
-        const mongoResult = await User.deleteMany({ _id: { $in: userIds } });
-        logger.info(`[MongoDB] Deleted ${mongoResult.deletedCount} users.`);
-
-        // 5. Delete from Neo4j
-        const session = driver.session();
+        // 4. Delete ALL User nodes in Neo4j
+        const session = neo4jDriver.session();
         try {
-            const neo4jResult = await session.run(
-                `
-                MATCH (u:User)
-                WHERE u.userId IN $userIds
-                DETACH DELETE u
-                RETURN count(u) as deletedCount
-                `,
-                { userIds }
-            );
-            const record = neo4jResult.records[0];
-            const deletedNodes = record ? record.get('deletedCount').toNumber() : 0;
-            logger.info(`[Neo4j] Deleted ${deletedNodes} user nodes.`);
+            const neo4jResult = await session.run('MATCH (u:User) DETACH DELETE u');
+            const nodesDeleted = neo4jResult.summary.counters.updates().nodesDeleted;
+            console.log(`🗑️  Deleted ${nodesDeleted} User nodes from Neo4j`);
         } finally {
             await session.close();
         }
 
-        logger.info('Cleanup complete.');
+        console.log('✨ Clean up completed successfully!');
+
     } catch (error) {
-        logger.error('Error cleaning users:', error);
-        process.exit(1);
+        console.error('❌ Error cleaning users:', error);
     } finally {
-        await mongoose.disconnect();
-        await driver.close();
+        if (mongoConnected) await mongoose.connection.close();
+        if (neo4jDriver) await neo4jDriver.close();
         process.exit(0);
     }
 };
 
-cleanNonAdminUsers();
+cleanAllUsers();
