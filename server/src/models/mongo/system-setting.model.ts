@@ -3,7 +3,10 @@ import mongoose from 'mongoose';
 export interface ISystemSetting extends mongoose.Document {
     key: string;
     value: any;
+    draftValue?: any;
     description?: string;
+    lastPublishedAt?: Date;
+    publishedBy?: mongoose.Types.ObjectId;
     updatedAt: Date;
 }
 
@@ -17,12 +20,23 @@ const SystemSettingSchema = new mongoose.Schema<ISystemSetting>(
             trim: true
         },
         value: {
-            type: mongoose.Schema.Types.Mixed, // Allows flexible structure
+            type: mongoose.Schema.Types.Mixed, // Live Config
             required: true
+        },
+        draftValue: {
+            type: mongoose.Schema.Types.Mixed, // Working Draft
+            default: null
         },
         description: {
             type: String,
             trim: true
+        },
+        lastPublishedAt: {
+            type: Date
+        },
+        publishedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
         }
     },
     {

@@ -10,14 +10,12 @@ import type {
 } from '../validations/auth.validation.js';
 import type { IUserRepository } from '../interfaces/repositories/user.repository.interface.js';
 import { UserMongoRepository } from '../repositories/mongo/user.mongo.repository.js';
-import { UserGraphRepository } from '../repositories/neo4j/user.graph.repository.js';
 import type { IUser } from '../models/mongo/user.model.js';
 import { EUserRole, EAuthProvider, ELevel } from '../models/mongo/user.model.js';
 
 export class AuthService {
     constructor(
-        private readonly userRepo: IUserRepository,
-        private readonly graphRepo: UserGraphRepository
+        private readonly userRepo: IUserRepository
     ) { }
 
     async register(input: RegisterInput) {
@@ -49,25 +47,6 @@ export class AuthService {
             currentLevel: ELevel.A1,
             lastActiveAt: new Date(),
         } as Partial<IUser>);
-
-        // Sync to Neo4j (Best practice: wrap in try/catch to not block registration if graph fails, or use queue)
-        // For now, we will log error but allow registration to succeed
-        try {
-            if (newUser && newUser._id) {
-                await this.graphRepo.syncUser({
-                    userId: newUser._id.toString(),
-                    email: newUser.email,
-                    fullName: newUser.fullName,
-                    role: newUser.role,
-                    currentLevel: newUser.currentLevel,
-                    createdAt: new Date().toISOString(),
-                    lastActiveAt: new Date().toISOString()
-                });
-            }
-        } catch (error) {
-            logger.error(`Failed to sync user to Neo4j during register: ${email}`, error);
-            // Optional: revert mongo creation or push to retry queue
-        }
 
         // Send Email with OTP (Async to not block response)
         EmailService.sendOTP(email, otp, fullName).catch(err => logger.error('Error sending OTP:', err));
@@ -251,27 +230,6 @@ export class AuthService {
             throw new AppError('Failed to process Google login', 500);
         }
 
-        // Sync to Neo4j
-        try {
-            const userIdString = user._id ? user._id.toString() : '';
-            if (userIdString) {
-                await this.graphRepo.syncUser({
-                    userId: userIdString,
-                    email: user.email,
-                    fullName: user.fullName,
-                    role: user.role,
-                    currentLevel: user.currentLevel,
-                    createdAt: new Date().toISOString(),
-                    lastActiveAt: new Date().toISOString(),
-                });
-                logger.info(`Successfully synced Google user to Neo4j: ${email} (${userIdString})`);
-            } else {
-                logger.error(`Failed to sync Google user: User ID is missing for email ${email}`);
-            }
-        } catch (error) {
-            logger.error(`Failed to sync Google user to Neo4j: ${email}`, error);
-        }
-
         // Generate JWT token
         // @ts-ignore
         const token = this.signToken(user._id as string, user.role);
@@ -293,4 +251,4 @@ export class AuthService {
     }
 }
 
-export const authService = new AuthService(new UserMongoRepository(), new UserGraphRepository());
+export const authService = new AuthService(new UserMongoRepository());

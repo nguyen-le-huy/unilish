@@ -1,30 +1,16 @@
 import { useMutation } from '@tanstack/react-query';
-import apiClient from '@/lib/axios';
-import { useAuthStore } from '@/stores/auth-store';
 import { useNavigate } from 'react-router-dom';
 import { notify } from '@/lib/notification';
-import type { LoginFormData } from '../types/auth.schema';
-import type { User } from '@/types/auth';
+import { useAuthStore } from '../store/auth.store';
+import { loginApi } from '../api/auth.api';
 
-interface AuthApiResponse {
-    status: string;
-    code: number;
-    message: string;
-    data: {
-        user: User;
-        token: string;
-    };
-}
 
 export const useLogin = () => {
     const navigate = useNavigate();
     const setAuth = useAuthStore((state) => state.setAuth);
 
     return useMutation({
-        mutationFn: async (data: LoginFormData): Promise<AuthApiResponse> => {
-            const response = await apiClient.post<AuthApiResponse>('/auth/login', data);
-            return response.data;
-        },
+        mutationFn: loginApi,
         onSuccess: (response) => {
             const { user, token } = response.data;
 

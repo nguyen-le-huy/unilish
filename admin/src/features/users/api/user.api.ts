@@ -1,5 +1,5 @@
 import apiClient from '@/lib/axios';
-import type { UserResponse, UserFilter, UpdateSubscriptionPayload, UpdateRolePayload, UserStatsOverview, User } from '../types';
+import type { UserResponse, UserFilter, UpdateSubscriptionPayload, UpdateRolePayload, UserStatsOverview, User } from '../types/users.types';
 
 interface ApiResponse<T> {
     status: string;

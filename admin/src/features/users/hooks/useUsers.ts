@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '../api/user.api';
-import type { UserFilter, UpdateSubscriptionPayload, UpdateRolePayload } from '../types';
+import type { UserFilter, UpdateSubscriptionPayload, UpdateRolePayload } from '../types/users.types';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 

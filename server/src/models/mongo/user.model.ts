@@ -122,11 +122,6 @@ export interface IUser extends mongoose.Document {
         dailyGoalMinutes: number; // Mục tiêu học 15p/ngày
     };
 
-
-
-    // Cờ kiểm soát đồng bộ Neo4j (Quan trọng cho Enterprise)
-    isSyncedToGraph: boolean;
-
     createdAt: Date;
     updatedAt: Date;
 }
@@ -243,10 +238,7 @@ const UserSchema = new mongoose.Schema<IUser>(
         settings: {
             notification: { type: Boolean, default: true },
             dailyGoalMinutes: { type: Number, default: 15 } // Mục tiêu học 15p/ngày
-        },
-
-        // Cờ kiểm soát đồng bộ Neo4j (Quan trọng cho Enterprise)
-        isSyncedToGraph: { type: Boolean, default: false }
+        }
     },
     {
         timestamps: true,

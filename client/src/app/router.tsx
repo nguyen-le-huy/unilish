@@ -5,11 +5,11 @@ import { Loading } from '@/components/common/Loading/Loading';
 import { ProtectedRoute } from '@/app/ProtectedRoute';
 
 // Lazy load pages
-const LoginPage = React.lazy(() => import('@/pages/auth/Login'));
-const RegisterPage = React.lazy(() => import('@/pages/auth/Register'));
+const LoginPage = React.lazy(() => import('@/features/auth/pages/LoginPage/LoginPage'));
+const RegisterPage = React.lazy(() => import('@/features/auth/pages/RegisterPage/RegisterPage'));
 const HomePage = React.lazy(() => import('@/pages/dashboard/home/Home'));
-const OTPPage = React.lazy(() => import('@/pages/auth/OTP'));
-const AuthSuccessPage = React.lazy(() => import('@/pages/auth/AuthSuccess'));
+const OTPPage = React.lazy(() => import('@/features/auth/pages/OTPVerifyPage/OTPVerifyPage'));
+const AuthSuccessPage = React.lazy(() => import('@/features/auth/pages/AuthSuccessPage/AuthSuccessPage'));
 
 export const router = createBrowserRouter([
     {

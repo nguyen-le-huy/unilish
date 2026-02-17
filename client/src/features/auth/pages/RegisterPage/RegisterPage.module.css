@@ -1,0 +1,12 @@
+.container {
+    display: grid;
+    height: 100vh;
+    width: 100vw;
+    grid-template-columns: 1fr 1fr;
+}
+
+.left {
+    padding: 10px;
+    display: grid;
+    place-items: center;
+}

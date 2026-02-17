@@ -3,14 +3,14 @@ import app from './app.js';
 import { env } from './config/env.js';
 import { connectDB } from './config/database.mongo.js';
 import redisClient, { connectRedis } from './config/redis.js';
-import neo4jDriver, { connectNeo4j } from './config/database.neo4j.js';
+import { connectPinecone, disconnectPinecone } from './config/database.pinecone.js';
 import { logger } from './utils/logger.js';
 
 const startServer = async () => {
     // Connect to Databases
     await connectDB();
     await connectRedis();
-    await connectNeo4j();
+    await connectPinecone();
 
     const PORT = env.PORT;
 
@@ -42,8 +42,8 @@ const startServer = async () => {
                     logger.info('Redis connection closed.');
                 }
 
-                await neo4jDriver.close();
-                logger.info('Neo4j connection closed.');
+                await disconnectPinecone();
+                logger.info('Pinecone connection closed.');
 
                 process.exit(0);
             } catch (err) {

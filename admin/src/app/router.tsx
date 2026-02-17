@@ -5,11 +5,13 @@ import { AuthGuard } from "@/components/common/AuthGuard";
 import { PlaceholderPage } from "@/components/common/PlaceholderPage";
 
 // Lazy load pages for code splitting
-const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
-const DashboardHome = lazy(() => import("@/pages/dashboard/DashboardHome"));
-const SettingsPage = lazy(() => import("@/pages/system/SettingsPage"));
-const UsersPage = lazy(() => import("@/pages/users/UsersPage"));
+const LoginPage = lazy(() => import("@/features/auth/pages/LoginPage/LoginPage"));
+const DashboardHome = lazy(() => import("@/features/dashboard/pages/DashboardHome/DashboardHome"));
+const SettingsPage = lazy(() => import("@/features/system/pages/SettingsPage/SettingsPage"));
+const UsersPage = lazy(() => import("@/features/users/pages/UsersPage/UsersPage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
+const SubscriptionPage = lazy(() => import("@/features/subscription/pages/SubscriptionPage/SubscriptionPage"));
+const CouponPage = lazy(() => import("@/features/coupon/pages/CouponPage/CouponPage"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -64,7 +66,22 @@ export const router = createBrowserRouter([
                     </Suspense>
                 ),
             },
-            { path: "plans", element: <PlaceholderPage title="Gói cước" /> },
+            {
+                path: "plans",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <SubscriptionPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "coupons",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <CouponPage />
+                    </Suspense>
+                ),
+            },
             { path: "transactions", element: <PlaceholderPage title="Giao dịch" /> },
             { path: "ai-config", element: <PlaceholderPage title="AI & Prompts" /> },
             { path: "media", element: <PlaceholderPage title="Media / Files" /> },
@@ -89,4 +106,3 @@ export const router = createBrowserRouter([
         ),
     },
 ]);
-

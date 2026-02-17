@@ -1,104 +1,194 @@
-# UniLish - Adaptive & Hyper-Personalized Learning Platform
+# UNILISH - AI-Powered Adaptive Language Learning Platform
 
-## Executive Summary
+## 1. Vision and Core Values
 
-UniLish is not merely a language learning application; it is a comprehensive **Adaptive Learning Ecosystem** designed to solve the "one-size-fits-all" problem in education. By leveraging Advanced AI and Knowledge Graphs, UniLish constructs a hyper-personalized learning pathway that adapts in real-time to the user's proficiency, professional background, and learning behaviors.
+UniLish is an **AI-Powered Adaptive Learning Ecosystem** that solves the "one-size-fits-all" problem in language education. The platform combines AI, Vector Embeddings, and Spaced Repetition to build personalized learning paths tailored to individual goals (Business, Academic, Travel) and actual proficiency levels.
 
-The platform interconnects six core linguistic skills—Vocabulary, Reading, Grammar, Listening, Speaking, and Writing—into a seamless, context-aware flow, ensuring that learners acquire pragmatic competence suitable for Business, Academic, or Travel contexts.
-
----
-
-## Core Architecture: The Adaptive Engine
-
-The differentiator of UniLish is its proprietary Adaptive Engine, which orchestrates the learning experience based on real-time data analysis.
-
-### Dynamic Roadmaps via Knowledge Graphs
-
-Unlike linear curriculums, UniLish utilizes **Neo4j** to model English knowledge as a graph. The system continuously evaluates learner performance. If a deficiency is detected (e.g., "Past Tense Construction"), the engine dynamically reroutes the curriculum, prioritizing remedial exercises before advancing to new concepts.
-
-### Contextual Intelligence
-
-The AI analyzes the user's profile (e.g., profession, interests) to tailor content. A software engineer receives learning materials derived from technology news, while a tourism professional interacts with cultural dialogue scenarios, ensuring maximum relevance and engagement.
+**Core Value:** The system detects learner knowledge gaps and automatically restructures the learning path to fill these gaps, ensuring that all 6 skills (Vocabulary, Reading, Grammar, Listening, Speaking, Writing) develop synchronously and cohesively.
 
 ---
 
-## Key Functional Modules
+## 2. Core Technology: AI Adaptive Engine
 
-### 1. Personalized Experience & Roadmap
+### Dynamic Learning Path
 
-* **Adaptive Learning Roadmap:** Utilizes Knowledge Graphs to track progress at a granular level (specific vocabulary words or grammatical structures). It employs Spaced Repetition algorithms to identify and address knowledge gaps precisely when needed.
-* **Placement Test 2.0:** A comprehensive competency assessment combining standard TOEIC inputs (Listening/Reading) with an AI Interview (Speaking/Writing) to generate an accurate initial proficiency profile.
+Instead of fixed lesson lists, UniLish uses **MongoDB + Pinecone Vector Database** to build a Knowledge Map. When AI detects weaknesses in "Past Tense" skills, the system automatically prioritizes related review lessons at the top of the roadmap, deferring new content until the foundation is solid.
 
-### 2. Smart Content & Interaction
+**Mechanism:**
 
-* **Dynamic Content Automation:** Powered by **n8n** and **GPT-5.2**, this module automatically converts real-time news (CNN, BBC) into interactive lessons matched to the user's current level.
-* **Real-time AI Speaking Coach:** A 1:1 virtual coaching environment utilizing **OpenAI Realtime API** with sub-500ms latency. It provides immediate feedback on Pragmatic Competence, Prosody, and Fluency using **Azure AI Speech**, maintaining a history of errors for targeted improvement.
+- **Real-time Assessment:** Each quiz/exercise is analyzed by AI to detect weak concepts
+- **Automated Remediation:** System creates a Remedial Queue with priority scoring
+- **Adaptive Pacing:** Learning speed automatically adjusts based on individual mastery level
 
-### 3. Engagement Ecosystem
+### Contextual Personalization
 
-* **YouTube Gap Fill Challenge:** Generates personalized listening exercises from YouTube video transcripts based on user interests.
-* **Live Connect P2P:** An intelligent matching algorithm pairs users with similar proficiency levels for real-time peer-to-peer communication practice.
-* **Competitive Exams:** Periodic standardized testing with real-time leaderboards to foster healthy competition.
+AI analyzes learner profiles (occupation, interests, goals) to recommend contextually relevant content. **Real-world examples:**
 
-### 4. Utilities & Assistance
-
-* **Uni-Assistant (RAG Chatbot):** A 24/7 learning aide that understands the specific context of the user's current lesson. It supports data export (Vocabulary/Sentences) to Excel/CSV formats.
+- **Software Engineer:** Learn vocabulary through tech news (TechCrunch, Wired), Agile/DevOps case studies
+- **Tour Guide:** Learn through real conversations at airports, hotels, restaurants
+- **Business Professional:** Learn through email templates, meeting scripts, negotiation scenarios
 
 ---
 
-## Technical Architecture
+## 3. Key Features
 
-The system is architected for high concurrency, data integrity, and low-latency AI processing.
+### A. Personalized Learning Experience
 
-### AI & Data Layer
+**Placement Test 2.0 - Comprehensive Proficiency Analysis**
 
-| Component | Technology | Role |
+Combines two complementary assessment methods:
+
+1. **TOEIC-Standard Test (Input Skills):** Measures Listening + Reading according to international standards
+2. **AI Interview (Output Skills):** OpenAI Realtime API evaluates Speaking + Writing through real conversations with <500ms latency
+
+**Output:** 4D proficiency profile (Listening/Reading/Speaking/Writing) + Recommended starting level + Priority weak areas
+
+**Adaptive Learning Roadmap**
+
+- **Knowledge Gap Detection:** AI automatically identifies gaps after each Unit Quiz, mapping each incorrect answer to specific lessons
+- **Spaced Repetition Engine:** Schedules optimal review based on Ebbinghaus forgetting curve
+- **Progress Visualization:** Real-time dashboard displays mastered concepts vs weak areas with heatmap
+
+---
+
+### B. Smart Content and Interaction
+
+**Learn with News - Living, Continuously Updated Content**
+
+n8n workflow automation:
+
+1. **Scrape:** Collect news from CNN, BBC, Reuters every 4 hours
+2. **Filter:** AI selects articles appropriate for each CEFR level (A1-C2)
+3. **Transform:** GPT-4 converts into interactive lessons (vocab highlights, comprehension quiz, discussion prompts)
+4. **Personalize:** Recommends articles based on user interests (tech, sports, culture)
+
+**Benefit:** Learn language through real-world current events, increasing engagement by 40% compared to traditional textbooks.
+
+**Real-time AI Speaking Coach**
+
+1:1 virtual assistant with capabilities:
+
+- **Context Memory:** Remembers each user's pronunciation and grammar error history
+- **Adaptive Correction:** Prioritizes most important errors (pronunciation > grammar > vocabulary)
+- **Azure AI Speech Integration:** Scores pronunciation at phoneme level, evaluates prosody (intonation, stress)
+- **Scenario-based Practice:** Simulates real-world situations (job interview, restaurant ordering, doctor appointment)
+
+---
+
+### C. Gamification and Community
+
+**YouTube Gap-Fill Challenge**
+
+Personalized listening exercises based on user's favorite YouTube videos:
+
+1. User selects topic (gaming, cooking, tech reviews)
+2. AI auto-generates transcript with blanks on vocabulary/grammar focus points
+3. Adaptive difficulty: Blank rate gradually increases with progress (10% to 30%)
+
+**Live Connect P2P - Smart Learning Partner Matching**
+
+Matching algorithm based on:
+
+- Similar CEFR level (±1 level)
+- Shared interests (3+ overlapping topics)
+- Complementary weak areas (A weak in Speaking, B weak in Listening = matched for conversation practice)
+
+**Competitive Exams - Periodic Ranking Competitions**
+
+Weekly challenges with real-time leaderboard, awarding badges/certificates to top performers to stimulate healthy competitive motivation.
+
+---
+
+### D. Intelligent Utilities
+
+**Uni-Assistant - RAG Chatbot**
+
+24/7 learning assistant with capabilities:
+
+- **Contextual Q&A:** Answers questions based on user's current lesson (powered by Pinecone vector search)
+- **Data Export:** Export learned vocabulary, saved sentences to Excel/CSV/Anki deck
+- **Learning Tips:** Provides personalized study method recommendations based on learning style
+
+---
+
+## 4. Technical Architecture
+
+### Core Technology Stack
+
+| Layer | Technology | Purpose |
 | --- | --- | --- |
-| **Logic & Text Processing** | GPT-5.2 | Writing assessment, complex roleplay generation, deep grammar analysis. |
-| **Voice AI (Conversational)** | OpenAI Realtime Mini API | End-to-end speech handling (Speech-to-Speech) with ultra-low latency (<500ms). |
-| **Pronunciation Assessment** | Azure AI Speech | Detailed scoring of Fluency, Prosody, and word-level accuracy. |
-| **Database (Hybrid)** | MongoDB + Neo4j | MongoDB stores content/metadata; Neo4j manages knowledge relationships and learning paths. |
-| **Workflow Automation** | n8n | Orchestration of content ingestion and background processes. |
+| **AI Engine** | OpenAI GPT-4, Realtime API | Speaking evaluation, content generation |
+| **Speech AI** | Azure AI Speech | Pronunciation scoring, prosody analysis |
+| **Vector Database** | Pinecone Serverless | Semantic search, knowledge mapping |
+| **Primary Database** | MongoDB Atlas | User data, course content, progress tracking |
+| **Cache & Queue** | Redis | Session storage, background jobs |
+| **Automation** | n8n Workflow | Content pipeline, scheduled tasks |
+| **Analytics** | Custom + Mixpanel | Learning analytics, user behavior |
 
-### Application Layer
+**Architecture Highlights:**
 
-| Layer | Technology |
-| --- | --- |
-| **Backend** | Node.js 20, Express, TypeScript |
-| **Frontend (Client)** | React 18 (Vite), CSS Modules (Custom Architecture) |
-| **Frontend (Admin)** | React 18 (Vite), Tailwind CSS, Shadcn/UI |
-| **Realtime** | Socket.io, PeerJS |
+- **Polyglot Persistence:** MongoDB (operational data) + Pinecone (semantic search) + Redis (cache)
+- **Event-driven:** Real-time progress updates
+- **Microservices:** Independent services (Assessment, Recommendation, Content Generation) for scalability
 
 ---
 
-## Operational Intelligence & Growth
+## 5. Intelligent Operations System
 
-UniLish integrates automated operations modules to ensure scalability, cost-efficiency, and user retention.
+### Resource Intelligence and Monitoring
 
-### Resource Intelligence & Monitoring
+**Real-time Cost Tracking:**
 
-* **Real-time Cost Optimization:** Monitors API token usage (OpenAI, Azure, ElevenLabs) in real-time to optimize operational costs.
-* **Automated Alerting:** A specialized bot triggers immediate alerts via Telegram upon detecting traffic anomalies or resource thresholds, enabling proactive incident response.
+- Dashboard monitors token usage of OpenAI, Azure, ElevenLabs in real-time
+- Predictive alerts when consumption exceeds 80% quota
+
+**Telegram Alert Bot:**
+
+Automated notifications:
+
+- API quota warning (10% remaining)
+- Service downtime (>2 minutes)
+- Unusual traffic spike (>200% baseline)
 
 ### Automated Retention Engine
 
-* **Smart Re-engagement:** Cron jobs analyze user activity patterns. If a user is inactive for 24 hours, the system triggers personalized reminder emails.
-* **Weekly Insights:** Automatically generates and dispatches comprehensive weekly performance reports (Time spent, Vocabulary Gain, Articles read) to visualize progress and sustain motivation.
+**Smart Re-engagement:**
 
-### AI-Driven Community Safety
+| Trigger | Action | Personalization |
+| --- | --- | --- |
+| **24h inactive** | Email reminder "Continue your lesson" | Include next recommended unit + progress % |
+| **3 days absent** | Push notification with bonus XP incentive | Mention specific weak area to work on |
+| **7 days churned** | AI-generated personalized video message | Show peer progress comparison |
 
-* **Content Moderation Pipeline:** All user-generated content on the Social Hub/News Feed undergoes automated AI screening.
-* **Compliance:** Instant detection and blocking of toxic content, spam, or off-topic material to maintain a professional learning environment.
+**Weekly Progress Report:**
+
+Auto-generated email every Sunday 18:00 with:
+
+- Total study time (compared to previous week)
+- New vocabulary mastered (with example sentences)
+- Skills improvement heatmap (4 skills x before/after)
+- Achievements unlocked (badges, streaks)
+
+### AI Content Moderation
+
+**Social Hub Safety:**
+
+- **Pre-publish Scan:** Each post goes through OpenAI Moderation API before publication
+- **Auto-block:** Toxic content (hate speech, spam) rejected immediately
+- **Human Review Queue:** Borderline cases escalated to moderators
+- **Appeal System:** Users can appeal with AI explanation of block reason
 
 ---
 
-## Installation & Deployment
+## Installation and Deployment
 
 ### Prerequisites
 
 * Node.js 20+
-* Docker & Docker Compose
-* MongoDB Atlas & Neo4j Database
+* Docker and Docker Compose
+* MongoDB Atlas account
+* Pinecone account
+* OpenAI API key
 
 ### Setup Instructions
 
@@ -106,33 +196,65 @@ UniLish integrates automated operations modules to ensure scalability, cost-effi
 ```bash
 git clone https://github.com/nguyen-le-huy/unilish.git
 cd unilish
-
 ```
-
 
 2. **Environment Configuration**
-Copy the example configuration files and populate the required API keys (OpenAI, Azure, Database URIs).
+
+Copy example configuration files and populate required API keys:
+
 ```bash
-cp .env.example .env
 cp server/.env.example server/.env
 cp client/.env.example client/.env
-
+cp admin/.env.example admin/.env
 ```
 
+Required environment variables:
+- `MONGO_URI` - MongoDB Atlas connection string
+- `PINECONE_API_KEY` - Pinecone API key
+- `PINECONE_ENVIRONMENT` - Pinecone environment (e.g., us-east1-gcp)
+- `PINECONE_INDEX_NAME` - Pinecone index name (default: unilish-knowledge)
+- `OPENAI_API_KEY` - OpenAI API key
+- `REDIS_URI` - Redis connection string (optional for local development)
 
 3. **Deployment via Docker**
+
+Development mode (with hot-reload):
 ```bash
 docker-compose up -d --build
-
 ```
 
-
+Production mode:
+```bash
+docker-compose -f docker-compose.prod.yml up -d --build
+```
 
 ### Access Points
 
 * **Client Application:** http://localhost:5173
 * **Admin Dashboard:** http://localhost:5174
-* **API Server:** http://localhost:5001
+* **API Server:** http://localhost:5432
+
+---
+
+## Database Setup
+
+### MongoDB Atlas
+
+1. Create a MongoDB Atlas account at https://www.mongodb.com/cloud/atlas
+2. Create a new cluster
+3. Configure network access (whitelist your IP)
+4. Create database user and obtain connection string
+5. Update `MONGO_URI` in `.env`
+
+### Pinecone Vector Database
+
+1. Sign up at https://app.pinecone.io/
+2. Create a new index:
+   - Name: `unilish-knowledge`
+   - Dimensions: `1536` (for OpenAI text-embedding-3-small)
+   - Metric: `cosine`
+3. Copy API key and environment
+4. Update `PINECONE_API_KEY` and `PINECONE_ENVIRONMENT` in `.env`
 
 ---
 

@@ -15,49 +15,34 @@ trigger: always_on
 
 ## 2. Technology Stack (Frontend)
 
-| Category | Client (User App) | Admin (CMS) |
+| **Thành phần** | **Công nghệ sử dụng** | **Vai trò & Lý do lựa chọn (Chuẩn Enterprise)** |
 | --- | --- | --- |
-| **Core Framework** | **React 18+ (Vite)**<br>
-
-<br>*(Build siêu tốc, HMR tức thì)* | **React 18+ (Vite)** |
-| **Language** | **TypeScript (Strict)**<br>
-
-<br>*(Bắt buộc để dễ maintain)* | **TypeScript (Strict)** |
-| **Styling** | **CSS Modules** (`*.module.css`)<br>
-
-<br>*(Scoped styles, tránh xung đột 100%)* | **Tailwind CSS + Shadcn/UI**<br>
-
-<br>*(Phát triển nhanh)* |
-| **State Management** | **TanStack Query** (Server State)<br>
-
-<br>**Zustand** (Global UI State) | **TanStack Query**<br>
-
-<br>**Zustand** |
-| **Form Handling** | **React Hook Form + Zod**<br>
-
-<br>*(Hiệu năng cao, validate chặt)* | **React Hook Form + Zod** |
-| **Animation** | **GSAP**<br>
-
-<br>*(Hiệu ứng phức tạp, mượt mà)* | CSS Transitions cơ bản |
-| **Realtime/Media** | **Socket.io** (Signaling)<br>
-
-<br>**LiveKit** (WebRTC Infrastructure) | Custom FileUploader |
-| **Testing** | **Vitest + React Testing Library**<br>
-
-<br>*(Bắt buộc cho Logic & Components)* | N/A |
+| **Core Framework** | **React.js (Vite)** | Chuẩn công nghiệp hiện tại. Vite giúp build cực nhanh, HMR (Hot Module Replacement) tức thì. |
+| **Ngôn ngữ** | **TypeScript** | **Bắt buộc.** Đảm bảo Type Safety, code dễ bảo trì (maintainable) khi team scale lên nhiều người. |
+| **Server State** | **TanStack Query (React Query)** | Quản lý Caching, Deduplication, Re-validation dữ liệu từ API. Giúp app nhanh như cắt, giảm tải gọi API thừa. |
+| **Client State** | **Zustand** | Chỉ dùng để lưu trạng thái UI toàn cục (Global UI State) như: Theme, Modal mở/đóng, Audio Player đang chạy bài nào. |
+| **Form Management** | **React Hook Form** | Xử lý form phức tạp với hiệu năng cao (uncontrolled components), giảm render lại không cần thiết. |
+| **Schema Validation** | **Zod** | Kết hợp với React Hook Form để validate dữ liệu chặt chẽ ngay từ phía Client. |
+| **Styling** | **CSS Modules** (Client)<br>**TailwindCSS** (Admin) | **CSS Modules:** Scoped styles (tự động hash tên class) giúp tránh xung đột class 100%. |
+| **Hiệu ứng** | **GSAP** | Dùng GSAP cho animation. |
+| **Realtime Client** | **Socket.io-client** | Chuẩn mực cho kết nối 2 chiều. |
+| **Video/Audio Call** | **LiveKit (hoặc PeerJS)** | *Lưu ý:* Enterprise thường chuộng **LiveKit** (Open source WebRTC infrastructure) hơn PeerJS vì độ ổn định cao hơn khi scale user. |
+| **Testing** | **Vitest + React Testing Library** | **Bắt buộc** với dự án lớn. Đảm bảo tính năng không bị lỗi khi refactor code. |
 
 ---
 
 ## 3. Directory Structure: CLIENT (`/client`)
 
-**Strategy:** Feature-Sliced Design (Lite) + CSS Modules + Testing.
+**Strategy:** Feature-First Design + CSS Modules + Testing.
+
+**Key Principle:** Each feature is self-contained and manages its own pages, components, logic, and state.
 
 ```text
 client/src/
 ├── app/                      # CORE CONFIG
 │   ├── App.tsx               # Root Component (MobileBlocker, RouterProvider)
 │   ├── ProtectedRoute.tsx    # Auth Guard Component
-│   ├── router.tsx            # Route definitions
+│   ├── router.tsx            # Route definitions (imports pages from features)
 │   ├── providers.tsx         # Wrappers (QueryClient, Clerk Auth, Toaster)
 │   └── main.tsx              # Entry point
 │
@@ -71,7 +56,7 @@ client/src/
 │       ├── _animations.css   # Global Keyframes
 │       └── global.css        # Main import file
 │
-├── components/               # SHARED DUMB COMPONENTS
+├── components/               # SHARED DUMB COMPONENTS ONLY
 │   ├── core/                 # CUSTOM DESIGN SYSTEM (CSS Modules)
 │   │   ├── Button/           # Isolated Component
 │   │   │   ├── Button.tsx
@@ -94,36 +79,84 @@ client/src/
 │   ├── env.ts                # Validate ENV (LiveKit URL, API URL)
 │   └── paths.ts
 │
-├── features/                 # BUSINESS MODULES
-│   ├── auth/
-│   ├── learning/
-│   │   ├── api/              # lessonService.ts
-│   │   ├── hooks/            # useLessonQuery.ts
-│   │   ├── components/
-│   │   │   ├── VideoPlayer/  # Logic LiveKit/Video
+├── features/                 # FEATURE MODULES (Self-Contained)
+│   │
+│   ├── auth/                 # Authentication Feature
+│   │   ├── pages/            # Auth Pages
+│   │   │   ├── LoginPage/
+│   │   │   │   ├── LoginPage.tsx
+│   │   │   │   └── LoginPage.module.css
+│   │   │   ├── RegisterPage/
+│   │   │   └── ForgotPasswordPage/
+│   │   ├── components/       # Auth-specific Components
+│   │   │   ├── LoginForm/
+│   │   │   └── SocialButtons/
+│   │   ├── api/              # authService.ts
+│   │   ├── hooks/            # useAuth.ts, useLogin.ts
+│   │   ├── types/            # IUser.ts, IAuthResponse.ts
+│   │   ├── store/            # auth.store.ts (Zustand - if needed)
+│   │   └── index.ts          # Public API (exports pages + components)
+│   │
+│   ├── learning/             # Learning Feature
+│   │   ├── pages/            # Learning Pages
+│   │   │   ├── LessonPage/
+│   │   │   │   ├── LessonPage.tsx
+│   │   │   │   └── LessonPage.module.css
+│   │   │   ├── LessonListPage/
+│   │   │   └── QuizPage/
+│   │   ├── components/       # Learning-specific Components
+│   │   │   ├── VideoPlayer/  # LiveKit Integration
 │   │   │   │   ├── VideoPlayer.tsx
 │   │   │   │   └── VideoPlayer.module.css
-│   │   ├── types/            # ILesson.ts
+│   │   │   ├── LessonCard/
+│   │   │   └── QuizWidget/
+│   │   ├── api/              # lessonService.ts
+│   │   ├── hooks/            # useLessonQuery.ts, useQuizSubmit.ts
+│   │   ├── types/            # ILesson.ts, IQuiz.ts
 │   │   └── index.ts          # Public API
-│   └── ...
+│   │
+│   ├── marketing/            # Marketing/Landing Feature
+│   │   ├── pages/
+│   │   │   ├── HomePage/
+│   │   │   │   ├── HomePage.tsx
+│   │   │   │   └── HomePage.module.css
+│   │   │   ├── AboutPage/
+│   │   │   └── PricingPage/
+│   │   ├── components/
+│   │   │   ├── Hero/
+│   │   │   ├── Features/
+│   │   │   └── Testimonials/
+│   │   └── index.ts
+│   │
+│   ├── profile/              # User Profile Feature
+│   │   ├── pages/
+│   │   │   ├── ProfilePage/
+│   │   │   └── SettingsPage/
+│   │   ├── components/
+│   │   │   ├── ProfileCard/
+│   │   │   └── AvatarUpload/
+│   │   ├── api/              # profileService.ts
+│   │   ├── hooks/            # useProfile.ts
+│   │   └── index.ts
+│   │
+│   └── ...                   # Other features follow same pattern
 │
-├── hooks/                    # GLOBAL HOOKS
+├── hooks/                    # GLOBAL HOOKS ONLY
 │   ├── useDebounce.ts
-│   └── useOnClickOutside.ts
+│   ├── useOnClickOutside.ts
+│   └── useMediaQuery.ts
 │
 ├── lib/                      # UTILITIES
 │   ├── axios.ts              # Axios Instance
 │   ├── react-query.ts        # React Query Config
 │   └── utils.ts              # Class merging utility (cn)
 │
-├── pages/                    # ROUTE ENTRY POINTS
-│   ├── marketing/
-│   └── dashboard/
+├── stores/                   # GLOBAL STATE ONLY (Zustand)
+│   └── theme.store.ts        # Theme, UI state (không dùng cho feature-specific state)
 │
-├── stores/                   # GLOBAL STATE (Zustand)
-│   └── auth.store.ts         # Auth state (Zustand)
+├── types/                    # GLOBAL TYPES ONLY
+│   └── common.ts             # Shared types across features
 │
-├── types/                    # GLOBAL TYPES
 └── test/                     # TEST SETUP
     └── setup.ts              # Vitest config
 

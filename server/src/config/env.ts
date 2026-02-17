@@ -26,10 +26,14 @@ const envSchema = z.object({
     R2_SECRET_ACCESS_KEY: z.string().optional(),
     R2_BUCKET_NAME: z.string().optional(),
     R2_PUBLIC_DOMAIN: z.string().optional(),
-    // Neo4j
-    NEO4J_URI: z.string().default('bolt://localhost:7687'),
-    NEO4J_USER: z.string().default('neo4j'),
-    NEO4J_PASSWORD: z.string().default('password'),
+
+    // Pinecone (Vector Database)
+    PINECONE_API_KEY: z.string().min(1, 'Pinecone API Key is required for vector search'),
+    PINECONE_ENVIRONMENT: z.string().default('us-east1-gcp'),
+    PINECONE_INDEX_NAME: z.string().default('unilish-knowledge'),
+
+    // OpenAI (For Embeddings)
+    OPENAI_API_KEY: z.string().min(1, 'OpenAI API Key is required for embeddings'),
 
     // Auth
     GOOGLE_CLIENT_ID: z.string().optional(),

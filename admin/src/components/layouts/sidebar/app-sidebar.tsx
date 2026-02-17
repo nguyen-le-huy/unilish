@@ -17,7 +17,8 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { useAuthStore } from "@/stores/auth-store"
+import { useAuthStore } from "@/features/auth"
+
 
 // Sidebar navigation structure for Admin CMS
 const sidebarData = {
@@ -92,6 +93,11 @@ const sidebarData = {
           title: "Gói cước",
           url: "/plans",
           description: "Free, Plus, Pro & Voucher",
+        },
+        {
+          title: "Mã giảm giá",
+          url: "/coupons",
+          description: "Quản lý chiến dịch, Voucher",
         },
         {
           title: "Giao dịch",

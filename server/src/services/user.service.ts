@@ -4,7 +4,6 @@ import type { updateProfileSchema, getUsersSchema, updateSubscriptionSchema } fr
 import { AppError } from '../utils/app-error.js';
 import { HttpStatus } from '../constants/http-status.js';
 import { UserMongoRepository } from '../repositories/mongo/user.mongo.repository.js';
-import { UserGraphRepository } from '../repositories/neo4j/user.graph.repository.js';
 import { logger } from '../utils/logger.js';
 
 type UpdateProfileInput = z.infer<typeof updateProfileSchema>['body'];
@@ -13,8 +12,7 @@ type UpdateSubscriptionInput = z.infer<typeof updateSubscriptionSchema>['body'];
 
 export class UserService {
     constructor(
-        private readonly userRepo: UserMongoRepository,
-        private readonly graphRepo: UserGraphRepository
+        private readonly userRepo: UserMongoRepository
     ) { }
 
     async updateProfile(userId: string, data: UpdateProfileInput) {
@@ -27,20 +25,6 @@ export class UserService {
 
         if (!user) {
             throw new AppError('User not found', HttpStatus.NOT_FOUND);
-        }
-
-        // Sync to Neo4j
-        try {
-            // @ts-ignore
-            await this.graphRepo.syncUser({
-                userId: user._id.toString(),
-                email: user.email,
-                fullName: user.fullName,
-                gender: user.gender,
-                // other fields that might have changed
-            });
-        } catch (error) {
-            logger.error(`[Neo4j] Failed to sync user update for ${userId}`, error);
         }
 
         return user;
@@ -95,20 +79,6 @@ export class UserService {
             throw new AppError('User not found', HttpStatus.NOT_FOUND);
         }
 
-        // Sync to Neo4j
-        try {
-            const userIdStr = user._id ? user._id.toString() : userId;
-            logger.info(`Syncing role update to Neo4j for user ${userIdStr} with role ${role}`);
-
-            await this.graphRepo.syncUser({
-                userId: userIdStr,
-                role: user.role
-            });
-            logger.info(`Successfully synced role to Neo4j for user ${userIdStr}`);
-        } catch (error) {
-            logger.error(`[Neo4j] Failed to sync role update for ${userId}`, error);
-        }
-
         return user;
     }
 
@@ -119,17 +89,6 @@ export class UserService {
             throw new AppError('User not found', HttpStatus.NOT_FOUND);
         }
 
-        // Sync to Neo4j
-        try {
-            // @ts-ignore
-            await this.graphRepo.syncUser({
-                userId: user._id.toString(),
-                currentLevel: user.currentLevel
-            });
-        } catch (error) {
-            logger.error(`[Neo4j] Failed to sync level update for ${userId}`, error);
-        }
-
         return user;
     }
 
@@ -138,13 +97,6 @@ export class UserService {
 
         if (!deleted) {
             throw new AppError('User not found', HttpStatus.NOT_FOUND);
-        }
-
-        // Sync to Neo4j
-        try {
-            await this.graphRepo.deleteUser(userId);
-        } catch (error) {
-            logger.error(`[Neo4j] Failed to delete user ${userId}`, error);
         }
 
         return true;
@@ -159,4 +111,4 @@ export class UserService {
     }
 }
 
-export const userService = new UserService(new UserMongoRepository(), new UserGraphRepository());
+export const userService = new UserService(new UserMongoRepository());

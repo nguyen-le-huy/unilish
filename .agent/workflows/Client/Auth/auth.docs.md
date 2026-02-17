@@ -27,7 +27,7 @@ graph TD
     API -->|Services| Mongo[(MongoDB Users)]
     API -->|Webhook| n8n[n8n Email Service]
     n8n -->|SMTP| Gmail[Gmail Server]
-    API -->|Session| Redis[(Redis - Optional)]
+    API -->|Session Store| Redis[(Redis Cache)]
 ```
 
 ### 2.1 Google OAuth Flow
@@ -43,7 +43,6 @@ This flow allows users to sign in using their Google account.
     *   **Logic**:
         *   If email exists: Update user info (Avatar/Name) & Link Account.
         *   If new: Create User with `authProvider: 'google'` and `isVerified: true`.
-    *   **Data Sync**: Automatically syncs User Node to **Neo4j** (label: `User`).
     *   **Session**: Server sets an `HttpOnly` cookie containing the JWT/Session Token.
 5.  **Completion**: Server redirects Client to `/auth/success`.
 6.  **Client Handling**:
@@ -57,8 +56,6 @@ This flow allows users to sign in using their Google account.
     *   Hash Password (`bcrypt`).
     *   Generate 4-digit OTP.
     *   Create User with `isVerified: false`.
-    *   Create User with `isVerified: false`.
-    *   **Data Sync**: Automatically syncs User Node to **Neo4j** (label: `User`).
     *   **Trigger n8n**: Send OTP and Name to n8n Webhook for email delivery.
     *   **Workflow Template**: Please import `.agent/workflows/Client/Auth/n8n_otp_workflow.json` into your n8n instance.
 3.  **Client Logic**: Redirect user to OTP Input Page.
