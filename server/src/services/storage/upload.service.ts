@@ -32,15 +32,17 @@ export class UploadService {
     /**
      * Upload image to Cloudinary
      */
-    static async uploadImage(file: Express.Multer.File): Promise<string> {
+    static async uploadImage(file: Express.Multer.File, folder?: string): Promise<string> {
         if (!env.CLOUDINARY_CLOUD_NAME) {
             throw new AppError('Cloudinary not configured', HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
+        const targetFolder = folder?.trim() ? folder.trim() : 'unilish';
+
         return new Promise((resolve, reject) => {
             const uploadStream = cloudinary.uploader.upload_stream(
                 {
-                    folder: 'unilish',
+                    folder: targetFolder,
                     resource_type: 'image',
                     format: 'webp', // Optimize by default
                     transformation: [{ quality: 'auto', fetch_format: 'auto' }]

@@ -12,6 +12,10 @@ const UsersPage = lazy(() => import("@/features/users/pages/UsersPage/UsersPage"
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 const SubscriptionPage = lazy(() => import("@/features/subscription/pages/SubscriptionPage/SubscriptionPage"));
 const CouponPage = lazy(() => import("@/features/coupon/pages/CouponPage/CouponPage"));
+const GoalListPage = lazy(() => import("@/features/curriculum/goals/pages/GoalListPage/GoalListPage"));
+const GoalEditorPage = lazy(() => import("@/features/curriculum/goals/pages/GoalEditorPage/GoalEditorPage"));
+const LanguageListPage = lazy(() => import("@/features/curriculum/languages/pages/LanguageListPage/LanguageListPage"));
+const LanguageEditorPage = lazy(() => import("@/features/curriculum/languages/pages/LanguageEditorPage/LanguageEditorPage"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -54,10 +58,42 @@ export const router = createBrowserRouter([
             },
             // Placeholder routes
             { path: "courses", element: <PlaceholderPage title="Khóa học (LMS)" /> },
-            { path: "lessons", element: <PlaceholderPage title="Bài học" /> },
+            {
+                path: "curriculum/languages",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <LanguageListPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "curriculum/languages/:code",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <LanguageEditorPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "curriculum/goals",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <GoalListPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "curriculum/goals/:slug",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <GoalEditorPage />
+                    </Suspense>
+                ),
+            },
             { path: "questions", element: <PlaceholderPage title="Kho câu hỏi" /> },
-            { path: "videos", element: <PlaceholderPage title="Video / Youtube" /> },
-            { path: "news", element: <PlaceholderPage title="Tin tức (News)" /> },
+            { path: "curriculum/series", element: <PlaceholderPage title="Bộ khóa học (Series)" /> },
+            { path: "curriculum/concepts", element: <PlaceholderPage title="Knowledge Graph" /> },
+            { path: "curriculum/resources", element: <PlaceholderPage title="Tài nguyên mở rộng" /> },
             {
                 path: "users",
                 element: (

@@ -16,9 +16,10 @@ export class UploadController {
 
         let url = '';
         const mime = req.file.mimetype;
+        const folder = typeof req.body.folder === 'string' ? req.body.folder : undefined;
 
         if (mime.startsWith('image/')) {
-            url = await UploadService.uploadImage(req.file);
+            url = await UploadService.uploadImage(req.file, folder);
         } else if (mime.startsWith('audio/') || mime.startsWith('video/')) {
             url = await UploadService.uploadMedia(req.file);
         } else {

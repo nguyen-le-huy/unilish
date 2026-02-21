@@ -66,7 +66,7 @@ const mockRecentContent: ContentItem[] = [
 const mockSystemAlerts: SystemAlert[] = [
     { id: '1', type: 'success', title: 'Backup hoàn tất', message: 'Database backup lúc 02:00 AM thành công', time: '6 giờ trước' },
     { id: '2', type: 'warning', title: 'Dung lượng R2', message: 'Storage sử dụng 85% - cần theo dõi', time: '1 ngày trước' },
-    { id: '3', type: 'info', title: 'AI Model cập nhật', message: 'GPT-4o-mini đã được kích hoạt cho Speaking Coach', time: '2 ngày trước' },
+    { id: '3', type: 'info', title: 'AI Model cập nhật', message: 'gpt-5.1-2025-11-13 đã được kích hoạt cho Speaking Coach', time: '2 ngày trước' },
     { id: '4', type: 'error', title: 'Email service', message: 'n8n webhook timeout - đã tự động retry', time: '3 ngày trước' },
 ];
 

@@ -37,7 +37,12 @@ export async function generateEmbedding(text: string): Promise<number[]> {
             dimensions: EMBEDDING_CONFIG.dimensions,
         });
 
-        const embedding = response.data[0].embedding;
+        const firstItem = response.data[0];
+        if (!firstItem) {
+            throw new Error('No embedding returned from OpenAI');
+        }
+
+        const embedding = firstItem.embedding;
 
         if (!embedding || embedding.length !== EMBEDDING_CONFIG.dimensions) {
             throw new Error(`Invalid embedding dimension: expected ${EMBEDDING_CONFIG.dimensions}, got ${embedding?.length}`);

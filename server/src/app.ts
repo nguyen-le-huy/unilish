@@ -53,6 +53,8 @@ import uploadRouter from './routes/upload.route.js';
 import settingRouter from './routes/system-setting.route.js';
 import userRouter from './routes/user.route.js';
 import couponRouter from './routes/coupon.route.js';
+import learningGoalRouter from './routes/learning-goal.route.js';
+import languageRouter from './routes/language.route.js';
 
 // Routes
 app.use('/api/auth', authRouter);
@@ -60,6 +62,8 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/settings', settingRouter);
 app.use('/api/users', userRouter);
 app.use('/api/coupons', couponRouter);
+app.use('/api/curriculum/goals', learningGoalRouter);
+app.use('/api/curriculum/languages', languageRouter);
 
 app.get('/', (req, res) => {
     res.status(HttpStatus.OK).json({

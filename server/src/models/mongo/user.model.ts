@@ -68,6 +68,7 @@ export const ESubscriptionPlan = {
 export const ESubscriptionStatus = {
     ACTIVE: 'active',
     EXPIRED: 'expired',
+    CANCELLED: 'cancelled', // NEW: Added cancelled status
 } as const;
 
 export interface IUser extends mongoose.Document {
@@ -89,11 +90,16 @@ export interface IUser extends mongoose.Document {
     dateOfBirth?: Date;
     phoneNumber?: string;
     gender?: typeof EGender[keyof typeof EGender];
+    nativeLanguage: string; // NEW: Ngôn ngữ mẹ đẻ (vi, en, ja)
 
-    // Tracking cho hệ thống Retention (Gửi mail nhắc nhở)
+    // --- 3. TRẠNG THÁI ACTIVE (APP STATE) ---
     lastActiveAt: Date;
+    lastActiveCourseId?: mongoose.Types.ObjectId; // NEW: Course đang học
 
-    // --- 3. BỐI CẢNH HỌC TẬP (CONTEXTUAL LEARNING PROFILE) ---
+    // --- 4. SỞ THÍCH (ADAPTIVE INPUT) ---
+    interestIds: mongoose.Types.ObjectId[]; // NEW: Reference to Interest collection
+
+    // --- 5. BỐI CẢNH HỌC TẬP (CONTEXTUAL LEARNING PROFILE) ---
     // A. Trình độ (CEFR Standard)
     currentLevel: keyof typeof ELevel;
     targetLevel: keyof typeof ELevel;
@@ -101,7 +107,7 @@ export interface IUser extends mongoose.Document {
     // B. Mục tiêu học tập (Cốt lõi để định hướng lộ trình)
     learningGoal: keyof typeof ELearningGoal | string;
 
-    // C. Sở thích (Để gợi ý nội dung bài đọc/nghe phù hợp)
+    // C. Sở thích (Legacy - now using interestIds)
     interests: string[];
 
     // D. Kỹ năng cần cải thiện (Dựa trên Placement Test)
@@ -110,16 +116,28 @@ export interface IUser extends mongoose.Document {
     // Điểm test đầu vào (Lưu để tham khảo lịch sử)
     placementTestScore: number;
 
-    // --- 4. TRẠNG THÁI HỆ THỐNG (SYSTEM STATUS) ---
+    // --- 6. GAMIFICATION & RETENTION ---
+    streakDays: number; // NEW: Chuỗi ngày học liên tiếp
+    gamification: {     // NEW: Hệ thống game hóa
+        totalXP: number;
+        gems: number;
+        level: number;
+    };
+
+    // --- 7. TRẠNG THÁI HỆ THỐNG (SYSTEM STATUS) ---
     subscription: {
         plan: typeof ESubscriptionPlan[keyof typeof ESubscriptionPlan];
+        startDate?: Date; // NEW: Ngày bắt đầu
         endDate?: Date;
         status: typeof ESubscriptionStatus[keyof typeof ESubscriptionStatus];
     };
 
     settings: {
-        notification: boolean;
-        dailyGoalMinutes: number; // Mục tiêu học 15p/ngày
+        dailyGoalMinutes: number;
+        reminderTime: string; // NEW: Thời gian nhắc nhở
+        appLanguage: string;  // NEW: Ngôn ngữ giao diện
+        soundEffects: boolean; // NEW: Hiệu ứng âm thanh
+        notification: boolean; // Legacy
     };
 
     createdAt: Date;
@@ -177,11 +195,26 @@ const UserSchema = new mongoose.Schema<IUser>(
             enum: Object.values(EGender),
             default: EGender.PREFER_NOT_TO_SAY,
         },
+        nativeLanguage: {
+            type: String,
+            default: 'vi', // Vietnamese by default
+        },
 
-        // Tracking cho hệ thống Retention (Gửi mail nhắc nhở)
+        // --- 3. TRẠNG THÁI ACTIVE (APP STATE) ---
         lastActiveAt: { type: Date, default: Date.now, index: true },
+        lastActiveCourseId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Course',
+            default: null,
+        },
 
-        // --- 3. BỐI CẢNH HỌC TẬP (CONTEXTUAL LEARNING PROFILE) ---
+        // --- 4. SỞ THÍCH (ADAPTIVE INPUT) ---
+        interestIds: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Interest',
+        }],
+
+        // --- 5. BỐI CẢNH HỌC TẬP (CONTEXTUAL LEARNING PROFILE) ---
         // A. Trình độ (CEFR Standard)
         currentLevel: {
             type: String,
@@ -202,7 +235,7 @@ const UserSchema = new mongoose.Schema<IUser>(
             default: ELearningGoal.COMMUNICATION,
         },
 
-        // C. Sở thích (Để gợi ý nội dung bài đọc/nghe phù hợp)
+        // C. Sở thích (Legacy - keeping for backward compatibility)
         interests: [{
             type: String,
             enum: Object.values(EInterest),
@@ -217,13 +250,22 @@ const UserSchema = new mongoose.Schema<IUser>(
         // Điểm test đầu vào (Lưu để tham khảo lịch sử)
         placementTestScore: { type: Number, default: 0 },
 
-        // --- 4. TRẠNG THÁI HỆ THỐNG (SYSTEM STATUS) ---
+        // --- 6. GAMIFICATION & RETENTION ---
+        streakDays: { type: Number, default: 0, index: true }, // Indexed for leaderboard
+        gamification: {
+            totalXP: { type: Number, default: 0, index: true }, // Indexed for leaderboard
+            gems: { type: Number, default: 0 },
+            level: { type: Number, default: 1 },
+        },
+
+        // --- 7. TRẠNG THÁI HỆ THỐNG (SYSTEM STATUS) ---
         subscription: {
             plan: {
                 type: String,
                 enum: Object.values(ESubscriptionPlan),
                 default: ESubscriptionPlan.FREE
             },
+            startDate: { type: Date, default: null },
             endDate: { type: Date, default: null },
             status: {
                 type: String,
@@ -233,11 +275,12 @@ const UserSchema = new mongoose.Schema<IUser>(
             }
         },
 
-
-
         settings: {
-            notification: { type: Boolean, default: true },
-            dailyGoalMinutes: { type: Number, default: 15 } // Mục tiêu học 15p/ngày
+            dailyGoalMinutes: { type: Number, default: 15 },
+            reminderTime: { type: String, default: '20:00' },
+            appLanguage: { type: String, default: 'vi' },
+            soundEffects: { type: Boolean, default: true },
+            notification: { type: Boolean, default: true }, // Legacy
         }
     },
     {
@@ -246,5 +289,12 @@ const UserSchema = new mongoose.Schema<IUser>(
         toObject: { virtuals: true },
     }
 );
+
+// --- INDEXES (Enterprise Performance) ---
+// Compound index for leaderboard queries
+UserSchema.index({ 'gamification.totalXP': -1, streakDays: -1 });
+
+// Compound index for subscription analytics
+UserSchema.index({ 'subscription.plan': 1, 'subscription.status': 1 });
 
 export const User = mongoose.model<IUser>('User', UserSchema);
