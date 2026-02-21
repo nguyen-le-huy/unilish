@@ -35,6 +35,7 @@ interface TestLearningGoalResult {
     aiResponse: string;
     debug: {
         model: string;
+        finishReason: string;
         latencyMs: number;
         tokensUsed: number;
         promptLength: number;
@@ -186,32 +187,72 @@ export class LearningGoalService {
             ? `[Context] ${payload.scenario.context}\n[Student] ${payload.scenario.userInput}`
             : payload.scenario.userInput;
 
-        const completion = await this.openAIClient.chat.completions.create({
-            model: this.testModel,
-            temperature: 0.6,
-            max_completion_tokens: 250,
-            messages: [
+        let completion: Awaited<ReturnType<typeof this.openAIClient.chat.completions.create>>;
+        try {
+            completion = await this.openAIClient.chat.completions.create(
                 {
-                    role: 'system',
-                    content: systemInstruction,
+                    model: this.testModel,
+                    max_completion_tokens: 512,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: systemInstruction,
+                        },
+                        {
+                            role: 'user',
+                            content: `Skill weights: ${JSON.stringify(payload.draftConfig.skillWeights)}\n\n${userMessage}`,
+                        },
+                    ],
                 },
-                {
-                    role: 'user',
-                    content: `Skill weights: ${JSON.stringify(payload.draftConfig.skillWeights)}\n\n${userMessage}`,
-                },
-            ],
-        });
+                { timeout: 30_000 },
+            );
+        } catch (err) {
+            // OpenAI SDK errors expose .status and .error.message with full detail
+            const isOpenAIError = err != null && typeof err === 'object' && 'status' in err;
+            const httpStatus = isOpenAIError ? (err as { status: number }).status : undefined;
+            const openAIBody = isOpenAIError ? (err as { error?: { message?: string } }).error : undefined;
+            const message = openAIBody?.message ?? (err instanceof Error ? err.message : String(err));
+            logger.error('OpenAI test call failed', {
+                model: this.testModel,
+                httpStatus,
+                error: message,
+                fullError: isOpenAIError ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : undefined,
+            });
+            throw new AppError(`OpenAI error (${httpStatus ?? 'unknown'}): ${message}`, HttpStatus.BAD_GATEWAY);
+        }
 
-        const aiResponse = completion.choices[0]?.message?.content?.trim();
+        const choice = completion.choices[0];
+        const aiResponse = choice?.message?.content?.trim();
+        const finishReason = choice?.finish_reason ?? 'unknown';
 
         if (!aiResponse) {
-            throw new AppError('AI did not return a response', HttpStatus.BAD_GATEWAY);
+            const refusal = choice?.message?.refusal;
+            logger.warn('OpenAI returned empty content', {
+                model: completion.model,
+                finishReason,
+                refusal,
+                usage: completion.usage,
+            });
+            // 'length' means the response was cut mid-generation — treat as a
+            // configuration issue, not an upstream error.
+            const reason = refusal ?? `finish_reason: ${finishReason}`;
+            const status =
+                finishReason === 'length'
+                    ? HttpStatus.BAD_REQUEST
+                    : HttpStatus.UNPROCESSABLE_ENTITY;
+            throw new AppError(
+                finishReason === 'length'
+                    ? 'AI response was cut off (token limit reached). Try shortening the system prompt or the scenario input.'
+                    : `AI did not return a response (${reason})`,
+                status,
+            );
         }
 
         return {
             aiResponse,
             debug: {
                 model: completion.model,
+                finishReason,
                 latencyMs: Date.now() - startedAt,
                 tokensUsed: completion.usage?.total_tokens ?? 0,
                 promptLength: systemInstruction.length,

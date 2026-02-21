@@ -21,7 +21,7 @@ export function SkillWeightEditor({ skillWeights, onChange }: SkillWeightEditorP
     const total = useMemo(() => Object.values(skillWeights).reduce((sum, value) => sum + value, 0), [skillWeights]);
 
     const handleInputChange = (key: SkillKey, valuePercent: number) => {
-        const normalized = clamp(valuePercent / 100);
+        const normalized = Math.round(clamp(valuePercent / 100) * 10000) / 10000;
         onChange({
             ...skillWeights,
             [key]: normalized,
@@ -34,13 +34,14 @@ export function SkillWeightEditor({ skillWeights, onChange }: SkillWeightEditorP
             return;
         }
 
+        const r = (v: number) => Math.round(v * 10000) / 10000;
         const normalized = {
-            listening: skillWeights.listening / total,
-            speaking: skillWeights.speaking / total,
-            reading: skillWeights.reading / total,
-            writing: skillWeights.writing / total,
-            grammar: skillWeights.grammar / total,
-            vocabulary: skillWeights.vocabulary / total,
+            listening:  r(skillWeights.listening  / total),
+            speaking:   r(skillWeights.speaking   / total),
+            reading:    r(skillWeights.reading    / total),
+            writing:    r(skillWeights.writing    / total),
+            grammar:    r(skillWeights.grammar    / total),
+            vocabulary: r(skillWeights.vocabulary / total),
         } satisfies SkillWeights;
 
         onChange(normalized);

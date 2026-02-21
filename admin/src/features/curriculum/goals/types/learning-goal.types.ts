@@ -93,6 +93,7 @@ export interface TestLearningGoalResult {
     aiResponse: string;
     debug: {
         model: string;
+        finishReason: string;
         latencyMs: number;
         tokensUsed: number;
         promptLength: number;

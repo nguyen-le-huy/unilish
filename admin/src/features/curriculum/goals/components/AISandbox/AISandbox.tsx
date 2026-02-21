@@ -25,6 +25,8 @@ export function AISandbox({ slug, systemPrompt, skillWeights, ignoredSkills }: A
 
     const handleRunTest = async () => {
         setErrorMessage('');
+        setResult('');
+        setDebugInfo('');
         try {
             const response = await testMutation.mutateAsync({
                 slug,
@@ -43,8 +45,12 @@ export function AISandbox({ slug, systemPrompt, skillWeights, ignoredSkills }: A
 
             setResult(response.aiResponse);
             setDebugInfo(JSON.stringify(response.debug, null, 2));
-        } catch {
-            setErrorMessage('Kiểm tra thất bại. Vui lòng thử lại.');
+        } catch (err: unknown) {
+            const msg =
+                (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+                (err instanceof Error ? err.message : null) ??
+                'Kiểm tra thất bại. Vui lòng thử lại.';
+            setErrorMessage(msg);
         }
     };
 

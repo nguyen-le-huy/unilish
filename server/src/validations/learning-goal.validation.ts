@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const SKILL_WEIGHT_TOLERANCE = 0.001;
+const SKILL_WEIGHT_TOLERANCE = 0.01;
 
 const skillWeightsSchema = z
     .object({
