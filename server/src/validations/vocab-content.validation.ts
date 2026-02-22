@@ -17,9 +17,9 @@ const vocabItemSchema = z.object({
     definitionEn: z.string().min(1, 'Định nghĩa tiếng Anh không được để trống').max(300).trim(),
     exampleSentence: z.string().min(5, 'Câu ví dụ phải có ít nhất 5 ký tự').max(500).trim(),
     exampleTranslation: z.string().min(1, 'Dịch nghĩa không được để trống').max(500).trim(),
-    audioWordUrl: z.string().url('Audio URL không hợp lệ').nullable().default(null),
-    audioSentenceUrl: z.string().url('Audio URL không hợp lệ').nullable().default(null),
-    imageUrl: z.string().url('Image URL không hợp lệ').nullable().default(null),
+    audioWordUrl: z.string().nullable().default(null),
+    audioSentenceUrl: z.string().nullable().default(null),
+    imageUrl: z.string().nullable().default(null),
     conceptId: z
         .string()
         .regex(OBJECT_ID_REGEX, 'conceptId phải là ObjectId')
