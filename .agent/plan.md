@@ -1,372 +1,713 @@
-# REFACTOR PLAN: `admin/features/curriculum/goals`
+# IMPLEMENTATION PLAN: VOCAB STUDIO (Admin — Quản lý Bài học Từ vựng)
 
-> **Planner:** Architecture & Planning Agent
-> **Date:** 2026-02-21
-> **Priority:** HIGH — 1 lỗi runtime nghiêm trọng + nhiều vi phạm critical
-> **Scope:** Toàn bộ feature `goals` trong Admin App
-
----
-
-## 1. AUDIT SUMMARY
-
-### 🔴 Critical (Vi phạm bắt buộc + có thể gây runtime error)
-
-| # | File | Vấn đề | Quy tắc vi phạm |
-|:--|:-----|:--------|:----------------|
-| C1 | `LanguageConfig.tsx` | **RUNTIME ERROR**: Import từ `@/features/curriculum/languages/hooks/useLanguageData` — file này đã bị XÓA trong refactor languages. App vỡ tại đây. | FSD + Refactor residue |
-| C2 | `LanguageConfig.tsx` | **Cross-feature internal import** — component trong `goals` nhưng import trực tiếp internal hooks của `languages` feature. Vi phạm FSD isolation cực kỳ nghiêm trọng. | FSD §2 Dependency Rule |
-| C3 | `GoalEditorPage.tsx` | **6 `useState` thay vì RHF + Zod** — `title`, `goalSlug`, `targetAudience`, `systemPrompt`, `ignoredSkills`, `skillWeights` | `rules.md §3 Frontend` |
-| C4 | `GoalEditorPage.tsx` | **`useEffect` để sync form** từ API data — anti-pattern | `rules.md §3` |
-| C5 | `GoalEditorPage.tsx` | **Manual `isValid`** — không có Zod schema, tự tính bằng boolean expression | `rules.md §3` |
-| C6 | `types/learning-goal.types.ts` | **`TTSProvider` và `Language` interface bị duplicate** — đã tồn tại trong `languages` feature, định nghĩa lại tạo type drift khi backend thay đổi | DRY |
-| C7 | `types/learning-goal.types.ts` | **`DEFAULT_SKILL_WEIGHTS`, `SKILL_PRESETS` constants nằm trong file types** — vi phạm SoC | `rules.md §4` |
-| C8 | `GoalListPage.tsx` | **`window.prompt()` cho duplicate** — đây là Web API cơ bản nhất, không dùng trong enterprise app. Hoàn toàn không kiểm soát UX. | Enterprise Standard |
-
-### 🟠 Major (Ảnh hưởng performance & maintainability)
-
-| # | File | Vấn đề |
-|:--|:-----|:--------|
-| M1 | `GoalListPage.tsx` | Không có `useDebounce` cho search — gọi API mỗi keystroke |
-| M2 | `GoalListPage.tsx` | Skeleton dùng `animate-pulse div` thô — nên dùng Shadcn `<Skeleton>` |
-| M3 | `GoalListPage.tsx` | `handleDuplicate` là `async` trong component, không extract thành custom hook |
-| M4 | `hooks/useLearningGoalData.ts` | **9 hooks trong 1 file** — monolithic, khó maintain |
-| M5 | `hooks/useLearningGoalData.ts` | `getErrorMessage` định nghĩa local — nên dùng `getApiErrorMessage` từ `@/lib/api-error.ts` đã có |
-| M6 | `hooks/useLearningGoalData.ts` | `LEARNING_GOAL_QUERY_KEYS` không theo **key factory pattern** — `list: ['learning-goals'] as const` không cho phép invalidate granular |
-| M7 | `hooks/useLearningGoalData.ts` | `useToggleLearningGoalStatus` **không có Optimistic Update** — gây flicker UI |
-| M8 | `hooks/useLearningGoalData.ts` | `useLearningGoalDetail` không có `staleTime` |
-| M9 | `api/learning-goal.api.ts` | `ApiResponse<T>` định nghĩa local — nên dùng `@/types/api.ts` shared |
-| M10 | `GoalCard.tsx` | Không có `React.memo` — re-render toàn bộ grid khi toggle 1 goal |
-| M11 | `GoalCard.tsx` | `aria-label="toggle-goal-status"` quá generic — không có context |
-| M12 | `RadarSkillChart.tsx` | `data` array tạo lại mỗi render — cần `useMemo` |
-| M13 | `GoalEditorPage.tsx` | `normalizeVietnamese()`, `parseIgnoredSkills()`, `toSlug()` — pure utilities nằm trong page file, nên move vào `utils/` |
-
-### 🟡 Minor (Code quality)
-
-| # | File | Vấn đề |
-|:--|:-----|:--------|
-| S1 | Toàn feature | **Không có `index.ts`** barrel export |
-| S2 | `GoalEditorPage.tsx` | `IgnoredSkill` type định nghĩa inline trong page, nên ở `types/` |
-| S3 | `GoalEditorPage.tsx` | `<label>` HTML tag thay vì `<Label>` Shadcn + thiếu `htmlFor` |
-| S4 | `AISandbox.tsx` | `<label>` thay `<Label>`, không có `aria-label` |
-| S5 | `LanguageConfig.tsx` | `<label>` thay `<Label>`, không có `aria-label` |
-| S6 | `SkillWeightEditor.tsx` | `SKILL_PRESETS` import từ types file — sau refactor nên import từ `constants/` |
-| S7 | `GoalListPage.tsx` | Thiếu `aria-label` trên input và nút tạo mới |
+> **Scope:** Tính năng "Vocab Lesson Manager" cho Admin CMS — giao diện Split-Pane "Vocab Studio" với AI One-Click Generation, TTS Audio, Media Management và Practice Auto-Gen.
+> **Nguyên tắc:** Service-Repository Pattern · Polyglot Persistence (Mongo + Pinecone + Redis/BullMQ + R2) · Admin = Tailwind + Shadcn/UI · No GraphDB.
+> **Tài liệu tham chiếu:** `mota.md` (UI/UX spec) · `baihoc.md` (Pedagogical modules) · `khoahoc.md` (DB Design V2.0).
 
 ---
 
-## 2. ĐẶC BIỆT — Cross-Feature Architecture Violation (C1 + C2)
+## 1. PHÂN TÍCH CODEBASE HIỆN TẠI
 
-Đây là vấn đề **nghiêm trọng nhất** cần fix **đầu tiên**.
+### Những gì đã có (Foundation)
+| Layer | Trạng thái |
+|---|---|
+| `Lesson` Mongoose model (`content: Mixed`, `practiceConfig`) | ✅ Tồn tại |
+| `LessonService` CRUD cơ bản | ✅ Tồn tại |
+| `LessonMongoRepository` + `BaseMongoRepository` | ✅ Tồn tại |
+| `LessonController` + Routes `/api/v1/lessons` | ✅ Tồn tại |
+| `lesson.validation.ts` (Zod) — CRUD schema | ✅ Tồn tại |
+| Admin `CourseStudioPage` (Split-Pane: Tree + Panel) | ✅ Tồn tại |
+| Admin `LessonEditor` — chỉ edit `title`, `type`, `practiceConfig` | ✅ Tồn tại |
+| `Question` model + BullMQ jobs folder | ✅ Model tồn tại, Jobs **RỖNG** |
+| `Concept` model (key, name, type, languageId) | ✅ Tồn tại |
+| `Language` model (`code`, `name`, `ttsConfig.provider`, `ttsConfig.voiceId`) | ✅ Tồn tại |
+| `KnowledgeVectorRepo` / Pinecone | ✅ Config tồn tại |
+| Cloudflare R2 / `upload.service.ts` | ✅ Tồn tại |
+| `Unit.contextSeed.keywords` + `Unit.vectorId` | ✅ Schema tồn tại |
 
-```
-goals/components/LanguageConfig/LanguageConfig.tsx
-    ↓ IMPORTS (broken)
-languages/hooks/useLanguageData.ts  ← FILE ĐÃ BỊ XÓA
-languages/types/language.types.ts   ← Cross-feature internal import
-```
-
-**Giải pháp đúng theo FSD:**
-
-Option A (Recommended): `LanguageConfig` chỉ được import từ **public barrel** của `languages` feature:
-```typescript
-// ✅ Đúng
-import { useLanguages, useUpdateLanguage } from '@/features/curriculum/languages';
-
-// ❌ Sai
-import { useLanguages } from '@/features/curriculum/languages/hooks/useLanguages';
-```
-→ Cần update `languages/index.ts` để export hooks cần thiết.
-
-Option B: `LanguageConfig` dùng `useLanguages` và `useUpdateLanguageTts` từ chính `useLearningGoalData.ts` (đi qua goals API endpoint), loại bỏ cross-feature dependency hoàn toàn.
-
-**Quyết định: Option A** — vì `LanguageConfig` về bản chất thao tác trực tiếp với Language entity, không phải Goal. Nên dùng languages public API.
-
----
-
-## 3. TARGET STRUCTURE SAU REFACTOR
-
-```
-admin/src/features/curriculum/goals/
-├── api/
-│   └── learning-goal.api.ts          # [REFACTOR] dùng @/types/api, xóa getLanguages/updateLanguageTts
-├── constants/
-│   ├── query-keys.ts                 # [NEW] LEARNING_GOAL_QUERY_KEYS (factory pattern)
-│   └── skill.constants.ts            # [NEW] DEFAULT_SKILL_WEIGHTS, SKILL_PRESETS, SKILLS array
-├── components/
-│   ├── GoalCard/
-│   │   └── GoalCard.tsx              # [REFACTOR] React.memo, proper aria-label
-│   ├── AISandbox/
-│   │   └── AISandbox.tsx             # [REFACTOR] Label, aria-label, error state
-│   ├── LanguageConfig/
-│   │   └── LanguageConfig.tsx        # [FIX] import từ languages public barrel index.ts
-│   ├── RadarSkillChart/
-│   │   └── RadarSkillChart.tsx       # [REFACTOR] useMemo cho data array
-│   ├── SkillWeightEditor/
-│   │   └── SkillWeightEditor.tsx     # [REFACTOR] import constants từ constants/
-│   └── DuplicateGoalDialog/
-│       └── DuplicateGoalDialog.tsx   # [NEW] Thay thế window.prompt()
-├── hooks/
-│   ├── useLearningGoals.ts           # [NEW] tách query hooks
-│   ├── useLearningGoalMutations.ts   # [NEW] tách mutation hooks + optimistic update
-│   └── useLearningGoalForm.ts        # [NEW] RHF + Zod schema
-├── pages/
-│   ├── GoalEditorPage/
-│   │   └── GoalEditorPage.tsx        # [REFACTOR] ~70 lines, dùng form hook
-│   └── GoalListPage/
-│       └── GoalListPage.tsx          # [REFACTOR] useDebounce, Dialog, Skeleton
-├── types/
-│   └── learning-goal.types.ts        # [REFACTOR] xóa TTSProvider/Language (import từ languages), xóa constants
-├── utils/
-│   └── goal.utils.ts                 # [NEW] toSlug(), parseIgnoredSkills(), normalizeVietnamese()
-└── index.ts                          # [NEW] barrel export
-```
+### Những gì còn thiếu (Gap)
+| Gap | Phải xây |
+|---|---|
+| Vocab JSON schema cho `lesson.content` (incl. `definitionNative`) | Schema TypeScript + Zod |
+| API endpoint AI generation & save vocab content | Controller + Service extension |
+| BullMQ TTS audio queue & worker (Language-aware voice) | Jobs module |
+| Auto-map `lesson.taughtConcepts` sau khi sinh từ vựng | VocabGenerationService |
+| Auto-map `unit.vectorId` sau khi upsert Pinecone | VocabGenerationService + UnitRepo |
+| `UserConceptState` update hook (SRS) sau khi user trả lời | QuestionGenerationService (Sprint 3) |
+| `VocabStudio` admin component (Split-Pane mới) | Admin frontend |
+| Hooks, API service cho vocab | Admin frontend |
+| Luồng `WorkspaceLessonPanel` routing theo `lesson.type` | Admin frontend |
 
 ---
 
-## 4. KẾ HOẠCH THỰC HIỆN CHI TIẾT
+## 2. DATA SCHEMA DESIGN
 
-### PHASE 0 — HOTFIX (Fix runtime crash trước) 🚨
+### 2.1 Vocab Content JSON Schema (stored in `lesson.content`)
+Lưu trong `Lesson.content` (Schema.Types.Mixed). Theo chuẩn `khoahoc.md` và `baihoc.md` — cần define TypeScript interface nghiêm ngặt.
 
-**Step 0.1 — Cập nhật `languages/index.ts` export thêm hooks**
 ```typescript
-// languages/index.ts
-export { default as LanguageListPage } from './pages/LanguageListPage/LanguageListPage';
-export { default as LanguageEditorPage } from './pages/LanguageEditorPage/LanguageEditorPage';
+// server/src/types/lesson-content.types.ts
 
-// Export hooks cho cross-feature use
-export { useLanguages } from './hooks/useLanguages';
-export { useUpdateLanguage } from './hooks/useLanguageMutations';
-export type { Language, TTSProvider } from './types/language.types';
+export interface VocabItem {
+  id: string;                       // nanoid() — stable client key
+  word: string;
+  partOfSpeech: 'noun' | 'verb' | 'adjective' | 'adverb' | 'phrase' | 'other';
+  ipa: string;                      // /ˈlʌɡ.ɪdʒ/
+  definitionNative: string;         // Ngôn ngữ mẹ theo Language (VD: tiếng Việt, tiếng Nhật)
+  definitionEn: string;             // Định nghĩa tiếng Anh
+  exampleSentence: string;          // Bắt buộc khớp Unit.contextSeed.scenario
+  exampleTranslation: string;
+  audioWordUrl: string | null;      // R2 URL — TTS của word
+  audioSentenceUrl: string | null;  // R2 URL — TTS của exampleSentence
+  imageUrl: string | null;          // Cloudinary hoặc R2
+  conceptId: string | null;         // ObjectId → Concept collection (auto-mapped)
+}
+
+export type VocabGenerationStatus =
+  | 'IDLE'
+  | 'GENERATING'       // GPT-5.1 đang sinh JSON
+  | 'GENERATING_AUDIO' // BullMQ TTS đang xử lý
+  | 'DONE'
+  | 'ERROR';
+
+export interface VocabContent {
+  type: 'VOCAB';
+  scenario: string;                 // Copied from Unit.contextSeed.scenario
+  generationStatus: VocabGenerationStatus;
+  items: VocabItem[];
+}
+
+// Union type — mở rộng cho các module sau (GRAMMAR, READING...)
+export type LessonContent = VocabContent; // | GrammarContent | ...
 ```
 
-**Step 0.2 — Fix `LanguageConfig.tsx` import**
+> **Lý do tách `definitionNative` + `definitionEn`:** Theo `baihoc.md`, khóa học cho người Nhật sẽ sinh `definitionNative` bằng tiếng Nhật, người Việt bằng tiếng Việt. Ngôn ngữ native lấy từ `Language.code` của Unit's Course.
+
+### 2.2 Vocab Content Zod Schema (server validation)
 ```typescript
-// ❌ Trước (broken)
-import { useLanguages, useUpdateLanguage } from '@/features/curriculum/languages/hooks/useLanguageData';
-import type { TTSProvider } from '@/features/curriculum/languages/types/language.types';
+// server/src/validations/vocab-content.validation.ts
 
-// ✅ Sau
-import { useLanguages, useUpdateLanguage, type TTSProvider } from '@/features/curriculum/languages';
-```
-
----
-
-### PHASE 1 — Foundation (Constants, Types, Utils)
-
-**Step 1.1 — Tạo `constants/skill.constants.ts`**
-- Move `DEFAULT_SKILL_WEIGHTS`, `SKILL_PRESETS` từ `types/`
-- Thêm `SKILLS` array (hiện đang inline trong `SkillWeightEditor`)
-- Thêm `IGNORED_SKILL_LABELS` mapping (hiện inline trong `GoalEditorPage`)
-
-**Step 1.2 — Tạo `constants/query-keys.ts`** (Key factory pattern)
-```typescript
-export const LEARNING_GOAL_QUERY_KEYS = {
-    all: ['learning-goals'] as const,
-    lists: () => [...LEARNING_GOAL_QUERY_KEYS.all, 'list'] as const,
-    list: (query: LearningGoalListQuery) => [...LEARNING_GOAL_QUERY_KEYS.lists(), query] as const,
-    details: () => [...LEARNING_GOAL_QUERY_KEYS.all, 'detail'] as const,
-    detail: (slug: string) => [...LEARNING_GOAL_QUERY_KEYS.details(), slug] as const,
-};
-```
-
-**Step 1.3 — Refactor `types/learning-goal.types.ts`**
-- Xóa `TTSProvider` (import từ `@/features/curriculum/languages`)
-- Xóa `Language` interface (import từ `@/features/curriculum/languages`)
-- Xóa `DEFAULT_SKILL_WEIGHTS`, `SKILL_PRESETS` (move sang `constants/`)
-- Thêm `IgnoredSkill` union type (move từ `GoalEditorPage`)
-
-**Step 1.4 — Tạo `utils/goal.utils.ts`**
-- Move `normalizeVietnamese()`
-- Move `parseIgnoredSkills()` (nhận `string`, trả `IgnoredSkill[]`)
-- Move `toSlug()`
-
-**Step 1.5 — Refactor `api/learning-goal.api.ts`**
-- Xóa `ApiResponse<T>` local, dùng `@/types/api.ts`
-- Xóa `getLanguages()` và `updateLanguageTts()` — đây là duplicate với languages API, `LanguageConfig` sẽ dùng languages hooks trực tiếp
-
----
-
-### PHASE 2 — Hook Layer Refactor
-
-**Step 2.1 — Tạo `hooks/useLearningGoals.ts`** (Query hooks)
-- `useLearningGoals(query)` — thêm `staleTime: 60 * 1000`
-- `useLearningGoalDetail(slug)` — thêm `staleTime: 5 * 60 * 1000`
-- Dùng `LEARNING_GOAL_QUERY_KEYS` factory
-
-**Step 2.2 — Tạo `hooks/useLearningGoalMutations.ts`** (Mutation hooks)
-- Tách `useCreateLearningGoal`, `useUpdateLearningGoal`, `useDuplicateLearningGoal`
-- `useToggleLearningGoalStatus` — **thêm Optimistic Update**:
-```typescript
-onMutate: async (slug) => {
-    await queryClient.cancelQueries({ queryKey: LEARNING_GOAL_QUERY_KEYS.lists() });
-    const previousLists = queryClient.getQueriesData<LearningGoalListResponse>({
-        queryKey: LEARNING_GOAL_QUERY_KEYS.lists(),
-    });
-    queryClient.setQueriesData<LearningGoalListResponse>(
-        { queryKey: LEARNING_GOAL_QUERY_KEYS.lists() },
-        (old) => old ? {
-            ...old,
-            data: old.data.map((g) => g.slug === slug ? { ...g, isActive: !g.isActive } : g)
-        } : old,
-    );
-    return { previousLists };
-},
-onError: (error, _, context) => {
-    for (const [key, data] of context?.previousLists ?? []) {
-        queryClient.setQueryData(key, data);
-    }
-    toast.error(getApiErrorMessage(error, 'Cập nhật trạng thái thất bại'));
-},
-onSettled: () => queryClient.invalidateQueries({ queryKey: LEARNING_GOAL_QUERY_KEYS.lists() }),
-```
-- `useTestLearningGoal` — giữ nguyên
-- Dùng `getApiErrorMessage` từ `@/lib/api-error.ts`
-
-**Step 2.3 — Tạo `hooks/useLearningGoalForm.ts`** (RHF + Zod)
-```typescript
-export const goalFormSchema = z.object({
-    slug: z.string().min(3).regex(/^[a-z0-9-]+$/, 'Chỉ dùng chữ thường, số và dấu gạch ngang'),
-    title: z.string().min(3, 'Tối thiểu 3 ký tự'),
-    targetAudience: z.string().optional(),
-    systemPrompt: z.string().min(30, 'Prompt tối thiểu 30 ký tự'),
-    ignoredSkills: z.array(z.enum(['spelling', 'punctuation', 'formality', 'pronunciation'])),
-    skillWeights: z.object({
-        listening: z.number().min(0).max(1),
-        speaking: z.number().min(0).max(1),
-        reading: z.number().min(0).max(1),
-        writing: z.number().min(0).max(1),
-        grammar: z.number().min(0).max(1),
-        vocabulary: z.number().min(0).max(1),
-    }).refine(
-        (w) => Math.abs(Object.values(w).reduce((s, v) => s + v, 0) - 1) <= 0.001,
-        { message: 'Tổng trọng số phải bằng 100%' }
-    ),
-    isActive: z.boolean(),
+// vocabItemSchema — validate từng item
+const vocabItemSchema = z.object({
+  id: z.string().min(1),
+  word: z.string().min(1).max(100).trim(),
+  partOfSpeech: z.enum(['noun', 'verb', 'adjective', 'adverb', 'phrase', 'other']),
+  ipa: z.string().max(100).default(''),
+  definitionNative: z.string().min(1).max(300).trim(),
+  definitionEn: z.string().min(1).max(300).trim(),
+  exampleSentence: z.string().min(5).max(500).trim(),
+  exampleTranslation: z.string().min(1).max(500).trim(),
+  audioWordUrl: z.string().url().nullable().default(null),
+  audioSentenceUrl: z.string().url().nullable().default(null),
+  imageUrl: z.string().url().nullable().default(null),
+  conceptId: z.string().regex(/^[a-f\d]{24}$/i).nullable().default(null),
 });
-export type GoalFormValues = z.infer<typeof goalFormSchema>;
-```
-> Lưu ý: `skillWeights` dùng `.refine()` để validate tổng = 100% — Zod level, không cần manual check.
-> `ignoredSkills` lưu dưới dạng array trong form, chỉ display dạng string trong UI.
 
-**Step 2.4 — Xóa `hooks/useLearningGoalData.ts`**
+// saveVocabContentSchema — PUT /lessons/:lessonId/vocab/content
+export const saveVocabContentSchema = z.object({
+  params: z.object({ lessonId: objectIdSchema }),
+  body: z.object({ items: z.array(vocabItemSchema).min(1).max(50) }),
+});
+
+// generateVocabSchema — POST /lessons/:lessonId/vocab/generate
+export const generateVocabSchema = z.object({
+  params: z.object({ lessonId: objectIdSchema }),
+  body: z.object({
+    wordCount: z.number().int().min(3).max(20),
+    wordList: z.array(z.string().min(1).max(100)).max(20).optional(),
+  }),
+});
+
+// regenerateAudioSchema — POST /lessons/:lessonId/vocab/items/:itemId/regenerate-audio
+export const regenerateAudioSchema = z.object({
+  params: z.object({ lessonId: objectIdSchema, itemId: z.string().min(1) }),
+  body: z.object({ target: z.enum(['word', 'sentence']) }),
+});
+```
 
 ---
 
-### PHASE 3 — UI Component Fixes
+## 3. ARCHITECTURE DIAGRAM
 
-**Step 3.1 — Tạo `components/DuplicateGoalDialog/DuplicateGoalDialog.tsx`** [NEW]
-- Dùng Shadcn `<Dialog>` thay `window.prompt()`
-- Form nhỏ: 2 inputs (newSlug + newTitle), validation cơ bản
-- Nhận props: `isOpen`, `onClose`, `onConfirm(payload)`, `defaultSlug`, `defaultTitle`
+### 3.1 Admin Frontend — Routing theo Lesson Type
+```mermaid
+graph TD
+    CourseStudioPage --> WorkspaceLessonPanel
+    WorkspaceLessonPanel -->|type !== VOCAB| LessonEditor["LessonEditor (existing)"]
+    WorkspaceLessonPanel -->|type === VOCAB| VocabStudio["VocabStudio (NEW)"]
+    
+    VocabStudio --> TopActionBar["TopActionBar"]
+    VocabStudio --> VocabNavigator["VocabNavigator (30%) — Left"]
+    VocabStudio --> VocabReviewEditor["VocabReviewEditor (70%) — Right"]
 
-**Step 3.2 — Refactor `components/GoalCard/GoalCard.tsx`**
-- Wrap với `React.memo`
-- Fix `aria-label` → `aria-label={`Toggle status for ${goal.title}`}`
-- Thêm `useCallback` cho handlers
+    VocabNavigator --> VocabItemCard["VocabItemCard × N"]
+    VocabNavigator --> DnDSort["DnD Sort (@dnd-kit)"]
 
-**Step 3.3 — Refactor `components/RadarSkillChart/RadarSkillChart.tsx`**
+    VocabReviewEditor --> TabContent["Tab: Content Editor"]
+    VocabReviewEditor --> TabPractice["Tab: Practice Config"]
+
+    TabContent --> BlockLinguistic["Block 1: Linguistic Data"]
+    TabContent --> BlockContext["Block 2: Contextual Example"]
+    TabContent --> BlockMedia["Block 3: Multimedia Control"]
+```
+
+### 3.2 Backend — AI Generation Pipeline
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant AdminFE as Admin Frontend
+    participant API as Express API
+    participant VocabService
+    participant OpenAI as OpenAI (GPT-5.1)
+    participant LangRepo as LanguageMongoRepo
+    participant BullMQ
+    participant TTSWorker as TTS Worker
+    participant R2 as Cloudflare R2
+    participant Pinecone
+    participant MongoDB
+
+    Admin->>AdminFE: Bấm "Auto-Generate Vocab" → nhập wordCount + wordList (tùy chọn)
+    AdminFE->>API: POST /lessons/:lessonId/vocab/generate
+    API->>VocabService: generateVocabContent(lessonId, config)
+    VocabService->>MongoDB: Lấy Lesson + Unit (contextSeed.scenario, keywords, languageId)
+    VocabService->>LangRepo: Lấy Language.ttsConfig (provider, voiceId)
+    VocabService->>OpenAI: GPT-5.1 → sinh JSON VocabItem[] theo scenario + keywords
+    OpenAI-->>VocabService: items[] (word, IPA, definitionNative, definitionEn, examples)
+    VocabService->>MongoDB: $set lesson.content = { items, status: GENERATING_AUDIO }
+    VocabService->>MongoDB: $set lesson.taughtConcepts (auto-map/create Concepts)
+    VocabService-->>API: { items[] }
+    API-->>AdminFE: 200 — Render danh sách từ ngay (no audio)
+    VocabService->>BullMQ: Enqueue TTS job (word + sentence × N items, languageId)
+    BullMQ->>TTSWorker: Process job
+    TTSWorker->>MongoDB: Lấy Language.ttsConfig.voiceId (dynamic per language)
+    TTSWorker->>OpenAI: TTS (model tts-1, voice=Language.ttsConfig.voiceId) → 2N audio buffers
+    TTSWorker->>R2: Upload → nhận URLs
+    TTSWorker->>MongoDB: $set items[i].audioWordUrl + audioSentenceUrl (per item, atomic)
+    TTSWorker->>Pinecone: Upsert concept embeddings (vector per VocabItem)
+    TTSWorker->>MongoDB: $set unit.vectorId (Pinecone index ref for RAG Chatbot)
+    TTSWorker->>MongoDB: $set lesson.content.generationStatus = DONE
+    AdminFE->>API: Poll GET /lessons/:lessonId/vocab/status (2s interval)
+    API-->>AdminFE: { status, completedCount, totalCount }
+```
+
+> **AI Model:** GPT-5.1 (vocab generation) theo `baihoc.md`. TTS voice lấy động từ `Language.ttsConfig.voiceId` (alloy/echo/onyx...) theo `khoahoc.md` — **không hardcode**.
+
+---
+
+## 4. SPRINT BREAKDOWN
+
+---
+
+### ▶ SPRINT 1 — Schema & API Foundation (Backend only)
+**Mục tiêu:** Xây nền tảng dữ liệu và API endpoints đủ để frontend tích hợp.
+
+#### 4.1.1 [Server] Định nghĩa TypeScript Types
+**File:** `server/src/types/lesson-content.types.ts`
+- Export `VocabItem`, `VocabContent` interfaces như design ở mục 2.1.
+- Export union type `LessonContent = VocabContent | GrammarContent | ...` để mở rộng sau.
+
+#### 4.1.2 [Server] Zod Validation cho Vocab Content
+**File:** `server/src/validations/vocab-content.validation.ts`
+- `vocabItemSchema` — validate từng item (word required, ipa optional, audioUrl nullable, etc.)
+- `saveVocabContentSchema` — validate `PUT /lessons/:lessonId/vocab/content`
+- `generateVocabSchema` — validate `POST /lessons/:lessonId/vocab/generate`
+  ```
+  body: { wordCount: z.number().min(3).max(20), wordList: z.array(z.string()).optional() }
+  ```
+- `regenerateAudioSchema` — validate `POST /lessons/:lessonId/vocab/items/:itemId/regenerate-audio`
+  ```
+  body: { target: z.enum(['word', 'sentence']) }
+  ```
+
+#### 4.1.3 [Server] Mở rộng LessonMongoRepository
+**File:** `server/src/repositories/mongo/lesson.mongo.repository.ts` (thêm methods)
 ```typescript
-const data = useMemo(() => [
-    { skill: 'Nghe', value: Math.round(skillWeights.listening * 100) },
-    // ...
-], [skillWeights]);
+// Lấy vocab content (full)
+async findVocabContent(lessonId: string): Promise<VocabContent | null>
+
+// Save toàn bộ content (atomic replace)
+async saveVocabContent(lessonId: string, content: VocabContent): Promise<ILesson>
+
+// Cập nhật audio URL của 1 item (partial update, không replace toàn bộ)
+async updateVocabItemAudio(
+  lessonId: string,
+  itemId: string,
+  target: 'word' | 'sentence',
+  url: string,
+): Promise<void>
+
+// Cập nhật status của generation job
+async updateVocabGenerationStatus(
+  lessonId: string,
+  status: 'IDLE' | 'GENERATING' | 'GENERATING_AUDIO' | 'DONE' | 'ERROR',
+): Promise<void>
 ```
-- Wrap với `React.memo`
+> **Lưu ý:** Tất cả reads dùng `.lean().select()` bắt buộc.
 
-**Step 3.4 — Refactor `components/SkillWeightEditor/SkillWeightEditor.tsx`**
-- Import `SKILL_PRESETS`, `SKILLS` từ `constants/skill.constants.ts`
-- Thêm `aria-label` và `aria-valuemin/max/now` trên range inputs
+#### 4.1.4 [Server] BullMQ — TTS Audio Queue
+**Files mới:**
+```
+server/src/jobs/queues/tts.queue.ts        # Queue definition
+server/src/jobs/workers/tts.worker.ts      # Job processor
+server/src/jobs/processors/tts.processor.ts
+```
+- **Queue name:** `tts-generation`
+- **Job payload:**
+  ```typescript
+  interface TTSJobPayload {
+    lessonId: string;
+    languageId: string;   // để lấy Language.ttsConfig.voiceId + provider
+    items: Array<{
+      itemId: string;
+      word: string;
+      sentence: string;
+    }>;
+  }
+  ```
+- **Worker processor logic:**
+  1. Lấy `Language.ttsConfig` từ MongoDB → xác định `provider` (OPENAI/AZURE) và `voiceId` (alloy/echo)
+  2. Với mỗi item: gọi `openai.audio.speech` (model `tts-1`, voice=`Language.ttsConfig.voiceId`) → mp3 buffer
+  3. Upload 2 files lên R2 (`/audio/vocab/{lessonId}/{itemId}-word.mp3`, `…-sentence.mp3`)
+  4. Gọi `lessonRepo.updateVocabItemAudio(...)` cập nhật từng URL ngay khi xong (atomic `$set`)
+  5. Sau khi tất cả xong: upsert Pinecone embeddings → cập nhật `unit.vectorId`
+  6. Gọi `updateVocabGenerationStatus(lessonId, 'DONE')`
+  7. Xử lý retry tối đa 3 lần với exponential backoff
+- **Khởi động worker:** đăng ký trong `server/src/app.ts` hoặc file init riêng
 
-**Step 3.5 — Refactor `components/AISandbox/AISandbox.tsx`**
-- Thay `<label>` bằng `<Label>` Shadcn
-- Thêm error display state khi test thất bại
-- Thêm `aria-label` trên textareas
+#### 4.1.5 [Server] VocabGenerationService
+**File:** `server/src/services/vocab-generation.service.ts`
 
-**Step 3.6 — Refactor `components/LanguageConfig/LanguageConfig.tsx`** (đã fix ở Phase 0)
-- Thay `<label>` bằng `<Label>` Shadcn
-- Thêm `aria-label`
-
----
-
-### PHASE 4 — Page Refactor
-
-**Step 4.1 — Refactor `pages/GoalEditorPage/GoalEditorPage.tsx`**
-- Loại bỏ tất cả `useState` + `useEffect` form logic
-- Dùng `useGoalForm({ slug, goalDetail })`
-- Dùng Shadcn `<Form>`, `<FormField>`, `<FormLabel>`, `<FormMessage>`
-- `ignoredSkills` — field type `string[]` trong form, hiển thị dạng chip hoặc multi-select đơn giản
-- Skeleton dùng `<Skeleton>` component
-- Target: ≤ 80 lines
-
-**Step 4.2 — Refactor `pages/GoalListPage/GoalListPage.tsx`**
-- Thêm `useDebounce(search, 300)`
-- Thay `window.prompt` bằng `<DuplicateGoalDialog>` state
-- Thay `animate-pulse div` bằng `<Skeleton>` rows
-- Thêm `aria-label` trên input và button
-
----
-
-### PHASE 5 — Final Polish
-
-**Step 5.1 — Tạo `index.ts` barrel export**
 ```typescript
-export { default as GoalListPage } from './pages/GoalListPage/GoalListPage';
-export { default as GoalEditorPage } from './pages/GoalEditorPage/GoalEditorPage';
+export class VocabGenerationService {
+  constructor(
+    private lessonRepo: LessonMongoRepository,
+    private unitRepo: UnitMongoRepository,
+    private conceptRepo: ConceptMongoRepository,
+    private languageRepo: LanguageMongoRepository,
+    private ttsQueue: TTSQueue,
+    private vectorRepo: KnowledgeVectorRepo,
+  ) {}
+
+  // Step 1: GPT-5.1 generation — trả về ngay
+  async generateVocabItems(lessonId: string, config: GenerateVocabConfig): Promise<VocabItem[]>
+
+  // Step 2: Auto-map concept IDs và $set lesson.taughtConcepts
+  // Tạo mới Concept nếu chưa tồn tại (idempotent upsert)
+  async autoMapTaughtConcepts(lessonId: string, items: VocabItem[], languageId: string): Promise<void>
+
+  // Step 3: Enqueue TTS jobs — async background
+  async enqueueTtsJobs(lessonId: string, languageId: string, items: VocabItem[]): Promise<void>
+
+  // Step 4: Upsert Pinecone embeddings + cập nhật unit.vectorId (gọi trong TTS worker sau khi hoàn tất)
+  async upsertConceptEmbeddingsAndSetVectorId(lessonId: string, items: VocabItem[]): Promise<void>
+
+  // Single item audio regenerate
+  async regenerateAudio(lessonId: string, itemId: string, target: 'word' | 'sentence'): Promise<string>
+
+  // Get generation status
+  async getGenerationStatus(lessonId: string): Promise<GenerationStatus>
+}
 ```
 
-**Step 5.2 — Cleanup**
-- Kiểm tra không còn import từ `useLearningGoalData.ts`
-- Verify TypeScript clean compile
+**GPT-5.1 Prompt Template (Contextual Constraint — theo `baihoc.md`):**
+```
+System: You are a professional English vocabulary curriculum designer.
+Generate vocabulary items strictly within the provided scenario context.
+Never produce example sentences outside the scenario.
+
+User: Scenario: "{unit.contextSeed.scenario}"
+Context keywords (MUST reference): {unit.contextSeed.keywords.join(', ')}
+{config.wordList
+  ? "Use EXACTLY these words: " + config.wordList.join(', ')
+  : "Generate " + config.wordCount + " most relevant vocabulary words for this scenario."}
+Native language for definitionNative: {language.code} (e.g., Vietnamese for 'vi')
+
+Return a strict JSON array matching this TypeScript interface:
+[VocabItem interface — include id(nanoid), word, partOfSpeech, ipa,
+ definitionNative, definitionEn, exampleSentence (MUST match scenario),
+ exampleTranslation. Leave audioWordUrl/audioSentenceUrl/imageUrl/conceptId as null.]
+```
+
+> **Constraint `baihoc.md`:** Câu ví dụ (exampleSentence) bắt buộc phải thuộc ngữ cảnh scenario. VD: Unit "Airport" → câu ví dụ dùng từ "check-in" phải là **sân bay**, không được là **khách sạn**.
+
+#### 4.1.6 [Server] VocabController + Routes
+**File:** `server/src/controllers/vocab.controller.ts` (mới)
+
+| Method | Endpoint | Mô tả |
+|---|---|---|
+| `GET` | `/lessons/:lessonId/vocab/content` | Lấy toàn bộ VocabContent |
+| `PUT` | `/lessons/:lessonId/vocab/content` | Save toàn bộ VocabContent (Admin review xong bấm Lưu) |
+| `POST` | `/lessons/:lessonId/vocab/generate` | Trigger AI generation + enqueue TTS |
+| `GET` | `/lessons/:lessonId/vocab/status` | Poll generation status (jobs done) |
+| `POST` | `/lessons/:lessonId/vocab/items/:itemId/regenerate-audio` | Regenerate audio 1 item |
+
+**Route:** Thêm vào `server/src/routes/lesson.route.ts` (hoặc tách file `vocab.route.ts` riêng mount vào `app.ts`)
+
+Tất cả routes: `protect` + `restrictTo('admin', 'content_creator')` + `validate(zodSchema)`
 
 ---
 
-## 5. PRIORITY MATRIX
+### ▶ SPRINT 2 — Admin Frontend: VocabStudio Component
+**Mục tiêu:** Xây dựng toàn bộ UI/UX "Vocab Studio" theo mô tả trong mota.md.
+
+#### 4.2.1 Routing theo Lesson Type trong WorkspaceLessonPanel
+**File:** `admin/src/features/curriculum/courses/pages/CourseStudioPage/CourseStudioPage.tsx`
+
+Sửa hàm `WorkspaceLessonPanel`:
+```tsx
+if (lesson.type === 'VOCAB') {
+  return <VocabStudio lesson={lesson} courseId={courseId} />;
+}
+return <LessonEditor lesson={lesson} courseId={courseId} />;  // existing
+```
+
+#### 4.2.2 VocabStudio — Root Component (Split-Pane Layout)
+**File:** `admin/src/features/curriculum/courses/components/VocabStudio/VocabStudio.tsx`
 
 ```
-HIGH IMPACT + LOW EFFORT            │  HIGH IMPACT + HIGH EFFORT
-────────────────────────────────────┼─────────────────────────────────
-Phase 0: Fix runtime crash (C1/C2)  │  Phase 2.3: useLearningGoalForm
-Phase 1: Constants/Types split      │  Phase 3.1: DuplicateGoalDialog
-Phase 2.4: Xóa useLearningGoalData  │  Phase 4.1: EditorPage refactor
-Phase 4.2: useDebounce + Skeleton   │
-────────────────────────────────────┼─────────────────────────────────
-LOW IMPACT + LOW EFFORT             │  LOW IMPACT + HIGH EFFORT
-────────────────────────────────────┼─────────────────────────────────
-Phase 3.3: RadarSkillChart useMemo  │  (Không có)
-Phase 3.2: GoalCard React.memo      │
-Phase 5.1: index.ts barrel          │
+VocabStudio/
+├── VocabStudio.tsx                  # Root: layout + state orchestration
+├── components/
+│   ├── VocabTopBar/
+│   │   └── VocabTopBar.tsx          # Title, Generate button, Save Draft, Publish
+│   ├── VocabNavigator/
+│   │   ├── VocabNavigator.tsx       # Left panel 30%: DnD list
+│   │   └── VocabItemCard.tsx        # Thẻ item: word, validation dot
+│   ├── VocabReviewEditor/
+│   │   ├── VocabReviewEditor.tsx    # Right panel 70%: switched by selected item
+│   │   ├── tabs/
+│   │   │   ├── ContentTab.tsx       # Tab "Nội dung"
+│   │   │   └── PracticeTab.tsx      # Tab "Cấu hình Bài tập"
+│   │   └── blocks/
+│   │       ├── LinguisticBlock.tsx  # word, PoS, IPA, definitions
+│   │       ├── ContextBlock.tsx     # exampleSentence, exampleTranslation
+│   │       └── MultimediaBlock.tsx  # audioWordPlayer, audioSentencePlayer, imagePreview
+│   ├── AutoGenerateModal/
+│   │   └── AutoGenerateModal.tsx    # config wordCount, wordList textarea, trigger
+│   ├── GenerationProgress/
+│   │   └── GenerationProgress.tsx  # Steps progress bar (polling status API)
+│   └── AudioPlayerMini/
+│       └── AudioPlayerMini.tsx     # Play/Pause + Regenerate button
+└── hooks/
+    ├── useVocabContent.ts           # GET vocab content query
+    ├── useVocabMutations.ts         # save, generate, regenerateAudio mutations
+    ├── useVocabStudioState.ts       # Zustand slice hoặc local useState cho selectedItemId, dirtyItems
+    └── useGenerationStatus.ts       # Polling GET /vocab/status mỗi 2s khi đang generate
+```
+
+#### 4.2.3 Types cho Admin
+**File:** `admin/src/features/curriculum/courses/types/course.types.ts` (mở rộng)
+
+```typescript
+export interface VocabItem {
+  id: string;
+  word: string;
+  partOfSpeech: 'noun' | 'verb' | 'adjective' | 'adverb' | 'phrase' | 'other';
+  ipa: string;
+  definitionNative: string;          // Ngôn ngữ mẹ (vi, ja...) theo Language của Course
+  definitionEn: string;              // Định nghĩa tiếng Anh
+  exampleSentence: string;
+  exampleTranslation: string;
+  audioWordUrl: string | null;
+  audioSentenceUrl: string | null;
+  imageUrl: string | null;
+  conceptId: string | null;
+}
+
+export type VocabGenerationStatus = 'IDLE' | 'GENERATING' | 'GENERATING_AUDIO' | 'DONE' | 'ERROR';
+
+export interface VocabContent {
+  type: 'VOCAB';
+  scenario: string;
+  generationStatus: VocabGenerationStatus;
+  items: VocabItem[];
+}
+
+export interface VocabGenerationConfig {
+  wordCount: number;
+  wordList?: string[];   // Tùy chọn: Admin dán danh sách từ → AI tự điền thông tin
+}
+
+export interface VocabStatusResponse {
+  status: VocabGenerationStatus;
+  completedCount: number;
+  totalCount: number;
+}
+```
+
+#### 4.2.4 API Service cho Admin
+**File:** `admin/src/features/curriculum/courses/api/vocab.api.ts`
+
+```typescript
+vocabApi.getVocabContent(lessonId)
+vocabApi.saveVocabContent(lessonId, content)
+vocabApi.generateVocab(lessonId, config)
+vocabApi.getGenerationStatus(lessonId)
+vocabApi.regenerateAudio(lessonId, itemId, target)
+```
+
+#### 4.2.5 TanStack Query Hooks
+**File:** `admin/src/features/curriculum/courses/hooks/useVocabContent.ts`
+```typescript
+export const useVocabContent = (lessonId: string) =>
+  useQuery({ queryKey: LESSON_QUERY_KEYS.vocabContent(lessonId), queryFn: () => vocabApi.getVocabContent(lessonId) });
+```
+
+**File:** `admin/src/features/curriculum/courses/hooks/useVocabMutations.ts`
+- `useSaveVocabContent(lessonId)` — invalidates vocabContent query
+- `useGenerateVocab(lessonId)` — onSuccess: invalidates content, starts polling status
+- `useRegenerateAudio(lessonId)` — onSuccess: invalidates single item audio URL
+
+**File:** `admin/src/features/curriculum/courses/hooks/useGenerationStatus.ts`
+```typescript
+// Polling hook — enabled chỉ khi status là GENERATING | GENERATING_AUDIO
+export const useGenerationStatus = (lessonId: string, enabled: boolean) =>
+  useQuery({
+    queryKey: LESSON_QUERY_KEYS.vocabStatus(lessonId),
+    queryFn: () => vocabApi.getGenerationStatus(lessonId),
+    refetchInterval: enabled ? 2000 : false,
+    enabled,
+  });
+```
+
+#### 4.2.6 DnD Sort (VocabNavigator)
+- Dùng `@dnd-kit/core` + `@dnd-kit/sortable` (đã follow Shadcn ecosystem)
+- `onDragEnd`: cập nhật local `items` array order → debounce 500ms → gọi `saveDraft`
+- **Không** gọi BE reorder riêng — thứ tự lưu ngay trong `lesson.content.items[]`
+
+#### 4.2.7 Validation UX (Error Dots trong VocabNavigator)
+- Tính `isItemInvalid(item)`: `!item.word || !item.exampleSentence || (!item.audioWordUrl && generationDone)`
+- Hiển thị `●` đỏ trên `VocabItemCard` khi `isItemInvalid === true`
+- Count tổng số lỗi ở thanh Top Bar dạng badge
+
+---
+
+### ▶ SPRINT 3 — Practice Auto-Gen (Tab "Cấu hình Bài tập")
+**Mục tiêu:** Tự động sinh câu hỏi từ vocab items và cho Admin review/swap.
+
+#### 4.3.1 [Server] QuestionGenerationService
+**File:** `server/src/services/question-generation.service.ts`
+
+```typescript
+export class QuestionGenerationService {
+  // Sinh câu hỏi từ VocabItems thông qua GPT-5.1
+  async generateQuestionsFromVocab(
+    lessonId: string,
+    items: VocabItem[],
+    quantity: number,
+  ): Promise<IQuestion[]>
+
+  // Swap 1 câu hỏi bằng câu khác từ Question Bank cùng testedConceptId
+  async swapQuestion(questionId: string, testedConceptId: string): Promise<IQuestion>
+}
+```
+
+**3 Question types được sinh (theo `baihoc.md`):**
+| Type | Mô tả | Stem |
+|---|---|---|
+| `MULTIPLE_CHOICE` | 🔊 Nghe Audio → Chọn từ đúng | `stem.audioUrl` = `item.audioWordUrl` |
+| `FILL_IN_BLANK` | Điền từ vào ngữ cảnh | `stem.text` = câu ví dụ có blank |
+| `MATCHING` | Nối từ với định nghĩa | `stem.text` = danh sách word cần nối |
+
+#### 4.3.2 [Server] API Endpoints Practice
+Thêm vào `vocab.route.ts`:
+| Method | Endpoint | Mô tả |
+|---|---|---|
+| `POST` | `/lessons/:lessonId/vocab/generate-questions` | Sinh câu hỏi từ vocab items hiện tại |
+| `POST` | `/lessons/:lessonId/vocab/questions/:questionId/swap` | Swap 1 câu |
+| `PUT` | `/lessons/:lessonId/vocab/questions/:questionId` | Sửa câu hỏi trực tiếp |
+
+#### 4.3.3 [Admin] PracticeTab Component
+**File:** `VocabStudio/components/VocabReviewEditor/tabs/PracticeTab.tsx`
+
+- Danh sách câu hỏi đã sinh: dạng accordion
+- Mỗi câu: text preview + nút ✏️ Edit (inline) + nút 🔄 Swap
+- **3 dạng câu hỏi hiển thị (theo `baihoc.md`):**
+  - 🔊 *Audio Matching:* [Play Audio] → Chọn từ đúng trong 4 đáp án
+  - ✏️ *Context Fill:* `Please put your _____ on the scale.` → [Luggage]
+  - 🔗 *Matching:* Nối từ với định nghĩa
+- Slider `passingScore` (0-100, default 80)
+- Nút 🪴 "Tự động sinh câu hỏi" → gọi endpoint `generate-questions`
+
+> **Liên kết SRS (`khoahoc.md`):** Sau khi Admin xuất bản lesson, từng câu hỏi đã gắn `testedConcept`. Khi User làm sai câu này, hệ thống sẽ push `conceptId` vào `UserConceptState.weakConceptsDetected` → kích hoạt `DailyReviewSession` sáng hôm sau.
+
+---
+
+## 5. FILE MAP TỔNG HỢP
+
+### Server — Files mới/sửa
+```
+server/src/
+├── types/
+│   └── lesson-content.types.ts                        [MỚI]
+├── validations/
+│   └── vocab-content.validation.ts                    [MỚI]
+├── repositories/mongo/
+│   └── lesson.mongo.repository.ts                     [SỬA — thêm vocab methods]
+├── jobs/
+│   ├── queues/
+│   │   └── tts.queue.ts                               [MỚI]
+│   └── workers/
+│       └── tts.worker.ts                              [MỚI]
+├── services/
+│   ├── vocab-generation.service.ts                    [MỚI]
+│   └── question-generation.service.ts                 [MỚI — Sprint 3]
+├── controllers/
+│   └── vocab.controller.ts                            [MỚI]
+└── routes/
+    └── vocab.route.ts                                 [MỚI — mount vào app.ts]
+```
+
+### Admin — Files mới/sửa
+```
+admin/src/features/curriculum/courses/
+├── types/
+│   └── course.types.ts                                [SỬA — thêm Vocab types]
+├── api/
+│   └── vocab.api.ts                                   [MỚI]
+├── hooks/
+│   ├── useVocabContent.ts                             [MỚI]
+│   ├── useVocabMutations.ts                           [MỚI]
+│   └── useGenerationStatus.ts                         [MỚI]
+├── constants/
+│   └── query-keys.ts                                  [SỬA — thêm vocabContent, vocabStatus]
+├── components/
+│   └── VocabStudio/                                   [MỚI — toàn bộ folder]
+│       ├── VocabStudio.tsx
+│       ├── components/
+│       │   ├── VocabTopBar/VocabTopBar.tsx
+│       │   ├── VocabNavigator/
+│       │   │   ├── VocabNavigator.tsx
+│       │   │   └── VocabItemCard.tsx
+│       │   ├── VocabReviewEditor/
+│       │   │   ├── VocabReviewEditor.tsx
+│       │   │   ├── tabs/ContentTab.tsx
+│       │   │   ├── tabs/PracticeTab.tsx
+│       │   │   └── blocks/LinguisticBlock.tsx
+│       │   │   └── blocks/ContextBlock.tsx
+│       │   │   └── blocks/MultimediaBlock.tsx
+│       │   ├── AutoGenerateModal/AutoGenerateModal.tsx
+│       │   ├── GenerationProgress/GenerationProgress.tsx
+│       │   └── AudioPlayerMini/AudioPlayerMini.tsx
+│       └── hooks/useVocabStudioState.ts
+└── pages/CourseStudioPage/CourseStudioPage.tsx        [SỬA — route to VocabStudio]
 ```
 
 ---
 
-## 6. EXECUTION ORDER
+## 6. API CONTRACT (Tóm tắt)
 
-```
-Phase 0 (Hotfix - Runtime Crash)
-    → Phase 1 (Foundation)
-        → Phase 2 (Hooks)
-            → Phase 3 (Components)
-                → Phase 4 (Pages)
-                    → Phase 5 (Polish)
-```
+**Base:** `/api/v1/lessons/:lessonId/vocab`
 
-> **Dependency:** Phase 3 & 4 phụ thuộc Phase 2 (`useLearningGoalForm` phải tồn tại trước).
-> **Phase 0 phải chạy ngay** — app đang crash tại LanguageConfig.
+| Method | Path | Auth | Request Body (Zod) | Response |
+|---|---|---|---|---|
+| `GET` | `/content` | admin/cc | — | `{ data: VocabContent }` |
+| `PUT` | `/content` | admin/cc | `{ items: VocabItem[] }` | `{ data: ILesson }` |
+| `POST` | `/generate` | admin/cc | `{ wordCount: number, wordList?: string[] }` | `{ data: { items: VocabItem[], jobId: string } }` |
+| `GET` | `/status` | admin/cc | — | `{ data: VocabStatusResponse }` |
+| `POST` | `/items/:itemId/regenerate-audio` | admin/cc | `{ target: 'word' \| 'sentence' }` | `{ data: { url: string } }` |
+| `POST` | `/generate-questions` | admin/cc | `{ quantity: number }` | `{ data: IQuestion[] }` |
+| `POST` | `/questions/:questionId/swap` | admin/cc | — | `{ data: IQuestion }` |
+| `PUT` | `/questions/:questionId` | admin/cc | `Partial<IQuestion>` | `{ data: IQuestion }` |
+
+> **Lưu ý `POST /generate`:** Server tự lấy `Unit.contextSeed.scenario` và `keywords` từ DB. `wordList` chỉ là override tùy chọn của Admin. Client không cần gửi scenario trong body.
 
 ---
 
-## 7. DEFINITION OF DONE
+## 7. SECURITY & PERFORMANCE CHECKLIST
 
-- [ ] `LanguageConfig.tsx` không còn import từ internal paths của `languages` feature
-- [ ] `window.prompt` được thay bằng `<DuplicateGoalDialog>`
-- [ ] Không còn `useState` quản lý form data trong `GoalEditorPage`
-- [ ] Zod schema validate `skillWeights` tổng = 100%
-- [ ] `useDebounce` áp dụng cho search
-- [ ] `LEARNING_GOAL_QUERY_KEYS` theo key factory pattern
-- [ ] `useToggleLearningGoalStatus` có optimistic update
-- [ ] `data` array trong `RadarSkillChart` được `useMemo`
-- [ ] Không còn constants trong file `.types.ts`
-- [ ] `ApiResponse<T>` dùng từ `@/types/api.ts`
-- [ ] `index.ts` barrel export tồn tại
-- [ ] `GoalEditorPage` ≤ 80 lines
-- [ ] TypeScript compile clean — 0 errors
+| Hạng mục | Giải pháp |
+|---|---|
+| **Validate input** | Tất cả body/params qua Zod middleware trước khi vào Controller |
+| **Auth guard** | `protect` + `restrictTo('admin', 'content_creator')` trên tất cả vocab routes |
+| **Rate limit AI endpoint** | Redis rate-limiter riêng cho `/vocab/generate`: 5 req/min/user |
+| **Lean + Select** | Tất cả MongoDB reads trong VocabRepository dùng `.lean().select()` |
+| **BullMQ retry** | `attempts: 3, backoff: { type: 'exponential', delay: 2000 }` |
+| **Atomic update** | Dùng `$set` trên từng `items.$.audioWordUrl` thay vì replace toàn bộ document |
+| **Language-aware TTS** | Lấy `Language.ttsConfig.voiceId` từ DB trước khi enqueue — **không hardcode** voice |
+| **Contextual constraint** | GPT prompt phải trích dẫn `Unit.contextSeed.scenario` + `keywords` — validate câu ví dụ sau khi sinh |
+| **Auto-taughtConcepts** | Sau generation, `$set lesson.taughtConcepts` ngay. Tạo Concept nếu chưa tồn tại (upsert idempotent) |
+| **VectorId sự nhất quán** | Sau Pinecone upsert, `$set unit.vectorId` — đảm bảo RAG chatbot luôn có vector mới nhất |
+| **Logging** | `Logger.info/error` (Winston) — không dùng console.log |
+| **No `any`** | Tất cả method dùng strict types. VocabItem/VocabContent exported từ types file |
+| **Timeout GPT** | Axios timeout 30s cho OpenAI call, BullMQ job timeout 120s |
+
+---
+
+## 8. DEPENDENCY REQUIREMENTS
+
+```json
+// server — cần thêm (nếu chưa có)
+"bullmq": "^5.x",
+"openai": "^4.x",
+"nanoid": "^5.x"
+
+// admin — cần thêm
+"@dnd-kit/core": "^6.x",
+"@dnd-kit/sortable": "^8.x",
+"@dnd-kit/utilities": "^3.x"
+```
+
+---
+
+## 9. CHÚ THÍCH KIẾN TRÚC QUAN TRỌNG
+
+### 9.1 `targetVocab` = `Unit.contextSeed.keywords`
+Theo `baihoc.md`: "AI phải xử lý danh sách `targetVocab` được định nghĩa trong `Unit.context`."
+Đối chiếu `khoahoc.md` — `Unit.contextSeed` có field `keywords: [String]`.
+→ **`Unit.contextSeed.keywords` chính là `targetVocab`**. Khi Admin chưa nhập `wordList`, GPT-5.1 PHẢI ưu tiên sinh từ danh sách `keywords` này thay vì tự suy luận tự do.
+
+### 9.2 Vị trí của Vocab trong Hệ sinh thái Học tập
+Vocab là **Module đầu tiên** của mỗi Unit. Toàn bộ các module sau đều tái sử dụng từ vựng từ `lesson.content.items[]` của Vocab Lesson (theo `baihoc.md`):
+
+| Thứ tự | Module | Cách tái sử dụng Vocab |
+|---|---|---|
+| 1 | **Vocab (module này)** | Học từ qua Flashcard + Audio |
+| 2 | **Reading** | Gặp lại từ trong email/bài đọc ngữ cảnh |
+| 3 | **Grammar** | AI inject từ vựng Unit vào câu ví dụ ngữ pháp |
+| 4 | **Listening** | Nghe hội thoại có chứa từ vựng Unit |
+| 5 | **Speaking** | Roleplay dùng từ vựng để giải quyết tình huống |
+| 6 | **Writing** | Viết văn bản bắt buộc dùng từ vựng đã học |
+
+→ Trường `taughtConcepts` trên Lesson và `testedConcept` trên Question là **sợi chỉ đỏ** kết nối toàn bộ hệ sinh thái này cho AI Adaptive Engine.
+
+### 9.3 Language.ttsConfig — Dynamic Voice
+Theo `khoahoc.md`, mỗi `Language` có `ttsConfig: { provider: 'OPENAI' | 'AZURE', voiceId: String }`.
+- Khóa Tiếng Anh Mỹ → `{ provider: 'OPENAI', voiceId: 'alloy' }` (giọng trung tính)
+- Khóa luyện thi IELTS → `{ provider: 'OPENAI', voiceId: 'echo' }` (giọng Anh)
+- TTS Worker phải tra bảng `Language` trước khi gọi API — không được hardcode.
+
+---
+
+## 10. THỰC HIỆN THEO THỨ TỰ
+
+```
+Sprint 1 (Backend):
+  1. types/lesson-content.types.ts             # VocabItem, VocabContent, VocabGenerationStatus
+  2. validations/vocab-content.validation.ts   # vocabItemSchema, saveVocabContent, generate, regenerate
+  3. language.mongo.repository.ts              # thêm findById để lấy ttsConfig
+  4. concept.mongo.repository.ts               # thêm upsertByKey (idempotent)
+  5. jobs/queues/tts.queue.ts + workers/tts.worker.ts
+  6. services/vocab-generation.service.ts      # GPT-5.1 + autoMapTaughtConcepts + enqueueTts
+  7. repositories/mongo/lesson.mongo.repository.ts (thêm vocab methods)
+  8. controllers/vocab.controller.ts + routes/vocab.route.ts
+  9. Đăng ký TTS worker + vocab route trong app.ts
+
+Sprint 2 (Admin Frontend):
+  10. types/course.types.ts                    # thêm VocabItem (definitionNative/En), VocabContent
+  11. constants/query-keys.ts                  # thêm vocabContent, vocabStatus keys
+  12. api/vocab.api.ts
+  13. hooks/useVocabContent.ts + useVocabMutations.ts + useGenerationStatus.ts
+  14. VocabStudio root component
+  15. VocabTopBar
+  16. VocabNavigator + VocabItemCard + DnD (@dnd-kit)
+  17. AutoGenerateModal + GenerationProgress
+  18. VocabReviewEditor: tabs + blocks (LinguisticBlock, ContextBlock, MultimediaBlock)
+  19. AudioPlayerMini
+  20. CourseStudioPage: route VOCAB → VocabStudio
+
+Sprint 3 (Practice + SRS linkage):
+  21. services/question-generation.service.ts  # 3 types: MULTIPLE_CHOICE, FILL_IN_BLANK, MATCHING
+  22. vocab.controller.ts + route (thêm question endpoints)
+  23. Admin PracticeTab component (3 dạng preview + swap + slider)
+```

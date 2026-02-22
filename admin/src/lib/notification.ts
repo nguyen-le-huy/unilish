@@ -11,6 +11,13 @@ const DURATION = {
     WARNING: 4000,
 } as const;
 
+export const notification = {
+    success: (msg: string) => toast.success(msg, { duration: DURATION.SUCCESS }),
+    error: (msg: string) => toast.error(msg, { duration: DURATION.ERROR }),
+    info: (msg: string) => toast.info(msg, { duration: DURATION.INFO }),
+    warning: (msg: string) => toast.warning(msg, { duration: DURATION.WARNING }),
+};
+
 export const notify = {
     auth: {
         loginSuccess: () =>

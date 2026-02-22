@@ -32,8 +32,10 @@ const envSchema = z.object({
     PINECONE_ENVIRONMENT: z.string().default('us-east1-gcp'),
     PINECONE_INDEX_NAME: z.string().default('unilish-knowledge'),
 
-    // OpenAI (For Embeddings)
+    // OpenAI
     OPENAI_API_KEY: z.string().min(1, 'OpenAI API Key is required for embeddings'),
+    OPENAI_MODEL: z.string().default('gpt-4.1'),
+    OPENAI_TTS_MODEL: z.string().default('gpt-4o-mini-tts-2025-12-15'),
 
     // Auth
     GOOGLE_CLIENT_ID: z.string().optional(),

@@ -15,7 +15,10 @@ import passport from 'passport';
 import './config/passport.js';
 
 // Middlewares
-app.use(helmet());
+app.use(helmet({
+    // API server — resources are intentionally loaded cross-origin (audio, images)
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 app.use(cors({
     origin: [env.CLIENT_URL, 'http://localhost:5174'],
     credentials: true,
@@ -55,6 +58,12 @@ import userRouter from './routes/user.route.js';
 import couponRouter from './routes/coupon.route.js';
 import learningGoalRouter from './routes/learning-goal.route.js';
 import languageRouter from './routes/language.route.js';
+import courseSeriesRouter from './routes/course-series.route.js';
+import courseRouter from './routes/course.route.js';
+import unitRouter from './routes/unit.route.js';
+import lessonRouter from './routes/lesson.route.js';
+import vocabRouter from './routes/vocab.route.js';
+import audioRouter from './routes/audio.route.js';
 
 // Routes
 app.use('/api/auth', authRouter);
@@ -64,6 +73,12 @@ app.use('/api/users', userRouter);
 app.use('/api/coupons', couponRouter);
 app.use('/api/curriculum/goals', learningGoalRouter);
 app.use('/api/curriculum/languages', languageRouter);
+app.use('/api/curriculum/series', courseSeriesRouter);
+app.use('/api/curriculum/courses', courseRouter);
+app.use('/api/curriculum/units', unitRouter);
+app.use('/api/curriculum/lessons', lessonRouter);
+app.use('/api/curriculum/lessons', vocabRouter);
+app.use('/api/audio', audioRouter);
 
 app.get('/', (req, res) => {
     res.status(HttpStatus.OK).json({

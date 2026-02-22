@@ -138,7 +138,7 @@ export const sidebarConfig: SidebarConfig = {
         },
         {
           title: "Khóa học (Courses)",
-          url: "/courses",
+          url: "/curriculum/courses",
           description: "Quản lý Course → Unit → Lesson",
         },
         {

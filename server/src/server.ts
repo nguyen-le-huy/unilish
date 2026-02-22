@@ -5,6 +5,7 @@ import { connectDB } from './config/database.mongo.js';
 import redisClient, { connectRedis } from './config/redis.js';
 import { connectPinecone, disconnectPinecone } from './config/database.pinecone.js';
 import { logger } from './utils/logger.js';
+import { ttsWorker } from './jobs/workers/tts.worker.js';
 
 const startServer = async () => {
     // Connect to Databases
@@ -44,6 +45,9 @@ const startServer = async () => {
 
                 await disconnectPinecone();
                 logger.info('Pinecone connection closed.');
+
+                await ttsWorker.close();
+                logger.info('TTS worker closed.');
 
                 process.exit(0);
             } catch (err) {

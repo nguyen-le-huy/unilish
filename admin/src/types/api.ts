@@ -6,4 +6,11 @@ export interface ApiResponse<T> {
     code: number;
     message: string;
     data: T;
+    /** Present on paginated list endpoints. */
+    meta?: {
+        page: number;
+        limit: number;
+        total: number;
+        pages: number;
+    };
 }

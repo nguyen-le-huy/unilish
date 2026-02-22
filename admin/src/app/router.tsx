@@ -16,6 +16,10 @@ const GoalListPage = lazy(() => import("@/features/curriculum/goals/pages/GoalLi
 const GoalEditorPage = lazy(() => import("@/features/curriculum/goals/pages/GoalEditorPage/GoalEditorPage"));
 const LanguageListPage = lazy(() => import("@/features/curriculum/languages/pages/LanguageListPage/LanguageListPage"));
 const LanguageEditorPage = lazy(() => import("@/features/curriculum/languages/pages/LanguageEditorPage/LanguageEditorPage"));
+const SeriesListPage = lazy(() => import("@/features/curriculum/series/pages/SeriesListPage/SeriesListPage"));
+const SeriesEditorPage = lazy(() => import("@/features/curriculum/series/pages/SeriesEditorPage/SeriesEditorPage"));
+const CourseListPage = lazy(() => import("@/features/curriculum/courses/pages/CourseListPage/CourseListPage"));
+const CourseStudioPage = lazy(() => import("@/features/curriculum/courses/pages/CourseStudioPage/CourseStudioPage"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -57,7 +61,22 @@ export const router = createBrowserRouter([
                 ),
             },
             // Placeholder routes
-            { path: "courses", element: <PlaceholderPage title="Khóa học (LMS)" /> },
+            {
+                path: "curriculum/courses",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <CourseListPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "curriculum/courses/:courseId/studio",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <CourseStudioPage />
+                    </Suspense>
+                ),
+            },
             {
                 path: "curriculum/languages",
                 element: (
@@ -91,7 +110,30 @@ export const router = createBrowserRouter([
                 ),
             },
             { path: "questions", element: <PlaceholderPage title="Kho câu hỏi" /> },
-            { path: "curriculum/series", element: <PlaceholderPage title="Bộ khóa học (Series)" /> },
+            {
+                path: "curriculum/series",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <SeriesListPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "curriculum/series/new",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <SeriesEditorPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "curriculum/series/:slug",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <SeriesEditorPage />
+                    </Suspense>
+                ),
+            },
             { path: "curriculum/concepts", element: <PlaceholderPage title="Knowledge Graph" /> },
             { path: "curriculum/resources", element: <PlaceholderPage title="Tài nguyên mở rộng" /> },
             {

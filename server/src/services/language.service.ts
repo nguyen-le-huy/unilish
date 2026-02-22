@@ -170,7 +170,7 @@ class LanguageService {
 
         const speed = payload.speed;
         const mp3 = await this.openAIClient.audio.speech.create({
-            model: 'tts-1',
+            model: env.OPENAI_TTS_MODEL,
             voice: payload.voiceId as (typeof OPENAI_VOICES)[number],
             input: payload.text,
             speed,

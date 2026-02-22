@@ -15,7 +15,7 @@ import { AISandbox } from '../../components/AISandbox/AISandbox';
 import { SupportedLanguagesCard } from '../../components/SupportedLanguagesCard/SupportedLanguagesCard';
 import { useLearningGoalDetail } from '../../hooks/useLearningGoals';
 import { useCreateLearningGoal, useUpdateLearningGoal } from '../../hooks/useLearningGoalMutations';
-import { useGoalForm, type GoalFormValues } from '../../hooks/useLearningGoalForm';
+import { useGoalForm } from '../../hooks/useLearningGoalForm';
 
 // ─── Local sub-component ────────────────────────────────────────────────────
 type IgnoredSkillValue = string;

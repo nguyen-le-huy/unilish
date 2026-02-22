@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import type { Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { DEFAULT_SKILL_WEIGHTS } from '../constants/skill.constants';
@@ -19,8 +20,8 @@ export const goalFormSchema = z.object({
         .min(3, 'Tối thiểu 3 ký tự')
         .regex(/^[a-z0-9-]+$/, 'Chỉ dùng chữ thường, số và dấu gạch ngang'),
     title: z.string().min(3, 'Tối thiểu 3 ký tự'),
-    description: z.string().default(''),
-    targetAudience: z.string().default(''),
+    description: z.string(),
+    targetAudience: z.string(),
     supportedLanguages: z.array(z.string()),
     systemPrompt: z.string().min(30, 'Prompt tối thiểu 30 ký tự'),
     ignoredSkills: z.array(z.string().min(1)),
@@ -47,8 +48,8 @@ interface UseGoalFormOptions {
 }
 
 export const useGoalForm = ({ isCreateMode, goalDetail }: UseGoalFormOptions) => {
-    const form = useForm<GoalFormValues>({
-        resolver: zodResolver(goalFormSchema),
+    const form = useForm<GoalFormValues, any, GoalFormValues>({
+        resolver: zodResolver(goalFormSchema) as Resolver<GoalFormValues, any, GoalFormValues>,
         defaultValues: {
             slug: '',
             title: '',
