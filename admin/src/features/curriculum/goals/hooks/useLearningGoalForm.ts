@@ -13,8 +13,6 @@ const LEGACY_SKILL_MAP: Record<string, string> = {
     formality: 'Trang trọng',
     pronunciation: 'Phát âm',
 };
-const VALID_IGNORED_SKILLS = ['Chính tả', 'Dấu câu', 'Trang trọng', 'Phát âm'] as const;
-
 export const goalFormSchema = z.object({
     slug: z
         .string()
@@ -25,7 +23,7 @@ export const goalFormSchema = z.object({
     targetAudience: z.string().default(''),
     supportedLanguages: z.array(z.string()),
     systemPrompt: z.string().min(30, 'Prompt tối thiểu 30 ký tự'),
-    ignoredSkills: z.array(z.enum(['Chính tả', 'Dấu câu', 'Trang trọng', 'Phát âm'])),
+    ignoredSkills: z.array(z.string().min(1)),
     skillWeights: z
         .object({
             listening: z.number().min(0).max(1),
@@ -75,7 +73,7 @@ export const useGoalForm = ({ isCreateMode, goalDetail }: UseGoalFormOptions) =>
             targetAudience: goalDetail.targetAudience ?? '',
             supportedLanguages: goalDetail.supportedLanguages ?? [],
             systemPrompt: goalDetail.systemPrompt,
-            ignoredSkills: (goalDetail.ignoredSkills ?? []).map((s) => LEGACY_SKILL_MAP[s] ?? s).filter((s): s is GoalFormValues['ignoredSkills'][number] => VALID_IGNORED_SKILLS.includes(s as GoalFormValues['ignoredSkills'][number])),
+            ignoredSkills: (goalDetail.ignoredSkills ?? []).map((s) => LEGACY_SKILL_MAP[s] ?? s).filter(Boolean),
             skillWeights: goalDetail.skillWeights,
             isActive: goalDetail.isActive,
         });

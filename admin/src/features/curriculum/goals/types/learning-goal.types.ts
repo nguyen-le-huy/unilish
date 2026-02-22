@@ -1,7 +1,7 @@
 // NOTE: TTSProvider and Language are re-exported from the languages feature public barrel
 export type { TTSProvider, Language } from '@/features/curriculum/languages';
 
-export type IgnoredSkill = 'Chính tả' | 'Dấu câu' | 'Trang trọng' | 'Phát âm';
+export type IgnoredSkill = string;
 
 export interface SkillWeights {
     listening: number;

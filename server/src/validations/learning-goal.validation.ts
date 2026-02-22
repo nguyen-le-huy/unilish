@@ -47,7 +47,7 @@ export const createLearningGoalSchema = z.object({
         targetAudience: z.string().max(300).optional(),
         systemPrompt: z.string().min(30).max(5000),
         skillWeights: skillWeightsSchema,
-        ignoredSkills: z.array(z.enum(['Chính tả', 'Dấu câu', 'Trang trọng', 'Phát âm'])).default([]),
+        ignoredSkills: z.array(z.string().min(1)).default([]),
         isActive: z.boolean().default(true),
     }),
 });
@@ -60,7 +60,7 @@ export const updateLearningGoalSchema = z.object({
             targetAudience: z.string().max(300).nullable().optional(),
             systemPrompt: z.string().min(30).max(5000).optional(),
             skillWeights: skillWeightsSchema.optional(),
-            ignoredSkills: z.array(z.enum(['Chính tả', 'Dấu câu', 'Trang trọng', 'Phát âm'])).optional(),
+            ignoredSkills: z.array(z.string().min(1)).optional(),
             isActive: z.boolean().optional(),
         })
         .refine((body) => Object.keys(body).length > 0, 'At least one field is required'),

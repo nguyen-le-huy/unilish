@@ -16,17 +16,11 @@ import { SupportedLanguagesCard } from '../../components/SupportedLanguagesCard/
 import { useLearningGoalDetail } from '../../hooks/useLearningGoals';
 import { useCreateLearningGoal, useUpdateLearningGoal } from '../../hooks/useLearningGoalMutations';
 import { useGoalForm, type GoalFormValues } from '../../hooks/useLearningGoalForm';
-import { parseIgnoredSkills } from '../../utils/goal.utils';
 
 // ─── Local sub-component ────────────────────────────────────────────────────
-type IgnoredSkillValue = GoalFormValues['ignoredSkills'][number];
+type IgnoredSkillValue = string;
 
-const SKILL_META: { value: IgnoredSkillValue; label: string }[] = [
-    { value: 'Chính tả',   label: 'Chính tả' },
-    { value: 'Dấu câu',    label: 'Dấu câu' },
-    { value: 'Trang trọng', label: 'Trang trọng' },
-    { value: 'Phát âm',   label: 'Phát âm' },
-];
+const QUICK_SKILLS: IgnoredSkillValue[] = ['Chính tả', 'Dấu câu', 'Trang trọng', 'Phát âm'];
 
 function IgnoredSkillsField({
     value,
@@ -36,20 +30,22 @@ function IgnoredSkillsField({
     onChange: (v: IgnoredSkillValue[]) => void;
 }) {
     const [inputValue, setInputValue] = useState('');
+    const isComposing = useRef(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const remove = (skill: IgnoredSkillValue) => onChange(value.filter((s) => s !== skill));
 
     const commit = (raw: string) => {
-        const parsed = parseIgnoredSkills(raw);
-        if (parsed.length > 0) {
-            const next = Array.from(new Set([...value, ...parsed]));
-            onChange(next);
+        const trimmed = raw.trim();
+        if (!trimmed) return;
+        if (!value.includes(trimmed)) {
+            onChange([...value, trimmed]);
         }
         setInputValue('');
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (isComposing.current) return;
         if (e.key === 'Enter' || e.key === ',') {
             e.preventDefault();
             commit(inputValue);
@@ -59,25 +55,20 @@ function IgnoredSkillsField({
     };
 
     const toggleQuick = (skill: IgnoredSkillValue) => {
-        if (value.includes(skill)) {
-            remove(skill);
-        } else {
-            onChange([...value, skill]);
-        }
+        if (value.includes(skill)) remove(skill);
+        else onChange([...value, skill]);
     };
-
-    const labelOf = (v: IgnoredSkillValue) => SKILL_META.find((s) => s.value === v)?.label ?? v;
 
     return (
         <div className="space-y-2">
             {/* Tag input box */}
             <div
-                className="flex flex-wrap gap-1.5 rounded-md border border-input bg-background px-3 py-2 min-h-10 cursor-text"
+                className="flex flex-wrap gap-1.5 rounded-md border border-input bg-background px-3 py-2 min-h-10 cursor-text focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
                 onClick={() => inputRef.current?.focus()}
             >
                 {value.map((skill) => (
                     <Badge key={skill} variant="secondary" className="gap-1 pr-1">
-                        {labelOf(skill)}
+                        {skill}
                         <button
                             type="button"
                             className="ml-0.5 rounded-sm opacity-60 hover:opacity-100 focus:outline-none"
@@ -91,8 +82,13 @@ function IgnoredSkillsField({
                     ref={inputRef}
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
+                    onCompositionStart={() => { isComposing.current = true; }}
+                    onCompositionEnd={(e) => {
+                        isComposing.current = false;
+                        setInputValue((e.target as HTMLInputElement).value);
+                    }}
                     onKeyDown={handleKeyDown}
-                    onBlur={() => commit(inputValue)}
+                    onBlur={() => { if (!isComposing.current) commit(inputValue); }}
                     placeholder={value.length === 0 ? 'Nhập hoặc chọn bên dưới…' : ''}
                     className="flex-1 min-w-[120px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
@@ -100,14 +96,14 @@ function IgnoredSkillsField({
 
             {/* Quick-pick badges */}
             <div className="flex flex-wrap gap-1.5">
-                {SKILL_META.map(({ value: v, label }) => (
+                {QUICK_SKILLS.map((skill) => (
                     <Badge
-                        key={v}
-                        variant={value.includes(v) ? 'default' : 'outline'}
+                        key={skill}
+                        variant={value.includes(skill) ? 'default' : 'outline'}
                         className="cursor-pointer select-none"
-                        onClick={() => toggleQuick(v)}
+                        onClick={() => toggleQuick(skill)}
                     >
-                        {value.includes(v) ? `✓ ${label}` : `+ ${label}`}
+                        {value.includes(skill) ? `✓ ${skill}` : `+ ${skill}`}
                     </Badge>
                 ))}
             </div>
