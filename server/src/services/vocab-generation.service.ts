@@ -131,10 +131,11 @@ For each word, provide a JSON object in this exact shape:
   "partOfSpeech": "<noun|verb|adjective|adverb|phrase>",
   "ipa": "<IPA transcription>",
   "definitionNative": "<clear definition in ${ctx.nativeName}>",
-  "definitionEn": "<English definition>",
-  "exampleSentence": "<natural example sentence using the word in context: ${ctx.scenario}>",
+  "definitionEn": "<definition in ${ctx.learnerNativeLanguage}>",
+  "exampleSentence": "<short, simple example sentence (max 12 words) using the word in context: ${ctx.scenario}>",
   "exampleTranslation": "<${ctx.learnerNativeLanguage} translation of the example sentence>"
 }
+IMPORTANT: exampleSentence must be SHORT (8–12 words). Do NOT write complex or compound sentences.
 Return a JSON array of ${wordList.length} items.`
             : `Generate ${wordCount} ${ctx.nativeName} vocabulary words relevant to the scenario: "${ctx.scenario}".
 ${ctx.keywords.length ? `Related keywords for context: ${ctx.keywords.join(', ')}.` : ''}
@@ -144,10 +145,11 @@ For each word, provide a JSON object in this exact shape:
   "partOfSpeech": "<noun|verb|adjective|adverb|phrase>",
   "ipa": "<IPA transcription>",
   "definitionNative": "<clear definition in ${ctx.nativeName}>",
-  "definitionEn": "<English definition>",
-  "exampleSentence": "<natural example sentence using the word in context: ${ctx.scenario}>",
+  "definitionEn": "<definition in ${ctx.learnerNativeLanguage}>",
+  "exampleSentence": "<short, simple example sentence (max 12 words) using the word in context: ${ctx.scenario}>",
   "exampleTranslation": "<${ctx.learnerNativeLanguage} translation of the example sentence>"
 }
+IMPORTANT: exampleSentence must be SHORT (8–12 words). Do NOT write complex or compound sentences.
 Return a JSON array of exactly ${wordCount} items. Words must be diverse and appropriate difficulty for the scenario.`;
 
         const response = await openaiClient.chat.completions.create({

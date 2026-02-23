@@ -99,13 +99,60 @@ export const generateAllAudioSchema = z.object({
 
 export const generateQuestionsSchema = z.object({
     params: z.object({ lessonId: objectIdSchema }),
+    body: z
+        .object({
+            distribution: z.object({
+                mc: z.number().int().min(0).max(90).default(0),
+                fill: z.number().int().min(0).max(90).default(0),
+                match: z.number().int().min(0).max(90).default(0),
+            }),
+        })
+        .refine(
+            (d) => d.distribution.mc + d.distribution.fill + d.distribution.match >= 3,
+            { message: 'Tổng số câu hỏi phải ít nhất 3' },
+        )
+        .refine(
+            (d) => d.distribution.mc + d.distribution.fill + d.distribution.match <= 90,
+            { message: 'Tổng số câu hỏi không vượt quá 90' },
+        ),
+});
+
+// ─── Get Vocab Questions ─────────────────────────────────────────────────────
+// GET /curriculum/lessons/:lessonId/vocab/questions
+
+export const getVocabQuestionsSchema = z.object({
+    params: z.object({ lessonId: objectIdSchema }),
+});
+
+// ─── Swap Vocab Question ──────────────────────────────────────────────────────
+// POST /curriculum/lessons/:lessonId/vocab/questions/:questionId/swap
+
+export const swapVocabQuestionSchema = z.object({
+    params: z.object({
+        lessonId: objectIdSchema,
+        questionId: objectIdSchema,
+    }),
+});
+
+// ─── Update Vocab Question ────────────────────────────────────────────────────
+// PUT /curriculum/lessons/:lessonId/vocab/questions/:questionId
+
+export const updateVocabQuestionSchema = z.object({
+    params: z.object({
+        lessonId: objectIdSchema,
+        questionId: objectIdSchema,
+    }),
     body: z.object({
-        quantity: z
-            .number()
-            .int()
-            .min(3, 'Tối thiểu 3 câu hỏi')
-            .max(20, 'Tối đa 20 câu hỏi')
-            .default(10),
+        stem: z
+            .object({
+                text: z.string().max(500).trim().optional(),
+                audioUrl: z.string().url().nullable().optional(),
+                imageUrl: z.string().url().nullable().optional(),
+            })
+            .optional(),
+        explanation: z.string().max(1000).trim().nullable().optional(),
+        difficultyLevel: z.number().int().min(1).max(5).optional(),
+        content: z.record(z.string(), z.unknown()).optional(),
     }),
 });
 
@@ -115,3 +162,4 @@ export type GenerateVocabBody = z.infer<typeof generateVocabSchema>['body'];
 export type SaveVocabContentBody = z.infer<typeof saveVocabContentSchema>['body'];
 export type RegenerateAudioBody = z.infer<typeof regenerateAudioSchema>['body'];
 export type GenerateQuestionsBody = z.infer<typeof generateQuestionsSchema>['body'];
+export type UpdateVocabQuestionBody = z.infer<typeof updateVocabQuestionSchema>['body'];

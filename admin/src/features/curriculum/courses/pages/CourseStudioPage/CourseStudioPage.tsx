@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Cpu } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useCourseDetail, useCourseTree } from '../../hooks/useCourses';
 import { useCourseStudioStore } from '../../stores/course-studio.store';
 import { CurriculumTree } from '../../components/CurriculumTree/CurriculumTree';
@@ -10,6 +11,8 @@ import { CourseEditor } from '../../components/CourseEditor/CourseEditor';
 import { UnitEditor } from '../../components/UnitEditor/UnitEditor';
 import { LessonEditor } from '../../components/LessonEditor/LessonEditor';
 import { VocabStudio } from '../../components/VocabStudio/VocabStudio';
+import { GrammarStudio } from '../../components/GrammarStudio/GrammarStudio';
+import { ReadingStudio } from '../../components/ReadingStudio/ReadingStudio';
 import type { UnitWithLessons, LessonSummary } from '../../types/course.types';
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -74,7 +77,29 @@ function WorkspaceLessonPanel({ courseId, lessonId }: { courseId: string; lesson
 
     // VOCAB lessons get the full-featured VocabStudio
     if (lesson.type === 'VOCAB') {
-        return <VocabStudio lesson={lesson} courseId={courseId} />;
+        return (
+            <ErrorBoundary>
+                <VocabStudio lesson={lesson} />
+            </ErrorBoundary>
+        );
+    }
+
+    // GRAMMAR lessons get the Grammar Studio
+    if (lesson.type === 'GRAMMAR') {
+        return (
+            <ErrorBoundary>
+                <GrammarStudio lesson={lesson} />
+            </ErrorBoundary>
+        );
+    }
+
+    // READING lessons get the Reading Studio
+    if (lesson.type === 'READING') {
+        return (
+            <ErrorBoundary>
+                <ReadingStudio lesson={lesson} courseLevel={tree?.level ?? 'A1'} />
+            </ErrorBoundary>
+        );
     }
 
     return <LessonEditor lesson={lesson} courseId={courseId} />;
@@ -125,7 +150,7 @@ export default function CourseStudioPage() {
                 )}
             </div>
 
-            {/* 3-Column Layout */}
+            {/* 2-Column Layout: Tree | Workspace */}
             <div className="flex flex-1 overflow-hidden">
                 {/* Col 1: Curriculum Tree */}
                 <div className="w-1/4 overflow-hidden border-r bg-background">
@@ -133,25 +158,8 @@ export default function CourseStudioPage() {
                 </div>
 
                 {/* Col 2: Workspace Editor */}
-                <div className="w-1/2 overflow-hidden bg-background">
+                <div className="flex-1 overflow-hidden bg-background">
                     <WorkspacePanel courseId={courseId} />
-                </div>
-
-                {/* Col 3: AI Assistant Placeholder */}
-                <div className="flex w-1/4 flex-col overflow-hidden border-l bg-muted/30">
-                    <div className="flex items-center gap-2 border-b px-3 py-2">
-                        <Cpu className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            Trợ lý AI
-                        </span>
-                    </div>
-                    <div className="flex flex-1 items-center justify-center text-center text-sm text-muted-foreground p-4">
-                        <div className="space-y-2">
-                            <Cpu className="mx-auto h-8 w-8 opacity-30" aria-hidden="true" />
-                            <p className="font-medium">Bảng Trợ lý AI</p>
-                            <p className="text-xs">Sắp ra mắt trong Sprint 2 — Tạo nội dung &amp; gợi ý bằng AI</p>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

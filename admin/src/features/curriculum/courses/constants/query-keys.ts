@@ -32,4 +32,9 @@ export const LESSON_QUERY_KEYS = {
     detail: (id: string) => [...LESSON_QUERY_KEYS.details(), id] as const,
     vocabContent: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'vocab-content', lessonId] as const,
     vocabStatus: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'vocab-status', lessonId] as const,
+    vocabQuestions: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'vocab-questions', lessonId] as const,
+    grammarContent: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'grammar-content', lessonId] as const,
+    grammarQuestions: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'grammar-questions', lessonId] as const,
+    readingContent: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'reading-content', lessonId] as const,
+    readingQuestions: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'reading-questions', lessonId] as const,
 };

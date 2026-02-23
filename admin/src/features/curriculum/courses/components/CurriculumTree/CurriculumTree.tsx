@@ -1,4 +1,5 @@
 import { memo, useState, useCallback, useMemo } from 'react';
+import type { ComponentType } from 'react';
 import {
     DndContext,
     closestCenter,
@@ -14,7 +15,16 @@ import {
     verticalListSortingStrategy,
     arrayMove,
 } from '@dnd-kit/sortable';
-import { Loader2 } from 'lucide-react';
+import {
+    AlignLeft,
+    BookOpen,
+    ClipboardList,
+    FileText,
+    Headphones,
+    Loader2,
+    Mic,
+    PenLine,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -32,7 +42,7 @@ import { AddNodeButton } from '../AddNodeButton/AddNodeButton';
 import { DeleteNodeDialog } from '../DeleteNodeDialog/DeleteNodeDialog';
 import { CourseTreeNode } from './CourseTreeNode';
 import { UnitTreeNode } from './UnitTreeNode';
-import type { UnitWithLessons, LessonSummary } from '../../types/course.types';
+import type { UnitWithLessons, LessonSummary, LessonType } from '../../types/course.types';
 import type { StudioNodeType } from '../../stores/course-studio.store';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -51,6 +61,25 @@ interface PendingDelete {
 interface AddLessonTarget {
     unitId: string;
 }
+
+// ─── Lesson type picker config ────────────────────────────────────────────────
+
+interface LessonTypeOption {
+    type: LessonType;
+    label: string;
+    Icon: ComponentType<{ className?: string }>;
+    color: string;
+}
+
+const LESSON_TYPE_OPTIONS: LessonTypeOption[] = [
+    { type: 'VOCAB',     label: 'Từ vựng',   Icon: BookOpen,     color: 'text-blue-500' },
+    { type: 'GRAMMAR',   label: 'Ngữ pháp',  Icon: AlignLeft,    color: 'text-violet-500' },
+    { type: 'READING',   label: 'Đọc hiểu',  Icon: FileText,     color: 'text-emerald-500' },
+    { type: 'LISTENING', label: 'Nghe',       Icon: Headphones,   color: 'text-amber-500' },
+    { type: 'SPEAKING',  label: 'Nói',        Icon: Mic,          color: 'text-rose-500' },
+    { type: 'WRITING',   label: 'Viết',       Icon: PenLine,      color: 'text-cyan-500' },
+    { type: 'UNIT_TEST', label: 'Kiểm tra',   Icon: ClipboardList, color: 'text-slate-500' },
+];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -74,6 +103,7 @@ export const CurriculumTree = memo(function CurriculumTree({ courseId }: Props) 
     const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
     const [addLessonTarget, setAddLessonTarget] = useState<AddLessonTarget | null>(null);
     const [newLessonTitle, setNewLessonTitle] = useState('');
+    const [newLessonType, setNewLessonType] = useState<LessonType>('VOCAB');
     const [addUnitOpen, setAddUnitOpen] = useState(false);
     const [newUnitTitle, setNewUnitTitle] = useState('');
 
@@ -140,15 +170,16 @@ export const CurriculumTree = memo(function CurriculumTree({ courseId }: Props) 
     const handleAddLesson = useCallback(() => {
         if (!newLessonTitle.trim() || !addLessonTarget) return;
         useCreateLessonForUnit.mutate(
-            { unitId: addLessonTarget.unitId, title: newLessonTitle.trim(), type: 'VOCAB' },
+            { unitId: addLessonTarget.unitId, title: newLessonTitle.trim(), type: newLessonType },
             {
                 onSuccess: () => {
                     setAddLessonTarget(null);
                     setNewLessonTitle('');
+                    setNewLessonType('VOCAB');
                 },
             },
         );
-    }, [addLessonTarget, newLessonTitle, useCreateLessonForUnit]);
+    }, [addLessonTarget, newLessonTitle, newLessonType, useCreateLessonForUnit]);
 
     // ── Delete confirm ────────────────────────────────────────────────────────
     const handleDeleteConfirm = useCallback(() => {
@@ -274,21 +305,62 @@ export const CurriculumTree = memo(function CurriculumTree({ courseId }: Props) 
             </Dialog>
 
             {/* Add Lesson Dialog */}
-            <Dialog open={!!addLessonTarget} onOpenChange={(open) => !open && setAddLessonTarget(null)}>
-                <DialogContent>
+            <Dialog
+                open={!!addLessonTarget}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setAddLessonTarget(null);
+                        setNewLessonTitle('');
+                        setNewLessonType('VOCAB');
+                    }
+                }}
+            >
+                <DialogContent className="sm:max-w-[460px]">
                     <DialogHeader>
                         <DialogTitle>Thêm bài học mới</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-2 py-2">
-                        <Label htmlFor="newLessonTitle">Tên bài học</Label>
-                        <Input
-                            id="newLessonTitle"
-                            value={newLessonTitle}
-                            onChange={(e) => setNewLessonTitle(e.target.value)}
-                            placeholder="VD: Xin chào & Tạm biệt"
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddLesson()}
-                            autoFocus
-                        />
+                    <div className="space-y-4 py-2">
+                        {/* Lesson type picker */}
+                        <div className="space-y-2">
+                            <Label>Loại bài học</Label>
+                            <div className="grid grid-cols-4 gap-2">
+                                {LESSON_TYPE_OPTIONS.map(({ type, label, Icon, color }) => {
+                                    const isSelected = newLessonType === type;
+                                    return (
+                                        <button
+                                            key={type}
+                                            type="button"
+                                            onClick={() => setNewLessonType(type)}
+                                            aria-pressed={isSelected}
+                                            aria-label={`Loại: ${label}`}
+                                            className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-2.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                                isSelected
+                                                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                                                    : 'border-border bg-background hover:bg-muted/60'
+                                            }`}
+                                        >
+                                            <Icon className={`h-4 w-4 ${isSelected ? color : 'text-muted-foreground'}`} aria-hidden="true" />
+                                            <span className={`text-[11px] font-medium leading-tight ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
+                                                {label}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Lesson title */}
+                        <div className="space-y-2">
+                            <Label htmlFor="newLessonTitle">Tên bài học</Label>
+                            <Input
+                                id="newLessonTitle"
+                                value={newLessonTitle}
+                                onChange={(e) => setNewLessonTitle(e.target.value)}
+                                placeholder="VD: Xin chào & Tạm biệt"
+                                onKeyDown={(e) => e.key === 'Enter' && handleAddLesson()}
+                                autoFocus
+                            />
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setAddLessonTarget(null)}>

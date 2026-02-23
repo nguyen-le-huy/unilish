@@ -5,7 +5,8 @@ import type { VocabItem, VocabContent } from '../../../types/course.types';
 
 interface VocabStudioState {
     selectedItemId: string | null;
-    dirtyItems: Map<string, Partial<VocabItem>>;
+    /** Keyed by VocabItem.id — pending edits not yet persisted to the server. */
+    dirtyItems: Record<string, Partial<VocabItem>>;
 }
 
 interface UseVocabStudioStateReturn {
@@ -22,7 +23,7 @@ interface UseVocabStudioStateReturn {
 export const useVocabStudioState = (): UseVocabStudioStateReturn => {
     const [state, setState] = useState<VocabStudioState>({
         selectedItemId: null,
-        dirtyItems: new Map(),
+        dirtyItems: {},
     });
 
     const selectItem = useCallback((id: string) => {
@@ -30,12 +31,13 @@ export const useVocabStudioState = (): UseVocabStudioStateReturn => {
     }, []);
 
     const updateItem = useCallback((itemId: string, field: keyof VocabItem, value: string) => {
-        setState((prev) => {
-            const next = new Map(prev.dirtyItems);
-            const existing = next.get(itemId) ?? {};
-            next.set(itemId, { ...existing, [field]: value });
-            return { ...prev, dirtyItems: next };
-        });
+        setState((prev) => ({
+            ...prev,
+            dirtyItems: {
+                ...prev.dirtyItems,
+                [itemId]: { ...prev.dirtyItems[itemId], [field]: value },
+            },
+        }));
     }, []);
 
     /**
@@ -43,12 +45,12 @@ export const useVocabStudioState = (): UseVocabStudioStateReturn => {
      */
     const applyDirtyToContent = useCallback(
         (content: VocabContent): VocabContent => {
-            if (state.dirtyItems.size === 0) return content;
+            if (Object.keys(state.dirtyItems).length === 0) return content;
 
             return {
                 ...content,
                 items: content.items.map((item) => {
-                    const dirty = state.dirtyItems.get(item.id);
+                    const dirty = state.dirtyItems[item.id];
                     return dirty ? { ...item, ...dirty } : item;
                 }),
             };
@@ -57,7 +59,7 @@ export const useVocabStudioState = (): UseVocabStudioStateReturn => {
     );
 
     const clearDirty = useCallback(() => {
-        setState((prev) => ({ ...prev, dirtyItems: new Map() }));
+        setState((prev) => ({ ...prev, dirtyItems: {} }));
     }, []);
 
     return {
@@ -65,7 +67,7 @@ export const useVocabStudioState = (): UseVocabStudioStateReturn => {
         selectItem,
         updateItem,
         applyDirtyToContent,
-        hasDirtyItems: state.dirtyItems.size > 0,
+        hasDirtyItems: Object.keys(state.dirtyItems).length > 0,
         clearDirty,
     };
 };

@@ -8,6 +8,10 @@ import {
     getVocabStatusSchema,
     regenerateAudioSchema,
     generateAllAudioSchema,
+    generateQuestionsSchema,
+    getVocabQuestionsSchema,
+    swapVocabQuestionSchema,
+    updateVocabQuestionSchema,
 } from '../validations/vocab-content.validation.js';
 import {
     getVocabContent,
@@ -16,6 +20,10 @@ import {
     getGenerationStatus,
     regenerateItemAudio,
     generateAllAudio,
+    getVocabQuestions,
+    generateVocabQuestions,
+    swapVocabQuestion,
+    updateVocabQuestion,
 } from '../controllers/vocab.controller.js';
 
 const router = Router({ mergeParams: true });
@@ -52,6 +60,28 @@ router.post(
     '/:lessonId/vocab/generate-audio',
     validate(generateAllAudioSchema),
     generateAllAudio,
+);
+
+// ─── Practice Questions ───────────────────────────────────────────────────────
+
+router
+    .route('/:lessonId/vocab/questions')
+    .get(validate(getVocabQuestionsSchema), getVocabQuestions);
+
+router.post(
+    '/:lessonId/vocab/generate-questions',
+    validate(generateQuestionsSchema),
+    generateVocabQuestions,
+);
+
+router
+    .route('/:lessonId/vocab/questions/:questionId')
+    .put(validate(updateVocabQuestionSchema), updateVocabQuestion);
+
+router.post(
+    '/:lessonId/vocab/questions/:questionId/swap',
+    validate(swapVocabQuestionSchema),
+    swapVocabQuestion,
 );
 
 export default router;

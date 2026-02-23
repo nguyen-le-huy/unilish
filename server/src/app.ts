@@ -63,6 +63,8 @@ import courseRouter from './routes/course.route.js';
 import unitRouter from './routes/unit.route.js';
 import lessonRouter from './routes/lesson.route.js';
 import vocabRouter from './routes/vocab.route.js';
+import grammarRouter from './routes/grammar.route.js';
+import readingRouter from './routes/reading.route.js';
 import audioRouter from './routes/audio.route.js';
 
 // Routes
@@ -78,6 +80,8 @@ app.use('/api/curriculum/courses', courseRouter);
 app.use('/api/curriculum/units', unitRouter);
 app.use('/api/curriculum/lessons', lessonRouter);
 app.use('/api/curriculum/lessons', vocabRouter);
+app.use('/api/curriculum/lessons', grammarRouter);
+app.use('/api/curriculum/lessons', readingRouter);
 app.use('/api/audio', audioRouter);
 
 app.get('/', (req, res) => {

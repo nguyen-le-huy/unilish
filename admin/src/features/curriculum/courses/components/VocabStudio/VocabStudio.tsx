@@ -1,14 +1,20 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notification } from '@/lib/notification';
+import { LESSON_QUERY_KEYS } from '../../constants/query-keys';
 import { useVocabContent } from '../../hooks/useVocabContent';
-import { useGenerateVocab, useSaveVocabContent, useGenerateAllAudio } from '../../hooks/useVocabMutations';
+import {
+    useGenerateVocab,
+    useSaveVocabContent,
+    useGenerateAllAudio,
+    useUploadVocabImage,
+} from '../../hooks/useVocabMutations';
 import { useGenerationStatus } from '../../hooks/useGenerationStatus';
 import { VocabTopBar } from './components/VocabTopBar/VocabTopBar';
 import { VocabNavigator } from './components/VocabNavigator/VocabNavigator';
 import { VocabReviewEditor } from './components/VocabReviewEditor/VocabReviewEditor';
-import { AutoGenerateModal } from './components/AutoGenerateModal/AutoGenerateModal';
 import { GenerationProgress } from './components/GenerationProgress/GenerationProgress';
 import { useVocabStudioState } from './hooks/useVocabStudioState';
 import type { LessonSummary, VocabItem } from '../../types/course.types';
@@ -17,14 +23,13 @@ import type { LessonSummary, VocabItem } from '../../types/course.types';
 
 interface Props {
     lesson: LessonSummary;
-    courseId: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const VocabStudio = memo(function VocabStudio({ lesson }: Props) {
     const lessonId = lesson._id;
-    const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
+    const queryClient = useQueryClient();
 
     // ── Data ────────────────────────────────────────────────────────────────
     const { data: content, isLoading, isError } = useVocabContent(lessonId);
@@ -32,7 +37,9 @@ export const VocabStudio = memo(function VocabStudio({ lesson }: Props) {
 
     // ── Mutations ───────────────────────────────────────────────────────────
     const generateMutation = useGenerateVocab(lessonId);
-    const saveMutation = useSaveVocabContent(lessonId);    const generateAudioMutation = useGenerateAllAudio(lessonId);
+    const saveMutation = useSaveVocabContent(lessonId);
+    const generateAudioMutation = useGenerateAllAudio(lessonId);
+    const uploadImageMutation = useUploadVocabImage(lessonId);
     // ── Local UI state ──────────────────────────────────────────────────────
     const { selectedItemId, selectItem, updateItem, applyDirtyToContent, clearDirty } =
         useVocabStudioState();
@@ -48,17 +55,48 @@ export const VocabStudio = memo(function VocabStudio({ lesson }: Props) {
 
     // ── Handlers ─────────────────────────────────────────────────────────────
 
-    const handleGenerate = useCallback(
-        (config: { wordCount: number; wordList?: string[] }) => {
-            generateMutation.mutate(config, {
-                onSuccess: () => {
-                    setIsGenerateModalOpen(false);
-                    notification.success('Đang tạo từ vựng…');
-                },
-                onError: () => notification.error('Lỗi khi tạo từ vựng'),
+    const handleReorder = useCallback(
+        (newItems: VocabItem[]) => {
+            if (!content) return;
+            queryClient.setQueryData(LESSON_QUERY_KEYS.vocabContent(lessonId), {
+                ...content,
+                items: newItems,
             });
         },
-        [generateMutation],
+        [content, lessonId, queryClient],
+    );
+
+    const handleAddItem = useCallback(() => {
+        if (!content) return;
+        const blankItem: VocabItem = {
+            id: crypto.randomUUID(),
+            word: '',
+            partOfSpeech: 'noun',
+            ipa: '',
+            definitionNative: '',
+            definitionEn: '',
+            exampleSentence: '',
+            exampleTranslation: '',
+            audioWordUrl: null,
+            audioSentenceUrl: null,
+            imageUrl: null,
+            conceptId: null,
+        };
+        queryClient.setQueryData(LESSON_QUERY_KEYS.vocabContent(lessonId), {
+            ...content,
+            items: [...content.items, blankItem],
+        });
+        selectItem(blankItem.id);
+    }, [content, lessonId, queryClient, selectItem]);
+
+    const handleImageUpload = useCallback(
+        (itemId: string, file: File) => {
+            uploadImageMutation.mutate(
+                { itemId, file },
+                { onError: () => notification.error('Lỗi khi tải ảnh lên') },
+            );
+        },
+        [uploadImageMutation],
     );
 
     const handleGenerateAllAudio = useCallback(() => {
@@ -67,6 +105,21 @@ export const VocabStudio = memo(function VocabStudio({ lesson }: Props) {
             onError: () => notification.error('Lỗi khi tạo âm thanh'),
         });
     }, [generateAudioMutation]);
+
+    const handleGenerate = useCallback(
+        (config: { wordCount: number; wordList?: string[] }) => {
+            generateMutation.mutate(config, {
+                onSuccess: () => {
+                    notification.success('Đang tạo từ vựng… Âm thanh sẽ được tạo tự động sau.');
+                    // Trigger audio generation as a separate independent mutation
+                    // to keep error handling isolated from the vocab generation step.
+                    handleGenerateAllAudio();
+                },
+                onError: () => notification.error('Lỗi khi tạo từ vựng'),
+            });
+        },
+        [generateMutation, handleGenerateAllAudio],
+    );
 
     const handleSave = useCallback(() => {
         if (!content) return;
@@ -132,17 +185,18 @@ export const VocabStudio = memo(function VocabStudio({ lesson }: Props) {
     }
 
     return (
-        <>
-            <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex h-full flex-col overflow-hidden">
                 {/* Top Bar */}
                 <VocabTopBar
+                    lessonId={lessonId}
                     lessonTitle={lesson.title}
                     itemCount={items.length}
+                    passingScore={lesson.practiceConfig.passingScore}
                     generationStatus={generationStatus}
                     isSaving={saveMutation.isPending}
                     isGeneratingAudio={generateAudioMutation.isPending}
                     onSave={handleSave}
-                    onOpenGenerateModal={() => setIsGenerateModalOpen(true)}
+                    onGenerateVocab={handleGenerate}
                     onGenerateAllAudio={handleGenerateAllAudio}
                 />
 
@@ -151,7 +205,8 @@ export const VocabStudio = memo(function VocabStudio({ lesson }: Props) {
                     <div className="shrink-0 px-4 pt-3">
                         <GenerationProgress
                             status={generationStatus}
-                            itemCount={statusData?.itemCount ?? 0}
+                            completedCount={statusData?.completedCount ?? 0}
+                            totalCount={statusData?.totalCount ?? items.length}
                         />
                     </div>
                 )}
@@ -164,6 +219,9 @@ export const VocabStudio = memo(function VocabStudio({ lesson }: Props) {
                             items={items}
                             selectedItemId={selectedItem?.id ?? null}
                             onSelectItem={selectItem}
+                            onReorder={handleReorder}
+                            onAddItem={handleAddItem}
+                            generationDone={generationStatus === 'DONE'}
                         />
                     </div>
 
@@ -173,7 +231,9 @@ export const VocabStudio = memo(function VocabStudio({ lesson }: Props) {
                             <VocabReviewEditor
                                 lessonId={lessonId}
                                 item={effectiveItem}
+                                scenario={content?.scenario ?? ''}
                                 onItemChange={handleItemChange}
+                                onImageUpload={handleImageUpload}
                             />
                         ) : (
                             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -182,15 +242,6 @@ export const VocabStudio = memo(function VocabStudio({ lesson }: Props) {
                         )}
                     </div>
                 </div>
-            </div>
-
-            {/* Auto Generate Modal */}
-            <AutoGenerateModal
-                open={isGenerateModalOpen}
-                isLoading={generateMutation.isPending}
-                onClose={() => setIsGenerateModalOpen(false)}
-                onGenerate={handleGenerate}
-            />
-        </>
+        </div>
     );
 });

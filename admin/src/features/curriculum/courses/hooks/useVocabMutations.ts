@@ -61,3 +61,21 @@ export const useGenerateAllAudio = (lessonId: string) => {
         },
     });
 };
+
+// ─── Upload Vocab Item Image ──────────────────────────────────────────────────
+
+interface UploadImageVars {
+    itemId: string;
+    file: File;
+}
+
+export const useUploadVocabImage = (lessonId: string) => {
+    const queryClient = useQueryClient();
+
+    return useMutation<{ imageUrl: string }, Error, UploadImageVars>({
+        mutationFn: ({ itemId, file }) => vocabApi.uploadVocabImage(lessonId, itemId, file),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: LESSON_QUERY_KEYS.vocabContent(lessonId) });
+        },
+    });
+};

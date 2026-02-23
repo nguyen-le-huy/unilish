@@ -6,6 +6,7 @@ import redisClient, { connectRedis } from './config/redis.js';
 import { connectPinecone, disconnectPinecone } from './config/database.pinecone.js';
 import { logger } from './utils/logger.js';
 import { ttsWorker } from './jobs/workers/tts.worker.js';
+import { readingTtsWorker } from './jobs/workers/reading-tts.worker.js';
 
 const startServer = async () => {
     // Connect to Databases
@@ -48,6 +49,9 @@ const startServer = async () => {
 
                 await ttsWorker.close();
                 logger.info('TTS worker closed.');
+
+                await readingTtsWorker.close();
+                logger.info('Reading TTS worker closed.');
 
                 process.exit(0);
             } catch (err) {

@@ -12,13 +12,23 @@ import type { VocabItem } from '../../../../../types/course.types';
 
 interface Props {
     lessonId: string;
+    /** The scenario from Unit.contextSeed.scenario—forwarded to ContextBlock for constraint banner */
+    scenario: string;
     item: VocabItem;
     onItemChange: (field: keyof VocabItem, value: string) => void;
+    /** Called with the raw File object when Admin uploads an image */
+    onImageUpload: (itemId: string, file: File) => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export const ContentTab = memo(function ContentTab({ lessonId, item, onItemChange }: Props) {
+export const ContentTab = memo(function ContentTab({
+    lessonId,
+    scenario,
+    item,
+    onItemChange,
+    onImageUpload,
+}: Props) {
     const regenMutation = useRegenerateAudio(lessonId);
 
     const handleRegenerateAudio = useCallback(
@@ -35,6 +45,13 @@ export const ContentTab = memo(function ContentTab({ lessonId, item, onItemChang
         [regenMutation, item.id],
     );
 
+    const handleImageUpload = useCallback(
+        (file: File) => {
+            onImageUpload(item.id, file);
+        },
+        [item.id, onImageUpload],
+    );
+
     const isRegeneratingWord =
         regenMutation.isPending && regenMutation.variables?.payload.target === 'word';
     const isRegeneratingSentence =
@@ -47,7 +64,7 @@ export const ContentTab = memo(function ContentTab({ lessonId, item, onItemChang
 
                 <Separator />
 
-                <ContextBlock item={item} onChange={onItemChange} />
+                <ContextBlock item={item} scenario={scenario} onChange={onItemChange} />
 
                 <Separator />
 
@@ -56,6 +73,7 @@ export const ContentTab = memo(function ContentTab({ lessonId, item, onItemChang
                     isRegeneratingWord={isRegeneratingWord}
                     isRegeneratingSentence={isRegeneratingSentence}
                     onRegenerateAudio={handleRegenerateAudio}
+                    onImageUpload={handleImageUpload}
                 />
             </div>
         </ScrollArea>

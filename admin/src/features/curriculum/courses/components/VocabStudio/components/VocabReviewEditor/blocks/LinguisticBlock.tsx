@@ -1,7 +1,9 @@
 import { memo } from 'react';
+import { Link2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
     Select,
     SelectContent,
@@ -9,7 +11,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import type { VocabItem } from '../../../../../types/course.types';
+import { VOCAB_PARTS_OF_SPEECH, type VocabItem } from '../../../../../types/course.types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,7 +20,7 @@ interface Props {
     onChange: (field: keyof VocabItem, value: string) => void;
 }
 
-const PARTS_OF_SPEECH = ['noun', 'verb', 'adjective', 'adverb', 'phrase', 'preposition', 'conjunction', 'other'];
+const PARTS_OF_SPEECH = VOCAB_PARTS_OF_SPEECH;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -75,12 +77,12 @@ export const LinguisticBlock = memo(function LinguisticBlock({ item, onChange }:
 
             {/* Definition Native */}
             <div className="space-y-1.5">
-                <Label htmlFor="definitionNative">Định nghĩa (tiếng bản địa)</Label>
+                <Label htmlFor="definitionNative">Nghĩa (ngôn ngữ bản địa)</Label>
                 <Textarea
                     id="definitionNative"
                     value={item.definitionNative}
                     onChange={(e) => onChange('definitionNative', e.target.value)}
-                    placeholder="Định nghĩa bằng ngôn ngữ đang học"
+                    placeholder="Định nghĩa bằng ngôn ngữ người dùng (vi, ja…)"
                     rows={2}
                     className="resize-none text-sm"
                 />
@@ -88,16 +90,27 @@ export const LinguisticBlock = memo(function LinguisticBlock({ item, onChange }:
 
             {/* Definition English */}
             <div className="space-y-1.5">
-                <Label htmlFor="definitionEn">Định nghĩa (tiếng Anh)</Label>
+                <Label htmlFor="definitionEn">Nghĩa (tiếng Anh)</Label>
                 <Textarea
                     id="definitionEn"
                     value={item.definitionEn}
                     onChange={(e) => onChange('definitionEn', e.target.value)}
-                    placeholder="English definition"
+                    placeholder="Định nghĩa bằng tiếng Anh"
                     rows={2}
                     className="resize-none text-sm"
                 />
             </div>
+
+            {/* Concept Link — auto-mapped by backend */}
+            {item.conceptId && (
+                <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-1.5">
+                    <Link2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="text-xs text-muted-foreground">Concept:</span>
+                    <Badge variant="secondary" className="font-mono text-xs">
+                        {item.conceptId}
+                    </Badge>
+                </div>
+            )}
         </div>
     );
 });

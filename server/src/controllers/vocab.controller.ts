@@ -3,10 +3,13 @@ import { catchAsync } from '../utils/catch-async.js';
 import { sendResponse } from '../utils/send-response.js';
 import { HttpStatus } from '../constants/http-status.js';
 import { VocabGenerationService } from '../services/vocab-generation.service.js';
+import { QuestionGenerationService } from '../services/question-generation.service.js';
 import type {
     GenerateVocabBody,
     SaveVocabContentBody,
     RegenerateAudioBody,
+    GenerateQuestionsBody,
+    UpdateVocabQuestionBody,
 } from '../validations/vocab-content.validation.js';
 
 // ─── GET /lessons/:lessonId/vocab/content ─────────────────────────────────────
@@ -71,4 +74,53 @@ export const regenerateItemAudio = catchAsync(async (req: Request, res: Response
     await VocabGenerationService.regenerateItemAudio(lessonId, itemId, body);
 
     sendResponse(res, HttpStatus.OK, 'Audio regeneration enqueued', null);
+});
+
+// ─── GET /lessons/:lessonId/vocab/questions ────────────────────────────────────
+
+export const getVocabQuestions = catchAsync(async (req: Request, res: Response) => {
+    const lessonId = req.params['lessonId']!;
+
+    const questions = await QuestionGenerationService.getQuestionsForLesson(lessonId);
+
+    sendResponse(res, HttpStatus.OK, 'Vocab questions retrieved', questions);
+});
+
+// ─── POST /lessons/:lessonId/vocab/generate-questions ────────────────────────
+
+export const generateVocabQuestions = catchAsync(async (req: Request, res: Response) => {
+    const lessonId = req.params['lessonId']!;
+    const { distribution } = req.body as GenerateQuestionsBody;
+
+    const questions = await QuestionGenerationService.generateQuestionsFromVocab(
+        lessonId,
+        distribution,
+    );
+
+    sendResponse(res, HttpStatus.CREATED, `Đã tạo ${questions.length} câu hỏi luyện tập`, questions);
+});
+
+// ─── POST /lessons/:lessonId/vocab/questions/:questionId/swap ─────────────────
+
+export const swapVocabQuestion = catchAsync(async (req: Request, res: Response) => {
+    const lessonId = req.params['lessonId']!;
+    const questionId = req.params['questionId']!;
+
+    const replacement = await QuestionGenerationService.swapQuestion(lessonId, questionId);
+
+    sendResponse(res, HttpStatus.OK, 'Câu hỏi đã được thay thế', replacement);
+});
+
+// ─── PUT /lessons/:lessonId/vocab/questions/:questionId ───────────────────────
+
+export const updateVocabQuestion = catchAsync(async (req: Request, res: Response) => {
+    const questionId = req.params['questionId']!;
+    const body = req.body as UpdateVocabQuestionBody;
+
+    const updated = await QuestionGenerationService.updateQuestion(
+        questionId,
+        body as Record<string, unknown>,
+    );
+
+    sendResponse(res, HttpStatus.OK, 'Câu hỏi đã được cập nhật', updated);
 });

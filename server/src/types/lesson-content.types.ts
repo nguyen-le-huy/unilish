@@ -31,5 +31,87 @@ export interface VocabContent {
     items: VocabItem[];
 }
 
+// ─── Grammar Content Types ────────────────────────────────────────────────────
+
+export type HighlightType = 'regular_verb' | 'irregular_verb' | 'grammar_particle' | 'other';
+export type FormulaType = 'positive' | 'negative' | 'question' | 'other';
+
+export interface HighlightInfo {
+    id: string;
+    word: string;
+    type: HighlightType;
+    root: string;
+}
+
+export interface ContextStory {
+    text: string;
+    translation: string;
+    audioUrl: string | null;
+    highlights: HighlightInfo[];
+}
+
+export interface GrammarFormula {
+    id: string;
+    type: FormulaType;
+    structure: string;
+    example: string;
+}
+
+export interface IrregularVerb {
+    id: string;
+    base: string;
+    past: string;
+}
+
+export interface GrammarRule {
+    name: string;
+    usage: string;
+    formulas: GrammarFormula[];
+    irregular_verbs: IrregularVerb[];
+}
+
+export interface GrammarContent {
+    type: 'GRAMMAR';
+    context_story: ContextStory;
+    grammar_rule: GrammarRule;
+    practiceConfig: {
+        mode: 'FIXED';
+        questionIds: string[];
+        passingScore: number;
+    };
+    taughtConcepts: string[];
+}
+
+// ─── Reading Content Types ────────────────────────────────────────────────────
+
+export type ReadingPartOfSpeech = 'noun' | 'verb' | 'adjective' | 'adverb' | 'phrase' | 'other';
+
+export interface ReadingGlossaryItem {
+    word: string;               // Từ gốc xuất hiện trong <mark>
+    definition: string;         // Nghĩa tiếng Việt (hoặc EN)
+    type: ReadingPartOfSpeech;
+    ipa: string;                // /ˈɪɡ.zæm.pəl/
+}
+
+export interface ReadingMedia {
+    audioUrl: string | null;    // R2 URL — TTS narration of the passage
+    durationSec: number;        // 0 nếu chưa tạo
+    speed: number;              // Default 1.0
+}
+
+export interface ReadingContent {
+    type: 'READING';
+    text: string;               // HTML với <mark data-concept="gen_{n}">…</mark>
+    translation: string;        // Bản dịch tiếng Việt của toàn bộ bài đọc
+    glossary: Record<string, ReadingGlossaryItem>;  // key = data-concept value
+    media: ReadingMedia;
+    practiceConfig: {
+        mode: 'FIXED';
+        questionIds: string[];
+        passingScore: number;
+    };
+    generationStatus: 'IDLE' | 'GENERATING' | 'GENERATING_AUDIO' | 'DONE' | 'ERROR';
+}
+
 // ─── Union Type — extend as new lesson types are built ────────────────────────
-export type LessonContent = VocabContent;
+export type LessonContent = VocabContent | GrammarContent | ReadingContent;
