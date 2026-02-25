@@ -1,6 +1,8 @@
 # Stage 1: Base
 FROM node:20-alpine AS base
 WORKDIR /app
+# ffmpeg is required by fluent-ffmpeg for audio processing (TTS mix pipeline)
+RUN apk add --no-cache ffmpeg
 COPY package*.json ./
 RUN npm install
 
@@ -18,6 +20,7 @@ RUN npm run build
 # Stage 4: Production
 FROM node:20-alpine AS production
 WORKDIR /app
+RUN apk add --no-cache ffmpeg
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY --from=builder /app/dist ./dist

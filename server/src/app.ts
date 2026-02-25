@@ -65,7 +65,9 @@ import lessonRouter from './routes/lesson.route.js';
 import vocabRouter from './routes/vocab.route.js';
 import grammarRouter from './routes/grammar.route.js';
 import readingRouter from './routes/reading.route.js';
+import listeningRouter from './routes/listening.route.js';
 import audioRouter from './routes/audio.route.js';
+import { streamListeningAudio } from './controllers/listening.controller.js';
 
 // Routes
 app.use('/api/auth', authRouter);
@@ -78,10 +80,14 @@ app.use('/api/curriculum/languages', languageRouter);
 app.use('/api/curriculum/series', courseSeriesRouter);
 app.use('/api/curriculum/courses', courseRouter);
 app.use('/api/curriculum/units', unitRouter);
+// Audio proxy — must be before lessonRouter (which has global protect middleware)
+app.get('/api/curriculum/lessons/:lessonId/listening/audio', streamListeningAudio);
+
 app.use('/api/curriculum/lessons', lessonRouter);
 app.use('/api/curriculum/lessons', vocabRouter);
 app.use('/api/curriculum/lessons', grammarRouter);
 app.use('/api/curriculum/lessons', readingRouter);
+app.use('/api/curriculum/lessons', listeningRouter);
 app.use('/api/audio', audioRouter);
 
 app.get('/', (req, res) => {

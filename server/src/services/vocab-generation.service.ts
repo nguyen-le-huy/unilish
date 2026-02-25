@@ -11,6 +11,7 @@ import { Course } from '../models/mongo/course.model.js';
 import { CourseSeries } from '../models/mongo/course-series.model.js';
 import { Concept, EConceptType } from '../models/mongo/concept.model.js';
 import { ttsQueue } from '../jobs/queues/tts.queue.js';
+import { ContextAlignmentService } from './context-alignment.service.js';
 import type {
     VocabContent,
     VocabGenerationStatus,
@@ -276,6 +277,15 @@ Return a JSON array of exactly ${wordCount} items. Words must be diverse and app
             items: vocabItems,
         };
 
+        await ContextAlignmentService.assertLessonAligned(
+            lessonId,
+            [
+                ctx.scenario,
+                ...vocabItems.flatMap((item) => [item.word, item.exampleSentence, item.exampleTranslation]),
+            ],
+            'VOCAB',
+        );
+
         // Persist content
         await lessonRepo.saveVocabContent(lessonId, content);
 
@@ -353,6 +363,15 @@ Return a JSON array of exactly ${wordCount} items. Words must be diverse and app
         lessonId: string,
         body: SaveVocabContentBody,
     ): Promise<VocabContent> {
+        await ContextAlignmentService.assertLessonAligned(
+            lessonId,
+            [
+                body.scenario,
+                ...body.items.flatMap((item) => [item.word, item.exampleSentence, item.exampleTranslation]),
+            ],
+            'VOCAB',
+        );
+
         const content: VocabContent = {
             type: 'VOCAB',
             scenario: body.scenario,

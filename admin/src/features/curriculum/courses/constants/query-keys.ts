@@ -37,4 +37,7 @@ export const LESSON_QUERY_KEYS = {
     grammarQuestions: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'grammar-questions', lessonId] as const,
     readingContent: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'reading-content', lessonId] as const,
     readingQuestions: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'reading-questions', lessonId] as const,
+    listeningContent: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'listening-content', lessonId] as const,
+    listeningSyncStatus: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'listening-sync-status', lessonId] as const,
+    listeningQuestions: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'listening-questions', lessonId] as const,
 };

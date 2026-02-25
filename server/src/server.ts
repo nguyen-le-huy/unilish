@@ -7,6 +7,7 @@ import { connectPinecone, disconnectPinecone } from './config/database.pinecone.
 import { logger } from './utils/logger.js';
 import { ttsWorker } from './jobs/workers/tts.worker.js';
 import { readingTtsWorker } from './jobs/workers/reading-tts.worker.js';
+import { listeningMixSyncWorker } from './jobs/workers/listening-mix-sync.worker.js';
 
 const startServer = async () => {
     // Connect to Databases
@@ -52,6 +53,9 @@ const startServer = async () => {
 
                 await readingTtsWorker.close();
                 logger.info('Reading TTS worker closed.');
+
+                await listeningMixSyncWorker.close();
+                logger.info('Listening Mix & Sync worker closed.');
 
                 process.exit(0);
             } catch (err) {

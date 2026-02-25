@@ -14,6 +14,7 @@ import { CourseSeries } from '../models/mongo/course-series.model.js';
 import { Question, EQuestionType } from '../models/mongo/question.model.js';
 import { Concept, EConceptType } from '../models/mongo/concept.model.js';
 import { readingTtsQueue } from '../jobs/queues/reading-tts.queue.js';
+import { ContextAlignmentService } from './context-alignment.service.js';
 import type { ReadingContent, ReadingGlossaryItem } from '../types/lesson-content.types.js';
 import type {
     SaveReadingContentBody,
@@ -71,6 +72,17 @@ export class ReadingService {
         lessonId: string,
         body: SaveReadingContentBody,
     ): Promise<ReadingContent> {
+        await ContextAlignmentService.assertLessonAligned(
+            lessonId,
+            [
+                existing.text,
+                body.text,
+                body.translation,
+                ...Object.values(body.glossary).flatMap((item) => [item.word, item.definition]),
+            ],
+            'READING',
+        );
+
         const existing = await readingRepo.getContent(lessonId);
 
         const updated: ReadingContent = {
@@ -151,6 +163,16 @@ export class ReadingService {
             };
         }
 
+        await ContextAlignmentService.assertLessonAligned(
+            lessonId,
+            [
+                text,
+                translation,
+                ...Object.values(glossary).flatMap((item) => [item.word, item.definition]),
+            ],
+            'READING',
+        );
+
         // Persist atomically
         await readingRepo.setTextAndGlossary(lessonId, text, glossary, translation);
 
@@ -215,7 +237,7 @@ ${missing.map(([k, v]) => `"${k}": { "word": "${v.word}", "type": "${v.type}" }`
             }
         }
 
-        await readingRepo.setTextAndGlossary(lessonId, content.text, updatedGlossary);
+        await readingRepo.setTextAndGlossary(lessonId, content.text, updatedGlossary, content.translation ?? '');
         return updatedGlossary;
     }
 
@@ -272,7 +294,7 @@ ${missing.map(([k, v]) => `"${k}": { "word": "${v.word}", "type": "${v.type}" }`
                     languageId: langObjectId,
                     key: conceptKey,
                     name: `Reading: ${lesson.title}`,
-                    type: EConceptType.READING ?? 'READING',
+                    type: 'READING',
                     description: content.text.substring(0, 200),
                     metaData: {},
                 },

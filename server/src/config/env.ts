@@ -34,8 +34,15 @@ const envSchema = z.object({
 
     // OpenAI
     OPENAI_API_KEY: z.string().min(1, 'OpenAI API Key is required for embeddings'),
-    OPENAI_MODEL: z.string().default('gpt-4.1'),
+    OPENAI_MODEL: z.string().default('gpt-5.1-2025-11-13'),
     OPENAI_TTS_MODEL: z.string().default('gpt-4o-mini-tts-2025-12-15'),
+
+    // ElevenLabs (Listening TTS)
+    ELEVENLABS_API_KEY: z.string().optional(),
+    ELEVENLABS_DEFAULT_VOICE_ID: z.string().default('EXAVITQu4vr4xnSDxMaL'), // "Sarah" — neutral EN voice
+
+    // Deepgram (Word-level timestamp sync)
+    DEEPGRAM_API_KEY: z.string().optional(),
 
     // Auth
     GOOGLE_CLIENT_ID: z.string().optional(),

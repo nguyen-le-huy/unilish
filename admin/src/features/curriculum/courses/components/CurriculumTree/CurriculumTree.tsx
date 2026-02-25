@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useMemo } from 'react';
+import { memo, useState, useCallback, useMemo, useRef } from 'react';
 import type { ComponentType } from 'react';
 import {
     DndContext,
@@ -106,6 +106,7 @@ export const CurriculumTree = memo(function CurriculumTree({ courseId }: Props) 
     const [newLessonType, setNewLessonType] = useState<LessonType>('VOCAB');
     const [addUnitOpen, setAddUnitOpen] = useState(false);
     const [newUnitTitle, setNewUnitTitle] = useState('');
+    const isCreatingLessonRef = useRef(false);
 
     // ── Unit IDs for top-level sortable ───────────────────────────────────────
     const unitIds = useMemo(() => tree?.units.map((u) => u._id) ?? [], [tree?.units]);
@@ -168,7 +169,8 @@ export const CurriculumTree = memo(function CurriculumTree({ courseId }: Props) 
     const useCreateLessonForUnit = useCreateLesson(courseId, addLessonTarget?.unitId ?? '');
 
     const handleAddLesson = useCallback(() => {
-        if (!newLessonTitle.trim() || !addLessonTarget) return;
+        if (!newLessonTitle.trim() || !addLessonTarget || isCreatingLessonRef.current) return;
+        isCreatingLessonRef.current = true;
         useCreateLessonForUnit.mutate(
             { unitId: addLessonTarget.unitId, title: newLessonTitle.trim(), type: newLessonType },
             {
@@ -176,6 +178,9 @@ export const CurriculumTree = memo(function CurriculumTree({ courseId }: Props) 
                     setAddLessonTarget(null);
                     setNewLessonTitle('');
                     setNewLessonType('VOCAB');
+                },
+                onSettled: () => {
+                    isCreatingLessonRef.current = false;
                 },
             },
         );
@@ -357,7 +362,14 @@ export const CurriculumTree = memo(function CurriculumTree({ courseId }: Props) 
                                 value={newLessonTitle}
                                 onChange={(e) => setNewLessonTitle(e.target.value)}
                                 placeholder="VD: Xin chào & Tạm biệt"
-                                onKeyDown={(e) => e.key === 'Enter' && handleAddLesson()}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        if (!e.repeat) {
+                                            handleAddLesson();
+                                        }
+                                    }
+                                }}
                                 autoFocus
                             />
                         </div>
@@ -367,6 +379,7 @@ export const CurriculumTree = memo(function CurriculumTree({ courseId }: Props) 
                             Hủy
                         </Button>
                         <Button
+                            type="button"
                             onClick={handleAddLesson}
                             disabled={!newLessonTitle.trim() || useCreateLessonForUnit.isPending}
                         >

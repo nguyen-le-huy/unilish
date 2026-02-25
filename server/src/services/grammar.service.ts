@@ -14,6 +14,7 @@ import { CourseSeries } from '../models/mongo/course-series.model.js';
 import { Question, EQuestionType } from '../models/mongo/question.model.js';
 import { Concept, EConceptType } from '../models/mongo/concept.model.js';
 import { grammarTtsQueue } from '../jobs/queues/grammar-tts.queue.js';
+import { ContextAlignmentService } from './context-alignment.service.js';
 import type {
     GrammarContent,
     ContextStory,
@@ -91,6 +92,21 @@ export class GrammarService {
         lessonId: string,
         body: SaveGrammarContentBody,
     ): Promise<GrammarContent> {
+        const context = await this._resolveLessonContext(lessonId);
+
+        await ContextAlignmentService.assertLessonAligned(
+            lessonId,
+            [
+                context.scenario,
+                body.context_story.text,
+                body.context_story.translation,
+                body.grammar_rule.name,
+                body.grammar_rule.usage,
+                ...body.grammar_rule.formulas.map((formula) => `${formula.structure} ${formula.example}`),
+            ],
+            'GRAMMAR',
+        );
+
         const content: GrammarContent = {
             type: 'GRAMMAR',
             context_story: body.context_story,
@@ -182,6 +198,19 @@ export class GrammarService {
                 }),
             ),
         };
+
+        await ContextAlignmentService.assertLessonAligned(
+            lessonId,
+            [
+                ctx.scenario,
+                contextStory.text,
+                contextStory.translation,
+                grammarRule.name,
+                grammarRule.usage,
+                ...grammarRule.formulas.map((formula) => `${formula.structure} ${formula.example}`),
+            ],
+            'GRAMMAR',
+        );
 
         return { context_story: contextStory, grammar_rule: grammarRule };
     }

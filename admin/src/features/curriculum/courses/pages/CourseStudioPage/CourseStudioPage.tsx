@@ -13,6 +13,7 @@ import { LessonEditor } from '../../components/LessonEditor/LessonEditor';
 import { VocabStudio } from '../../components/VocabStudio/VocabStudio';
 import { GrammarStudio } from '../../components/GrammarStudio/GrammarStudio';
 import { ReadingStudio } from '../../components/ReadingStudio/ReadingStudio';
+import { ListeningStudio } from '../../components/ListeningStudio/ListeningStudio';
 import type { UnitWithLessons, LessonSummary } from '../../types/course.types';
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -98,6 +99,15 @@ function WorkspaceLessonPanel({ courseId, lessonId }: { courseId: string; lesson
         return (
             <ErrorBoundary>
                 <ReadingStudio lesson={lesson} courseLevel={tree?.level ?? 'A1'} />
+            </ErrorBoundary>
+        );
+    }
+
+    // LISTENING lessons get the Listening Studio
+    if (lesson.type === 'LISTENING') {
+        return (
+            <ErrorBoundary>
+                <ListeningStudio lesson={lesson} courseLevel={tree?.level ?? 'A1'} />
             </ErrorBoundary>
         );
     }

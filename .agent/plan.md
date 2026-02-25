@@ -1,514 +1,506 @@
-# Implementation Plan: Reading Studio (Admin)
+# Implementation Plan: Listening Studio (Admin Panel)
 
-**Ngày lập:** 2026-02-23
-**Người lập:** Technical Architect
-**Scope:** Quản lý bài học Đọc hiểu (READING) tích hợp AI — Reading Studio cho Admin Panel.
-**Phương pháp:** Tuân thủ Service-Repository Pattern, Polyglot Persistence, và các coding standards của dự án Unilish.
+> **Scope**: Quản lý bài học dạng `LISTENING` trong Admin CMS  
+> **Target App**: `/admin` (Tailwind CSS + Shadcn/UI)  
+> **Pattern**: Service-Repository + Controller (3-layer backend)  
+> **Status**: Draft — Feb 24, 2026
 
 ---
 
-## 1. Tổng quan Kiến trúc
-
-### Luồng dữ liệu tổng quát
+## 1. Architecture Overview
 
 ```mermaid
 graph TD
-    Admin[Admin Browser] --> TopBar[ReadingTopBar]
-    TopBar -->|AI Auto-Write| AiModal[AiWriteModal]
-    TopBar -->|Tạo Audio| API_AUDIO[POST /generate-audio]
-    TopBar -->|Lưu| API_SAVE[PUT /reading/content]
+    A[Admin UI - ListeningStudio] --> B[API /api/v1/lessons/:id/listening-content]
+    A --> C[API /api/v1/lessons/:id/ai/generate-script]
+    A --> D[API /api/v1/lessons/:id/ai/mix-and-sync]
 
-    AiModal -->|Gom context + level + type| API_GEN[POST /reading/generate]
-    API_GEN --> ReadingService[ReadingService]
-    ReadingService --> OpenAI[GPT env.OPENAI_MODEL]
-    ReadingService --> TTS_Queue[reading-tts.queue / BullMQ]
-    TTS_Queue --> OpenAI_TTS[OpenAI TTS env.OPENAI_TTS_MODEL]
-    TTS_Queue --> R2[(Cloudflare R2)]
+    B --> E[LessonController]
+    C --> F[ListeningAiController]
+    D --> F
 
-    API_SAVE --> ReadingRepo[ReadingMongoRepository]
-    ReadingRepo --> MongoDB[(MongoDB Lesson.content)]
+    E --> G[LessonService]
+    F --> H[ListeningAiService]
+
+    G --> I[LessonMongoRepository]
+    H --> I
+    H --> J[StorageService - Cloudflare R2]
+    H --> K[ElevenLabs API - TTS]
+    H --> L[Deepgram API - Word Timestamps]
+
+    I --> M[(MongoDB - lessons collection)]
+    J --> N[(Cloudflare R2 - audio files)]
 ```
 
-### Sequence: AI Auto-Write + Glossary + Audio
+### Phân tầng dữ liệu
+
+| Dữ liệu | Store | Lý do |
+|---|---|---|
+| Lesson document (transcript, config) | **MongoDB** | Source of Truth — structured, relational với Unit |
+| Audio file (mixed MP3) | **Cloudflare R2** | Zero egress, large binary asset |
+| Audio URL (CDN link) | **MongoDB** (trong `content.media.audioUrl`) | Stored after R2 upload |
+
+> **Không dùng Pinecone** cho module này. Vector search không liên quan đến Listening content management. Pinecone chỉ được dùng khi cần semantic recommendation.
+
+---
+
+## 2. Data Models & Zod Schemas
+
+### 2.1. TypeScript Interfaces (Listening Content)
+
+**Vị trí**: `server/src/types/listening.types.ts` (new file)
+
+```typescript
+export interface AudioWord {
+  word: string;
+  start: number;       // seconds (e.g. 0.50)
+  end: number;         // seconds (e.g. 0.83)
+  conceptId?: string;  // ObjectId ref — auto-mapped to taughtConcepts
+  isTargetVocab: boolean; // true → Gap-fill candidate
+}
+
+export interface TranscriptLine {
+  id: string;          // UUID (client-generated)
+  speaker: string;     // e.g. "Adam"
+  role: string;        // e.g. "Airport Staff"
+  text: string;        // Full dialogue line
+  startTime: number;   // Set after AI sync
+  endTime: number;     // Set after AI sync
+  words: AudioWord[];  // Populated after Deepgram sync
+}
+
+export interface ListeningMedia {
+  audioUrl?: string;   // Cloudflare R2 signed URL
+  duration?: number;   // seconds
+  accent: 'en-US' | 'en-UK' | 'mixed';
+  noiseLevel: 'none' | 'low' | 'medium' | 'high';
+  speed: number;       // default 1.0
+}
+
+export interface InteractiveConfig {
+  mode: 'GAP_FILL' | 'SHADOWING';
+  hidePercentage: number; // 0–100, default 20
+  allowSlowSpeed: boolean;
+}
+
+// Root content shape stored in lesson.content (MongoDB Mixed field)
+export interface ListeningContent {
+  media: ListeningMedia;
+  transcript: TranscriptLine[];
+  interactiveConfig: InteractiveConfig;
+}
+```
+
+### 2.2. Zod Validation Schemas
+
+**Vị trí**: `server/src/validations/listening.validation.ts` (new file)
+
+```
+audioWordSchema
+transcriptLineSchema
+listeningMediaSchema
+interactiveConfigSchema
+
+// Exported schemas:
+saveListeningContentSchema   → PUT /lessons/:id/listening-content
+generateScriptSchema         → POST /lessons/:id/ai/generate-script
+mixAndSyncSchema             → POST /lessons/:id/ai/mix-and-sync
+```
+
+---
+
+## 3. Backend Implementation
+
+### Sprint 1 — Core CRUD (3 ngày)
+
+#### Step 1: Validation Schema
+**File**: `server/src/validations/listening.validation.ts`
+- Tạo full Zod schema cho `ListeningContent`
+- Export `saveListeningContentSchema`, `generateScriptSchema`, `mixAndSyncSchema`
+
+#### Step 2: Repository — không cần file mới
+- `LessonMongoRepository.updateById()` **đã sẵn có** — đủ để persist `content`
+- Thêm method `findByIdWithContent(lessonId)` nếu chưa có `.select('content practiceConfig taughtConcepts')`
+
+#### Step 3: Service
+**File**: `server/src/services/listening.service.ts` (new)
+
+```typescript
+export class ListeningService {
+  constructor(private readonly lessonRepo: LessonMongoRepository) {}
+
+  async getContent(lessonId: string): Promise<ListeningContent>
+  async saveContent(lessonId: string, content: ListeningContent): Promise<ILesson>
+}
+```
+
+**Quy tắc**:
+- `saveContent` phải validate `lesson.type === 'LISTENING'` → throw `AppError` nếu không đúng.
+- Không persist raw Deepgram/ElevenLabs response lên DB — chỉ persist dữ liệu đã được normalized.
+
+#### Step 4: Controller
+**File**: `server/src/controllers/listening.controller.ts` (new)
+
+```typescript
+// ALL wrapped in catchAsync
+getListeningContent   → GET    /api/v1/lessons/:lessonId/listening-content
+saveListeningContent  → PUT    /api/v1/lessons/:lessonId/listening-content
+```
+
+#### Step 5: Routes
+**File**: `server/src/routes/listening.routes.ts` (new)
+- Mount vào `app.ts`: `app.use('/api/v1/lessons', listeningRoutes)`
+- Auth middleware: `protect`, `restrictTo('admin')`
+- Validate middleware: Zod schemas từ Step 1
+
+---
+
+### Sprint 2 — AI Pipeline (5 ngày)
+
+#### Step 6: Service — AI Orchestration
+**File**: `server/src/services/listening-ai.service.ts` (new)
+
+```typescript
+export class ListeningAiService {
+  constructor(
+    private readonly lessonRepo: LessonMongoRepository,
+    private readonly storageService: StorageService,
+  ) {}
+
+  // Phase 1: GPT → script text (TranscriptLine[] without words/timestamps)
+  async generateScript(lessonId: string, payload: GenerateScriptDto): Promise<TranscriptLine[]>
+
+  // Phase 2: ElevenLabs → TTS per speaker → FFmpeg mix → R2 upload → Deepgram → word timestamps
+  async mixAndSync(lessonId: string, payload: MixAndSyncDto): Promise<MixAndSyncResult>
+    // Returns: { audioUrl, duration, transcript: TranscriptLine[] (with words populated) }
+}
+```
+
+**Quy tắc nội bộ**:
+- `generateScript`: Gọi OpenAI Chat Completion. Trả về JSON mảng `TranscriptLine[]` (chưa có audio/words). **Không** tự động persist — để Admin review trước.
+- `mixAndSync` thực hiện tuần tự theo 3 step (ElevenLabs → FFmpeg → Deepgram). Nếu bất kỳ step nào fail → throw `AppError` với message cụ thể từng step. Dọn dẹp file tạm trên R2 nếu lỗi.
+- Speaker mapping: `speakerVoiceMap` (dict `{ [speaker]: elevenLabsVoiceId }`) được truyền vào từ payload hoặc dùng default mapping (male/female alternating).
+
+#### Step 7: BullMQ Job (nếu `mixAndSync` > 30s)
+**File**: `server/src/jobs/queues/listening-sync.queue.ts`
+**File**: `server/src/jobs/workers/listening-sync.worker.ts`
+- Queue: `listening-sync`
+- Job data: `{ lessonId, payload }`
+- On complete: cập nhật `lesson.content.media` + `lesson.content.transcript` vào MongoDB
+- Frontend polling: `GET /api/v1/lessons/:id/ai/sync-status` trả về `{ status: 'pending'|'done'|'failed', progress: 0-100 }`
+
+#### Step 8: Controller — AI Endpoints
+**File**: `server/src/controllers/listening-ai.controller.ts` (new)
+
+```typescript
+generateScript  → POST /api/v1/lessons/:lessonId/ai/generate-script
+mixAndSync      → POST /api/v1/lessons/:lessonId/ai/mix-and-sync
+getSyncStatus   → GET  /api/v1/lessons/:lessonId/ai/sync-status
+```
+
+---
+
+## 4. Admin Frontend Implementation
+
+### 4.1. Types & Zod (shared)
+
+**File**: `admin/src/features/curriculum/courses/types/course.types.ts` — **MỞ RỘNG**
+
+Thêm vào file hiện có:
+
+```typescript
+// ─── Listening Types ─────────────────────────────────────────────────────────
+export interface AudioWord { ... }
+export interface TranscriptLine { ... }
+export interface ListeningMedia { ... }
+export interface InteractiveConfig { ... }
+export interface ListeningContent { ... }
+export interface ListeningLessonFormValues {
+  _id: string;
+  unitId: string;
+  title: string;
+  type: 'LISTENING';
+  content: ListeningContent;
+  practiceConfig: PracticeConfig;
+  taughtConcepts: string[];
+}
+```
+
+### 4.2. API Service
+
+**File**: `admin/src/features/curriculum/courses/api/listeningService.ts` (new)
+
+```typescript
+export const listeningApi = {
+  getContent:       (lessonId) => axios.get(...)    // → ListeningContent
+  saveContent:      (lessonId, data) => axios.put(...)
+  generateScript:   (lessonId, payload) => axios.post(...)  // → TranscriptLine[]
+  mixAndSync:       (lessonId, payload) => axios.post(...)
+  getSyncStatus:    (lessonId) => axios.get(...)
+}
+```
+
+### 4.3. TanStack Query Hooks
+
+**File**: `admin/src/features/curriculum/courses/hooks/useListeningContent.ts` (new)
+
+```typescript
+export const useListeningContent = (lessonId: string) =>
+  useQuery({ queryKey: ['listening-content', lessonId], queryFn: ... })
+```
+
+**File**: `admin/src/features/curriculum/courses/hooks/useListeningMutations.ts` (new)
+
+```typescript
+export const useSaveListeningContent = (lessonId: string) => useMutation(...)
+export const useGenerateScript = (lessonId: string) => useMutation(...)
+export const useMixAndSync = (lessonId: string) => useMutation(...)
+```
+
+**BẮT BUỘC**: `useEffect` **không được dùng** để fetch. Chỉ dùng `useQuery` / `useMutation`.
+
+### 4.4. Component Tree (Tách file bắt buộc)
+
+```
+admin/src/features/curriculum/courses/components/ListeningStudio/
+├── ListeningStudio.tsx                  # Root: FormProvider + 3-pane layout
+├── hooks/
+│   └── useListeningStudioState.ts       # activeSection, modal states
+└── components/
+    ├── ListeningTopBar/
+    │   └── ListeningTopBar.tsx          # Header: title + 3 action buttons
+    │
+    ├── ListeningNavigator/
+    │   └── ListeningNavigator.tsx       # Pane 2: 3 nav items + validation dots
+    │
+    ├── ScriptEditor/
+    │   ├── ScriptEditor.tsx             # Section 1: Media settings + useFieldArray transcript
+    │   ├── MediaSettingsPanel.tsx       # accent, noiseLevel dropdowns
+    │   └── TranscriptLineItem.tsx       # 1 dòng thoại (speaker, role, text inputs)
+    │
+    ├── KaraokeSyncEditor/
+    │   ├── KaraokeSyncEditor.tsx        # Section 2: Waveform + Interactive Transcript
+    │   ├── WaveformPlayer.tsx           # wavesurfer.js integration (cleanup on unmount)
+    │   └── InteractiveTranscript.tsx    # Render words as clickable <span> tags
+    │
+    ├── InteractiveConfigEditor/
+    │   ├── InteractiveConfigEditor.tsx  # Section 3: mode radio, hidePercentage slider
+    │   └── PracticeQuestionsPanel.tsx   # Comprehension questions management
+    │
+    └── AiPipelineOverlay/
+        └── AiPipelineOverlay.tsx        # Loading overlay — 3-step progress display
+```
+
+#### Chi tiết từng component quan trọng
+
+**`ListeningStudio.tsx`**
+- `useForm<ListeningLessonFormValues>({ resolver: zodResolver(...) })`
+- Wrap toàn bộ với `<FormProvider>` → sub-components dùng `useFormContext()`
+- 3-pane layout: `h-screen overflow-hidden flex` (Tailwind)
+- Pane widths: `w-[20%]` | `w-[25%]` | `w-[55%]`
+
+**`TranscriptLineItem.tsx`**
+- Nhận `index` từ `useFieldArray`
+- Input fields: `register('content.transcript.${index}.speaker')`, v.v.
+- **Không dùng** controlled `<Controller>` cho text inputs thông thường → tránh re-render
+
+**`WaveformPlayer.tsx`**
+- `useEffect(() => { const ws = WaveSurfer.create(...); return () => ws.destroy(); }, [audioUrl])`
+- Expose `wsRef` lên `KaraokeSyncEditor` để sync với transcript highlight
+- **Không** store WaveSurfer instance trong component state (dùng `useRef`)
+
+**`InteractiveTranscript.tsx`**
+- Nhận `transcriptFields` từ `useFieldArray` (nested words)
+- Mỗi `word` render: `<span onClick={() => toggleTargetVocab(lineIdx, wordIdx)}>word.word</span>`
+- Highlight dòng hiện tại: so sánh `currentTime` (từ WaveSurfer) với `line.startTime` / `line.endTime`
+- **Performance**: `React.memo` cho từng `TranscriptLineItem`, `useCallback` cho `toggleTargetVocab`
+- **Anti-pattern**: KHÔNG dùng `useFieldArray` cho `words` bên trong mỗi dòng — thay vào đó `setValue('content.transcript.${lineIdx}.words', updatedWords)` trực tiếp để tránh nested re-render
+
+**`AiPipelineOverlay.tsx`**
+- Props: `{ step: 1 | 2 | 3; isVisible: boolean }`
+- Render modal overlay với 3 step descriptions
+- Dùng Shadcn `<Dialog>` hoặc custom overlay với Tailwind backdrop
+
+### 4.5. Tích hợp vào `LessonEditor.tsx`
+
+**File**: `admin/src/features/curriculum/courses/components/LessonEditor/LessonEditor.tsx` — **SỬA ĐỔI**
+
+```typescript
+// Thêm vào switch-case render theo lesson.type:
+case 'LISTENING':
+  return <ListeningStudio lesson={lesson} courseLevel={courseLevel} />;
+```
+
+---
+
+## 5. Dependencies cần cài đặt
+
+### Admin (`/admin`)
+```bash
+npm install wavesurfer.js
+npm install @types/uuid uuid
+```
+> Không cần cài thêm UI library — Shadcn/UI đã có sẵn.
+
+### Server (`/server`)
+```bash
+npm install @deepgram/sdk
+npm install elevenlabs
+# FFmpeg: sử dụng system binary hoặc fluent-ffmpeg
+npm install fluent-ffmpeg @types/fluent-ffmpeg
+```
+
+---
+
+## 6. API Contract Summary
+
+**Base URL**: `/api/v1/lessons`
+
+| Method | Endpoint | Auth | Body / Query | Response |
+|---|---|---|---|---|
+| `GET` | `/:id/listening-content` | admin | — | `ListeningContent` |
+| `PUT` | `/:id/listening-content` | admin | `ListeningContent` | `ILesson` |
+| `POST` | `/:id/ai/generate-script` | admin | `{ contextSeed, targetVocabIds, lineCount }` | `TranscriptLine[]` |
+| `POST` | `/:id/ai/mix-and-sync` | admin | `{ speakerVoiceMap? }` | `{ jobId }` |
+| `GET` | `/:id/ai/sync-status` | admin | — | `{ status, progress, result? }` |
+
+---
+
+## 7. Step-by-Step Execution Order
+
+```
+PHASE 1 — Backend Foundation (3 ngày)
+─────────────────────────────────────
+[ ] 1. Tạo server/src/types/listening.types.ts
+[ ] 2. Tạo server/src/validations/listening.validation.ts
+[ ] 3. Tạo server/src/services/listening.service.ts
+[ ] 4. Tạo server/src/controllers/listening.controller.ts
+[ ] 5. Tạo server/src/routes/listening.routes.ts
+[ ] 6. Mount routes vào app.ts
+
+PHASE 2 — Admin Frontend Core (4 ngày)
+───────────────────────────────────────
+[ ] 7.  Mở rộng course.types.ts với Listening types
+[ ] 8.  Tạo listeningService.ts (API layer)
+[ ] 9.  Tạo useListeningContent.ts (TanStack Query)
+[ ] 10. Tạo useListeningMutations.ts
+[ ] 11. Tạo useListeningStudioState.ts (local UI state)
+[ ] 12. Tạo ListeningTopBar.tsx
+[ ] 13. Tạo ListeningNavigator.tsx
+[ ] 14. Tạo ScriptEditor (MediaSettingsPanel + TranscriptLineItem)
+[ ] 15. Tạo KaraokeSyncEditor (WaveformPlayer + InteractiveTranscript)
+[ ] 16. Tạo InteractiveConfigEditor + PracticeQuestionsPanel
+[ ] 17. Tạo ListeningStudio.tsx (root, compose tất cả)
+[ ] 18. Wire ListeningStudio vào LessonEditor.tsx
+
+PHASE 3 — AI Pipeline (5 ngày)
+────────────────────────────────
+[ ] 19. Tạo listing-ai.service.ts (generateScript + mixAndSync)
+[ ] 20. Tạo listening-sync BullMQ queue + worker
+[ ] 21. Tạo listening-ai.controller.ts
+[ ] 22. Mount AI routes
+[ ] 23. Tạo AiPipelineOverlay.tsx
+[ ] 24. Wire AI mutations vào ListeningTopBar
+
+PHASE 4 — Polish & Hardening (2 ngày)
+───────────────────────────────────────
+[ ] 25. Validation dots (red dots) trên Navigator khi form invalid
+[ ] 26. Polling hook cho sync-status (useInterval / TanStack Query refetchInterval)
+[ ] 27. Error boundary cho WaveformPlayer
+[ ] 28. Kiểm tra memory leak: WaveSurfer cleanup, removeEventListener
+[ ] 29. Performance audit: React DevTools Profiler — không có re-render cascade khi toggle isTargetVocab
+```
+
+---
+
+## 8. Security & Constraints
+
+| Rule | Implementation |
+|---|---|
+| Chỉ admin mới access | `restrictTo('admin')` middleware trên tất cả routes |
+| File audio chỉ lưu R2 | `audioUrl` là CDN link — không bao giờ serve binary qua Express |
+| Rate limit AI endpoints | 10 req/min/user cho `/ai/*` routes (Redis rate-limit middleware) |
+| Input validation | Zod middleware bắt tất cả body trước khi vào controller |
+| Logging | `logger.info/warn/error` — cấm `console.log` |
+| ElevenLabs / OpenAI keys | Chỉ đọc từ `config/env.ts` (validated on startup) |
+
+---
+
+## 9. Sequence Diagram — AI Mix & Sync Pipeline
 
 ```mermaid
 sequenceDiagram
     participant Admin
-    participant ReadingStudio
+    participant AdminUI
     participant Server
-    participant OpenAI
+    participant ElevenLabs
+    participant R2
+    participant Deepgram
     participant BullMQ
 
-    Admin->>ReadingStudio: Bấm "AI Auto-Write"
-    ReadingStudio->>ReadingStudio: Hiện AiWriteModal (Level, TextType)
-    Admin->>ReadingStudio: Chọn B1 + Email, bấm "Tạo"
-    ReadingStudio->>Server: POST /lessons/:id/reading/generate { level, textType }
-    Server->>OpenAI: Step 1 — GPT sinh bài đọc HTML + <mark data-concept="id">
-    OpenAI-->>Server: { text: "<p>...markup...</p>", glossary: {...} }
-    Server->>OpenAI: Step 2 — GPT sinh câu hỏi comprehension (JSON)
-    OpenAI-->>Server: { questions: [...] }
-    Server->>Server: Question.insertMany → link vào practiceConfig.questionIds
-    Server-->>ReadingStudio: { content: { text, glossary, media: null }, questionIds }
-    ReadingStudio->>ReadingStudio: RHF setValue — hydrate form
-    Admin->>ReadingStudio: Bấm "Tạo Audio"
-    ReadingStudio->>Server: POST /lessons/:id/reading/generate-audio
-    Server->>BullMQ: Enqueue reading-tts job (plain text)
-    BullMQ->>OpenAI: TTS API call
-    OpenAI-->>BullMQ: MP3 binary
-    BullMQ->>R2: Upload → lấy audioUrl
-    BullMQ->>MongoDB: Patch Lesson.content.media.audioUrl
+    Admin->>AdminUI: Click "Mix Audio & Sync"
+    AdminUI->>Server: POST /ai/mix-and-sync { speakerVoiceMap }
+    Server->>BullMQ: Enqueue job { lessonId, payload }
+    Server-->>AdminUI: { jobId } (202 Accepted)
+
+    AdminUI->>Server: GET /ai/sync-status (polling every 3s)
+
+    BullMQ->>Server: Process job
+    Server->>ElevenLabs: TTS per speaker line
+    ElevenLabs-->>Server: Audio chunks
+    Server->>Server: FFmpeg mix + add noise background
+    Server->>R2: Upload final MP3
+    R2-->>Server: audioUrl (CDN)
+    Server->>Deepgram: Submit audioUrl for transcription
+    Deepgram-->>Server: Word-level timestamps
+    Server->>Server: Normalize → TranscriptLine[].words
+    Server->>Server: UPDATE lesson.content (MongoDB)
+    Server-->>AdminUI: sync-status → { status: 'done', result: { audioUrl, transcript } }
+
+    AdminUI->>AdminUI: Hydrate form + render WaveSurfer
 ```
 
 ---
 
-## 2. Cấu trúc Dữ liệu (Source of Truth)
+## 10. File Checklist (mới hoàn toàn)
 
-### 2.1 TypeScript Types (Server — `server/src/types/lesson-content.types.ts`)
-
-Thêm vào file hiện có (append, không xoá):
-
-```typescript
-// ─── Reading Content Types ────────────────────────────────────────────────────
-
-export interface ReadingGlossaryItem {
-    word: string;               // Từ gốc xuất hiện trong <mark>
-    definition: string;         // Nghĩa khớp với ngữ cảnh bài đọc (Tiếng Việt)
-    type: 'noun' | 'verb' | 'adjective' | 'adverb' | 'phrase';
-    ipa: string;
-}
-
-export interface ReadingMedia {
-    audioUrl: string | null;
-    duration: number | null;
-    speed: number;              // Mặc định 1.0
-}
-
-export interface ReadingContent {
-    type: 'READING';
-    text: string;               // HTML với <mark data-concept="id">word</mark>
-    media: ReadingMedia;
-    // Key = data-concept attribute value (gen_id hoặc concept ObjectId string)
-    glossary: Record<string, ReadingGlossaryItem>;
-    generationStatus: 'IDLE' | 'GENERATING' | 'GENERATING_AUDIO' | 'DONE' | 'ERROR';
-}
+### Server
+```
+server/src/types/listening.types.ts
+server/src/validations/listening.validation.ts
+server/src/services/listening.service.ts
+server/src/services/listening-ai.service.ts
+server/src/controllers/listening.controller.ts
+server/src/controllers/listening-ai.controller.ts
+server/src/routes/listening.routes.ts
+server/src/jobs/queues/listening-sync.queue.ts
+server/src/jobs/workers/listening-sync.worker.ts
 ```
 
-### 2.2 Zod Validation Types (Server — `server/src/validations/reading.validation.ts`)
-
-```typescript
-// Schemas cần khai báo:
-// getReadingContentSchema        — GET  /:lessonId/reading/content
-// saveReadingContentSchema       — PUT  /:lessonId/reading/content
-// generateReadingSchema          — POST /:lessonId/reading/generate
-// generateReadingAudioSchema     — POST /:lessonId/reading/generate-audio
-// generateReadingQuestionsSchema — POST /:lessonId/reading/generate-questions
-// getReadingQuestionsSchema      — GET  /:lessonId/reading/questions
-// swapReadingQuestionSchema      — POST /:lessonId/reading/questions/:questionId/swap
-// updateReadingQuestionSchema    — PUT  /:lessonId/reading/questions/:questionId
-// deleteReadingQuestionSchema    — DELETE /:lessonId/reading/questions/:questionId
-// fillGlossarySchema             — POST /:lessonId/reading/fill-glossary
+### Admin
+```
+admin/src/features/curriculum/courses/api/listeningService.ts
+admin/src/features/curriculum/courses/hooks/useListeningContent.ts
+admin/src/features/curriculum/courses/hooks/useListeningMutations.ts
+admin/src/features/curriculum/courses/components/ListeningStudio/ListeningStudio.tsx
+admin/src/features/curriculum/courses/components/ListeningStudio/hooks/useListeningStudioState.ts
+admin/src/features/curriculum/courses/components/ListeningStudio/components/ListeningTopBar/ListeningTopBar.tsx
+admin/src/features/curriculum/courses/components/ListeningStudio/components/ListeningNavigator/ListeningNavigator.tsx
+admin/src/features/curriculum/courses/components/ListeningStudio/components/ScriptEditor/ScriptEditor.tsx
+admin/src/features/curriculum/courses/components/ListeningStudio/components/ScriptEditor/MediaSettingsPanel.tsx
+admin/src/features/curriculum/courses/components/ListeningStudio/components/ScriptEditor/TranscriptLineItem.tsx
+admin/src/features/curriculum/courses/components/ListeningStudio/components/KaraokeSyncEditor/KaraokeSyncEditor.tsx
+admin/src/features/curriculum/courses/components/ListeningStudio/components/KaraokeSyncEditor/WaveformPlayer.tsx
+admin/src/features/curriculum/courses/components/ListeningStudio/components/KaraokeSyncEditor/InteractiveTranscript.tsx
+admin/src/features/curriculum/courses/components/ListeningStudio/components/InteractiveConfigEditor/InteractiveConfigEditor.tsx
+admin/src/features/curriculum/courses/components/ListeningStudio/components/InteractiveConfigEditor/PracticeQuestionsPanel.tsx
+admin/src/features/curriculum/courses/components/ListeningStudio/components/AiPipelineOverlay/AiPipelineOverlay.tsx
 ```
 
----
-
-## 3. API Contract
-
-**Base prefix:** `/api/curriculum/lessons`
-**Auth:** `protect + restrictTo('admin', 'content_creator')` trên toàn bộ router.
-
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| GET | `/:lessonId/reading/content` | Lấy ReadingContent (lean + select) |
-| PUT | `/:lessonId/reading/content` | Lưu toàn bộ ReadingContent |
-| POST | `/:lessonId/reading/generate` | AI sinh bài đọc + glossary + câu hỏi |
-| POST | `/:lessonId/reading/generate-audio` | Enqueue TTS job cho `text` đã strip HTML |
-| POST | `/:lessonId/reading/fill-glossary` | AI điền hàng loạt definition cho glossary |
-| POST | `/:lessonId/reading/generate-questions` | AI tái sinh câu hỏi comprehension |
-| GET | `/:lessonId/reading/questions` | Lấy Question cards đã hydrate |
-| PUT | `/:lessonId/reading/questions/:questionId` | Cập nhật 1 câu hỏi |
-| DELETE | `/:lessonId/reading/questions/:questionId` | Xoá 1 câu hỏi |
-| POST | `/:lessonId/reading/questions/:questionId/swap` | Đổi 1 câu hỏi bằng AI |
-
----
-
-## 4. Kế hoạch Triển khai
-
-### Phase 1 — Backend Foundation
-
-#### Bước 1: Types & Validation
-
-**File:** `server/src/types/lesson-content.types.ts`
-- Append `ReadingGlossaryItem`, `ReadingMedia`, `ReadingContent` (xem §2.1).
-
-**File (mới):** `server/src/validations/reading.validation.ts`
-- Khai báo tất cả 9 Zod schemas (xem §2.2).
-- `saveReadingContentSchema.body` dùng `z.object({ text: z.string(), glossary: z.record(z.string(), glossaryItemSchema), ... })`.
-- `generateReadingSchema.body` dùng `z.object({ level: z.enum(['A1','A2','B1','B2','C1','C2']), textType: z.enum(['email','report','news','story']).default('story') })`.
-- `generateReadingQuestionsSchema.body` dùng `z.object({ count: z.number().int().min(1).max(10).default(5), types: z.array(...).optional() })`.
-
----
-
-#### Bước 2: Repository
-
-**File (mới):** `server/src/repositories/mongo/reading.mongo.repository.ts`
-
-Pattern mirror của `GrammarMongoRepository`. Implement:
-
-```typescript
-export class ReadingMongoRepository {
-    async getContent(lessonId: string): Promise<ReadingContent>
-    async saveContent(lessonId: string, content: ReadingContent): Promise<ReadingContent>
-    async patchMediaUrl(lessonId: string, audioUrl: string, duration: number): Promise<void>
-    async setQuestionIds(lessonId: string, ids: string[]): Promise<void>
-    async setGenerationStatus(lessonId: string, status: ReadingContent['generationStatus']): Promise<void>
-    private _emptyContent(): ReadingContent
-}
+### Modified (sửa đổi file hiện có)
 ```
-
-Tất cả reads đều dùng `.lean().select('type content')`. Validate `lesson.type === 'READING'`.
-
----
-
-#### Bước 3: BullMQ Queue
-
-**File (mới):** `server/src/jobs/queues/reading-tts.queue.ts`
-
-```typescript
-export interface ReadingTTSJobPayload {
-    lessonId: string;
-    plainText: string;     // HTML đã strip tags
-    voice: string;         // 'onyx' | 'nova' (từ env hoặc default)
-    type: 'reading_narration';
-}
-
-export const readingTtsQueue = new Queue<ReadingTTSJobPayload>('reading-tts-generation', {
-    connection: { url: env.REDIS_URI || 'redis://localhost:6379' },
-    defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
-});
+server/src/app.ts                                                        → Mount listening.routes
+admin/src/features/curriculum/courses/types/course.types.ts              → Thêm Listening types
+admin/src/features/curriculum/courses/components/LessonEditor/LessonEditor.tsx → case 'LISTENING'
+server/src/config/env.ts                                                 → Thêm ELEVENLABS_API_KEY, DEEPGRAM_API_KEY, OPENAI_API_KEY
 ```
-
-**File (mới):** `server/src/jobs/workers/reading-tts.worker.ts`
-
-Worker nhận job, gọi `env.OPENAI_TTS_MODEL`, upload MP3 lên R2, gọi `readingRepo.patchMediaUrl`.
-
----
-
-#### Bước 4: Service
-
-**File (mới):** `server/src/services/reading.service.ts`
-
-Đây là lớp duy nhất chứa business logic. Không để logic trong controller.
-
-```typescript
-export class ReadingService {
-    // Reads via ReadingMongoRepository
-    static async getContent(lessonId: string): Promise<ReadingContent>
-
-    // Persists full content — Admin manual save
-    static async saveContent(lessonId: string, body: SaveReadingContentBody): Promise<ReadingContent>
-
-    // AI pipeline: Text Gen (GPT) → Glossary Gen (GPT) → Question Gen (GPT)
-    // → Question.insertMany → setQuestionIds → enqueue TTS
-    static async generateContent(lessonId: string, body: GenerateReadingBody): Promise<ReadingContent>
-
-    // AI batch-fill glossary definitions for existing <mark> entries
-    static async fillGlossary(lessonId: string): Promise<ReadingContent>
-
-    // Enqueue TTS job (strips HTML tags before sending to TTS)
-    static async generateAudio(lessonId: string): Promise<void>
-
-    // AI regenerate comprehension questions (delete old → insertMany → update IDs)
-    static async generateQuestions(lessonId: string, body: GenerateReadingQuestionsBody): Promise<{ count: number }>
-
-    // Get hydrated question cards
-    static async getQuestions(lessonId: string): Promise<ReadingQuestionCard[]>
-
-    // Swap single question via AI
-    static async swapQuestion(lessonId: string, questionId: string): Promise<void>
-
-    // Update single question
-    static async updateQuestion(lessonId: string, questionId: string, payload: UpdateQuestionPayload): Promise<void>
-
-    // Delete single question
-    static async deleteQuestion(lessonId: string, questionId: string): Promise<void>
-
-    // ── Private AI Helpers ────────────────────────────────────────────────────
-    private static async _generateTextAndGlossary(ctx, body): Promise<{ text: string; glossary: Record<string, ReadingGlossaryItem> }>
-    private static async _generateQuestionsWithAI(content, count, types?): Promise<AIQuestion[]>
-    private static _stripHtmlTags(html: string): string
-}
-```
-
-**AI Prompt contract cho `_generateTextAndGlossary`:**
-- GPT nhận: `unit.contextSeed.scenario`, target vocab list, level, textType.
-- GPT trả: JSON `{ text: "<HTML với <mark data-concept='gen_{n}'>...</mark>>", glossary: { "gen_1": { word, definition, type, ipa }, ... } }`.
-- Key của glossary **phải khớp 100%** với `data-concept` trong `text`.
-- Dùng `response_format: { type: 'json_object' }` + `model: env.OPENAI_MODEL`.
-
----
-
-#### Bước 5: Controller
-
-**File (mới):** `server/src/controllers/reading.controller.ts`
-
-```typescript
-// Tất cả export functions:
-export const getReadingContent = catchAsync(...)
-export const saveReadingContent = catchAsync(...)
-export const generateReadingContent = catchAsync(...)
-export const fillGlossary = catchAsync(...)
-export const generateReadingAudio = catchAsync(...)
-export const generateReadingQuestions = catchAsync(...)
-export const getReadingQuestions = catchAsync(...)
-export const updateReadingQuestion = catchAsync(...)
-export const deleteReadingQuestion = catchAsync(...)
-export const swapReadingQuestion = catchAsync(...)
-```
-
-Mỗi function: validate (đã qua Zod middleware) → gọi `ReadingService` → `sendResponse`.
-
----
-
-#### Bước 6: Route
-
-**File (mới):** `server/src/routes/reading.route.ts`
-
-```typescript
-router.route('/:lessonId/reading/content')
-    .get(validate(getReadingContentSchema), getReadingContent)
-    .put(validate(saveReadingContentSchema), saveReadingContent);
-
-router.post('/:lessonId/reading/generate', validate(generateReadingSchema), generateReadingContent);
-router.post('/:lessonId/reading/generate-audio', validate(generateReadingAudioSchema), generateReadingAudio);
-router.post('/:lessonId/reading/fill-glossary', validate(fillGlossarySchema), fillGlossary);
-router.post('/:lessonId/reading/generate-questions', validate(generateReadingQuestionsSchema), generateReadingQuestions);
-
-router.route('/:lessonId/reading/questions')
-    .get(validate(getReadingQuestionsSchema), getReadingQuestions);
-
-router.route('/:lessonId/reading/questions/:questionId')
-    .put(validate(updateReadingQuestionSchema), updateReadingQuestion)
-    .delete(validate(deleteReadingQuestionSchema), deleteReadingQuestion);
-
-router.post('/:lessonId/reading/questions/:questionId/swap', validate(swapReadingQuestionSchema), swapReadingQuestion);
-```
-
-Mount vào `lesson.route.ts` (hoặc file router chính): `app.use('/api/curriculum/lessons', readingRouter)`.
-
----
-
-### Phase 2 — Admin UI
-
-**Tech stack:** React 19 + TypeScript + TailwindCSS + Shadcn/UI + TanStack Query v5 + React Hook Form + Zod.
-
-#### Bước 7: Types (Admin)
-
-**File:** `admin/src/features/curriculum/courses/types/course.types.ts` (append)
-
-```typescript
-export interface ReadingGlossaryItem {
-    word: string;
-    definition: string;
-    type: 'noun' | 'verb' | 'adjective' | 'adverb' | 'phrase';
-    ipa: string;
-}
-
-export interface ReadingMedia {
-    audioUrl: string | null;
-    duration: number | null;
-    speed: number;
-}
-
-export interface ReadingContent {
-    type: 'READING';
-    text: string;
-    media: ReadingMedia;
-    glossary: Record<string, ReadingGlossaryItem>;
-    generationStatus: 'IDLE' | 'GENERATING' | 'GENERATING_AUDIO' | 'DONE' | 'ERROR';
-}
-
-export interface ReadingLessonFormValues {
-    _id: string;
-    title: string;
-    type: 'READING';
-    content: {
-        text: string;
-        media: ReadingMedia;
-        glossary: Record<string, ReadingGlossaryItem>;
-    };
-    practiceConfig: {
-        mode: 'FIXED';
-        questionIds: string[];
-        passingScore: number;
-    };
-}
-
-export type ReadingGenerationPayload = {
-    level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
-    textType: 'email' | 'report' | 'news' | 'story';
-};
-
-export type ReadingQuestionCard = GrammarQuestionCard; // Tái sử dụng GrammarQuestionCard
-```
-
----
-
-#### Bước 8: Query Keys
-
-**File:** `admin/src/features/curriculum/courses/constants/query-keys.ts` (append)
-
-```typescript
-readingContent: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'reading-content', lessonId],
-readingQuestions: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'reading-questions', lessonId],
-```
-
----
-
-#### Bước 9: API Layer
-
-**File (mới):** `admin/src/features/curriculum/courses/api/reading.api.ts`
-
-```typescript
-export const readingApi = {
-    getContent: (lessonId: string): Promise<ReadingContent>
-    saveContent: (lessonId: string, body: Partial<ReadingContent>): Promise<ReadingContent>
-    generateContent: (lessonId: string, payload: ReadingGenerationPayload): Promise<ReadingContent>
-    fillGlossary: (lessonId: string): Promise<ReadingContent>
-    generateAudio: (lessonId: string): Promise<void>
-    generateQuestions: (lessonId: string, count: number, types?: string[]): Promise<{ count: number }>
-    getQuestions: (lessonId: string): Promise<ReadingQuestionCard[]>
-    updateQuestion: (lessonId: string, questionId: string, payload: UpdateGrammarQuestionPayload): Promise<ReadingQuestionCard>
-    deleteQuestion: (lessonId: string, questionId: string): Promise<void>
-    swapQuestion: (lessonId: string, questionId: string): Promise<ReadingQuestionCard>
-};
-```
-
----
-
-#### Bước 10: Hooks (TanStack Query)
-
-**File (mới):** `admin/src/features/curriculum/courses/hooks/useReadingContent.ts`
-
-```typescript
-export const useReadingContent = (lessonId: string) =>
-    useQuery<ReadingContent>({
-        queryKey: LESSON_QUERY_KEYS.readingContent(lessonId),
-        queryFn: () => readingApi.getContent(lessonId),
-        enabled: !!lessonId,
-        staleTime: 60_000,
-    });
-```
-
-**File (mới):** `admin/src/features/curriculum/courses/hooks/useReadingMutations.ts`
-
-Exports: `useSaveReadingContent`, `useGenerateReadingContent`, `useFillGlossary`, `useGenerateReadingAudio`, `useGenerateReadingQuestions`.
-
-`useGenerateReadingContent.onSuccess`: `setQueryData(readingContent key)` + `invalidateQueries(readingQuestions key)`.
-
-**File (mới):** `admin/src/features/curriculum/courses/hooks/useReadingQuestions.ts`
-
-Mirror của `useGrammarQuestions` — `enabled: !!lessonId && questionIds.length > 0`.
-
----
-
-#### Bước 11: UI Components (ReadingStudio)
-
-**Cây thư mục:**
-
-```
-admin/src/features/curriculum/courses/components/ReadingStudio/
-├── ReadingStudio.tsx                          # Root orchestrator (mirror GrammarStudio)
-├── hooks/
-│   └── useReadingStudioState.ts               # activeSection state
-└── components/
-    ├── ReadingTopBar/
-    │   └── ReadingTopBar.tsx                  # Header: title + action buttons
-    ├── ReadingNavigator/
-    │   └── ReadingNavigator.tsx               # 3-item nav (Text, Glossary, Practice)
-    ├── AiWriteModal/
-    │   └── AiWriteModal.tsx                   # Modal chọn Level + TextType
-    ├── GenerateQuestionsModal/
-    │   └── GenerateQuestionsModal.tsx         # Tái dụng pattern từ Grammar
-    ├── ReadingEditor/
-    │   ├── ReadingEditor.tsx                  # Switch activeSection → render section
-    │   └── sections/
-    │       ├── TextSection.tsx                # Tiptap editor + AudioPlayer
-    │       ├── GlossarySection.tsx            # Card list glossary (RHF watch + setValue)
-    │       └── PracticeSection.tsx            # Question cards (mirror GrammarStudio PracticeEditor)
-    └── ReadingPracticeSheet/
-        └── ReadingPracticeSheet.tsx           # "Làm thử" Sheet (tái dụng TryTab)
-```
-
-**Nguyên tắc component quan trọng:**
-
-1. `ReadingStudio.tsx` — `FormProvider` bao ngoài (RHF). Không dùng `useEffect` để fetch, dùng `useReadingContent`.
-2. `TextSection.tsx` — Dùng **Tiptap** (`@tiptap/react`). Custom extension `MarkConceptExtension` để:
-   - Cho phép bôi đen text → click nút "Đánh dấu từ vựng" → wrap trong `<mark data-concept="gen_{uuid}">`.
-   - Parse `content.text` HTML an toàn qua `DOMParser`.
-3. `GlossarySection.tsx` — **Không dùng `useFieldArray`** (glossary là Record, không phải Array). Render với `Object.entries(watch('content.glossary'))`. Mỗi entry render 1 card với 3 input (definition, type, ipa).
-4. `PracticeSection.tsx` — Mirror `GrammarStudio/PracticeEditor.tsx`. Dùng `useReadingQuestions`.
-
----
-
-#### Bước 12: Tích hợp vào CourseStudioPage
-
-**File:** `admin/src/features/curriculum/courses/pages/CourseStudioPage/CourseStudioPage.tsx`
-
-```tsx
-// Thêm case READING:
-if (lesson.type === 'READING') {
-    return <ReadingStudio lesson={lesson} />;
-}
-```
-
----
-
-## 5. Dependency Mới (Cần cài)
-
-| Package | App | Mục đích |
-|---------|-----|----------|
-| `@tiptap/react` | admin | Rich Text editor core |
-| `@tiptap/starter-kit` | admin | Extensions bundle (Bold, Italic, ...) |
-| `@tiptap/extension-highlight` | admin | Render `<mark>` tag natively |
-| `strip-html` hoặc `striptags` | server | Strip HTML tags trước khi gửi TTS |
-
----
-
-## 6. Thứ tự Triển khai (Sprint Breakdown)
-
-| Sprint | Tasks | Output có thể test |
-|--------|-------|-------------------|
-| **Sprint 1** | Bước 1 → 3 (Types, Validation, Repository, Queue) | Unit test Repository |
-| **Sprint 2** | Bước 4 → 6 (Service, Controller, Route) | API test via curl/Postman |
-| **Sprint 3** | Bước 7 → 10 (Admin types, API, Hooks) | TanStack Query dev tools |
-| **Sprint 4** | Bước 11 (TextSection + GlossarySection) | Tiptap editor + Glossary auto-sync |
-| **Sprint 5** | Bước 11 (PracticeSection + ReadingPracticeSheet) + Bước 12 | Full end-to-end flow |
-
----
-
-## 7. Checklist Kiểm tra Chất lượng (QA Gates)
-
-Trước khi merge mỗi Sprint:
-
-- [ ] `npx tsc --noEmit` → 0 errors trên cả `server/` và `admin/`
-- [ ] Không có `any` trong code mới
-- [ ] Tất cả MongoDB reads có `.lean().select()`
-- [ ] Tất cả async controllers bọc trong `catchAsync`
-- [ ] Tất cả API inputs qua Zod middleware trước controller
-- [ ] Không có `console.log` — dùng `logger.info/warn/error`
-- [ ] Secrets không hardcode — dùng `env.OPENAI_MODEL`, `env.OPENAI_TTS_MODEL`
-- [ ] Glossary key sync: `data-concept` attribute trong HTML **bắt buộc** khớp key trong `glossary` Record
-- [ ] TTS chỉ nhận plain text (HTML đã strip tags)
-- [ ] Admin: Không có `useEffect` cho data fetching — chỉ dùng TanStack Query
-- [ ] Admin: Không có Tailwind trong `/client`, không có CSS Modules trong `/admin`
-
----
-
-## 8. Rủi ro & Phương án Dự phòng
-
-| Rủi ro | Xác suất | Phương án |
-|--------|---------|-----------|
-| GPT không giữ format `data-concept` nhất quán | Cao | Parser regex backup: tự sinh key từ index nếu thiếu attribute |
-| Tiptap extension conflict với Shadcn styles | Trung bình | Scope Tiptap CSS trong `.tiptap-editor` wrapper, không pollute global |
-| TTS timeout với bài đọc dài (>500 chữ) | Trung bình | Split text theo câu → nhiều TTS chunks → ghép client-side |
-| Glossary desync khi Admin tay edit HTML trong Tiptap | Cao | Tiptap `onUpdate` callback → re-parse `<mark>` → diff với glossary hiện tại → xoá key thừa, giữ key mới |

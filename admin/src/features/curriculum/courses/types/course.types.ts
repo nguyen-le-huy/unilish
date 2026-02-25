@@ -500,3 +500,138 @@ export interface UpdateReadingQuestionPayload {
     difficultyLevel?: number;
     content?: Record<string, unknown>;
 }
+
+// ─── Listening Content Types ──────────────────────────────────────────────────
+
+export type ListeningAccent = 'en-US' | 'en-UK' | 'mixed';
+export type ListeningNoiseLevel = 'none' | 'low' | 'medium' | 'high';
+export type ListeningInteractiveMode = 'GAP_FILL' | 'SHADOWING';
+export type ListeningGenerationStatus =
+    | 'IDLE'
+    | 'GENERATING_SCRIPT'
+    | 'GENERATING_AUDIO'
+    | 'SYNCING'
+    | 'DONE'
+    | 'ERROR';
+
+export type ListeningScriptFormat = 'DIALOGUE' | 'PODCAST' | 'NEWS';
+
+export interface AudioWord {
+    word: string;
+    start: number;           // seconds
+    end: number;             // seconds
+    conceptId?: string | undefined;
+    isTargetVocab: boolean;  // true → Gap-fill candidate
+}
+
+export interface TranscriptLine {
+    id: string;              // UUID — stable React key
+    speaker: string;         // e.g. "Adam"
+    role: string;            // e.g. "Airport Staff"
+    text: string;            // Full dialogue line
+    translation?: string;    // Optional translated line
+    startTime: number;       // 0 until Deepgram sync
+    endTime: number;         // 0 until Deepgram sync
+    words: AudioWord[];      // [] until Mix & Sync (Phase 3)
+}
+
+export interface ListeningMedia {
+    audioUrl: string | null;
+    duration: number;
+    accent: ListeningAccent;
+    noiseLevel: ListeningNoiseLevel;
+    speed: number;
+}
+
+export interface ListeningInteractiveConfig {
+    mode: ListeningInteractiveMode;
+    hidePercentage: number;  // 0–100
+    allowSlowSpeed: boolean;
+}
+
+export interface ListeningContent {
+    type: 'LISTENING';
+    media: ListeningMedia;
+    transcript: TranscriptLine[];
+    interactiveConfig: ListeningInteractiveConfig;
+    practiceConfig: {
+        mode: 'FIXED';
+        questionIds: string[];
+        passingScore: number;
+    };
+    generationStatus: ListeningGenerationStatus;
+}
+
+// ─── Listening Form Values (react-hook-form root model) ───────────────────────
+
+export interface ListeningLessonFormValues {
+    media: ListeningMedia;
+    transcript: TranscriptLine[];
+    interactiveConfig: ListeningInteractiveConfig;
+    practiceConfig: {
+        mode: 'FIXED';
+        passingScore: number;
+    };
+}
+
+// ─── Listening API Payloads ───────────────────────────────────────────────────
+
+export interface SaveListeningContentPayload {
+    media?: Partial<ListeningMedia>;
+    transcript?: TranscriptLine[];
+    interactiveConfig?: Partial<ListeningInteractiveConfig>;
+    practiceConfig?: {
+        mode: 'FIXED';
+        passingScore: number;
+    };
+    generationStatus?: ListeningGenerationStatus;
+}
+
+export interface GenerateListeningScriptPayload {
+    lineCount?: number;
+    speakerCount?: number;
+    scriptFormat?: ListeningScriptFormat;
+    topic?: string;
+}
+
+export interface MixAndSyncPayload {
+    speakerVoiceMap?: Record<string, string>;
+}
+
+export interface SyncStatusResponse {
+    status:
+        | 'IDLE'
+        | 'GENERATING_SCRIPT'
+        | 'GENERATING_AUDIO'
+        | 'SYNCING'
+        | 'DONE'
+        | 'ERROR';
+    progress: number;
+    result?: {
+        audioUrl: string | null;
+        duration: number;
+        transcript: TranscriptLine[];
+    };
+}
+
+export interface ListeningQuestionsResponse {
+    questionIds: string[];
+    count: number;
+}
+
+export interface GenerateListeningQuestionsPayload {
+    distribution: {
+        multipleChoice: number;
+        fillInBlank: number;
+        trueFalse: number;
+    };
+}
+
+export type ListeningQuestionCard = GrammarQuestionCard;
+
+export interface UpdateListeningQuestionPayload {
+    stem?: { text?: string };
+    explanation?: string | null;
+    difficultyLevel?: number;
+    content?: Record<string, unknown>;
+}

@@ -113,5 +113,59 @@ export interface ReadingContent {
     generationStatus: 'IDLE' | 'GENERATING' | 'GENERATING_AUDIO' | 'DONE' | 'ERROR';
 }
 
+// ─── Listening Content Types ──────────────────────────────────────────────────
+// Stored in Lesson.content (Schema.Types.Mixed) when type = 'LISTENING'
+
+export type ListeningAccent = 'en-US' | 'en-UK' | 'mixed';
+export type ListeningNoiseLevel = 'none' | 'low' | 'medium' | 'high';
+export type ListeningInteractiveMode = 'GAP_FILL' | 'SHADOWING';
+export type ListeningGenerationStatus = 'IDLE' | 'GENERATING_SCRIPT' | 'GENERATING_AUDIO' | 'SYNCING' | 'DONE' | 'ERROR';
+
+export interface AudioWord {
+    word: string;
+    start: number;         // seconds — e.g. 0.50 (populated by Deepgram in Phase 3)
+    end: number;           // seconds — e.g. 0.83
+    conceptId?: string | undefined;  // ObjectId ref → Concept collection (auto-mapped)
+    isTargetVocab: boolean; // true → Gap-fill candidate; toggled by Admin in Karaoke editor
+}
+
+export interface TranscriptLine {
+    id: string;            // UUID — stable client-side key for React rendering
+    speaker: string;       // e.g. "Adam"
+    role: string;          // e.g. "Airport Staff"
+    text: string;          // Full dialogue line
+    translation?: string;  // Optional translated line for admin review and learner support
+    startTime: number;     // seconds — 0 until populated by Deepgram
+    endTime: number;       // seconds — 0 until populated by Deepgram
+    words: AudioWord[];    // [] until populated by AI Mix & Sync (Phase 3)
+}
+
+export interface ListeningMedia {
+    audioUrl: string | null;          // Cloudflare R2 CDN URL — null until audio is generated
+    duration: number;                 // seconds — 0 until audio is generated
+    accent: ListeningAccent;
+    noiseLevel: ListeningNoiseLevel;  // Simulate real-world audio environment
+    speed: number;                    // Default 1.0
+}
+
+export interface ListeningInteractiveConfig {
+    mode: ListeningInteractiveMode;
+    hidePercentage: number;    // 0–100; percentage of target vocab to gap-fill
+    allowSlowSpeed: boolean;
+}
+
+export interface ListeningContent {
+    type: 'LISTENING';
+    media: ListeningMedia;
+    transcript: TranscriptLine[];     // [] until script is written
+    interactiveConfig: ListeningInteractiveConfig;
+    practiceConfig: {
+        mode: 'FIXED';
+        questionIds: string[];   // Comprehension question ObjectIds
+        passingScore: number;
+    };
+    generationStatus: ListeningGenerationStatus;
+}
+
 // ─── Union Type — extend as new lesson types are built ────────────────────────
-export type LessonContent = VocabContent | GrammarContent | ReadingContent;
+export type LessonContent = VocabContent | GrammarContent | ReadingContent | ListeningContent;
