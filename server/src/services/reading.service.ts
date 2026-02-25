@@ -72,18 +72,22 @@ export class ReadingService {
         lessonId: string,
         body: SaveReadingContentBody,
     ): Promise<ReadingContent> {
+        const existing = await readingRepo.getContent(lessonId);
+
+        const glossaryValues = body.glossary
+            ? Object.values(body.glossary).flatMap((item) => [item.word, item.definition])
+            : [];
+
         await ContextAlignmentService.assertLessonAligned(
             lessonId,
             [
                 existing.text,
-                body.text,
-                body.translation,
-                ...Object.values(body.glossary).flatMap((item) => [item.word, item.definition]),
+                ...(body.text ? [body.text] : []),
+                ...(body.translation ? [body.translation] : []),
+                ...glossaryValues,
             ],
             'READING',
         );
-
-        const existing = await readingRepo.getContent(lessonId);
 
         const updated: ReadingContent = {
             type: 'READING',
@@ -467,16 +471,16 @@ RULES:
         types?: string[],
     ): Promise<object[]> {
         const wantFill = !types || types.includes('FILL_IN_BLANK');
-        const wantMC   = !types || types.includes('MULTIPLE_CHOICE');
-        const wantTF   = !types || types.includes('TRUE_FALSE');
+        const wantMC = !types || types.includes('MULTIPLE_CHOICE');
+        const wantTF = !types || types.includes('TRUE_FALSE');
 
         // Distribute count across requested types
         const enabledTypes = [wantMC && 'MC', wantFill && 'FILL', wantTF && 'TF'].filter(Boolean);
         const base = Math.floor(count / (enabledTypes.length || 1));
         const extra = count % (enabledTypes.length || 1);
-        let mcCount   = wantMC   ? base + (extra > 0 ? 1 : 0) : 0;
+        let mcCount = wantMC ? base + (extra > 0 ? 1 : 0) : 0;
         let fillCount = wantFill ? base + (extra > 1 ? 1 : 0) : 0;
-        let tfCount   = wantTF   ? base : 0;
+        let tfCount = wantTF ? base : 0;
 
         // Adjust rounding
         const total = mcCount + fillCount + tfCount;

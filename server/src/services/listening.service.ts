@@ -197,8 +197,8 @@ export class ListeningService {
             await Question.deleteMany({ _id: { $in: existingQuestionIds } }).exec();
         }
 
-        const requestedTypes = body.types?.length
-            ? body.types
+        const requestedTypes: ListeningQuestionType[] = body.types?.length
+            ? (body.types as ListeningQuestionType[])
             : ['MULTIPLE_CHOICE', 'FILL_IN_BLANK', 'TRUE_FALSE'];
 
         const distribution = this._resolveDistribution(body, requestedTypes);
@@ -426,7 +426,7 @@ ${transcriptText}
         type: typeof EQuestionType[keyof typeof EQuestionType];
         stem: string;
         content: Record<string, unknown>;
-        explanation?: string;
+        explanation?: string | undefined;
     }>> {
         const prompt = this._buildQuestionsPrompt(content, count, types, ctx);
 
@@ -458,9 +458,16 @@ ${transcriptText}
             );
         }
 
-        return drafts
+        type QuestionDoc = {
+            type: typeof EQuestionType[keyof typeof EQuestionType];
+            stem: string;
+            content: Record<string, unknown>;
+            explanation?: string | undefined;
+        };
+
+        const mapped: Array<QuestionDoc | null> = drafts
             .filter((draft) => types.includes(draft.type))
-            .map((draft) => {
+            .map((draft): QuestionDoc | null => {
                 const stem = draft.stem?.trim() ?? '';
                 if (!stem) return null;
 
@@ -481,7 +488,7 @@ ${transcriptText}
                         type: EQuestionType.MULTIPLE_CHOICE,
                         stem,
                         content: { options },
-                        explanation: draft.explanation,
+                        ...(draft.explanation !== undefined ? { explanation: draft.explanation } : {}),
                     };
                 }
 
@@ -497,7 +504,7 @@ ${transcriptText}
                         type: EQuestionType.FILL_IN_BLANK,
                         stem,
                         content: { correctAnswers },
-                        explanation: draft.explanation,
+                        ...(draft.explanation !== undefined ? { explanation: draft.explanation } : {}),
                     };
                 }
 
@@ -511,15 +518,12 @@ ${transcriptText}
                             { id: 'opt_false', text: 'False', isCorrect: !answer },
                         ],
                     },
-                    explanation: draft.explanation,
+                    ...(draft.explanation !== undefined ? { explanation: draft.explanation } : {}),
                 };
-            })
-            .filter((item): item is {
-                type: typeof EQuestionType[keyof typeof EQuestionType];
-                stem: string;
-                content: Record<string, unknown>;
-                explanation?: string;
-            } => item !== null)
+            });
+
+        return mapped
+            .filter((item): item is QuestionDoc => item !== null)
             .slice(0, count);
     }
 }

@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { UploadService } from '../services/storage/upload.service.js';
+import { UploadService } from '../services/upload.service.js';
 import { sendResponse } from '../utils/send-response.js';
 import { HttpStatus } from '../constants/http-status.js';
 import { AppError } from '../utils/app-error.js';

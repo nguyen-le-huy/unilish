@@ -167,5 +167,46 @@ export interface ListeningContent {
     generationStatus: ListeningGenerationStatus;
 }
 
+// ─── Writing Content Types ───────────────────────────────────────────────────
+
+export type WritingTaskType =
+    | 'essay'
+    | 'email'
+    | 'report'
+    | 'letter'
+    | 'summary'
+    | 'paragraph';
+
+export type WritingGenerationStatus =
+    | 'IDLE'
+    | 'GENERATING'  // AI generating prompt + model answer
+    | 'DONE'
+    | 'ERROR';
+
+export interface WritingRubricCriterion {
+    id: string;          // nanoid — stable client key
+    name: string;        // e.g. "Task Achievement"
+    description: string; // Grading descriptor
+    maxScore: number;    // e.g. 25 (out of 100 total)
+}
+
+export interface WritingContent {
+    type: 'WRITING';
+    taskType: WritingTaskType;
+    prompt: string;                            // The writing task instructions (HTML allowed)
+    promptTranslation: string;                 // Vietnamese translation of the prompt
+    wordCountTarget: number;                   // e.g. 250 words
+    wordCountMin: number;                      // e.g. 200
+    wordCountMax: number;                      // e.g. 350
+    modelAnswer: string;                       // AI-generated model answer (plain text)
+    rubric: WritingRubricCriterion[];          // Scoring criteria
+    practiceConfig: {
+        mode: 'FIXED';
+        questionIds: string[];                 // Not used for writing — kept for schema uniformity
+        passingScore: number;
+    };
+    generationStatus: WritingGenerationStatus;
+}
+
 // ─── Union Type — extend as new lesson types are built ────────────────────────
-export type LessonContent = VocabContent | GrammarContent | ReadingContent | ListeningContent;
+export type LessonContent = VocabContent | GrammarContent | ReadingContent | ListeningContent | WritingContent;
