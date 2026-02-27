@@ -16,6 +16,7 @@ import {
     getGrammarContent,
     saveGrammarContent,
     generateGrammarStory,
+    generateGrammarBlog,
     generateGrammarQuestions,
     generateGrammarAudio,
     getGrammarQuestions,
@@ -42,6 +43,12 @@ router.post(
     '/:lessonId/grammar/generate-story',
     validate(generateGrammarStorySchema),
     generateGrammarStory,
+);
+
+router.post(
+    '/:lessonId/grammar/generate-blog',
+    validate(generateGrammarStorySchema),
+    generateGrammarBlog,
 );
 
 // ─── Practice Question Generation ────────────────────────────────────────────

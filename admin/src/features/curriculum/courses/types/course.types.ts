@@ -240,6 +240,7 @@ export interface RegenerateAudioPayload {
 export const QUESTION_TYPES = [
     'MULTIPLE_CHOICE',
     'FILL_IN_BLANK',
+    'ERROR_CORRECTION',
     'TRUE_FALSE',
     'MATCHING',
     'PRONUNCIATION',
@@ -300,6 +301,94 @@ export interface UpdateQuestionPayload {
 
 // ─── Grammar Content Types ────────────────────────────────────────────────────
 
+export const CALLOUT_VARIANTS = ['TIP', 'WARNING', 'EXAMPLE', 'UNIT_CONTEXT'] as const;
+export type CalloutVariant = (typeof CALLOUT_VARIANTS)[number];
+
+export interface GrammarExampleItem {
+    en: string;
+    vi: string;
+}
+
+export interface GrammarInlineQuizQuestion {
+    id: string;
+    stem: string;
+    type: 'MULTIPLE_CHOICE' | 'FILL_IN_BLANK';
+    options?: string[];
+    correct: string;
+    acceptedAnswers?: string[];
+    explanation: string;
+}
+
+export interface GrammarExplanationBlock {
+    id: string;
+    type: 'EXPLANATION';
+    heading: string;
+    body: string;
+    examples: GrammarExampleItem[];
+    highlightPattern: string;
+}
+
+export interface GrammarInlineQuizBlock {
+    id: string;
+    type: 'INLINE_QUIZ';
+    instruction: string;
+    questions: GrammarInlineQuizQuestion[];
+}
+
+export interface GrammarCalloutBlock {
+    id: string;
+    type: 'CALLOUT';
+    variant: CalloutVariant;
+    text: string;
+}
+
+export interface GrammarUnitContextBlock {
+    id: string;
+    type: 'UNIT_CONTEXT_BLOCK';
+    heading: string;
+    note: string;
+    examples: GrammarExampleItem[];
+}
+
+export type GrammarBlogBlock =
+    | GrammarExplanationBlock
+    | GrammarInlineQuizBlock
+    | GrammarCalloutBlock
+    | GrammarUnitContextBlock;
+
+export interface GrammarHero {
+    hook: string;
+    contextSentences: string[];
+}
+
+export interface GrammarSummaryTable {
+    columns: [string, string, string];
+    rows: [string, string, string][];
+}
+
+export interface GrammarFinalPracticeConfig {
+    mode: 'FIXED';
+    questionIds: string[];
+    passingScore: number;
+}
+
+export interface GrammarBlogQuestion {
+    _id: string;
+    type: 'MULTIPLE_CHOICE' | 'FILL_IN_BLANK' | 'ERROR_CORRECTION';
+    stem: { text?: string; audioUrl?: string | null; imageUrl?: string | null };
+    content: {
+        options?: { id: string; text: string; isCorrect: boolean }[];
+        correctAnswers?: string[];
+        pairs?: { id: string; word: string; definition: string }[];
+        errorWord?: string | null;
+        correction?: string | null;
+        isCorrect?: boolean;
+    };
+    explanation?: string;
+    difficultyLevel: number;
+    tags: string[];
+}
+
 export type HighlightType = 'regular_verb' | 'irregular_verb' | 'grammar_particle' | 'other';
 
 export interface HighlightInfo {
@@ -339,13 +428,14 @@ export interface GrammarRule {
 }
 
 export interface GrammarContent {
-    context_story: ContextStory;
-    grammar_rule: GrammarRule;
-    practiceConfig: {
-        mode: 'FIXED';
-        questionIds: string[];
-        passingScore: number;
-    };
+    type: 'GRAMMAR';
+    level: CEFRLevel;
+    readingTime: number;
+    conceptName: string;
+    hero: GrammarHero;
+    blocks: GrammarBlogBlock[];
+    summaryTable: GrammarSummaryTable;
+    practiceConfig: GrammarFinalPracticeConfig;
     taughtConcepts: string[];
 }
 
@@ -353,8 +443,12 @@ export interface GrammarContent {
 // Used as the single form shape owned by GrammarStudio.
 
 export interface GrammarLessonFormValues {
-    context_story: ContextStory;
-    grammar_rule: GrammarRule;
+    level: CEFRLevel;
+    readingTime: number;
+    conceptName: string;
+    hero: GrammarHero;
+    blocks: GrammarBlogBlock[];
+    summaryTable: GrammarSummaryTable;
     practiceConfig: {
         mode: 'FIXED';
         passingScore: number;
@@ -365,8 +459,12 @@ export interface GrammarLessonFormValues {
 // ─── Grammar API Payloads ─────────────────────────────────────────────────────
 
 export interface SaveGrammarContentPayload {
-    context_story: ContextStory;
-    grammar_rule: GrammarRule;
+    level: CEFRLevel;
+    readingTime: number;
+    conceptName: string;
+    hero: GrammarHero;
+    blocks: GrammarBlogBlock[];
+    summaryTable: GrammarSummaryTable;
     practiceConfig: {
         mode: 'FIXED';
         passingScore: number;
@@ -375,13 +473,18 @@ export interface SaveGrammarContentPayload {
 }
 
 export interface GenerateGrammarStoryPayload {
-    grammarName: string;       // "Past Simple"
+    grammarName: string;
+    level: CEFRLevel;
     selectedVocab: string[];   // ["luggage", "passport"]
 }
 
 export interface GenerateGrammarStoryResponse {
-    context_story: ContextStory;
-    grammar_rule: GrammarRule;
+    level: CEFRLevel;
+    readingTime: number;
+    conceptName: string;
+    hero: GrammarHero;
+    blocks: GrammarBlogBlock[];
+    summaryTable: GrammarSummaryTable;
 }
 
 export interface GrammarQuestionsResponse {
@@ -399,12 +502,15 @@ export interface GrammarMCOption {
 
 export interface GrammarQuestionCard {
     _id: string;
-    type: QuestionType;
+    type: 'MULTIPLE_CHOICE' | 'FILL_IN_BLANK' | 'ERROR_CORRECTION';
     stem: { text?: string; audioUrl?: string | null; imageUrl?: string | null };
     content: {
-        options?: GrammarMCOption[];      // MULTIPLE_CHOICE
-        correctAnswers?: string[];         // FILL_IN_BLANK
-        pairs?: { id: string; word: string; definition: string }[]; // MATCHING
+        options?: GrammarMCOption[];
+        correctAnswers?: string[];
+        pairs?: { id: string; word: string; definition: string }[];
+        errorWord?: string | null;
+        correction?: string | null;
+        isCorrect?: boolean;
     };
     explanation?: string;
     difficultyLevel: number;
@@ -627,11 +733,94 @@ export interface GenerateListeningQuestionsPayload {
     };
 }
 
-export type ListeningQuestionCard = GrammarQuestionCard;
+export interface ListeningQuestionCard {
+    _id: string;
+    type: QuestionType;
+    stem: { text?: string; audioUrl?: string | null; imageUrl?: string | null };
+    content: {
+        options?: GrammarMCOption[];
+        correctAnswers?: string[];
+        pairs?: { id: string; word: string; definition: string }[];
+    };
+    explanation?: string;
+    difficultyLevel: number;
+    tags: string[];
+}
 
 export interface UpdateListeningQuestionPayload {
     stem?: { text?: string };
     explanation?: string | null;
     difficultyLevel?: number;
     content?: Record<string, unknown>;
+}
+
+// ─── Writing Content Types ───────────────────────────────────────────────────
+
+export type WritingFormat = 'EMAIL' | 'ESSAY' | 'STORY' | 'CHAT';
+export type WritingTone = 'FORMAL' | 'CASUAL' | 'NEUTRAL';
+
+export interface WritingConfig {
+    minWords: number;
+    maxWords: number;
+    format: WritingFormat;
+    tone: WritingTone;
+}
+
+export interface RequiredConcept {
+    id: string;
+    conceptId: string;
+    keyword: string;
+    points: number;
+}
+
+export interface WarmupTask {
+    id: string;
+    type: 'UNSCRAMBLE';
+    words: string[];
+    correct: string;
+}
+
+export interface WritingContent {
+    type: 'WRITING';
+    prompt: string;
+    promptTranslation: string;
+    config: WritingConfig;
+    requiredConcepts: RequiredConcept[];
+    requiredGrammar: string;
+    sentenceStarters: string[];
+    warmupTasks: WarmupTask[];
+    taughtConcepts: string[];
+}
+
+export interface WritingLessonFormValues {
+    prompt: string;
+    promptTranslation: string;
+    config: WritingConfig;
+    requiredConcepts: RequiredConcept[];
+    requiredGrammar: string;
+    sentenceStarters: string[];
+    warmupTasks: WarmupTask[];
+    taughtConcepts: string[];
+}
+
+export interface SaveWritingContentPayload extends WritingLessonFormValues {}
+
+export interface GenerateWritingMissionPayload {
+    level: CEFRLevel;
+    format: WritingFormat;
+    tone: WritingTone;
+    minWords: number;
+    maxWords: number;
+    topic?: string;
+}
+
+export interface TestDriveGradePayload {
+    submission: string;
+}
+
+export interface TestDriveGradeResponse {
+    taskCompletionScore: number;
+    grammarFeedback: string;
+    nativeRewrite: string;
+    explanation: string;
 }

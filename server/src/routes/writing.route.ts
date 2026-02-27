@@ -4,12 +4,14 @@ import { validate } from '../middlewares/validate.middleware.js';
 import {
     getWritingContentSchema,
     saveWritingContentSchema,
-    generateWritingSchema,
+    generateWritingMissionSchema,
+    testDriveGradeSchema,
 } from '../validations/writing.validation.js';
 import {
     getWritingContent,
     saveWritingContent,
-    generateWritingContent,
+    generateWritingMission,
+    testDriveGrade,
 } from '../controllers/writing.controller.js';
 
 const router = Router({ mergeParams: true });
@@ -27,9 +29,21 @@ router
 // ─── AI: Full Prompt + Model Answer + Rubric Generation ──────────────────────
 
 router.post(
+    '/:lessonId/writing/generate-mission',
+    validate(generateWritingMissionSchema),
+    generateWritingMission,
+);
+
+router.post(
     '/:lessonId/writing/generate',
-    validate(generateWritingSchema),
-    generateWritingContent,
+    validate(generateWritingMissionSchema),
+    generateWritingMission,
+);
+
+router.post(
+    '/:lessonId/writing/test-drive-grade',
+    validate(testDriveGradeSchema),
+    testDriveGrade,
 );
 
 export default router;

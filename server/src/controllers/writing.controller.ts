@@ -5,7 +5,8 @@ import { HttpStatus } from '../constants/http-status.js';
 import { WritingService } from '../services/writing.service.js';
 import type {
     SaveWritingContentBody,
-    GenerateWritingBody,
+    GenerateWritingMissionBody,
+    TestDriveGradeBody,
 } from '../validations/writing.validation.js';
 
 // ─── GET /:lessonId/writing/content ──────────────────────────────────────────
@@ -27,9 +28,16 @@ export const saveWritingContent = catchAsync(async (req: Request, res: Response)
 
 // ─── POST /:lessonId/writing/generate ────────────────────────────────────────
 
-export const generateWritingContent = catchAsync(async (req: Request, res: Response) => {
+export const generateWritingMission = catchAsync(async (req: Request, res: Response) => {
     const lessonId = req.params['lessonId']!;
-    const body = req.body as GenerateWritingBody;
-    const result = await WritingService.generateContent(lessonId, body);
+    const body = req.body as GenerateWritingMissionBody;
+    const result = await WritingService.generateMission(lessonId, body);
     sendResponse(res, HttpStatus.OK, 'Writing content generated', result);
+});
+
+export const testDriveGrade = catchAsync(async (req: Request, res: Response) => {
+    const lessonId = req.params['lessonId']!;
+    const body = req.body as TestDriveGradeBody;
+    const result = await WritingService.testDriveGrade(lessonId, body.submission);
+    sendResponse(res, HttpStatus.OK, 'Writing test-drive graded', result);
 });

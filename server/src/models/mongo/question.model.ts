@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 export const EQuestionType = {
     MULTIPLE_CHOICE: 'MULTIPLE_CHOICE',
     FILL_IN_BLANK: 'FILL_IN_BLANK',
+    ERROR_CORRECTION: 'ERROR_CORRECTION',
     TRUE_FALSE: 'TRUE_FALSE',
     MATCHING: 'MATCHING',
     PRONUNCIATION: 'PRONUNCIATION',

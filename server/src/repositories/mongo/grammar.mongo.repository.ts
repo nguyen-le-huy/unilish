@@ -75,13 +75,13 @@ export class GrammarMongoRepository {
     }
 
     /**
-     * Patch only the context_story.audioUrl after TTS generation.
+     * Patch only the hero audio URL after TTS generation.
      */
     async setAudioUrl(lessonId: string, audioUrl: string): Promise<void> {
         await Lesson
             .findByIdAndUpdate(
                 lessonId,
-                { $set: { 'content.context_story.audioUrl': audioUrl } },
+                { $set: { 'content.heroAudioUrl': audioUrl } },
                 { new: false },
             )
             .lean()
@@ -93,17 +93,17 @@ export class GrammarMongoRepository {
     private _emptyContent(): GrammarContent {
         return {
             type: 'GRAMMAR',
-            context_story: {
-                text: '',
-                translation: '',
-                audioUrl: null,
-                highlights: [],
+            level: 'A2',
+            readingTime: 3,
+            conceptName: '',
+            hero: {
+                hook: '',
+                contextSentences: [],
             },
-            grammar_rule: {
-                name: '',
-                usage: '',
-                formulas: [],
-                irregular_verbs: [],
+            blocks: [],
+            summaryTable: {
+                columns: ['Giới từ', 'Dùng khi nào', 'Ví dụ'],
+                rows: [],
             },
             practiceConfig: {
                 mode: 'FIXED',

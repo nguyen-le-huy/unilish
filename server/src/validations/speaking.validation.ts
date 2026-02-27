@@ -6,7 +6,6 @@ const objectIdSchema = z.string().regex(OBJECT_ID_REGEX, 'ID không hợp lệ (
 export const AIConfigSchema = z.object({
     roleName: z.string().min(1, 'Vui lòng nhập tên nhân vật'),
     voiceId: z.enum(['alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse', 'marin', 'cedar']).default('marin'),
-    temperature: z.number().min(0).max(1).default(0.7),
     firstMessage: z.string().min(1, 'Lời chào mở đầu không được để trống'),
     systemInstruction: z.string().min(1, 'System instruction không được trống'),
 });

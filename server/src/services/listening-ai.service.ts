@@ -101,7 +101,6 @@ Important: ids must be unique UUID v4 strings. Keep each line under 150 characte
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ],
-            temperature: 0.8,
             response_format: { type: 'json_object' },
         });
 

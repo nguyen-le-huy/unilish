@@ -71,7 +71,6 @@ interface SpeakingLessonContentShape {
     missionDescription?: string;
     aiConfig?: {
         roleName?: string;
-        temperature?: number;
         firstMessage?: string;
         systemInstruction?: string;
     };
@@ -83,7 +82,6 @@ interface GenerateMissionResult {
     aiConfig: {
         roleName: string;
         voiceId: string;
-        temperature: number;
         firstMessage: string;
         systemInstruction: string;
     };
@@ -125,7 +123,6 @@ export const speakingService = {
                     model: env.OPENAI_REALTIME_MODEL,
                     voice: selectedVoice,
                     instructions: systemPrompt,
-                    temperature: lessonContext.aiConfig.temperature ?? 0.6,
                     max_response_output_tokens: env.OPENAI_REALTIME_MAX_OUTPUT_TOKENS,
                     input_audio_transcription: {
                         model: env.OPENAI_REALTIME_TRANSCRIPT_MODEL,
@@ -229,7 +226,6 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no extra
   "aiConfig": {
     "roleName": "name and role of the AI character that fits the scenario (e.g. 'Officer Kim — Immigration Officer')",
     "voiceId": "marin",
-    "temperature": 0.7,
     "firstMessage": "natural, in-character opening line the AI character will say to start the real-world scenario",
     "systemInstruction": "You are [role] in a real-world scenario. Stay FULLY in character at all times. You are NOT a language teacher. React naturally as a real [role] would — if the learner is unclear, ask them to repeat in character (e.g. 'Sorry, could you repeat that?'), never correct pronunciation or teach. Move the conversation forward naturally. Keep responses short and conversational. [Add 3-5 sentences describing the specific scenario, what the character wants from the learner, and how the conversation should progress.]"
   },
@@ -245,7 +241,6 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no extra
             const completion = await openaiClient.chat.completions.create({
                 model: env.OPENAI_MODEL,
                 response_format: { type: 'json_object' },
-                temperature: 0.7,
                 messages: [
                     {
                         role: 'system',
@@ -280,7 +275,6 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no extra
             aiConfig: {
                 roleName: parsed.aiConfig?.roleName ?? 'Language Coach',
                 voiceId: 'marin',
-                temperature: parsed.aiConfig?.temperature ?? 0.7,
                 firstMessage: parsed.aiConfig?.firstMessage ?? 'Hello! Let\'s begin.',
                 systemInstruction: parsed.aiConfig?.systemInstruction ?? '',
             },

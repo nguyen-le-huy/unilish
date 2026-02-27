@@ -70,7 +70,9 @@ export const GrammarPracticeSheet = memo(function GrammarPracticeSheet({
     const { data: cards, isLoading } = useGrammarQuestions(lessonId, questionIds);
 
     const questions = useMemo<IQuestion[]>(
-        () => (cards ?? []).map(toIQuestion),
+        () => (cards ?? [])
+            .filter((item) => item.type === 'MULTIPLE_CHOICE' || item.type === 'FILL_IN_BLANK')
+            .map(toIQuestion),
         [cards],
     );
 

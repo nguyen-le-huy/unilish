@@ -36,6 +36,11 @@ const QUESTION_TYPE_META: Record<QuestionType, QuestionTypeMeta> = {
         Icon: PenLine,
         badgeClass: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     },
+    ERROR_CORRECTION: {
+        label: 'Sửa lỗi',
+        Icon: XCircle,
+        badgeClass: 'bg-orange-100 text-orange-700 border-orange-200',
+    },
     MATCHING: {
         label: 'Nối nghĩa',
         Icon: Link2,

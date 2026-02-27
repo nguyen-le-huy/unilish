@@ -70,10 +70,79 @@ export interface GrammarRule {
     irregular_verbs: IrregularVerb[];
 }
 
+export type GrammarCalloutVariant = 'TIP' | 'WARNING' | 'EXAMPLE' | 'UNIT_CONTEXT';
+
+export interface GrammarExampleItem {
+    en: string;
+    vi: string;
+}
+
+export interface GrammarInlineQuizQuestion {
+    id: string;
+    stem: string;
+    type: 'MULTIPLE_CHOICE' | 'FILL_IN_BLANK';
+    options?: string[] | undefined;
+    correct: string;
+    acceptedAnswers?: string[] | undefined;
+    explanation: string;
+}
+
+export interface GrammarExplanationBlock {
+    id: string;
+    type: 'EXPLANATION';
+    heading: string;
+    body: string;
+    examples: GrammarExampleItem[];
+    highlightPattern: string;
+}
+
+export interface GrammarInlineQuizBlock {
+    id: string;
+    type: 'INLINE_QUIZ';
+    instruction: string;
+    questions: GrammarInlineQuizQuestion[];
+}
+
+export interface GrammarCalloutBlock {
+    id: string;
+    type: 'CALLOUT';
+    variant: GrammarCalloutVariant;
+    text: string;
+}
+
+export interface GrammarUnitContextBlock {
+    id: string;
+    type: 'UNIT_CONTEXT_BLOCK';
+    heading: string;
+    note: string;
+    examples: GrammarExampleItem[];
+}
+
+export type GrammarBlogBlock =
+    | GrammarExplanationBlock
+    | GrammarInlineQuizBlock
+    | GrammarCalloutBlock
+    | GrammarUnitContextBlock;
+
+export interface GrammarHero {
+    hook: string;
+    contextSentences: string[];
+}
+
+export interface GrammarSummaryTable {
+    columns: [string, string, string];
+    rows: [string, string, string][];
+}
+
 export interface GrammarContent {
     type: 'GRAMMAR';
-    context_story: ContextStory;
-    grammar_rule: GrammarRule;
+    level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+    readingTime: number;
+    conceptName: string;
+    hero: GrammarHero;
+    heroAudioUrl?: string | null;
+    blocks: GrammarBlogBlock[];
+    summaryTable: GrammarSummaryTable;
     practiceConfig: {
         mode: 'FIXED';
         questionIds: string[];
@@ -169,43 +238,40 @@ export interface ListeningContent {
 
 // ─── Writing Content Types ───────────────────────────────────────────────────
 
-export type WritingTaskType =
-    | 'essay'
-    | 'email'
-    | 'report'
-    | 'letter'
-    | 'summary'
-    | 'paragraph';
+export type WritingFormat = 'EMAIL' | 'ESSAY' | 'STORY' | 'CHAT';
+export type WritingTone = 'FORMAL' | 'CASUAL' | 'NEUTRAL';
 
-export type WritingGenerationStatus =
-    | 'IDLE'
-    | 'GENERATING'  // AI generating prompt + model answer
-    | 'DONE'
-    | 'ERROR';
+export interface WritingConfig {
+    minWords: number;
+    maxWords: number;
+    format: WritingFormat;
+    tone: WritingTone;
+}
 
-export interface WritingRubricCriterion {
-    id: string;          // nanoid — stable client key
-    name: string;        // e.g. "Task Achievement"
-    description: string; // Grading descriptor
-    maxScore: number;    // e.g. 25 (out of 100 total)
+export interface WritingRequiredConcept {
+    id: string;
+    conceptId: string;
+    keyword: string;
+    points: number;
+}
+
+export interface WritingWarmupTask {
+    id: string;
+    type: 'UNSCRAMBLE';
+    words: string[];
+    correct: string;
 }
 
 export interface WritingContent {
     type: 'WRITING';
-    taskType: WritingTaskType;
-    prompt: string;                            // The writing task instructions (HTML allowed)
-    promptTranslation: string;                 // Vietnamese translation of the prompt
-    wordCountTarget: number;                   // e.g. 250 words
-    wordCountMin: number;                      // e.g. 200
-    wordCountMax: number;                      // e.g. 350
-    modelAnswer: string;                       // AI-generated model answer (plain text)
-    rubric: WritingRubricCriterion[];          // Scoring criteria
-    practiceConfig: {
-        mode: 'FIXED';
-        questionIds: string[];                 // Not used for writing — kept for schema uniformity
-        passingScore: number;
-    };
-    generationStatus: WritingGenerationStatus;
+    prompt: string;
+    promptTranslation: string;
+    config: WritingConfig;
+    requiredConcepts: WritingRequiredConcept[];
+    requiredGrammar: string;
+    sentenceStarters: string[];
+    warmupTasks: WritingWarmupTask[];
+    taughtConcepts: string[];
 }
 
 // ─── Union Type — extend as new lesson types are built ────────────────────────

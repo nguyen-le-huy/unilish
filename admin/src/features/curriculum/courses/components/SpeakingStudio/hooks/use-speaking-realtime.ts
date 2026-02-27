@@ -246,7 +246,6 @@ export const useSpeakingRealtime = () => {
 
             const remoteAudio = document.createElement('audio');
             remoteAudio.autoplay = true;
-            remoteAudio.playsInline = true;
             remoteAudio.style.display = 'none';
             document.body.appendChild(remoteAudio);
             remoteAudioRef.current = remoteAudio;

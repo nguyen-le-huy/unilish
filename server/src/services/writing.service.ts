@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import mongoose from 'mongoose';
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
@@ -9,10 +10,16 @@ import { LessonMongoRepository } from '../repositories/mongo/lesson.mongo.reposi
 import { Unit } from '../models/mongo/unit.model.js';
 import { Course } from '../models/mongo/course.model.js';
 import { CourseSeries } from '../models/mongo/course-series.model.js';
-import type { WritingContent, WritingRubricCriterion } from '../types/lesson-content.types.js';
+import type {
+    WritingContent,
+    WritingFormat,
+    WritingTone,
+    WritingRequiredConcept,
+    WritingWarmupTask,
+} from '../types/lesson-content.types.js';
 import type {
     SaveWritingContentBody,
-    GenerateWritingBody,
+    GenerateWritingMissionBody,
 } from '../validations/writing.validation.js';
 
 // ─── Singleton Clients ─────────────────────────────────────────────────────────
@@ -27,16 +34,44 @@ interface LessonLanguageContext {
     keywords: string[];
 }
 
-interface GPTWritingResponse {
+interface GPTWritingMissionResponse {
     prompt: string;
     promptTranslation: string;
-    modelAnswer: string;
-    rubric: Array<{
-        name: string;
-        description: string;
-        maxScore: number;
+    requiredGrammar: string;
+    sentenceStarters: string[];
+    requiredConcepts: Array<{
+        keyword: string;
+        points: number;
+    }>;
+    warmupTasks: Array<{
+        correct: string;
     }>;
 }
+
+interface GPTTestDriveResponse {
+    taskCompletionScore: number;
+    grammarFeedback: string;
+    nativeRewrite: string;
+    explanation: string;
+}
+
+const shuffleTokens = (tokens: string[]): string[] => {
+    if (tokens.length <= 1) return tokens;
+
+    const shuffled = [...tokens];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
+    }
+
+    const unchanged = shuffled.every((token, index) => token === tokens[index]);
+    if (unchanged) {
+        const [first, ...rest] = shuffled;
+        return [...rest, first!];
+    }
+
+    return shuffled;
+};
 
 // ─── Service ───────────────────────────────────────────────────────────────────
 
@@ -54,104 +89,195 @@ export class WritingService {
         lessonId: string,
         body: SaveWritingContentBody,
     ): Promise<WritingContent> {
-        const existing = await writingRepo.getContent(lessonId);
-
-        const updated: WritingContent = {
+        const dedupedTaughtConcepts = Array.from(new Set(body.taughtConcepts));
+        return writingRepo.saveContent(lessonId, {
             type: 'WRITING',
-            taskType: body.taskType ?? existing.taskType,
-            prompt: body.prompt ?? existing.prompt,
-            promptTranslation: body.promptTranslation ?? existing.promptTranslation,
-            wordCountTarget: body.wordCountTarget ?? existing.wordCountTarget,
-            wordCountMin: body.wordCountMin ?? existing.wordCountMin,
-            wordCountMax: body.wordCountMax ?? existing.wordCountMax,
-            modelAnswer: body.modelAnswer ?? existing.modelAnswer,
-            rubric: body.rubric ?? existing.rubric,
-            practiceConfig: {
-                mode: 'FIXED',
-                questionIds: existing.practiceConfig.questionIds,
-                passingScore: body.practiceConfig?.passingScore ?? existing.practiceConfig.passingScore,
-            },
-            generationStatus: body.generationStatus ?? existing.generationStatus,
-        };
-
-        return writingRepo.saveContent(lessonId, updated);
+            prompt: body.prompt,
+            promptTranslation: body.promptTranslation,
+            config: body.config,
+            requiredConcepts: body.requiredConcepts,
+            requiredGrammar: body.requiredGrammar,
+            sentenceStarters: body.sentenceStarters,
+            warmupTasks: body.warmupTasks,
+            taughtConcepts: dedupedTaughtConcepts,
+        });
     }
 
     // ── AI: GENERATE PROMPT + MODEL ANSWER + RUBRIC ───────────────────────────
 
-    static async generateContent(
+    static async generateMission(
         lessonId: string,
-        body: GenerateWritingBody,
-    ): Promise<{ prompt: string; promptTranslation: string; modelAnswer: string; rubric: WritingContent['rubric'] }> {
+        body: GenerateWritingMissionBody,
+    ): Promise<WritingContent> {
         const ctx = await this._resolveLessonContext(lessonId);
 
-        logger.info('[WritingService] generateContent', {
+        logger.info('[WritingService] generateMission', {
             lessonId,
             level: body.level,
-            taskType: body.taskType,
+            format: body.format,
+            tone: body.tone,
         });
-
-        // Signal UI: generation in progress
-        await writingRepo.setGenerationStatus(lessonId, 'GENERATING');
 
         const aiPrompt = this._buildGenerationPrompt(ctx, body);
 
-        let gptData: GPTWritingResponse;
+        let gptData: GPTWritingMissionResponse;
         try {
             const completion = await openaiClient.chat.completions.create({
                 model: env.OPENAI_MODEL,
                 response_format: { type: 'json_object' },
-                temperature: 0.7,
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are an expert EFL writing task designer. Return ONLY valid JSON matching the schema provided.',
+                        content: 'You are an expert EFL writing lesson designer. Return ONLY valid JSON matching schema.',
                     },
                     { role: 'user', content: aiPrompt },
                 ],
             });
 
             const raw = completion.choices[0]?.message?.content ?? '{}';
-            gptData = JSON.parse(raw) as GPTWritingResponse;
+            gptData = JSON.parse(raw) as GPTWritingMissionResponse;
         } catch (err) {
-            logger.error('[WritingService] OpenAI error during generateContent', { err });
-            await writingRepo.setGenerationStatus(lessonId, 'ERROR');
+            logger.error('[WritingService] OpenAI error during generateMission', { err });
             throw new AppError(
                 'Không thể tạo bài viết. Vui lòng thử lại sau.',
                 HttpStatus.INTERNAL_SERVER_ERROR,
             );
         }
 
-        const prompt = gptData.prompt ?? '';
-        const promptTranslation = gptData.promptTranslation ?? '';
-        const modelAnswer = gptData.modelAnswer ?? '';
-        const rubric: WritingRubricCriterion[] = (gptData.rubric ?? []).map((r) => ({
-            id: uuidv4(),
-            name: r.name ?? 'Criterion',
-            description: r.description ?? '',
-            maxScore: r.maxScore ?? 25,
-        }));
+        const keywordToObjectId = new Map<string, string>();
+        for (const keyword of ctx.keywords) {
+            keywordToObjectId.set(keyword.toLowerCase(), new mongoose.Types.ObjectId().toString());
+        }
 
-        // Persist atomically
-        await writingRepo.setGeneratedContent(lessonId, {
-            prompt,
-            promptTranslation,
-            modelAnswer,
-            rubric,
-        });
+        const requiredConcepts: WritingRequiredConcept[] = (gptData.requiredConcepts ?? [])
+            .slice(0, 12)
+            .map((item) => {
+                const normalizedKeyword = item.keyword?.trim() ?? '';
+                const fallbackConceptId = keywordToObjectId.get(normalizedKeyword.toLowerCase())
+                    ?? new mongoose.Types.ObjectId().toString();
 
-        // Also update taskType and wordCount on lesson content
-        await writingRepo.saveContent(lessonId, {
-            ...(await writingRepo.getContent(lessonId)),
-            taskType: body.taskType,
-            wordCountTarget: body.wordCountTarget,
-            wordCountMin: Math.floor(body.wordCountTarget * 0.8),
-            wordCountMax: Math.floor(body.wordCountTarget * 1.4),
-        });
+                return {
+                    id: uuidv4(),
+                    conceptId: fallbackConceptId,
+                    keyword: normalizedKeyword,
+                    points: Number.isFinite(item.points) ? Math.max(0, Math.min(100, Math.round(item.points))) : 10,
+                };
+            })
+            .filter((item) => item.keyword.length > 0);
 
-        logger.info('[WritingService] generateContent completed', { lessonId });
+        const warmupTasks: WritingWarmupTask[] = (gptData.warmupTasks ?? [])
+            .slice(0, 8)
+            .map((task): WritingWarmupTask => {
+                const correct = (task.correct ?? '').trim();
+                const orderedWords = correct
+                    .replace(/[.,!?;:]/g, '')
+                    .split(/\s+/)
+                    .map((word) => word.trim())
+                    .filter((word) => word.length > 0);
+                const words = shuffleTokens(orderedWords);
 
-        return { prompt, promptTranslation, modelAnswer, rubric };
+                return {
+                    id: uuidv4(),
+                    type: 'UNSCRAMBLE',
+                    words,
+                    correct,
+                };
+            })
+            .filter((task) => task.correct.length > 0 && task.words.length > 0);
+
+        const generated: WritingContent = {
+            type: 'WRITING',
+            prompt: (gptData.prompt ?? '').trim(),
+            promptTranslation: (gptData.promptTranslation ?? '').trim(),
+            config: {
+                minWords: body.minWords,
+                maxWords: body.maxWords,
+                format: body.format,
+                tone: body.tone,
+            },
+            requiredConcepts,
+            requiredGrammar: (gptData.requiredGrammar ?? '').trim(),
+            sentenceStarters: (gptData.sentenceStarters ?? [])
+                .map((starter) => starter.trim())
+                .filter((starter) => starter.length > 0)
+                .slice(0, 12),
+            warmupTasks,
+            taughtConcepts: Array.from(new Set(requiredConcepts.map((item) => item.conceptId))),
+        };
+
+        const saved = await writingRepo.saveContent(lessonId, generated);
+        logger.info('[WritingService] generateMission completed', { lessonId });
+        return saved;
+    }
+
+    static async testDriveGrade(
+        lessonId: string,
+        submission: string,
+    ): Promise<{
+        taskCompletionScore: number;
+        grammarFeedback: string;
+        nativeRewrite: string;
+        explanation: string;
+    }> {
+        const content = await writingRepo.getContent(lessonId);
+        const cleanSubmission = submission.trim();
+
+        const graderPrompt = `
+You are an expert English writing grader for adult learners.
+
+Task prompt:
+${content.prompt}
+
+Writing constraints:
+- Format: ${content.config.format}
+- Tone: ${content.config.tone}
+- Min words: ${content.config.minWords}
+- Max words: ${content.config.maxWords}
+- Required grammar: ${content.requiredGrammar || 'N/A'}
+- Required keywords: ${content.requiredConcepts.map((c) => c.keyword).join(', ') || 'N/A'}
+
+Student submission:
+${cleanSubmission}
+
+Return ONLY JSON with this exact shape:
+{
+  "taskCompletionScore": 0,
+  "grammarFeedback": "...",
+  "nativeRewrite": "...",
+  "explanation": "..."
+}
+
+Scoring rule:
+- taskCompletionScore is integer 0..10.
+- grammarFeedback concise (1-2 sentences) in Vietnamese.
+- nativeRewrite preserves student meaning but sounds natural.
+- explanation explains at least one lexical/tone improvement in Vietnamese.
+`.trim();
+
+        let graded: GPTTestDriveResponse;
+        try {
+            const completion = await openaiClient.chat.completions.create({
+                model: env.OPENAI_MODEL,
+                response_format: { type: 'json_object' },
+                messages: [
+                    { role: 'system', content: 'You are a strict but helpful writing grader. Return JSON only.' },
+                    { role: 'user', content: graderPrompt },
+                ],
+            });
+            graded = JSON.parse(completion.choices[0]?.message?.content ?? '{}') as GPTTestDriveResponse;
+        } catch (error) {
+            logger.error('[WritingService] testDriveGrade failed', { error });
+            throw new AppError('Không thể chấm bài test drive. Vui lòng thử lại.', HttpStatus.BAD_GATEWAY);
+        }
+
+        return {
+            taskCompletionScore: Number.isFinite(graded.taskCompletionScore)
+                ? Math.max(0, Math.min(10, Math.round(graded.taskCompletionScore)))
+                : 0,
+            grammarFeedback: (graded.grammarFeedback ?? '').trim(),
+            nativeRewrite: (graded.nativeRewrite ?? '').trim(),
+            explanation: (graded.explanation ?? '').trim(),
+        };
     }
 
     // ── Private: Context Resolution ────────────────────────────────────────────
@@ -183,37 +309,41 @@ export class WritingService {
 
     private static _buildGenerationPrompt(
         ctx: LessonLanguageContext,
-        body: GenerateWritingBody,
+                body: GenerateWritingMissionBody,
     ): string {
         return `
-You are an expert EFL (English as a Foreign Language) writing task designer.
+You are an enterprise writing-instruction designer for EFL learners.
 
-Task: Design a writing task that:
-- Is set in this scenario: "${ctx.scenario}"
-${body.topic ? `- Topic / desired focus: "${body.topic}"` : ''}
-- CEFR level: ${body.level}
-- Task type: ${body.taskType}
-- Target word count: approximately ${body.wordCountTarget} words
-- Incorporates these vocabulary/concepts: ${ctx.keywords.join(', ')}
+Design a process-writing lesson for scenario:
+- Scenario: "${ctx.scenario}"
+${body.topic ? `- Topic focus: "${body.topic}"` : ''}
+- CEFR: ${body.level}
+- Format: ${body.format}
+- Tone: ${body.tone}
+- Min words: ${body.minWords}
+- Max words: ${body.maxWords}
+- Prefer these contextual keywords: ${ctx.keywords.join(', ') || 'N/A'}
 
-Return ONLY a valid JSON object with this exact structure:
+Return ONLY JSON with shape:
 {
-  "prompt": "<The writing task instructions — clear, 2–4 sentences, HTML paragraph tags allowed>",
-  "promptTranslation": "<Full Vietnamese translation of the prompt — plain text>",
-  "modelAnswer": "<A complete, high-quality model answer at the ${body.level} level, ~${body.wordCountTarget} words, plain text>",
-  "rubric": [
-    { "name": "Task Achievement", "description": "How well the task requirements are addressed", "maxScore": 25 },
-    { "name": "Coherence & Cohesion", "description": "Logical flow and use of linking devices", "maxScore": 25 },
-    { "name": "Lexical Resource", "description": "Range and accuracy of vocabulary", "maxScore": 25 },
-    { "name": "Grammatical Range & Accuracy", "description": "Range and accuracy of grammar structures", "maxScore": 25 }
-  ]
+    "prompt": "student-facing writing prompt",
+    "promptTranslation": "Vietnamese translation of prompt",
+    "requiredGrammar": "grammar target name",
+    "sentenceStarters": ["...", "..."],
+    "requiredConcepts": [
+        { "keyword": "luggage", "points": 10 }
+    ],
+    "warmupTasks": [
+        { "correct": "My flight was delayed." },
+        { "correct": "I lost my luggage at the airport." }
+    ]
 }
 
-RULES:
-- "prompt" must be the student-facing task instruction, NOT a meta-description.
-- "modelAnswer" must be a complete student response, not a teacher commentary.
-- "rubric" total maxScore must sum to 100.
-- Return only the JSON object — no markdown fences, no extra text.
+Rules:
+- warmupTasks must be UNSCRAMBLE-ready complete sentences.
+- requiredConcepts should be practical and context-bound.
+- sentenceStarters should reduce blank-page anxiety.
+- No markdown, no extra keys.
 `.trim();
     }
 }

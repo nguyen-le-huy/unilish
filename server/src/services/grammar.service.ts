@@ -17,11 +17,8 @@ import { grammarTtsQueue } from '../jobs/queues/grammar-tts.queue.js';
 import { ContextAlignmentService } from './context-alignment.service.js';
 import type {
     GrammarContent,
-    ContextStory,
-    GrammarRule,
-    HighlightInfo,
-    GrammarFormula,
-    IrregularVerb,
+    GrammarBlogBlock,
+    GrammarExplanationBlock,
 } from '../types/lesson-content.types.js';
 import type {
     SaveGrammarContentBody,
@@ -29,37 +26,59 @@ import type {
     GenerateGrammarQuestionsBody,
 } from '../validations/grammar.validation.js';
 
-// ─── Singleton Clients ─────────────────────────────────────────────────────────
-
 const openaiClient = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 const lessonRepo = new LessonMongoRepository();
 
-// ─── Internal Types ────────────────────────────────────────────────────────────
-
 interface LessonLanguageContext {
     languageCode: string;
-    languageId: string;  // ObjectId string of the Language document
+    languageId: string;
     scenario: string;
     keywords: string[];
 }
 
-interface GPTStoryResponse {
-    story_en: string;
-    story_vi: string;
-    highlights: Array<{
-        word: string;
-        root: string;
-        type: 'regular_verb' | 'irregular_verb' | 'grammar_particle' | 'other';
-    }>;
-    rule: {
-        name: string;
-        usage: string;
-        formulas: Array<{
-            type: 'positive' | 'negative' | 'question' | 'other';
-            structure: string;
-            example: string;
-        }>;
-        irregular_verbs: Array<{ base: string; past: string }>;
+interface AIGeneratedBlogContent {
+    level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+    readingTime: number;
+    conceptName: string;
+    hero: {
+        hook: string;
+        contextSentences: string[];
+    };
+    blocks: Array<
+        | {
+            type: 'EXPLANATION';
+            heading: string;
+            body: string;
+            examples: Array<{ en: string; vi: string }>;
+            highlightPattern: string;
+        }
+        | {
+            type: 'INLINE_QUIZ';
+            instruction: string;
+            questions: Array<{
+                stem: string;
+                type: 'MULTIPLE_CHOICE' | 'FILL_IN_BLANK';
+                options?: string[];
+                correct: string;
+                acceptedAnswers?: string[];
+                explanation: string;
+            }>;
+        }
+        | {
+            type: 'CALLOUT';
+            variant: 'TIP' | 'WARNING' | 'EXAMPLE' | 'UNIT_CONTEXT';
+            text: string;
+        }
+        | {
+            type: 'UNIT_CONTEXT_BLOCK';
+            heading: string;
+            note: string;
+            examples: Array<{ en: string; vi: string }>;
+        }
+    >;
+    summaryTable: {
+        columns: [string, string, string];
+        rows: [string, string, string][];
     };
 }
 
@@ -69,51 +88,50 @@ interface AIQuestionOption {
 }
 
 interface AIQuestion {
-    type: 'MULTIPLE_CHOICE' | 'FILL_IN_BLANK';
+    type: 'MULTIPLE_CHOICE' | 'FILL_IN_BLANK' | 'ERROR_CORRECTION';
     stem: string;
-    options?: AIQuestionOption[];      // MULTIPLE_CHOICE only
-    correctAnswers?: string[];          // FILL_IN_BLANK only
+    options?: AIQuestionOption[];
+    correctAnswers?: string[];
+    errorWord?: string | null;
+    correction?: string | null;
+    isCorrect?: boolean;
     explanation?: string;
 }
 
-// ─── Service ───────────────────────────────────────────────────────────────────
-
 export class GrammarService {
-
-    // ── READ ──────────────────────────────────────────────────────────────────
-
     static async getContent(lessonId: string): Promise<GrammarContent> {
         return grammarRepo.getContent(lessonId);
     }
-
-    // ── SAVE ──────────────────────────────────────────────────────────────────
 
     static async saveContent(
         lessonId: string,
         body: SaveGrammarContentBody,
     ): Promise<GrammarContent> {
+        this._assertMinimumBlockRules(body.blocks);
+
         const context = await this._resolveLessonContext(lessonId);
+        const searchableText = this._buildSearchableText(body.hero.hook, body.blocks, body.summaryTable.rows);
 
         await ContextAlignmentService.assertLessonAligned(
             lessonId,
-            [
-                context.scenario,
-                body.context_story.text,
-                body.context_story.translation,
-                body.grammar_rule.name,
-                body.grammar_rule.usage,
-                ...body.grammar_rule.formulas.map((formula) => `${formula.structure} ${formula.example}`),
-            ],
+            [context.scenario, body.conceptName, ...searchableText],
             'GRAMMAR',
         );
 
+        const current = await grammarRepo.getContent(lessonId);
+
         const content: GrammarContent = {
             type: 'GRAMMAR',
-            context_story: body.context_story,
-            grammar_rule: body.grammar_rule,
+            level: body.level,
+            readingTime: body.readingTime,
+            conceptName: body.conceptName,
+            hero: body.hero,
+            heroAudioUrl: current.heroAudioUrl ?? null,
+            blocks: body.blocks,
+            summaryTable: body.summaryTable,
             practiceConfig: {
                 mode: 'FIXED',
-                questionIds: (await grammarRepo.getContent(lessonId)).practiceConfig.questionIds,
+                questionIds: current.practiceConfig.questionIds,
                 passingScore: body.practiceConfig.passingScore,
             },
             taughtConcepts: body.taughtConcepts,
@@ -122,100 +140,110 @@ export class GrammarService {
         return grammarRepo.saveContent(lessonId, content);
     }
 
-    // ── AI STORY GENERATION ───────────────────────────────────────────────────
-
     static async generateStory(
         lessonId: string,
         body: GenerateGrammarStoryBody,
-    ): Promise<{ context_story: ContextStory; grammar_rule: GrammarRule }> {
+    ): Promise<Omit<SaveGrammarContentBody, 'practiceConfig' | 'taughtConcepts'>> {
         const ctx = await this._resolveLessonContext(lessonId);
 
-        logger.info('[GrammarService] generateStory', {
+        logger.info('[GrammarService] generateBlog', {
             lessonId,
             grammarName: body.grammarName,
+            level: body.level,
             vocabCount: body.selectedVocab.length,
         });
 
-        const prompt = this._buildStoryPrompt(ctx, body.grammarName, body.selectedVocab);
+        const prompt = this._buildBlogPrompt(ctx, body.grammarName, body.level, body.selectedVocab);
 
-        let storyData: GPTStoryResponse;
+        let aiPayload: AIGeneratedBlogContent;
         try {
             const completion = await openaiClient.chat.completions.create({
                 model: env.OPENAI_MODEL,
                 response_format: { type: 'json_object' },
-                temperature: 0.7,
                 messages: [
                     {
                         role: 'system',
                         content:
-                            'You are an expert EFL content creator. Return ONLY valid JSON matching the schema provided.',
+                            'You are an expert EFL content creator. Return ONLY valid JSON matching the requested schema.',
                     },
                     { role: 'user', content: prompt },
                 ],
             });
 
             const raw = completion.choices[0]?.message?.content ?? '{}';
-            storyData = JSON.parse(raw) as GPTStoryResponse;
-        } catch (err) {
-            logger.error('[GrammarService] OpenAI error', { err });
+            aiPayload = JSON.parse(raw) as AIGeneratedBlogContent;
+        } catch (error) {
+            logger.error('[GrammarService] OpenAI blog generation failed', { error });
             throw new AppError(
-                'Không thể tạo câu chuyện ngữ pháp. Vui lòng thử lại sau.',
+                'Không thể tạo blog ngữ pháp bằng AI. Vui lòng thử lại sau.',
                 HttpStatus.INTERNAL_SERVER_ERROR,
             );
         }
 
-        // Map GPT response → typed structures
-        const contextStory: ContextStory = {
-            text: storyData.story_en ?? '',
-            translation: storyData.story_vi ?? '',
-            audioUrl: null, // Will be filled by generate-audio endpoint
-            highlights: (storyData.highlights ?? []).map(
-                (h): HighlightInfo => ({
+        const blocks = (aiPayload.blocks ?? []).map((block) => {
+            if (block.type === 'EXPLANATION') {
+                return {
                     id: uuidv4(),
-                    word: h.word,
-                    type: h.type,
-                    root: h.root,
-                }),
-            ),
+                    type: 'EXPLANATION',
+                    heading: block.heading,
+                    body: block.body,
+                    examples: block.examples,
+                    highlightPattern: block.highlightPattern,
+                } as const;
+            }
+
+            if (block.type === 'INLINE_QUIZ') {
+                return {
+                    id: uuidv4(),
+                    type: 'INLINE_QUIZ',
+                    instruction: block.instruction,
+                    questions: block.questions.map((question) => ({
+                        id: uuidv4(),
+                        stem: question.stem,
+                        type: question.type,
+                        options: question.options,
+                        correct: question.correct,
+                        acceptedAnswers: question.acceptedAnswers,
+                        explanation: question.explanation,
+                    })),
+                } as const;
+            }
+
+            if (block.type === 'CALLOUT') {
+                return {
+                    id: uuidv4(),
+                    type: 'CALLOUT',
+                    variant: block.variant,
+                    text: block.text,
+                } as const;
+            }
+
+            return {
+                id: uuidv4(),
+                type: 'UNIT_CONTEXT_BLOCK',
+                heading: block.heading,
+                note: block.note,
+                examples: block.examples,
+            } as const;
+        });
+
+        this._assertMinimumBlockRules(blocks);
+
+        return {
+            level: aiPayload.level ?? body.level,
+            readingTime: Math.max(1, aiPayload.readingTime ?? 4),
+            conceptName: aiPayload.conceptName || body.grammarName,
+            hero: {
+                hook: aiPayload.hero?.hook ?? `Learn ${body.grammarName} in context`,
+                contextSentences: aiPayload.hero?.contextSentences ?? [],
+            },
+            blocks,
+            summaryTable: aiPayload.summaryTable ?? {
+                columns: ['Pattern', 'Usage', 'Example'],
+                rows: [],
+            },
         };
-
-        const grammarRule: GrammarRule = {
-            name: storyData.rule?.name ?? body.grammarName,
-            usage: storyData.rule?.usage ?? '',
-            formulas: (storyData.rule?.formulas ?? []).map(
-                (f): GrammarFormula => ({
-                    id: uuidv4(),
-                    type: f.type,
-                    structure: f.structure,
-                    example: f.example,
-                }),
-            ),
-            irregular_verbs: (storyData.rule?.irregular_verbs ?? []).map(
-                (v): IrregularVerb => ({
-                    id: uuidv4(),
-                    base: v.base,
-                    past: v.past,
-                }),
-            ),
-        };
-
-        await ContextAlignmentService.assertLessonAligned(
-            lessonId,
-            [
-                ctx.scenario,
-                contextStory.text,
-                contextStory.translation,
-                grammarRule.name,
-                grammarRule.usage,
-                ...grammarRule.formulas.map((formula) => `${formula.structure} ${formula.example}`),
-            ],
-            'GRAMMAR',
-        );
-
-        return { context_story: contextStory, grammar_rule: grammarRule };
     }
-
-    // ── QUESTION GENERATION ───────────────────────────────────────────────────
 
     static async generateQuestions(
         lessonId: string,
@@ -223,108 +251,93 @@ export class GrammarService {
     ): Promise<{ questionIds: string[]; count: number }> {
         const content = await grammarRepo.getContent(lessonId);
 
-        if (!content.context_story.text) {
-            throw new AppError(
-                'Bài học chưa có câu chuyện ngữ pháp. Tạo câu chuyện trước.',
-                HttpStatus.BAD_REQUEST,
-            );
+        if (!content.blocks.length) {
+            throw new AppError('Bài học chưa có nội dung blog ngữ pháp.', HttpStatus.BAD_REQUEST);
         }
 
         const lesson = await lessonRepo.findByIdFull(lessonId);
-        if (!lesson) throw new AppError('Bài học không tồn tại', HttpStatus.NOT_FOUND);
+        if (!lesson) {
+            throw new AppError('Bài học không tồn tại', HttpStatus.NOT_FOUND);
+        }
 
-        // Resolve language context to get the real languageId ObjectId
         const ctx = await this._resolveLessonContext(lessonId);
-        const langObjectId = new mongoose.Types.ObjectId(ctx.languageId);
+        const languageId = new mongoose.Types.ObjectId(ctx.languageId);
 
-        // Upsert a GRAMMAR Concept for this rule (key = grammar_<slug>)
-        const conceptKey = `grammar_${content.grammar_rule.name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
+        const conceptKey = `grammar_${content.conceptName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
         const concept = await Concept.findOneAndUpdate(
-            { languageId: langObjectId, key: conceptKey },
+            { languageId, key: conceptKey },
             {
                 $setOnInsert: {
-                    languageId: langObjectId,
+                    languageId,
                     key: conceptKey,
-                    name: content.grammar_rule.name,
+                    name: content.conceptName,
                     type: EConceptType.GRAMMAR,
-                    description: content.grammar_rule.usage,
+                    description: content.hero.hook,
                     metaData: {
-                        formulas: content.grammar_rule.formulas.map((f) => f.structure),
+                        explanationBlocks: content.blocks.filter((item) => item.type === 'EXPLANATION').length,
                     },
                 },
             },
             { upsert: true, new: true, lean: true },
         ).exec();
 
-        if (!concept) throw new AppError('Không thể tạo Concept cho ngữ pháp', HttpStatus.INTERNAL_SERVER_ERROR);
-
-        const count = body.count ?? 5;
-
-        // Bulk-delete any previously generated questions for this lesson
-        const existingContent = await grammarRepo.getContent(lessonId);
-        if (existingContent.practiceConfig.questionIds.length > 0) {
-            await Question.deleteMany({
-                _id: { $in: existingContent.practiceConfig.questionIds },
-            }).exec();
+        if (!concept) {
+            throw new AppError('Không thể tạo concept cho grammar lesson', HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
-        const questions = await this._generateQuestionsWithAI(
+        if (content.practiceConfig.questionIds.length > 0) {
+            await Question.deleteMany({ _id: { $in: content.practiceConfig.questionIds } }).exec();
+        }
+
+        const count = body.count ?? 10;
+        const generated = await this._generateQuestionsWithAI(
             content,
             count,
             lesson.unitId.toString(),
-            langObjectId,
+            languageId,
             concept._id as mongoose.Types.ObjectId,
             body.types,
         );
 
-        logger.info('[GrammarService] generateQuestions', { lessonId, count: questions.length });
+        const inserted = await Question.insertMany(generated);
+        const questionIds = inserted.map((item) => item._id.toString());
 
-        // Bulk insert → get ObjectIds
-        const inserted = await Question.insertMany(questions);
-        const questionIds = inserted.map((q) => q._id.toString());
-
-        // Persist question IDs into lesson content
         await grammarRepo.setQuestionIds(lessonId, questionIds);
 
         return { questionIds, count: questionIds.length };
     }
 
-    // ── AUDIO GENERATION ──────────────────────────────────────────────────────
-
     static async generateAudio(lessonId: string): Promise<void> {
         const content = await grammarRepo.getContent(lessonId);
 
-        if (!content.context_story.text) {
-            throw new AppError(
-                'Bài học chưa có nội dung câu chuyện để tạo âm thanh.',
-                HttpStatus.BAD_REQUEST,
-            );
+        if (!content.hero.hook) {
+            throw new AppError('Bài học chưa có phần mở đầu để tạo âm thanh.', HttpStatus.BAD_REQUEST);
         }
 
         await grammarTtsQueue.add(
             'grammar-story-tts',
-            { lessonId, text: content.context_story.text, type: 'grammar_story' },
+            { lessonId, text: content.hero.hook, type: 'grammar_story' },
             { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
         );
 
         logger.info('[GrammarService] generateAudio queued', { lessonId });
     }
 
-    // ── QUESTION CRUD (delegate to QuestionGenerationService) ────────────────────
-
     static async getQuestions(lessonId: string) {
-        // Grammar question IDs live in lesson.content.practiceConfig.questionIds,
-        // NOT in lesson.practiceConfig.questionIds — use grammarRepo to read the right path.
         const content = await grammarRepo.getContent(lessonId);
-        const questionIds = content.practiceConfig?.questionIds ?? [];
-        if (questionIds.length === 0) return [];
+        const questionIds = content.practiceConfig.questionIds;
+        if (!questionIds.length) {
+            return [];
+        }
 
         return Question.find({ _id: { $in: questionIds } }).lean().exec();
     }
 
     static async swapQuestion(lessonId: string, questionId: string) {
         const existing = await Question.findById(questionId).lean().exec();
-        if (!existing) throw new AppError('Câu hỏi không tồn tại', HttpStatus.NOT_FOUND);
+        if (!existing) {
+            throw new AppError('Câu hỏi không tồn tại', HttpStatus.NOT_FOUND);
+        }
 
         const alternatives = await Question.aggregate([
             {
@@ -338,19 +351,16 @@ export class GrammarService {
         ]).exec();
 
         if (!alternatives.length) {
-            throw new AppError(
-                'Không có câu hỏi thay thế trong ngân hàng đề cho concept này.',
-                HttpStatus.NOT_FOUND,
-            );
+            throw new AppError('Không có câu hỏi thay thế phù hợp.', HttpStatus.NOT_FOUND);
         }
 
         const replacement = alternatives[0]!;
 
-        // Grammar stores IDs at content.practiceConfig.questionIds, NOT at practiceConfig.questionIds
         const content = await grammarRepo.getContent(lessonId);
         const updated = content.practiceConfig.questionIds
-            .filter((id) => id.toString() !== questionId)
+            .filter((id) => id !== questionId)
             .concat(replacement._id.toString());
+
         await grammarRepo.setQuestionIds(lessonId, updated);
 
         return replacement;
@@ -368,6 +378,58 @@ export class GrammarService {
         logger.info('[GrammarService] deleteQuestion', { lessonId, questionId });
     }
 
+    private static _assertMinimumBlockRules(blocks: GrammarBlogBlock[]): void {
+        const explanationCount = blocks.filter((block) => block.type === 'EXPLANATION').length;
+        const inlineQuizCount = blocks.filter((block) => block.type === 'INLINE_QUIZ').length;
+        const unitContextCount = blocks.filter((block) => block.type === 'UNIT_CONTEXT_BLOCK').length;
+
+        if (explanationCount < 4) {
+            throw new AppError('Bài học cần tối thiểu 4 block EXPLANATION.', HttpStatus.BAD_REQUEST);
+        }
+
+        if (inlineQuizCount < 1) {
+            throw new AppError('Bài học cần ít nhất 1 block INLINE_QUIZ.', HttpStatus.BAD_REQUEST);
+        }
+
+        if (unitContextCount < 1) {
+            throw new AppError('Bài học cần ít nhất 1 block UNIT_CONTEXT_BLOCK.', HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    private static _buildSearchableText(
+        hook: string,
+        blocks: GrammarBlogBlock[],
+        summaryRows: [string, string, string][],
+    ): string[] {
+        const lines: string[] = [hook];
+
+        blocks.forEach((block) => {
+            if (block.type === 'EXPLANATION') {
+                lines.push(block.heading, block.body);
+                block.examples.forEach((example) => lines.push(example.en, example.vi));
+                return;
+            }
+
+            if (block.type === 'INLINE_QUIZ') {
+                lines.push(block.instruction);
+                block.questions.forEach((question) => lines.push(question.stem, question.explanation));
+                return;
+            }
+
+            if (block.type === 'CALLOUT') {
+                lines.push(block.text);
+                return;
+            }
+
+            lines.push(block.heading, block.note);
+            block.examples.forEach((example) => lines.push(example.en, example.vi));
+        });
+
+        summaryRows.forEach((row) => lines.push(row[0], row[1], row[2]));
+
+        return lines.filter(Boolean);
+    }
+
     private static async _resolveLessonContext(lessonId: string): Promise<LessonLanguageContext> {
         const lesson = await lessonRepo.findByIdFull(lessonId);
         if (!lesson) throw new AppError('Bài học không tồn tại', HttpStatus.NOT_FOUND);
@@ -375,14 +437,10 @@ export class GrammarService {
         const unit = await Unit.findById(lesson.unitId).select('contextSeed courseId').lean().exec();
         if (!unit) throw new AppError('Chương học không tồn tại', HttpStatus.NOT_FOUND);
 
-        const course = await Course.findById(unit.courseId).select('seriesId level').lean().exec();
+        const course = await Course.findById(unit.courseId).select('seriesId').lean().exec();
         if (!course) throw new AppError('Khóa học không tồn tại', HttpStatus.NOT_FOUND);
 
-        const series = await CourseSeries
-            .findById(course.seriesId)
-            .select('languageId')
-            .lean()
-            .exec();
+        const series = await CourseSeries.findById(course.seriesId).select('languageId').lean().exec();
         if (!series) throw new AppError('Bộ khóa học không tồn tại', HttpStatus.NOT_FOUND);
 
         return {
@@ -393,45 +451,94 @@ export class GrammarService {
         };
     }
 
-    private static _buildStoryPrompt(
+    private static _buildBlogPrompt(
         ctx: LessonLanguageContext,
         grammarName: string,
-        vocab: string[],
+        level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2',
+        selectedVocab: string[],
     ): string {
         return `
-You are an expert EFL (English as a Foreign Language) content creator.
+Write a grammar lesson blog in JSON for CEFR level ${level}.
+Scenario: ${ctx.scenario}
+Concept: ${grammarName}
+Unit keywords: ${ctx.keywords.join(', ')}
+Required vocab to include in examples: ${selectedVocab.join(', ')}
 
-Task: Create a short contextual story (4-6 sentences) that:
-- Is set in this scenario: "${ctx.scenario}"
-- Demonstrates the grammar concept: "${grammarName}"
-- Naturally incorporates these vocabulary words: ${vocab.join(', ')}
-- Uses the target grammar at least 3 times
-
-Return ONLY a JSON object with this exact structure:
+Return ONLY JSON with fields:
 {
-  "story_en": "<English story text>",
-  "story_vi": "<Vietnamese translation>",
-  "highlights": [
-    { "word": "<inflected form in story>", "root": "<base infinitive form>", "type": "regular_verb|irregular_verb|grammar_particle|other" }
+  "level": "${level}",
+  "readingTime": 4,
+  "conceptName": "${grammarName}",
+  "hero": { "hook": "...", "contextSentences": ["..."] },
+  "blocks": [
+    { "type": "EXPLANATION", "heading": "...", "body": "...", "examples": [{"en":"...","vi":"..."}], "highlightPattern": "..." },
+    { "type": "INLINE_QUIZ", "instruction": "...", "questions": [{"stem":"...","type":"MULTIPLE_CHOICE","options":["..."],"correct":"...","explanation":"..."}] },
+    { "type": "CALLOUT", "variant": "TIP", "text": "..." },
+    { "type": "UNIT_CONTEXT_BLOCK", "heading": "...", "note": "...", "examples": [{"en":"...","vi":"..."}] }
   ],
-  "rule": {
-    "name": "${grammarName}",
-    "usage": "<1-2 sentences explaining when/why to use this grammar>",
-    "formulas": [
-      { "type": "positive|negative|question|other", "structure": "<formula>", "example": "<example sentence>" }
-    ],
-    "irregular_verbs": [
-      { "base": "<base form>", "past": "<past form>" }
-    ]
+  "summaryTable": {
+    "columns": ["Giới từ", "Dùng khi nào", "Ví dụ"],
+    "rows": [["AT", "...", "..."]]
   }
 }
 
-Only include irregular_verbs if the grammar concept actually involves irregular forms.
-Highlights must only include words that appear verbatim in story_en.
+Rules:
+- At least 4 EXPLANATION blocks.
+- At least 1 INLINE_QUIZ block.
+- At least 1 UNIT_CONTEXT_BLOCK block.
+- Keep English examples natural and Vietnamese translations concise.
 `.trim();
     }
 
-    // ── AI QUESTION GENERATION ────────────────────────────────────────────────
+    private static _buildQuestionPrompt(content: GrammarContent, count: number, types?: string[]): string {
+        const explanationBlocks = content.blocks.filter(
+            (block): block is GrammarExplanationBlock => block.type === 'EXPLANATION',
+        );
+
+        const explanationText = explanationBlocks
+            .map((block) => `${block.heading}: ${block.body}`)
+            .join('\n');
+
+        const typeRule = !types || types.length === 0
+            ? 'Use a balanced mix of MULTIPLE_CHOICE, FILL_IN_BLANK, ERROR_CORRECTION.'
+            : `Use only these question types: ${types.join(', ')}`;
+
+        return `
+Generate exactly ${count} grammar practice questions in JSON.
+Concept: ${content.conceptName}
+Hero hook: ${content.hero.hook}
+Key rules:
+${explanationText}
+
+${typeRule}
+
+Return ONLY JSON:
+{
+  "questions": [
+    {
+      "type": "MULTIPLE_CHOICE",
+      "stem": "...",
+      "options": [{"text":"...","isCorrect":true}],
+      "explanation": "..."
+    },
+    {
+      "type": "FILL_IN_BLANK",
+      "stem": "... _____ ...",
+      "correctAnswers": ["..."],
+      "explanation": "..."
+    },
+    {
+      "type": "ERROR_CORRECTION",
+      "stem": "...",
+      "errorWord": "about",
+      "correction": "in",
+      "isCorrect": false,
+      "explanation": "..."
+    }
+  ]
+}
+`.trim();
+    }
 
     private static async _generateQuestionsWithAI(
         content: GrammarContent,
@@ -441,141 +548,84 @@ Highlights must only include words that appear verbatim in story_en.
         testedConcept: mongoose.Types.ObjectId,
         types?: string[],
     ): Promise<object[]> {
-        const rule  = content.grammar_rule;
-        const story = content.context_story;
-        const tag   = rule.name.toLowerCase().replace(/\s+/g, '_');
+        const prompt = this._buildQuestionPrompt(content, count, types);
 
-        const wantFill = !types || types.includes('FILL_IN_BLANK');
-        const wantMC   = !types || types.includes('MULTIPLE_CHOICE');
-
-        let fillCount = 0;
-        let mcCount   = 0;
-        if (wantFill && wantMC) {
-            fillCount = Math.ceil(count / 2);
-            mcCount   = Math.floor(count / 2);
-        } else if (wantFill) {
-            fillCount = count;
-        } else if (wantMC) {
-            mcCount = count;
-        }
-
-        // ── Build prompt ──────────────────────────────────────────────────────
-        const typeInstructions: string[] = [];
-        if (fillCount > 0) {
-            typeInstructions.push(
-                `- ${fillCount} questions of type "FILL_IN_BLANK": write a NEW original sentence (do NOT copy sentences from the story) that uses the target grammar. Replace exactly ONE word or phrase with "_____". Provide 1-2 correct answers. FILL_IN_BLANK must NOT have an "options" field.`,
-            );
-        }
-        if (mcCount > 0) {
-            typeInstructions.push(
-                `- ${mcCount} questions of type "MULTIPLE_CHOICE": write a fresh question stem, then provide EXACTLY 4 options. Exactly 1 option must have "isCorrect": true. MULTIPLE_CHOICE must NOT have a "correctAnswers" field.`,
-            );
-        }
-
-        const prompt = `
-You are an expert EFL content creator. Generate practice questions for the grammar concept below.
-
-GRAMMAR RULE
-Name: ${rule.name}
-Usage: ${rule.usage}
-Formulas: ${rule.formulas.map((f) => `${f.type}: ${f.structure} (e.g. "${f.example}")`).join(' | ')}
-
-CONTEXT STORY (for reference only — do NOT copy its sentences verbatim into questions):
-"${story.text}"
-
-TASK
-Generate exactly ${count} questions following these rules:
-${typeInstructions.join('\n')}
-
-IMPORTANT RULES:
-- Do NOT copy any sentence from the story word-for-word.
-- Every MULTIPLE_CHOICE question MUST have EXACTLY 4 options — no more, no less.
-- Exactly 1 option per MULTIPLE_CHOICE must be "isCorrect": true.
-- Make distractors plausible but clearly wrong (e.g. wrong verb form, wrong auxiliary).
-- Each question must have a concise "explanation" field (1 sentence, in Vietnamese).
-- Return ONLY a valid JSON object with this exact shape — no markdown, no extra text:
-
-{
-  "questions": [
-    {
-      "type": "FILL_IN_BLANK",
-      "stem": "She _____ very happy today.",
-      "correctAnswers": ["is"],
-      "explanation": "Dùng 'is' với chủ ngữ ngôi thứ ba số ít."
-    },
-    {
-      "type": "MULTIPLE_CHOICE",
-      "stem": "Which sentence is correct?",
-      "options": [
-        { "text": "I am a student.", "isCorrect": true },
-        { "text": "I are a student.", "isCorrect": false },
-        { "text": "I is a student.", "isCorrect": false },
-        { "text": "I be a student.", "isCorrect": false }
-      ],
-      "explanation": "Với chủ ngữ 'I', động từ to be ở dạng 'am'."
-    }
-  ]
-}
-`.trim();
-
-        // ── Call OpenAI ───────────────────────────────────────────────────────
         let parsed: { questions: AIQuestion[] };
         try {
             const completion = await openaiClient.chat.completions.create({
                 model: env.OPENAI_MODEL,
-                messages: [{ role: 'user', content: prompt }],
                 response_format: { type: 'json_object' },
-                temperature: 0.7,
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are an expert EFL question writer. Return valid JSON only.',
+                    },
+                    { role: 'user', content: prompt },
+                ],
             });
 
             const raw = completion.choices[0]?.message?.content ?? '{}';
             parsed = JSON.parse(raw) as { questions: AIQuestion[] };
-        } catch (err) {
-            logger.error('[GrammarService] AI question generation failed', { err });
-            throw new AppError(
-                'Không thể tạo câu hỏi bằng AI. Vui lòng thử lại.',
-                HttpStatus.INTERNAL_SERVER_ERROR,
-            );
+        } catch (error) {
+            logger.error('[GrammarService] AI question generation failed', { error });
+            throw new AppError('Không thể tạo câu hỏi bằng AI. Vui lòng thử lại.', HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         const aiQuestions = parsed.questions ?? [];
+        const safeQuestions = aiQuestions.slice(0, count);
 
-        // ── Map to Question documents ─────────────────────────────────────────
-        return aiQuestions.map((q) => {
-            if (q.type === 'MULTIPLE_CHOICE') {
-                // Guarantee exactly 4 options with IDs
-                const opts = (q.options ?? []).slice(0, 4);
-                while (opts.length < 4) {
-                    opts.push({ text: `[Option ${opts.length + 1}]`, isCorrect: false });
+        return safeQuestions.map((question) => {
+            if (question.type === 'MULTIPLE_CHOICE') {
+                const options = (question.options ?? []).slice(0, 4);
+                while (options.length < 4) {
+                    options.push({ text: `Option ${options.length + 1}`, isCorrect: false });
                 }
+
                 return {
                     languageId,
                     testedConcept,
                     unitId,
                     type: EQuestionType.MULTIPLE_CHOICE,
                     difficultyLevel: 2,
-                    stem: { text: q.stem },
+                    stem: { text: question.stem },
                     content: {
-                        options: opts.map((o) => ({ id: uuidv4(), text: o.text, isCorrect: !!o.isCorrect })),
+                        options: options.map((option) => ({ id: uuidv4(), text: option.text, isCorrect: !!option.isCorrect })),
                     },
-                    explanation: q.explanation ?? '',
-                    tags: ['grammar', tag],
+                    explanation: question.explanation ?? '',
+                    tags: ['grammar', content.conceptName.toLowerCase().replace(/\s+/g, '_')],
                 };
             }
 
-            // FILL_IN_BLANK
+            if (question.type === 'ERROR_CORRECTION') {
+                return {
+                    languageId,
+                    testedConcept,
+                    unitId,
+                    type: EQuestionType.ERROR_CORRECTION,
+                    difficultyLevel: 2,
+                    stem: { text: question.stem },
+                    content: {
+                        errorWord: question.errorWord ?? null,
+                        correction: question.correction ?? null,
+                        isCorrect: !!question.isCorrect,
+                    },
+                    explanation: question.explanation ?? '',
+                    tags: ['grammar', 'error_correction'],
+                };
+            }
+
             return {
                 languageId,
                 testedConcept,
                 unitId,
                 type: EQuestionType.FILL_IN_BLANK,
                 difficultyLevel: 2,
-                stem: { text: q.stem },
+                stem: { text: question.stem },
                 content: {
-                    correctAnswers: (q.correctAnswers ?? []).filter(Boolean),
+                    correctAnswers: (question.correctAnswers ?? []).filter(Boolean),
                 },
-                explanation: q.explanation ?? '',
-                tags: ['grammar', tag],
+                explanation: question.explanation ?? '',
+                tags: ['grammar', 'fill_in_blank'],
             };
         });
     }

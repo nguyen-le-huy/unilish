@@ -40,6 +40,7 @@ import type {
 const TYPE_LABELS: Record<string, string> = {
     MULTIPLE_CHOICE: 'Trắc nghiệm',
     FILL_IN_BLANK: 'Điền từ',
+    ERROR_CORRECTION: 'Sửa lỗi',
     TRUE_FALSE: 'Đúng / Sai',
     MATCHING: 'Nối từ',
     PRONUNCIATION: 'Phát âm',
@@ -49,6 +50,7 @@ const TYPE_LABELS: Record<string, string> = {
 const TYPE_COLORS: Record<string, string> = {
     MULTIPLE_CHOICE: 'bg-blue-100 text-blue-700',
     FILL_IN_BLANK: 'bg-amber-100 text-amber-700',
+    ERROR_CORRECTION: 'bg-orange-100 text-orange-700',
     TRUE_FALSE: 'bg-purple-100 text-purple-700',
     MATCHING: 'bg-teal-100 text-teal-700',
     PRONUNCIATION: 'bg-rose-100 text-rose-700',
@@ -218,6 +220,13 @@ function QuestionCard({
                     {question.content.correctAnswers.join(', ')}
                 </p>
             ) : null}
+            {question.type === 'ERROR_CORRECTION' && (
+                <p className="mt-2 text-sm">
+                    {question.content.isCorrect
+                        ? 'No error'
+                        : `Sửa "${question.content.errorWord ?? ''}" → "${question.content.correction ?? ''}"`}
+                </p>
+            )}
 
             {/* Explanation */}
             {question.explanation && (

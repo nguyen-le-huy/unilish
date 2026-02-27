@@ -89,7 +89,7 @@ function WorkspaceLessonPanel({ courseId, lessonId }: { courseId: string; lesson
     if (lesson.type === 'GRAMMAR') {
         return (
             <ErrorBoundary>
-                <GrammarStudio lesson={lesson} />
+                <GrammarStudio lesson={lesson} courseLevel={tree?.level ?? 'A1'} />
             </ErrorBoundary>
         );
     }

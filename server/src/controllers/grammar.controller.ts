@@ -33,8 +33,10 @@ export const generateGrammarStory = catchAsync(async (req: Request, res: Respons
     const lessonId = req.params['lessonId']!;
     const body = req.body as GenerateGrammarStoryBody;
     const result = await GrammarService.generateStory(lessonId, body);
-    sendResponse(res, HttpStatus.OK, 'Grammar story generated', result);
+    sendResponse(res, HttpStatus.OK, 'Grammar blog generated', result);
 });
+
+export const generateGrammarBlog = generateGrammarStory;
 
 // ─── POST /lessons/:lessonId/grammar/generate-questions ──────────────────────
 

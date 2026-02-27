@@ -436,7 +436,6 @@ ${transcriptText}
             const completion = await openaiClient.chat.completions.create({
                 model: env.OPENAI_MODEL,
                 response_format: { type: 'json_object' },
-                temperature: 0.35,
                 messages: [
                     {
                         role: 'system',

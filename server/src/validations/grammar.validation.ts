@@ -4,41 +4,79 @@ import { z } from 'zod';
 
 const OBJECT_ID_REGEX = /^[a-f\d]{24}$/i;
 const objectIdSchema = z.string().regex(OBJECT_ID_REGEX, 'ID không hợp lệ (phải là ObjectId)');
+const cefrSchema = z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
 
 // ─── Grammar sub-schemas ──────────────────────────────────────────────────────
 
-const highlightInfoSchema = z.object({
+const grammarExampleSchema = z.object({
+    en: z.string().min(1).max(500).trim(),
+    vi: z.string().min(1).max(500).trim(),
+});
+
+const inlineQuizQuestionSchema = z.object({
     id: z.string().min(1),
-    word: z.string().min(1, 'Từ highlight không được để trống').max(100).trim(),
-    type: z.enum(['regular_verb', 'irregular_verb', 'grammar_particle', 'other']),
-    root: z.string().min(1, 'Từ gốc không được để trống').max(100).trim(),
+    stem: z.string().min(1).max(500).trim(),
+    type: z.enum(['MULTIPLE_CHOICE', 'FILL_IN_BLANK']),
+    options: z.array(z.string().min(1).max(150).trim()).max(6).optional(),
+    correct: z.string().min(1).max(150).trim(),
+    acceptedAnswers: z.array(z.string().min(1).max(150).trim()).max(6).optional(),
+    explanation: z.string().min(1).max(500).trim(),
 });
 
-const contextStorySchema = z.object({
-    text: z.string().min(1, 'Nội dung câu chuyện không được để trống').max(3000).trim(),
-    translation: z.string().min(1, 'Dịch nghĩa không được để trống').max(3000).trim(),
-    audioUrl: z.string().nullable().default(null),
-    highlights: z.array(highlightInfoSchema).max(30, 'Tối đa 30 highlights'),
-});
-
-const grammarFormulaSchema = z.object({
+const explanationBlockSchema = z.object({
     id: z.string().min(1),
-    type: z.enum(['positive', 'negative', 'question', 'other']),
-    structure: z.string().min(1, 'Cấu trúc không được để trống').max(200).trim(),
-    example: z.string().min(1, 'Câu ví dụ không được để trống').max(500).trim(),
+    type: z.literal('EXPLANATION'),
+    heading: z.string().min(1).max(200).trim(),
+    body: z.string().min(1).max(2000).trim(),
+    examples: z.array(grammarExampleSchema).min(1).max(8),
+    highlightPattern: z.string().min(1).max(500).trim(),
 });
 
-const irregularVerbSchema = z.object({
+const inlineQuizBlockSchema = z.object({
     id: z.string().min(1),
-    base: z.string().min(1, 'Dạng gốc không được để trống').max(100).trim(),
-    past: z.string().min(1, 'Dạng quá khứ không được để trống').max(100).trim(),
+    type: z.literal('INLINE_QUIZ'),
+    instruction: z.string().min(1).max(200).trim(),
+    questions: z.array(inlineQuizQuestionSchema).min(1).max(3),
 });
 
-const grammarRuleSchema = z.object({
-    name: z.string().min(1, 'Tên ngữ pháp không được để trống').max(200).trim(),
-    usage: z.string().min(1, 'Mô tả cách dùng không được để trống').max(1000).trim(),
-    formulas: z.array(grammarFormulaSchema).max(10, 'Tối đa 10 công thức'),
-    irregular_verbs: z.array(irregularVerbSchema).max(50, 'Tối đa 50 động từ bất quy tắc'),
+const calloutBlockSchema = z.object({
+    id: z.string().min(1),
+    type: z.literal('CALLOUT'),
+    variant: z.enum(['TIP', 'WARNING', 'EXAMPLE', 'UNIT_CONTEXT']),
+    text: z.string().min(1).max(1000).trim(),
+});
+
+const unitContextBlockSchema = z.object({
+    id: z.string().min(1),
+    type: z.literal('UNIT_CONTEXT_BLOCK'),
+    heading: z.string().min(1).max(200).trim(),
+    note: z.string().min(1).max(400).trim(),
+    examples: z.array(grammarExampleSchema).min(1).max(8),
+});
+
+const grammarBlockSchema = z.discriminatedUnion('type', [
+    explanationBlockSchema,
+    inlineQuizBlockSchema,
+    calloutBlockSchema,
+    unitContextBlockSchema,
+]);
+
+const grammarHeroSchema = z.object({
+    hook: z.string().min(1).max(500).trim(),
+    contextSentences: z.array(z.string().min(1).max(300).trim()).min(1).max(6),
+});
+
+const summaryTableSchema = z.object({
+    columns: z.tuple([
+        z.string().min(1).max(100).trim(),
+        z.string().min(1).max(100).trim(),
+        z.string().min(1).max(100).trim(),
+    ]),
+    rows: z.array(z.tuple([
+        z.string().min(1).max(120).trim(),
+        z.string().min(1).max(240).trim(),
+        z.string().min(1).max(240).trim(),
+    ])).min(1).max(20),
 });
 
 // ─── GET /lessons/:lessonId/grammar/content ───────────────────────────────────
@@ -54,8 +92,12 @@ export type GetGrammarContentParams = z.infer<typeof getGrammarContentSchema>['p
 export const saveGrammarContentSchema = z.object({
     params: z.object({ lessonId: objectIdSchema }),
     body: z.object({
-        context_story: contextStorySchema,
-        grammar_rule: grammarRuleSchema,
+        level: cefrSchema,
+        readingTime: z.number().int().min(1).max(60),
+        conceptName: z.string().min(1).max(200).trim(),
+        hero: grammarHeroSchema,
+        blocks: z.array(grammarBlockSchema).min(1).max(50),
+        summaryTable: summaryTableSchema,
         practiceConfig: z.object({
             mode: z.literal('FIXED'),
             passingScore: z.number().int().min(0).max(100).default(80),
@@ -72,6 +114,7 @@ export const generateGrammarStorySchema = z.object({
     params: z.object({ lessonId: objectIdSchema }),
     body: z.object({
         grammarName: z.string().min(1, 'Tên ngữ pháp không được để trống').max(200).trim(),
+        level: cefrSchema.default('A2'),
         selectedVocab: z
             .array(z.string().min(1).max(100).trim())
             .max(20, 'Tối đa 20 từ vựng')
@@ -86,9 +129,9 @@ export type GenerateGrammarStoryBody = z.infer<typeof generateGrammarStorySchema
 export const generateGrammarQuestionsSchema = z.object({
     params: z.object({ lessonId: objectIdSchema }),
     body: z.object({
-        count: z.number().int().min(1).max(20).default(5),
+        count: z.number().int().min(1).max(20).default(10),
         types: z
-            .array(z.enum(['MULTIPLE_CHOICE', 'FILL_IN_BLANK', 'TRUE_FALSE', 'MATCHING'] as const))
+            .array(z.enum(['MULTIPLE_CHOICE', 'FILL_IN_BLANK', 'ERROR_CORRECTION'] as const))
             .min(1)
             .optional(),
     }),

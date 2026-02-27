@@ -32,6 +32,7 @@ interface Props {
 const QUESTION_TYPES = [
     { value: 'FILL_IN_BLANK',    label: 'Điền từ vào chỗ trống',  description: 'Từ bị che dựa trên câu chuyện' },
     { value: 'MULTIPLE_CHOICE',  label: 'Trắc nghiệm',             description: 'Chọn câu đúng theo cấu trúc' },
+    { value: 'ERROR_CORRECTION', label: 'Sửa lỗi câu',             description: 'Xác định lỗi sai và sửa lại' },
 ] as const;
 
 // ─── Component ────────────────────────────────────────────────────────────────

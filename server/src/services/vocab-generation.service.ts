@@ -159,7 +159,6 @@ Return a JSON array of exactly ${wordCount} items. Words must be diverse and app
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ],
-            temperature: 0.7,
             response_format: { type: 'json_object' },
         });
 

@@ -25,14 +25,12 @@ import { SandboxChatPanel } from './components/Sandbox/SandboxChatPanel';
 import { SandboxControls } from './components/Sandbox/SandboxControls';
 import { SandboxTelemetryPanel } from './components/Sandbox/SandboxTelemetryPanel';
 import { useAudioStreaming } from './hooks/use-audio-streaming';
-import { useKeywordCoverage } from './hooks/use-keyword-coverage';
 import { useSpeakingRealtime } from './hooks/use-speaking-realtime';
 import { useSpeechRecognition } from './hooks/use-speech-recognition';
 import type {
     AiResponseChunkEvent,
     CoachChatMessage,
     CoachState,
-    PhonemeDebugItem,
     SpeakingLessonFormValues,
 } from './types/speaking.types';
 import { SpeakingLessonFormSchema } from './validations/speaking.validation';
@@ -109,7 +107,6 @@ export const SpeakingStudio = forwardRef<SpeakingStudioRef, Props>(function Spea
     const [lastRoleName, setLastRoleName] = useState<string>('—');
     const [lastSessionId, setLastSessionId] = useState<string>('—');
     const [lastUsedFallback, setLastUsedFallback] = useState(false);
-    const [latestPhonemeDebug, setLatestPhonemeDebug] = useState<PhonemeDebugItem[]>([]);
     const [rawRealtimeEvents, setRawRealtimeEvents] = useState<{ ts: number; type: string }[]>([]);
 
     const streamingAssistantMessageIdRef = useRef<string | null>(null);
@@ -118,13 +115,6 @@ export const SpeakingStudio = forwardRef<SpeakingStudioRef, Props>(function Spea
 
     const missionTitle = watch('missionTitle')?.trim() || lesson.title;
     const hints = watch('hints') || [];
-    const requiredKeywords = watch('gradingConfig.requiredKeywords') || [];
-    const roleName = watch('aiConfig.roleName') || '';
-
-    const { keywordHitSet, completionRatio } = useKeywordCoverage({
-        requiredKeywords,
-        messages: coachChatMessages,
-    });
 
     const {
         speakAssistantReply,
@@ -142,29 +132,16 @@ export const SpeakingStudio = forwardRef<SpeakingStudioRef, Props>(function Spea
         sendRealtimeUserMessage,
     } = useSpeakingRealtime();
 
-    const buildPhonemeDebug = (userMessage: string): PhonemeDebugItem[] => {
-        if (requiredKeywords.length === 0) return [];
-
-        const normalized = userMessage.toLowerCase();
-        return requiredKeywords.map((keyword) => {
-            const isHit = normalized.includes(keyword.toLowerCase());
-
-            return {
-                word: keyword,
-                accuracy: isHit ? 86 : 42,
-                issue: isHit ? 'None' : 'MissingKeyword',
-            };
-        });
-    };
-
     const applyAiChunk = (event: AiResponseChunkEvent) => {
-        if (event.textDelta) {
+        const textDelta = event.textDelta?.trim();
+
+        if (textDelta) {
             setCoachChatMessages((prev) => {
                 const streamingId = streamingAssistantMessageIdRef.current;
                 if (streamingId) {
                     return prev.map((message) => (
                         message.id === streamingId
-                            ? { ...message, content: `${message.content}${event.textDelta}` }
+                            ? { ...message, content: `${message.content}${textDelta}` }
                             : message
                     ));
                 }
@@ -177,7 +154,7 @@ export const SpeakingStudio = forwardRef<SpeakingStudioRef, Props>(function Spea
                     {
                         id: newId,
                         role: 'assistant',
-                        content: event.textDelta,
+                        content: textDelta,
                         createdAt: Date.now(),
                     },
                 ];
@@ -219,7 +196,6 @@ export const SpeakingStudio = forwardRef<SpeakingStudioRef, Props>(function Spea
 
         setCoachChatMessages(nextMessages);
         setCoachState('Thinking');
-        setLatestPhonemeDebug(buildPhonemeDebug(userMessage));
 
         if (user?._id) {
             const sentRealtime = sendRealtimeUserMessage({ message: userMessage });

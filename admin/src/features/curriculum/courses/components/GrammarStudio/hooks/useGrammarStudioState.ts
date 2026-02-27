@@ -2,30 +2,52 @@ import { useState, useCallback } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type GrammarSection = 'story' | 'rules' | 'practice';
+export type GrammarPanel = 'hero' | 'block' | 'summary' | 'practice';
 
 interface GrammarStudioState {
-    activeSection: GrammarSection;
+    activePanel: GrammarPanel;
+    activeBlockId: string | null;
 }
 
 interface UseGrammarStudioStateReturn {
-    activeSection: GrammarSection;
-    setActiveSection: (section: GrammarSection) => void;
+    activePanel: GrammarPanel;
+    activeBlockId: string | null;
+    setHeroPanel: () => void;
+    setSummaryPanel: () => void;
+    setPracticePanel: () => void;
+    setActiveBlock: (blockId: string) => void;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export const useGrammarStudioState = (): UseGrammarStudioStateReturn => {
     const [state, setState] = useState<GrammarStudioState>({
-        activeSection: 'story',
+        activePanel: 'hero',
+        activeBlockId: null,
     });
 
-    const setActiveSection = useCallback((section: GrammarSection) => {
-        setState((prev) => ({ ...prev, activeSection: section }));
+    const setHeroPanel = useCallback(() => {
+        setState((prev) => ({ ...prev, activePanel: 'hero', activeBlockId: null }));
+    }, []);
+
+    const setSummaryPanel = useCallback(() => {
+        setState((prev) => ({ ...prev, activePanel: 'summary', activeBlockId: null }));
+    }, []);
+
+    const setPracticePanel = useCallback(() => {
+        setState((prev) => ({ ...prev, activePanel: 'practice', activeBlockId: null }));
+    }, []);
+
+    const setActiveBlock = useCallback((blockId: string) => {
+        setState((prev) => ({ ...prev, activePanel: 'block', activeBlockId: blockId }));
     }, []);
 
     return {
-        activeSection: state.activeSection,
-        setActiveSection,
+        activePanel: state.activePanel,
+        activeBlockId: state.activeBlockId,
+        setHeroPanel,
+        setSummaryPanel,
+        setPracticePanel,
+        setActiveBlock,
     };
 };

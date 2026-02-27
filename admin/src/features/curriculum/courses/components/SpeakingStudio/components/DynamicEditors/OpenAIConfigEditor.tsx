@@ -11,7 +11,7 @@ import { notification } from '@/lib/notification';
 import type { SpeakingLessonFormValues } from '../../types/speaking.types';
 
 export const OpenAIConfigEditor = () => {
-    const { register, control, formState: { errors } } = useFormContext<SpeakingLessonFormValues>();
+    const { register, formState: { errors } } = useFormContext<SpeakingLessonFormValues>();
 
     const handleOptimizePrompt = () => {
         notification.info('Tính năng Tối ưu System Prompt bằng AI sẽ được mở sau.');

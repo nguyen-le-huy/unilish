@@ -7,19 +7,34 @@ const objectIdSchema = z.string().regex(OBJECT_ID_REGEX, 'ID không hợp lệ (
 
 // ─── Writing sub-schemas ──────────────────────────────────────────────────────
 
-const WRITING_TASK_TYPES = ['essay', 'email', 'report', 'letter', 'summary', 'paragraph'] as const;
+const WRITING_FORMATS = ['EMAIL', 'ESSAY', 'STORY', 'CHAT'] as const;
+const WRITING_TONES = ['FORMAL', 'CASUAL', 'NEUTRAL'] as const;
 const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
 
-const writingRubricCriterionSchema = z.object({
-    id: z.string().min(1, 'ID tiêu chí không được để trống'),
-    name: z.string().min(1, 'Tên tiêu chí không được để trống').max(100).trim(),
-    description: z.string().min(1, 'Mô tả tiêu chí không được để trống').max(500).trim(),
-    maxScore: z.number().int().min(1).max(100),
+const writingConfigSchema = z
+    .object({
+        minWords: z.number().int().min(1),
+        maxWords: z.number().int().min(1),
+        format: z.enum(WRITING_FORMATS),
+        tone: z.enum(WRITING_TONES),
+    })
+    .refine((value) => value.minWords <= value.maxWords, {
+        message: 'minWords không được lớn hơn maxWords',
+        path: ['minWords'],
+    });
+
+const requiredConceptSchema = z.object({
+    id: z.string().min(1),
+    conceptId: objectIdSchema,
+    keyword: z.string().min(1).max(100),
+    points: z.number().int().min(0).max(100),
 });
 
-const writingPracticeConfigSchema = z.object({
-    mode: z.literal('FIXED'),
-    passingScore: z.number().int().min(0).max(100).default(70),
+const warmupTaskSchema = z.object({
+    id: z.string().min(1),
+    type: z.literal('UNSCRAMBLE'),
+    words: z.array(z.string().min(1)).min(1),
+    correct: z.string().min(1).max(300),
 });
 
 // ─── GET /:lessonId/writing/content ──────────────────────────────────────────
@@ -35,36 +50,43 @@ export type GetWritingContentParams = z.infer<typeof getWritingContentSchema>['p
 export const saveWritingContentSchema = z.object({
     params: z.object({ lessonId: objectIdSchema }),
     body: z.object({
-        taskType: z.enum(WRITING_TASK_TYPES).optional(),
-        prompt: z.string().max(5_000).optional(),
-        promptTranslation: z.string().max(8_000).optional(),
-        wordCountTarget: z.number().int().min(50).max(1_000).optional(),
-        wordCountMin: z.number().int().min(30).max(1_000).optional(),
-        wordCountMax: z.number().int().min(50).max(1_500).optional(),
-        modelAnswer: z.string().max(10_000).optional(),
-        rubric: z.array(writingRubricCriterionSchema).min(1).max(10).optional(),
-        practiceConfig: writingPracticeConfigSchema.optional(),
-        generationStatus: z
-            .enum(['IDLE', 'GENERATING', 'DONE', 'ERROR'])
-            .optional(),
-    }).refine(
-        (body) => Object.keys(body).length > 0,
-        'Phải có ít nhất một trường cần cập nhật',
-    ),
+        prompt: z.string().min(1).max(10_000),
+        promptTranslation: z.string().max(10_000).default(''),
+        config: writingConfigSchema,
+        requiredConcepts: z.array(requiredConceptSchema).default([]),
+        requiredGrammar: z.string().max(200).default(''),
+        sentenceStarters: z.array(z.string().min(1).max(300)).default([]),
+        warmupTasks: z.array(warmupTaskSchema).default([]),
+        taughtConcepts: z.array(objectIdSchema).default([]),
+    }),
 });
 
 export type SaveWritingContentBody = z.infer<typeof saveWritingContentSchema>['body'];
 
 // ─── POST /:lessonId/writing/generate ────────────────────────────────────────
 
-export const generateWritingSchema = z.object({
+export const generateWritingMissionSchema = z.object({
     params: z.object({ lessonId: objectIdSchema }),
     body: z.object({
         level: z.enum(CEFR_LEVELS),
-        taskType: z.enum(WRITING_TASK_TYPES).default('essay'),
-        wordCountTarget: z.number().int().min(50).max(800).default(250),
+        format: z.enum(WRITING_FORMATS).default('EMAIL'),
+        tone: z.enum(WRITING_TONES).default('FORMAL'),
+        minWords: z.number().int().min(20).max(500).default(120),
+        maxWords: z.number().int().min(20).max(700).default(180),
         topic: z.string().max(300).trim().optional(),
+    }).refine((body) => body.minWords <= body.maxWords, {
+        message: 'minWords không được lớn hơn maxWords',
+        path: ['minWords'],
     }),
 });
 
-export type GenerateWritingBody = z.infer<typeof generateWritingSchema>['body'];
+export type GenerateWritingMissionBody = z.infer<typeof generateWritingMissionSchema>['body'];
+
+export const testDriveGradeSchema = z.object({
+    params: z.object({ lessonId: objectIdSchema }),
+    body: z.object({
+        submission: z.string().min(1).max(10_000),
+    }),
+});
+
+export type TestDriveGradeBody = z.infer<typeof testDriveGradeSchema>['body'];

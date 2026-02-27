@@ -40,10 +40,6 @@ export class WritingMongoRepository {
         return {
             ...empty,
             ...stored,
-            practiceConfig: {
-                ...empty.practiceConfig,
-                ...(stored.practiceConfig ?? {}),
-            },
         };
     }
 
@@ -68,72 +64,24 @@ export class WritingMongoRepository {
         return updated.content as WritingContent;
     }
 
-    /**
-     * Patch only the AI-generated prompt + model answer + rubric.
-     */
-    async setGeneratedContent(
-        lessonId: string,
-        patch: {
-            prompt: string;
-            promptTranslation: string;
-            modelAnswer: string;
-            rubric: WritingContent['rubric'];
-        },
-    ): Promise<void> {
-        await Lesson
-            .findByIdAndUpdate(
-                lessonId,
-                {
-                    $set: {
-                        'content.prompt': patch.prompt,
-                        'content.promptTranslation': patch.promptTranslation,
-                        'content.modelAnswer': patch.modelAnswer,
-                        'content.rubric': patch.rubric,
-                        'content.generationStatus': 'DONE',
-                    },
-                },
-                { new: false },
-            )
-            .lean()
-            .exec();
-    }
-
-    /**
-     * Patch generationStatus — used to signal in-progress states.
-     */
-    async setGenerationStatus(
-        lessonId: string,
-        status: WritingContent['generationStatus'],
-    ): Promise<void> {
-        await Lesson
-            .findByIdAndUpdate(
-                lessonId,
-                { $set: { 'content.generationStatus': status } },
-                { new: false },
-            )
-            .lean()
-            .exec();
-    }
-
     // ─── Private helpers ──────────────────────────────────────────────────────
 
     private _emptyContent(): WritingContent {
         return {
             type: 'WRITING',
-            taskType: 'essay',
             prompt: '',
             promptTranslation: '',
-            wordCountTarget: 250,
-            wordCountMin: 200,
-            wordCountMax: 350,
-            modelAnswer: '',
-            rubric: [],
-            practiceConfig: {
-                mode: 'FIXED',
-                questionIds: [],
-                passingScore: 70,
+            config: {
+                minWords: 120,
+                maxWords: 180,
+                format: 'EMAIL',
+                tone: 'FORMAL',
             },
-            generationStatus: 'IDLE',
+            requiredConcepts: [],
+            requiredGrammar: '',
+            sentenceStarters: [],
+            warmupTasks: [],
+            taughtConcepts: [],
         };
     }
 }

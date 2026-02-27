@@ -130,7 +130,6 @@ export class ReadingService {
             const completion = await openaiClient.chat.completions.create({
                 model: env.OPENAI_MODEL,
                 response_format: { type: 'json_object' },
-                temperature: 0.7,
                 messages: [
                     {
                         role: 'system',
@@ -215,7 +214,6 @@ ${missing.map(([k, v]) => `"${k}": { "word": "${v.word}", "type": "${v.type}" }`
             const completion = await openaiClient.chat.completions.create({
                 model: env.OPENAI_MODEL,
                 response_format: { type: 'json_object' },
-                temperature: 0.2,
                 messages: [{ role: 'user', content: prompt }],
             });
 
@@ -543,7 +541,6 @@ RULES:
                 model: env.OPENAI_MODEL,
                 messages: [{ role: 'user', content: prompt }],
                 response_format: { type: 'json_object' },
-                temperature: 0.7,
             });
 
             const raw = completion.choices[0]?.message?.content ?? '{}';

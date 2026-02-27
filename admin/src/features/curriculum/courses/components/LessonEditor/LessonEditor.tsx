@@ -23,6 +23,7 @@ import { useLessonForm } from '../../hooks/useLessonForm';
 import type { LessonSummary, UpdateLessonPayload, LessonType, PracticeMode } from '../../types/course.types';
 import { LESSON_TYPES, PRACTICE_MODES } from '../../types/course.types';
 import { SpeakingStudio, type SpeakingStudioRef } from '../SpeakingStudio/SpeakingStudio';
+import { WritingStudio, type WritingStudioRef } from '../WritingStudio/WritingStudio';
 import { notification } from '@/lib/notification';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ export const LessonEditor = memo(function LessonEditor({ lesson, courseId }: Pro
     const updateMutation = useUpdateLesson(courseId);
     const form = useLessonForm({ lesson });
     const speakingStudioRef = useRef<SpeakingStudioRef>(null);
+    const writingStudioRef = useRef<WritingStudioRef>(null);
     const selectedType = form.watch('type');
     const isTypeSelected = Boolean(selectedType);
 
@@ -58,6 +60,10 @@ export const LessonEditor = memo(function LessonEditor({ lesson, courseId }: Pro
             // Nếu là bài học Speaking, trigger validate và save của SpeakingStudio trước
             if (values.type === 'SPEAKING' && speakingStudioRef.current) {
                 await speakingStudioRef.current.saveSpeakingContent();
+            }
+
+            if (values.type === 'WRITING' && writingStudioRef.current) {
+                await writingStudioRef.current.saveWritingContent();
             }
 
             const payload: UpdateLessonPayload = {
@@ -76,7 +82,12 @@ export const LessonEditor = memo(function LessonEditor({ lesson, courseId }: Pro
                 return;
             }
 
-            notification.error('Lưu nội dung Speaking thất bại. Vui lòng thử lại.');
+            if (error instanceof Error && error.message === 'Writing validation failed') {
+                notification.warning('Nội dung Writing chưa hợp lệ. Vui lòng kiểm tra lại.');
+                return;
+            }
+
+            notification.error('Lưu nội dung bài học thất bại. Vui lòng thử lại.');
         }
     });
 
@@ -90,6 +101,17 @@ export const LessonEditor = memo(function LessonEditor({ lesson, courseId }: Pro
                             size="sm"
                             variant="outline"
                             onClick={() => speakingStudioRef.current?.openTestDrive()}
+                        >
+                            <Play className="mr-2 h-4 w-4" aria-hidden="true" />
+                            Test Drive
+                        </Button>
+                    )}
+
+                    {selectedType === 'WRITING' && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => writingStudioRef.current?.openTestDrive()}
                         >
                             <Play className="mr-2 h-4 w-4" aria-hidden="true" />
                             Test Drive
@@ -210,18 +232,20 @@ export const LessonEditor = memo(function LessonEditor({ lesson, courseId }: Pro
                     )}
 
                     {/* Content Editor Placeholder */}
-                    <Card className={selectedType === 'SPEAKING' ? 'border-indigo-100 shadow-sm' : 'border-dashed'}>
+                    <Card className={selectedType === 'SPEAKING' || selectedType === 'WRITING' ? 'border-indigo-100 shadow-sm' : 'border-dashed'}>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground">
                                 Trình soạn nội dung
                             </CardTitle>
-                            {selectedType !== 'SPEAKING' && (
+                            {selectedType !== 'SPEAKING' && selectedType !== 'WRITING' && (
                                 <CardDescription>Sắp ra mắt trong Sprint 2</CardDescription>
                             )}
                         </CardHeader>
                         <CardContent>
                             {selectedType === 'SPEAKING' ? (
                                 <SpeakingStudio ref={speakingStudioRef} lesson={lesson} />
+                            ) : selectedType === 'WRITING' ? (
+                                <WritingStudio ref={writingStudioRef} lesson={lesson} />
                             ) : (
                                 <div className="flex h-24 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
                                     Trình soạn nội dung bài học đa dạng sẽ được xây dựng tại đây

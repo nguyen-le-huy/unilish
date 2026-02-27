@@ -13,12 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type {
     GenerateGrammarStoryResponse,
-    GrammarFormula,
-    HighlightInfo,
 } from '../../../../types/course.types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -208,58 +205,18 @@ export const AiStoryModal = memo(function AiStoryModal({
                         <div className="space-y-4 py-2">
                             {/* Story preview */}
                             <div className="space-y-1.5">
-                                <p className="text-sm font-semibold">📖 Câu chuyện</p>
+                                <p className="text-sm font-semibold">🧭 Hero Hook</p>
                                 <div className="rounded-md border bg-muted/30 p-3 text-sm leading-relaxed">
-                                    {generatedData.context_story.text}
+                                    {generatedData.hero.hook}
                                 </div>
-                                {generatedData.context_story.translation && (
-                                    <p className="text-xs italic text-muted-foreground">
-                                        {generatedData.context_story.translation}
-                                    </p>
-                                )}
                             </div>
 
-                            {/* Rule preview */}
                             <div className="space-y-1.5">
-                                <p className="text-sm font-semibold">📐 Điểm ngữ pháp</p>
-                                <div className="rounded-md border bg-muted/30 p-3 space-y-2">
-                                    <p className="text-sm font-medium">
-                                        {generatedData.grammar_rule.name}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {generatedData.grammar_rule.usage}
-                                    </p>
-                                    {generatedData.grammar_rule.formulas.length > 0 && (
-                                        <div className="flex flex-wrap gap-1 pt-1">
-                                            {generatedData.grammar_rule.formulas.map((f: GrammarFormula) => (
-                                                <Badge
-                                                    key={f.id}
-                                                    variant="outline"
-                                                    className="font-mono text-xs"
-                                                >
-                                                    {f.structure}
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    )}
+                                <p className="text-sm font-semibold">🧩 Blocks</p>
+                                <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                                    Tổng số block: {generatedData.blocks.length}
                                 </div>
                             </div>
-
-                            {/* Highlights */}
-                            {generatedData.context_story.highlights.length > 0 && (
-                                <div className="space-y-1.5">
-                                    <p className="text-sm font-semibold">
-                                        ✨ Từ nổi bật ({generatedData.context_story.highlights.length})
-                                    </p>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {generatedData.context_story.highlights.map((h: HighlightInfo) => (
-                                            <Badge key={h.id} variant="secondary" className="text-xs">
-                                                {h.word}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </ScrollArea>
                 )}

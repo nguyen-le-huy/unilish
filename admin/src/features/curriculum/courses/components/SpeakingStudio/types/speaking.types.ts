@@ -44,6 +44,11 @@ export interface AiResponseChunkEvent {
     /** Live transcript text (optional) */
     textDelta?: string;
     isFinal: boolean;
+    model?: string;
+    requestedModel?: string;
+    usedFallback?: boolean;
+    latencyMs?: number;
+    tokenUsage?: number;
 }
 
 /** Live streaming transcript delta during AI speech */
@@ -128,6 +133,23 @@ export interface SaveSpeakingContentPayload {
 export interface GenerateMissionPayload {
     topic: string;
     context: string;
+}
+
+export interface TestSpeakingCoachPayload {
+    userMessage: string;
+}
+
+export interface TestSpeakingCoachResponse {
+    reply: string;
+    latencyMs: number;
+    tokenUsage: number;
+    model: string;
+}
+
+export interface PhonemeDebugItem {
+    word: string;
+    accuracy: number;
+    issue: string;
 }
 
 // ─── @v2-deferred types removed from V1 active use ───────────────────────────

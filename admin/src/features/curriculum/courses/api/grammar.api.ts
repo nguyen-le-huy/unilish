@@ -40,7 +40,7 @@ export const grammarApi = {
         payload: GenerateGrammarStoryPayload,
     ): Promise<GenerateGrammarStoryResponse> => {
         const response = await apiClient.post<ApiResponse<GenerateGrammarStoryResponse>>(
-            `${BASE_PATH}/${lessonId}/grammar/generate-story`,
+            `${BASE_PATH}/${lessonId}/grammar/generate-blog`,
             payload,
         );
         return response.data.data;

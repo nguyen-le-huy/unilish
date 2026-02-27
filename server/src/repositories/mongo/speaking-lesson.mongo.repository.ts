@@ -12,7 +12,6 @@ interface SpeakingLessonContext {
         roleName: string;
         firstMessage: string;
         systemInstruction: string;
-        temperature: number;
         voiceId?: string;
     };
     requiredKeywords: string[];
@@ -25,7 +24,6 @@ interface SpeakingLessonContentShape {
         roleName?: string;
         firstMessage?: string;
         systemInstruction?: string;
-        temperature?: number;
         voiceId?: string;
     };
     gradingConfig?: {
@@ -144,7 +142,6 @@ export class SpeakingLessonMongoRepository {
             roleName: content.aiConfig?.roleName?.trim() || 'Friendly speaking partner',
             firstMessage: content.aiConfig?.firstMessage?.trim() || '',
             systemInstruction: content.aiConfig?.systemInstruction?.trim() || '',
-            temperature: typeof content.aiConfig?.temperature === 'number' ? content.aiConfig.temperature : 0.7,
         };
 
         const lessonVoiceId = content.aiConfig?.voiceId?.trim();

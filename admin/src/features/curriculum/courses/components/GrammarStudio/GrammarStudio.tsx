@@ -1,8 +1,9 @@
-import { memo, useCallback, useEffect, useState } from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
 import { AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notification } from '@/lib/notification';
+import { getApiErrorMessage } from '@/lib/api-error';
 import { useGrammarContent } from '../../hooks/useGrammarContent';
 import {
     useSaveGrammarContent,
@@ -21,31 +22,57 @@ import {
 import { useGrammarStudioState } from './hooks/useGrammarStudioState';
 import type {
     LessonSummary,
-    GrammarLessonFormValues,
+    GrammarBlogBlock,
     GrammarContent,
+    GrammarLessonFormValues,
     GenerateGrammarStoryResponse,
+    CEFRLevel,
 } from '../../types/course.types';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
     lesson: LessonSummary;
+    courseLevel: CEFRLevel;
 }
 
-// ─── Default form values (used while data is loading) ─────────────────────────
+const createDefaultExplanationBlock = (): GrammarBlogBlock => ({
+    id: crypto.randomUUID(),
+    type: 'EXPLANATION',
+    heading: '',
+    body: '',
+    examples: [{ en: '', vi: '' }],
+    highlightPattern: '',
+});
 
 const DEFAULT_FORM_VALUES: GrammarLessonFormValues = {
-    context_story: {
-        text: '',
-        translation: '',
-        audioUrl: null,
-        highlights: [],
+    level: 'A2',
+    readingTime: 4,
+    conceptName: '',
+    hero: {
+        hook: '',
+        contextSentences: [],
     },
-    grammar_rule: {
-        name: '',
-        usage: '',
-        formulas: [],
-        irregular_verbs: [],
+    blocks: [
+        createDefaultExplanationBlock(),
+        createDefaultExplanationBlock(),
+        createDefaultExplanationBlock(),
+        createDefaultExplanationBlock(),
+        {
+            id: crypto.randomUUID(),
+            type: 'INLINE_QUIZ',
+            instruction: 'Choose the correct option',
+            questions: [],
+        },
+        {
+            id: crypto.randomUUID(),
+            type: 'UNIT_CONTEXT_BLOCK',
+            heading: '',
+            note: '',
+            examples: [{ en: '', vi: '' }],
+        },
+    ],
+    summaryTable: {
+        columns: ['Giới từ', 'Dùng khi nào', 'Ví dụ'],
+        rows: [],
     },
     practiceConfig: {
         mode: 'FIXED',
@@ -54,117 +81,155 @@ const DEFAULT_FORM_VALUES: GrammarLessonFormValues = {
     taughtConcepts: [],
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
-export const GrammarStudio = memo(function GrammarStudio({ lesson }: Props) {
+export const GrammarStudio = memo(function GrammarStudio({ lesson, courseLevel }: Props) {
     const lessonId = lesson._id;
 
-    // ── Data ─────────────────────────────────────────────────────────────────
     const { data: content, isLoading, isError } = useGrammarContent(lessonId);
 
-    // ── Mutations ─────────────────────────────────────────────────────────────
     const saveMutation = useSaveGrammarContent(lessonId);
     const generateStoryMutation = useGenerateGrammarStory(lessonId);
     const generateQuestionsMutation = useGenerateGrammarQuestions(lessonId);
     const generateAudioMutation = useGenerateGrammarAudio(lessonId);
 
-    // ── UI state ──────────────────────────────────────────────────────────────
-    const { activeSection, setActiveSection } = useGrammarStudioState();
+    const {
+        activePanel,
+        activeBlockId,
+        setHeroPanel,
+        setSummaryPanel,
+        setPracticePanel,
+        setActiveBlock,
+    } = useGrammarStudioState();
+
     const [isAiModalOpen, setIsAiModalOpen] = useState(false);
     const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
-    const [generatedAiData, setGeneratedAiData] =
-        useState<GenerateGrammarStoryResponse | null>(null);
+    const [generatedAiData, setGeneratedAiData] = useState<GenerateGrammarStoryResponse | null>(null);
 
-    // ── Form ──────────────────────────────────────────────────────────────────
     const methods = useForm<GrammarLessonFormValues>({
-        defaultValues: DEFAULT_FORM_VALUES,
+        defaultValues: {
+            ...DEFAULT_FORM_VALUES,
+            level: courseLevel,
+        },
     });
+    const { reset, watch, setValue, handleSubmit, getValues } = methods;
 
-    const { reset, handleSubmit, formState: { errors } } = methods;
-
-    // ── Seed form when data loads ─────────────────────────────────────────────
     useEffect(() => {
-        if (!content) return;
+        if (!content) {
+            setValue('level', courseLevel, { shouldDirty: false });
+            return;
+        }
+
+        const isEmptyServerSeed =
+            content.blocks.length === 0
+            && content.conceptName.trim().length === 0
+            && content.hero.hook.trim().length === 0
+            && content.hero.contextSentences.length === 0
+            && content.summaryTable.rows.length === 0;
 
         reset(
             {
-                context_story: content.context_story,
-                grammar_rule: content.grammar_rule,
+                level: isEmptyServerSeed ? courseLevel : (content.level || courseLevel),
+                readingTime: content.readingTime,
+                conceptName: content.conceptName,
+                hero: content.hero,
+                blocks: content.blocks,
+                summaryTable: content.summaryTable,
                 practiceConfig: {
-                    mode: content.practiceConfig.mode,
+                    mode: 'FIXED',
                     passingScore: content.practiceConfig.passingScore,
                 },
                 taughtConcepts: content.taughtConcepts,
             },
             { keepDirtyValues: false },
         );
-    }, [content, reset]);
 
-    // ── Derived ───────────────────────────────────────────────────────────────
+        if (content.blocks.length > 0) {
+            setActiveBlock(content.blocks[0]!.id);
+        } else {
+            setHeroPanel();
+        }
+    }, [content, courseLevel, reset, setActiveBlock, setHeroPanel, setValue]);
+
+    const formBlocks = watch('blocks');
     const questionIds = content?.practiceConfig?.questionIds ?? [];
 
-    const hasStoryError =
-        !!errors.context_story?.text || !!errors.context_story?.highlights;
-
-    const hasRulesError =
-        !!errors.grammar_rule?.name || !!errors.grammar_rule?.formulas;
-
-    // ── Handlers ──────────────────────────────────────────────────────────────
-
-    const handleSave = handleSubmit((formValues: GrammarLessonFormValues) => {
-        const payload = {
-            context_story: formValues.context_story,
-            grammar_rule: formValues.grammar_rule,
-            practiceConfig: {
-                mode: formValues.practiceConfig.mode,
-                passingScore: formValues.practiceConfig.passingScore,
-            },
-            taughtConcepts: formValues.taughtConcepts,
-        };
-
-        saveMutation.mutate(payload, {
-            onSuccess: () => notification.success('Đã lưu nội dung ngữ pháp'),
-            onError: () => notification.error('Lỗi khi lưu nội dung'),
-        });
-    });
-
-    const handleGenerateQuestions = useCallback((
-        { count, types }: GenerateQuestionsConfig,
-    ) => {
-        setIsGenerateModalOpen(false);
-        generateQuestionsMutation.mutate(
-            { count, types: types.length > 0 ? types : undefined },
+    const handleSave = handleSubmit((formValues) => {
+        saveMutation.mutate(
             {
-                onSuccess: (data) => {
-                    notification.success(`Đã tạo ${data.count} câu hỏi luyện tập`);
-                    setActiveSection('practice');
+                level: formValues.level,
+                readingTime: formValues.readingTime,
+                conceptName: formValues.conceptName,
+                hero: formValues.hero,
+                blocks: formValues.blocks,
+                summaryTable: formValues.summaryTable,
+                practiceConfig: {
+                    mode: 'FIXED',
+                    passingScore: formValues.practiceConfig.passingScore,
                 },
-                onError: () => notification.error('Lỗi khi tạo câu hỏi'),
+                taughtConcepts: formValues.taughtConcepts,
+            },
+            {
+                onSuccess: () => notification.success('Đã lưu grammar blog'),
+                onError: () => notification.error('Lỗi khi lưu grammar blog'),
             },
         );
-    }, [generateQuestionsMutation, setActiveSection]);
+    });
+
+    const handleGenerateQuestions = useCallback(
+        async ({ count, types }: GenerateQuestionsConfig) => {
+            setIsGenerateModalOpen(false);
+
+            const formValues = getValues();
+            try {
+                await saveMutation.mutateAsync({
+                    level: formValues.level,
+                    readingTime: formValues.readingTime,
+                    conceptName: formValues.conceptName,
+                    hero: formValues.hero,
+                    blocks: formValues.blocks,
+                    summaryTable: formValues.summaryTable,
+                    practiceConfig: {
+                        mode: 'FIXED',
+                        passingScore: formValues.practiceConfig.passingScore,
+                    },
+                    taughtConcepts: formValues.taughtConcepts,
+                });
+            } catch (error) {
+                notification.error(getApiErrorMessage(error, 'Lỗi khi lưu grammar blog trước khi tạo câu hỏi'));
+                return;
+            }
+
+            generateQuestionsMutation.mutate(
+                { count, types: types.length > 0 ? types : undefined },
+                {
+                    onSuccess: (data) => {
+                        notification.success(`Đã tạo ${data.count} câu hỏi cuối bài`);
+                        setPracticePanel();
+                    },
+                    onError: (error) => notification.error(getApiErrorMessage(error, 'Lỗi khi tạo câu hỏi cuối bài')),
+                },
+            );
+        },
+        [generateQuestionsMutation, getValues, saveMutation, setPracticePanel],
+    );
 
     const handleGenerateAudio = useCallback(() => {
         generateAudioMutation.mutate(undefined, {
-            onSuccess: () =>
-                notification.success('Đã đưa vào hàng đợi tạo âm thanh…'),
-            onError: () => notification.error('Lỗi khi tạo âm thanh'),
+            onSuccess: () => notification.success('Đã đưa vào hàng đợi tạo audio'),
+            onError: () => notification.error('Lỗi khi tạo audio'),
         });
     }, [generateAudioMutation]);
 
     const handleAiGenerate = useCallback(
         (grammarName: string, selectedVocab: string[]) => {
             generateStoryMutation.mutate(
-                { grammarName, selectedVocab },
+                { grammarName, level: courseLevel, selectedVocab },
                 {
                     onSuccess: (data) => setGeneratedAiData(data),
-                    onError: () => {
-                        notification.error('Lỗi khi tạo câu chuyện ngữ pháp bằng AI');
-                    },
+                    onError: () => notification.error('Lỗi khi tạo grammar blog bằng AI'),
                 },
             );
         },
-        [generateStoryMutation],
+        [courseLevel, generateStoryMutation],
     );
 
     const handleAiConfirm = useCallback(
@@ -172,18 +237,114 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson }: Props) {
             reset(
                 (prev) => ({
                     ...prev,
-                    context_story: data.context_story,
-                    grammar_rule: data.grammar_rule,
+                    level: data.level,
+                    readingTime: data.readingTime,
+                    conceptName: data.conceptName,
+                    hero: data.hero,
+                    blocks: data.blocks,
+                    summaryTable: data.summaryTable,
                 }),
                 { keepDirtyValues: false },
             );
+
+            if (data.blocks.length > 0) {
+                setActiveBlock(data.blocks[0]!.id);
+            }
+
             setGeneratedAiData(null);
-            notification.success('Đã áp dụng nội dung AI vào form');
+            notification.success('Đã áp dụng grammar blog từ AI');
         },
-        [reset],
+        [reset, setActiveBlock],
     );
 
-    // ── Render ─────────────────────────────────────────────────────────────────
+    const createBlock = useCallback((type: GrammarBlogBlock['type']): GrammarBlogBlock => {
+        if (type === 'EXPLANATION') {
+            return createDefaultExplanationBlock();
+        }
+
+        if (type === 'INLINE_QUIZ') {
+            return {
+                id: crypto.randomUUID(),
+                type: 'INLINE_QUIZ',
+                instruction: 'Choose the correct option',
+                questions: [],
+            };
+        }
+
+        if (type === 'CALLOUT') {
+            return {
+                id: crypto.randomUUID(),
+                type: 'CALLOUT',
+                variant: 'TIP',
+                text: '',
+            };
+        }
+
+        return {
+            id: crypto.randomUUID(),
+            type: 'UNIT_CONTEXT_BLOCK',
+            heading: '',
+            note: '',
+            examples: [{ en: '', vi: '' }],
+        };
+    }, []);
+
+    const handleAddBlock = useCallback(
+        (type: GrammarBlogBlock['type']) => {
+            const nextBlock = createBlock(type);
+            setValue('blocks', [...formBlocks, nextBlock], { shouldDirty: true });
+            setActiveBlock(nextBlock.id);
+        },
+        [createBlock, formBlocks, setActiveBlock, setValue],
+    );
+
+    const handleDeleteBlock = useCallback(
+        (blockId: string) => {
+            const next = formBlocks.filter((block) => block.id !== blockId);
+            setValue('blocks', next, { shouldDirty: true });
+            if (activeBlockId === blockId) {
+                if (next.length > 0) {
+                    setActiveBlock(next[0]!.id);
+                } else {
+                    setHeroPanel();
+                }
+            }
+        },
+        [activeBlockId, formBlocks, setActiveBlock, setHeroPanel, setValue],
+    );
+
+    const handleDuplicateBlock = useCallback(
+        (blockId: string) => {
+            const target = formBlocks.find((block) => block.id === blockId);
+            if (!target) {
+                return;
+            }
+
+            const cloned = {
+                ...target,
+                id: crypto.randomUUID(),
+            } as GrammarBlogBlock;
+
+            const index = formBlocks.findIndex((block) => block.id === blockId);
+            const next = formBlocks.slice();
+            next.splice(index + 1, 0, cloned);
+            setValue('blocks', next, { shouldDirty: true });
+            setActiveBlock(cloned.id);
+        },
+        [formBlocks, setActiveBlock, setValue],
+    );
+
+    const handleReorderBlocks = useCallback(
+        (nextBlocks: GrammarBlogBlock[]) => {
+            setValue('blocks', nextBlocks, { shouldDirty: true });
+        },
+        [setValue],
+    );
+
+    const passingScore = useMemo(
+        () => content?.practiceConfig?.passingScore ?? lesson.practiceConfig.passingScore,
+        [content?.practiceConfig?.passingScore, lesson.practiceConfig.passingScore],
+    );
 
     if (isLoading) {
         return (
@@ -201,11 +362,8 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson }: Props) {
         return (
             <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
                 <div className="space-y-2">
-                    <AlertTriangle
-                        className="mx-auto h-8 w-8 text-destructive/60"
-                        aria-hidden="true"
-                    />
-                    <p>Không tải được nội dung ngữ pháp.</p>
+                    <AlertTriangle className="mx-auto h-8 w-8 text-destructive/60" aria-hidden="true" />
+                    <p>Không tải được grammar content.</p>
                 </div>
             </div>
         );
@@ -213,9 +371,7 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson }: Props) {
 
     return (
         <FormProvider {...methods}>
-            {/* Outer flex column matching VocabStudio pattern */}
             <div className="flex h-full flex-col overflow-hidden">
-                {/* Top Bar */}
                 <GrammarTopBar
                     lessonId={lessonId}
                     lessonTitle={lesson.title}
@@ -224,29 +380,34 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson }: Props) {
                     isGeneratingAudio={generateAudioMutation.isPending}
                     questionsCount={questionIds.length}
                     questionIds={questionIds}
-                    passingScore={content?.practiceConfig?.passingScore ?? lesson.practiceConfig.passingScore}
+                    passingScore={passingScore}
                     onSave={handleSave}
                     onOpenAiModal={() => setIsAiModalOpen(true)}
                     onOpenGenerateModal={() => setIsGenerateModalOpen(true)}
                     onGenerateAudio={handleGenerateAudio}
                 />
 
-                {/* Split Pane: Navigator | Editor */}
                 <div className="flex flex-1 overflow-hidden">
-                    {/* Left: Section Navigator — 25% */}
-                    <div className="w-1/4 overflow-hidden">
+                    <div className="w-[320px] overflow-hidden">
                         <GrammarNavigator
-                            activeSection={activeSection}
-                            onSectionChange={setActiveSection}
-                            hasStoryError={hasStoryError}
-                            hasRulesError={hasRulesError}
+                            blocks={formBlocks}
+                            activePanel={activePanel}
+                            activeBlockId={activeBlockId}
+                            onHeroClick={setHeroPanel}
+                            onSummaryClick={setSummaryPanel}
+                            onPracticeClick={setPracticePanel}
+                            onBlockClick={setActiveBlock}
+                            onAddBlock={handleAddBlock}
+                            onDuplicateBlock={handleDuplicateBlock}
+                            onDeleteBlock={handleDeleteBlock}
+                            onReorderBlocks={handleReorderBlocks}
                         />
                     </div>
 
-                    {/* Right: Dynamic Content Editor — 75% */}
                     <div className="flex-1 overflow-hidden">
                         <GrammarEditor
-                            activeSection={activeSection}
+                            activePanel={activePanel}
+                            activeBlockId={activeBlockId}
                             lessonId={lessonId}
                             questionIds={questionIds as GrammarContent['practiceConfig']['questionIds']}
                         />
@@ -254,7 +415,6 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson }: Props) {
                 </div>
             </div>
 
-            {/* Generate Questions Config Modal */}
             <GenerateQuestionsModal
                 open={isGenerateModalOpen}
                 isGenerating={generateQuestionsMutation.isPending}
@@ -262,7 +422,6 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson }: Props) {
                 onGenerate={handleGenerateQuestions}
             />
 
-            {/* AI Story Modal (portal — outside layout flow) */}
             <AiStoryModal
                 open={isAiModalOpen}
                 isGenerating={generateStoryMutation.isPending}
