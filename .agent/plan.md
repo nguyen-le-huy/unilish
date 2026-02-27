@@ -1,195 +1,212 @@
-# Implementation Plan: Speech Coach Module Structure for Speaking Lessons
+# IMPLEMENTATION PLAN — AI SPEAKING COACH V1 (CONVERSATIONAL CORE)
 
-## 1. Architectural Alignment (Unilish Standards)
+## 1) Mục tiêu & phạm vi
 
-- **Scope**: Prepare backend module structure for real-time speaking lessons (not full implementation yet).
-- **Persistence split**:
-	- **MongoDB**: speaking session summary, assessment results, lesson-linked outcomes.
-	- **Redis**: active call state, session recovery snapshot, transient buffers.
-	- **Cloudflare R2**: archived audio blobs after session end.
-	- **Pinecone**: optional semantic retrieval for speaking prompts/context expansion (no Neo4j).
-- **Pattern**: Event-driven orchestration inside `services/speech-coach`, while preserving existing 3-layer backend contract:
-	- Controller (socket/http adapter) -> Service (business orchestration) -> Repository/Provider (I/O).
+## Mục tiêu duy nhất
+Triển khai lại module speaking realtime theo kiến trúc tối giản:
 
----
+`User Audio -> OpenAI Realtime Mini -> AI Audio`
 
-## 2. Target Folder Structure (Enterprise-Clean)
+Đảm bảo:
+- Hội thoại tự nhiên theo đúng ngữ cảnh bài học speaking
+- Độ trễ thấp, trải nghiệm mượt
+- Không có pipeline STT -> LLM text -> TTS thủ công
 
-```text
-server/src/services/speech-coach/
-├── index.ts
-├── speech-coach.service.ts                 # Facade entrypoint for speaking flows
-│
-├── contracts/                              # Shared contracts/types for strict typing
-│   ├── events.contract.ts                  # Socket event names + payload maps
-│   ├── session.contract.ts                 # Session state DTOs
-│   ├── assessment.contract.ts              # Pronunciation result DTOs
-│   └── transcript.contract.ts              # Transcript/token timing DTOs
-│
-├── validations/                            # Zod schemas for every inbound event payload
-│   ├── socket-event.schema.ts
-│   ├── start-session.schema.ts
-│   ├── audio-chunk.schema.ts
-│   └── end-session.schema.ts
-│
-├── transports/                             # Real-time transport adapters only
-│   ├── socket-session.gateway.ts           # Socket event handlers, no business logic
-│   ├── webrtc-signal.gateway.ts            # Optional signaling if WebRTC path used
-│   └── event-emitter.ts                    # Typed publish/emit helper
-│
-├── orchestrators/                          # Use-case orchestrators (workflow-level)
-│   ├── start-speaking-session.orchestrator.ts
-│   ├── process-audio-chunk.orchestrator.ts
-│   ├── finalize-speaking-session.orchestrator.ts
-│   └── recover-speaking-session.orchestrator.ts
-│
-├── engines/                                # AI runtime adapters (provider-specific)
-│   ├── conversation/
-│   │   ├── openai-realtime.engine.ts       # Track 1 conversation stream
-│   │   └── conversation-fallback.engine.ts # Downgrade path STT->LLM->TTS
-│   └── assessment/
-│       ├── azure-pronunciation.engine.ts   # Track 2 scoring stream
-│       └── assessment-normalizer.ts        # Normalize provider output
-│
-├── sessions/                               # Session state management (Redis focused)
-│   ├── speaking-session.manager.ts
-│   ├── speaking-session.cache.repo.ts
-│   └── session-recovery.policy.ts
-│
-├── prompts/                                # Prompt/persona composition
-│   ├── prompt-builder.service.ts
-│   ├── prompt-template.registry.ts
-│   └── personas/
-│       ├── airport-staff.persona.ts
-│       ├── ielts-examiner.persona.ts
-│       └── business-client.persona.ts
-│
-├── processing/                             # Audio processing and stream utilities
-│   ├── audio-chunk.assembler.ts
-│   ├── silence-detector.ts
-│   ├── latency-tracker.ts
-│   └── stream-backpressure.guard.ts
-│
-├── persistence/                            # Persisted result writing (Mongo/R2)
-│   ├── speaking-result.writer.ts
-│   ├── pronunciation-result.mapper.ts
-│   └── audio-archive.writer.ts
-│
-├── observability/                          # Logs, metrics, tracing tags
-│   ├── speech-metrics.service.ts
-│   ├── cost-telemetry.service.ts
-│   └── structured-log.fields.ts
-│
-└── safeguards/                             # Reliability, limits, operational safety
-		├── circuit-breaker.policy.ts
-		├── timeout.policy.ts
-		├── retry.policy.ts
-		└── quota.guard.ts
-```
+## Ngoài phạm vi V1 (không làm)
+- Không chấm điểm phát âm/fluency/prosody
+- Không post-call grading
+- Không audio archiving lên R2
+- Không dashboard feedback sau cuộc gọi
 
 ---
 
-## 3. Why This Structure Works
+## 2) Baseline cấu hình bắt buộc (phase V1)
 
-- **Strict separation of concerns**: transport, orchestration, provider engines, persistence, and safeguards are isolated.
-- **Typed-first integration**: all payloads/events are centralized under `contracts/` and `validations/`.
-- **Production readiness**: reliability controls (`circuit-breaker`, timeout, backpressure, retry) are first-class folders.
-- **Cost and latency accountability**: observability modules are explicit from day 1.
+Server đọc từ env và apply 100% khi mở realtime session:
+- `OPENAI_REALTIME_MODEL=gpt-realtime-mini`
+- `OPENAI_REALTIME_VOICE=marin`
+- `OPENAI_REALTIME_TURN_DETECTION_MODE=normal`
+- `OPENAI_REALTIME_TURN_THRESHOLD=0.5`
+- `OPENAI_REALTIME_PREFIX_PADDING_MS=300`
+- `OPENAI_REALTIME_SILENCE_DURATION_MS=500`
+- `OPENAI_REALTIME_IDLE_TIMEOUT_MS=` (disable)
+- `OPENAI_REALTIME_TRANSCRIPT_MODEL=gpt-4o-mini-transcribe`
+- `OPENAI_REALTIME_NOISE_REDUCTION=far_field`
+- `OPENAI_REALTIME_MAX_OUTPUT_TOKENS=4096`
+
+Quy tắc:
+- Client/Admin không override model/voice trong runtime V1
+- Toàn bộ cấu hình Realtime do backend kiểm soát
 
 ---
 
-## 4. Event Contract Blueprint (Speaking Runtime)
+## 3) Kiến trúc đích V1
 
-### Client -> Server
+## Data topology tối thiểu
+- Redis: active session state (`userId`, `lessonId`, realtime session state), TTL 30 phút
+- MongoDB: lesson/unit context để build system prompt (`aiConfig`, `taughtConcepts`, `unit.contextSeed`)
+
+## Core runtime flow
+1. Client gửi `start` với `lessonId`
+2. Backend load lesson + unit context từ Mongo
+3. `prompt-builder` compose system prompt theo lesson
+4. Backend mở OpenAI Realtime session (model mini + Marin)
+5. Inject `system instructions` + `firstMessage`
+6. Stream audio hai chiều liên tục đến khi user end
+7. End session: đóng kết nối, xóa state Redis
+
+---
+
+## 4) Quy tắc System Instructions (theo bài học)
+
+System instruction **không dùng global cố định**. Phải lấy theo lesson hiện tại:
+- Nguồn chính: `lesson.content.aiConfig.systemInstruction`
+- Nguồn bổ sung: `unit.contextSeed.scenario`, `lesson.taughtConcepts`, `requiredKeywords`, `roleName`
+- Fallback khi thiếu dữ liệu: template persona trong `prompts/personas/*`
+
+Thứ tự compose prompt:
+1. Lesson systemInstruction
+2. Scenario context từ Unit
+3. Target concepts/keywords
+4. Conversational constraints (ngắn, đúng vai, không lecture)
+
+---
+
+## 5) Thiết kế event contract V1 (gọn)
+
+## Inbound (Client -> Server)
 - `speaking.session.start`
 - `speaking.audio.chunk`
 - `speaking.session.end`
-- `speaking.session.recover`
 
-### Server -> Client
+## Outbound (Server -> Client)
 - `speaking.session.started`
-- `speaking.ai.response.chunk`
-- `speaking.assessment.partial`
-- `speaking.assessment.final`
+- `speaking.ai.response.chunk` (audio/text delta)
 - `speaking.session.error`
 - `speaking.session.ended`
 
-### Core payload rules
-- Every event payload must pass Zod schema before orchestrator execution.
-- Correlation fields are mandatory: `sessionId`, `userId`, `lessonId`, `traceId`, `timestamp`.
-- Version field required for forward compatibility: `contractVersion`.
+## Transcript ở V1
+- Nếu Realtime model trả transcript events, bật luôn để hiển thị live
+- Chỉ cache tạm Redis/memory theo session (ephemeral)
+- Không lưu Mongo dài hạn trong V1
 
 ---
 
-## 5. Implementation Phases (Execution Roadmap)
+## 6) Kế hoạch triển khai theo file (server-first)
 
-### Phase 0 — Foundation (Structure + Contracts)
-1. Create the full folder skeleton.
-2. Add strict contracts and Zod schemas.
-3. Add typed event map and gateway stubs.
-4. Add `speech-coach.service.ts` facade with empty orchestration calls.
+## 6.1 Giữ lại (refactor, không xóa module)
+- `server/src/services/speech-coach/transports/socket.handler.ts`
+- `server/src/services/speech-coach/sessions/session.manager.ts`
+- `server/src/services/speech-coach/prompts/prompt-builder.ts`
+- `server/src/services/speech-coach/speech.service.ts`
 
-**Exit criteria**:
-- All files compile with strict TypeScript.
-- No `any`.
-- Event payload validation gate exists for all inbound events.
+## 6.2 Viết lại lõi realtime
+1. `engines/conversation/openai-realtime.ts`
+   - Bỏ stub, implement kết nối thực OpenAI Realtime WS
+   - Quản lý lifecycle theo `sessionId`
+   - Forward audio chunk và nhận audio response events
+   - Parse transcript events (nếu có)
 
-### Phase 1 — Session Runtime (Redis + Lifecycle)
-1. Implement session manager + cache repo for active calls.
-2. Implement start/end/recover orchestrators.
-3. Add silence timeout and idle disconnect policy.
+2. `orchestrators/start-speaking-session.orchestrator.ts`
+   - Chỉ làm: guard session, load context, build prompt, init realtime, emit started
+   - Không assessment logic
 
-**Exit criteria**:
-- Session lifecycle works end-to-end with reconnect support.
-- Circuit-breaker for silence > configured threshold is active.
+3. `orchestrators/process-audio-chunk.orchestrator.ts`
+   - Chỉ relay audio chunk sang realtime engine
+   - Không transcribe cục bộ, không fallback text-chat pipeline
 
-### Phase 2 — Dual-Track Engines
-1. Integrate OpenAI Realtime engine (conversation).
-2. Integrate Azure pronunciation engine (assessment).
-3. Normalize results and emit partial/final feedback events.
+4. `orchestrators/finalize-speaking-session.orchestrator.ts`
+   - Đóng realtime connection
+   - Cleanup Redis session state
+   - Emit session ended
 
-**Exit criteria**:
-- Conversation stream and assessment stream run in parallel.
-- Partial assessment can be emitted without blocking conversation.
+5. `contracts/events.contract.ts` + `transports/event-emitter.ts`
+   - Tinh gọn payload cho V1 conversational-only
+   - Transcript events để optional
 
-### Phase 3 — Persistence + Archive
-1. Persist speaking outcomes to Mongo through dedicated writer.
-2. Archive finalized audio to R2.
-3. Link session outcomes with lesson/user progress entities.
-
-**Exit criteria**:
-- Every completed session has durable result record.
-- Audio archival job succeeds with retry policy.
-
-### Phase 4 — Observability + Hardening
-1. Add structured logs and latency/cost metrics.
-2. Add timeout/retry/backpressure guards.
-3. Add fallback engine path when Realtime API fails.
-
-**Exit criteria**:
-- Latency SLA dashboard fields available.
-- Graceful degradation path tested.
+## 6.3 Đánh dấu deferred cho V2
+- `engines/assessment/*`
+- `services/post-call-grading.service.ts`
+- `persistence/speaking-result.writer.ts`
+- `workers/audio-archiver.ts`
 
 ---
 
-## 6. Enterprise Guardrails (Must-Have Rules)
+## 7) Kế hoạch triển khai admin (SpeakingStudio)
 
-- `console.log` forbidden; use shared logger.
-- No business logic inside gateways.
-- Zod validation required before any side effects.
-- Provider SDK response must be normalized before emitting/storing.
-- Keep speaking module internal APIs stable via contracts folder; avoid ad-hoc payload changes.
-- Keep file names `kebab-case.ts` and class names `PascalCase`.
+1. `hooks/use-speaking-realtime.ts`
+- Chuẩn hóa flow start/stream/end theo contracts V1
+- Cleanup socket/media recorder an toàn
+
+2. `lib/speaking-events.ts`, `types/speaking.types.ts`
+- Đồng bộ event names/payload V1
+- Transcript event type để optional
+
+3. `components/Sandbox/*`
+- Hiển thị realtime status + AI chunks
+- Nếu có transcript model events thì hiển thị live
+
+4. `components/DynamicEditors/OpenAIConfigEditor.tsx`
+- Runtime voice/model ở sandbox lấy từ server env
+- Tránh cho override làm lệch môi trường production-like
 
 ---
 
-## 7. Minimal Initial Deliverables (Week 1)
+## 8) NFRs V1 (theo mô tả)
 
-1. Folder skeleton exactly as defined.
-2. Event contracts + zod schemas for 4 inbound events.
-3. Session start/end/recover orchestrator stubs.
-4. Redis session manager skeleton.
-5. `speech-coach.service.ts` facade + index export.
+- Voice latency mục tiêu: `< 500ms` (best-effort theo provider/network)
+- Silence auto cutoff: 15 giây im lặng thì end session
+- Session TTL: 30 phút (Redis auto cleanup)
+- Nếu OpenAI lỗi: trả lỗi rõ ràng qua `speaking.session.error`, không crash app
 
-This gives a clean, scalable base for implementing speaking lessons without rework in later phases.
+---
 
+## 9) Kế hoạch thực thi theo giai đoạn
+
+## Giai đoạn A — Realtime engine core
+- Implement `openai-realtime.ts` + wiring `start session`
+- Kết quả: AI nói được first message bằng Marin
+
+## Giai đoạn B — Full duplex audio relay
+- Refactor `process-audio-chunk` thành relay-only
+- Kết quả: user nói và AI đáp realtime ổn định
+
+## Giai đoạn C — Transcript optional
+- Bật parse transcript events khi provider trả về
+- Kết quả: UI thấy transcript live (nếu có)
+
+## Giai đoạn D — Hardening
+- Timeout, retry, circuit-breaker, structured logs
+- Kết quả: sẵn sàng internal rollout
+
+---
+
+## 10) Test plan V1
+
+## Unit
+- Prompt builder compose đúng theo lesson context
+- Realtime event parser map đúng event outbound
+
+## Integration
+- `session.start -> session.started`
+- `audio.chunk -> ai.response.chunk`
+- `session.end -> session.ended`
+- Provider failure -> `session.error`
+
+## Smoke (Admin sandbox)
+- Start/end nhiều lần không leak
+- Giọng đúng Marin
+- AI giữ đúng persona theo lesson
+- Transcript hiển thị khi model cung cấp
+
+---
+
+## 11) Definition of Done
+
+1. Một pipeline duy nhất: audio user vào realtime mini, audio AI trả về
+2. System prompt căn cứ theo lesson/unit context của bài đang học
+3. Voice runtime đúng `marin` theo env
+4. Không còn dependency vào assessment trong runtime V1
+5. Có xử lý lỗi/session cleanup rõ ràng
+6. Transcript live hoạt động ở chế độ optional khi provider hỗ trợ
+7. Code tuân thủ kiến trúc service-repository, strict typing, Zod validation, logger chuẩn

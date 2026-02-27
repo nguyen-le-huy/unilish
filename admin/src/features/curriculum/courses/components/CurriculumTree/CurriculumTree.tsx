@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -283,6 +284,7 @@ export const CurriculumTree = memo(function CurriculumTree({ courseId }: Props) 
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Thêm chương mới</DialogTitle>
+                        <DialogDescription>Nhập tên chương để thêm vào khoá học.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-2 py-2">
                         <Label htmlFor="newUnitTitle">Tên chương</Label>
@@ -323,6 +325,7 @@ export const CurriculumTree = memo(function CurriculumTree({ courseId }: Props) 
                 <DialogContent className="sm:max-w-[460px]">
                     <DialogHeader>
                         <DialogTitle>Thêm bài học mới</DialogTitle>
+                        <DialogDescription>Chọn loại bài học và nhập tên để thêm vào chương.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                         {/* Lesson type picker */}

@@ -93,44 +93,42 @@ export const useListeningSyncStatus = (lessonId: string, enabled: boolean) => {
         queryKey: LESSON_QUERY_KEYS.listeningSyncStatus(lessonId),
         queryFn: () => listeningApi.getSyncStatus(lessonId),
         enabled: enabled && !!lessonId,
-        onSuccess: (statusData) => {
-            queryClient.setQueryData(
-                LESSON_QUERY_KEYS.listeningContent(lessonId),
-                (old: ListeningContent | undefined) =>
-                    old
-                        ? {
-                            ...old,
-                            generationStatus: statusData.status as ListeningContent['generationStatus'],
-                            media: statusData.result
-                                ? {
-                                    ...old.media,
-                                    audioUrl: statusData.result.audioUrl,
-                                    duration: statusData.result.duration,
-                                }
-                                : old.media,
-                            transcript: statusData.result?.transcript ?? old.transcript,
-                        }
-                        : old,
-            );
-        },
         refetchInterval: (q) => {
             const status = q.state.data?.status;
-            // Backend returns uppercase: 'DONE' | 'ERROR' | 'IDLE' | 'SYNCING' ...
             if (status === 'DONE' || status === 'ERROR' || status === 'IDLE') return false;
             return 3000;
         },
     });
 
-    // When pipeline finishes, invalidate the full content so the form (audioUrl,
-    // transcript, generationStatus) is refreshed from MongoDB in one shot.
     useEffect(() => {
-        const status = query.data?.status;
-        if (status === 'DONE' || status === 'ERROR' || status === 'IDLE') {
+        const statusData = query.data;
+        if (!statusData) return;
+
+        queryClient.setQueryData(
+            LESSON_QUERY_KEYS.listeningContent(lessonId),
+            (old: ListeningContent | undefined) =>
+                old
+                    ? {
+                        ...old,
+                        generationStatus: statusData.status as ListeningContent['generationStatus'],
+                        media: statusData.result
+                            ? {
+                                ...old.media,
+                                audioUrl: statusData.result.audioUrl,
+                                duration: statusData.result.duration,
+                            }
+                            : old.media,
+                        transcript: statusData.result?.transcript ?? old.transcript,
+                    }
+                    : old,
+        );
+
+        if (statusData.status === 'DONE' || statusData.status === 'ERROR' || statusData.status === 'IDLE') {
             queryClient.invalidateQueries({
                 queryKey: LESSON_QUERY_KEYS.listeningContent(lessonId),
             });
         }
-    }, [query.data?.status, lessonId, queryClient]);
+    }, [query.data, lessonId, queryClient]);
 
     return query;
 };

@@ -13,7 +13,7 @@ import {
 import type {
     ListeningLessonFormValues,
     ListeningScriptFormat,
-} from '../../../../../types/course.types';
+} from '../../../../types/course.types';
 import { MediaSettingsPanel } from './MediaSettingsPanel';
 import { TranscriptLineItem } from './TranscriptLineItem';
 

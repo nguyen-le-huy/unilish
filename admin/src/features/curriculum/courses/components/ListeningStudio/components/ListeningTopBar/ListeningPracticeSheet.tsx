@@ -52,7 +52,11 @@ function toIQuestion(question: ListeningQuestionCard): IQuestion {
         testedConcept: '',
         type: normalizedType,
         difficultyLevel: question.difficultyLevel,
-        stem: question.stem,
+        stem: {
+            text: question.stem.text,
+            audioUrl: question.stem.audioUrl === null ? undefined : question.stem.audioUrl,
+            imageUrl: question.stem.imageUrl === null ? undefined : question.stem.imageUrl,
+        },
         content,
         explanation: question.explanation,
         tags: question.tags,

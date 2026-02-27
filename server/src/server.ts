@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { createServer } from 'http';
 import app from './app.js';
 import { env } from './config/env.js';
 import { connectDB } from './config/database.mongo.js';
@@ -17,7 +18,9 @@ const startServer = async () => {
 
     const PORT = env.PORT;
 
-    const server = app.listen(PORT, () => {
+    const httpServer = createServer(app);
+
+    const server = httpServer.listen(PORT, () => {
         logger.info(`Server running on port ${PORT} in ${env.NODE_ENV} mode`);
     });
 

@@ -47,7 +47,11 @@ function toIQuestion(q: GrammarQuestionCard): IQuestion {
         testedConcept: '',
         type: q.type,
         difficultyLevel: q.difficultyLevel,
-        stem: q.stem,
+        stem: {
+            text: q.stem.text,
+            audioUrl: q.stem.audioUrl === null ? undefined : q.stem.audioUrl,
+            imageUrl: q.stem.imageUrl === null ? undefined : q.stem.imageUrl,
+        },
         content,
         explanation: q.explanation,
         tags: q.tags,

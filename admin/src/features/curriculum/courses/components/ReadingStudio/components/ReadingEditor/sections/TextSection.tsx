@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react';
+import { memo } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Wand2, Loader2, BookMarked } from 'lucide-react';
 import { Button } from '@/components/ui/button';

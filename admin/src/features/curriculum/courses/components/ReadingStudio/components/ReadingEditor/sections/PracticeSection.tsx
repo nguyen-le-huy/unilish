@@ -91,16 +91,14 @@ function MCOptions({ options }: { options: ReadingQuestionCard['content']['optio
             {options.map((opt, idx) => (
                 <li
                     key={opt.id}
-                    className={`flex items-center gap-2 rounded px-2 py-1 text-sm ${
-                        opt.isCorrect
-                            ? 'bg-green-50 font-medium text-green-800'
-                            : 'text-muted-foreground'
-                    }`}
+                    className={`flex items-center gap-2 rounded px-2 py-1 text-sm ${opt.isCorrect
+                        ? 'bg-green-50 font-medium text-green-800'
+                        : 'text-muted-foreground'
+                        }`}
                 >
                     <span
-                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                            opt.isCorrect ? 'bg-green-500 text-white' : 'bg-muted'
-                        }`}
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${opt.isCorrect ? 'bg-green-500 text-white' : 'bg-muted'
+                            }`}
                     >
                         {labels[idx] ?? idx + 1}
                     </span>
@@ -114,7 +112,6 @@ function MCOptions({ options }: { options: ReadingQuestionCard['content']['optio
 function QuestionCard({
     question,
     index,
-    lessonId,
     onEdit,
     swappingId,
     deletingId,
@@ -123,7 +120,6 @@ function QuestionCard({
 }: {
     question: ReadingQuestionCard;
     index: number;
-    lessonId: string;
     onEdit: (q: ReadingQuestionCard) => void;
     swappingId: string | null;
     deletingId: string | null;
@@ -409,7 +405,6 @@ export const PracticeSection = memo(function PracticeSection({ lessonId, questio
                                 key={q._id}
                                 question={q}
                                 index={i}
-                                lessonId={lessonId}
                                 onEdit={openEdit}
                                 swappingId={
                                     swapMutation.isPending

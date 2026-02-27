@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
@@ -262,6 +263,7 @@ function EditQuestionDialog({
             <DialogContent className="max-w-lg">
                 <DialogHeader>
                     <DialogTitle>Chỉnh sửa câu hỏi</DialogTitle>
+                    <DialogDescription className="sr-only">Chỉnh sửa nội dung câu hỏi và đáp án.</DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4 py-2">

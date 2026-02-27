@@ -119,7 +119,7 @@ export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLev
 
     const transcript = methods.watch('transcript');
     const audioUrl = methods.watch('media.audioUrl');
-    const interactiveConfig = methods.watch('interactiveConfig');
+
 
     const hasScriptError = useMemo(() => {
         if (!audioUrl) return true;

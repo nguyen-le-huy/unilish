@@ -6,11 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
     FormControl,
-    FormField,
     FormItem,
     FormMessage,
 } from '@/components/ui/form';
-import type { ListeningLessonFormValues } from '../../../../../types/course.types';
+import type { ListeningLessonFormValues } from '../../../../types/course.types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,7 +23,7 @@ interface Props {
 // react-hook-form's FormField (Controller) is only used for selects/checkboxes.
 
 export const TranscriptLineItem = memo(function TranscriptLineItem({ index, onRemove }: Props) {
-    const { register, control, formState: { errors } } = useFormContext<ListeningLessonFormValues>();
+    const { register, formState: { errors } } = useFormContext<ListeningLessonFormValues>();
 
     const lineErrors = errors.transcript?.[index];
 

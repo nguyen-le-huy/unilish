@@ -40,6 +40,7 @@
     "helmet": "^8.1.0",
     "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.3",
+    "microsoft-cognitiveservices-speech-sdk": "^1.48.0",
     "mongo-sanitize": "^1.1.0",
     "mongoose": "^9.1.1",
     "multer": "^2.0.2",
@@ -50,6 +51,7 @@
     "socket.io": "^4.8.3",
     "uuid": "^11.1.0",
     "winston": "^3.19.0",
+    "ws": "^8.19.0",
     "zod": "^4.3.2"
   },
   "devDependencies": {
@@ -68,6 +70,7 @@
     "@types/passport-google-oauth20": "^2.0.17",
     "@types/redis": "^4.0.10",
     "@types/swagger-ui-express": "^4.1.8",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.51.0",
     "@typescript-eslint/parser": "^8.51.0",
     "eslint": "^9.39.2",

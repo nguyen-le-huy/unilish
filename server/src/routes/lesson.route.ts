@@ -16,6 +16,9 @@ const router = express.Router();
 // All routes require authentication
 router.use(protect);
 
+import speakingRouter from './speaking.route.js';
+router.use('/:lessonId/speaking', speakingRouter);
+
 // ─── Read ────────────────────────────────────────────────────────────────────
 router.get('/', validate(getLessonsByUnitIdSchema), LessonController.getLessonsByUnitId);
 router.get('/:lessonId', validate(getLessonByIdSchema), LessonController.getLessonById);

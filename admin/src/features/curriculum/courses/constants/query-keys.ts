@@ -40,4 +40,5 @@ export const LESSON_QUERY_KEYS = {
     listeningContent: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'listening-content', lessonId] as const,
     listeningSyncStatus: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'listening-sync-status', lessonId] as const,
     listeningQuestions: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'listening-questions', lessonId] as const,
+    speakingContent: (lessonId: string) => [...LESSON_QUERY_KEYS.all, 'speaking-content', lessonId] as const,
 };

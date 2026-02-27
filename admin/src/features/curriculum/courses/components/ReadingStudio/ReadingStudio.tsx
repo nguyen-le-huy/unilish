@@ -17,7 +17,7 @@ import { ReadingEditor } from './components/ReadingEditor/ReadingEditor';
 import { AiGenerateModal } from './components/AiGenerateModal/AiGenerateModal';
 import {
     ReadingGenerateQuestionsModal,
-    type ReadingGenerateQuestionsConfig,
+    type GenerateReadingQuestionsConfig,
 } from './components/ReadingGenerateQuestionsModal/ReadingGenerateQuestionsModal';
 import { useReadingStudioState } from './hooks/useReadingStudioState';
 import type {
@@ -146,7 +146,7 @@ export const ReadingStudio = memo(function ReadingStudio({ lesson, courseLevel }
     );
 
     const handleGenerateQuestions = useCallback(
-        ({ count, types }: ReadingGenerateQuestionsConfig) => {
+        ({ count, types }: GenerateReadingQuestionsConfig) => {
             setIsGenerateModalOpen(false);
             generateQuestionsMutation.mutate(
                 { count, types: types.length > 0 ? types : undefined },
@@ -214,7 +214,7 @@ export const ReadingStudio = memo(function ReadingStudio({ lesson, courseLevel }
                     lessonId={lessonId}
                     lessonTitle={lesson.title}
                     isSaving={saveMutation.isPending}
-                    isGeneratingContent={generateContentMutation.isPending}
+                    isGenerating={generateContentMutation.isPending}
                     isGeneratingQuestions={generateQuestionsMutation.isPending}
                     isGeneratingAudio={generateAudioMutation.isPending}
                     questionsCount={questionIds.length}
@@ -236,6 +236,7 @@ export const ReadingStudio = memo(function ReadingStudio({ lesson, courseLevel }
                         <ReadingNavigator
                             activeSection={activeSection}
                             onSectionChange={setActiveSection}
+                            hasTextError={false}
                         />
                     </div>
 

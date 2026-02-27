@@ -14,7 +14,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import type { ListeningLessonFormValues } from '../../../../../types/course.types';
+import type { ListeningLessonFormValues } from '../../../../types/course.types';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
