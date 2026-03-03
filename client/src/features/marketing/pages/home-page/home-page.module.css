@@ -1,0 +1,51 @@
+@font-face {
+	font-family: 'Axiforma';
+	src: url('../../../../assets/fonts/axiforma-regular.otf') format('opentype');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Axiforma';
+	src: url('../../../../assets/fonts/axiforma-medium.otf') format('opentype');
+	font-weight: 500;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Axiforma';
+	src: url('../../../../assets/fonts/axiforma-bold.otf') format('opentype');
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+.page {
+	--page-padding: 24px;
+	font-family: 'Axiforma', Arial, sans-serif;
+	padding: var(--page-padding);
+	display: flex;
+	flex-direction: column;
+	gap: 100px;
+	overflow-x: clip;
+}
+
+.fullBleed {
+	position: relative;
+	left: 50%;
+	right: 50%;
+	width: 100vw;
+	margin-left: -50vw;
+	margin-right: -50vw;
+}
+
+.title {
+	font-weight: 700;
+	margin-bottom: 8px;
+}
+
+.description {
+	font-weight: 400;
+}

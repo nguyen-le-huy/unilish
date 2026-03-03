@@ -71,7 +71,7 @@
 }
 
 .inputGroup>input {
-    padding: var(--padding-btn);
+    padding: var(--padding-btnA);
     border-radius: 10px;
     background-color: transparent;
     border: 1px solid var(--dark-grey);

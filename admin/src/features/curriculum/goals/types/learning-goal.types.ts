@@ -20,6 +20,7 @@ export interface LearningGoal {
     _id: string;
     slug: string;
     title: string;
+    iconUrl?: string | null;
     description?: string | null;
     targetAudience?: string | null;
     supportedLanguages: string[];
@@ -52,6 +53,7 @@ export interface LearningGoalListQuery {
 export interface CreateLearningGoalPayload {
     slug: string;
     title: string;
+    iconUrl?: string;
     description?: string;
     targetAudience?: string;
     supportedLanguages: string[];
@@ -63,6 +65,7 @@ export interface CreateLearningGoalPayload {
 
 export interface UpdateLearningGoalPayload {
     title?: string;
+    iconUrl?: string | null;
     description?: string | null;
     targetAudience?: string | null;
     supportedLanguages?: string[];

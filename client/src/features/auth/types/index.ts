@@ -35,6 +35,13 @@ export interface AuthResponse {
     user: User;
 }
 
+export interface ApiEnvelope<T> {
+    status: string;
+    code: number;
+    message: string;
+    data: T;
+}
+
 export interface RegisterResponse {
     status: string;
     message: string;

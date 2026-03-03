@@ -132,6 +132,7 @@ export class LearningGoalService {
             skillWeights: payload.skillWeights,
             ignoredSkills: payload.ignoredSkills,
             isActive: payload.isActive,
+            ...(payload.iconUrl ? { iconUrl: payload.iconUrl } : {}),
         };
 
         const goal = await this.learningGoalRepo.create(createPayload);

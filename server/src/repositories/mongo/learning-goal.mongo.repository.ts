@@ -93,6 +93,7 @@ export class LearningGoalMongoRepository extends BaseMongoRepository<ILearningGo
             skillWeights: source.skillWeights,
             ignoredSkills: source.ignoredSkills,
             isActive: false,
+            ...(source.iconUrl ? { iconUrl: source.iconUrl } : {}),
         };
 
         return this.create(duplicateData);

@@ -6,6 +6,10 @@
   --light-grey: #F6F6F6;
   --grey: #EEE;
   --dark-grey: #848484;
+  --brand-blue: #182D77;
+  --brand-blue-muted: #DEE1F2;
+  --brand-blue-strong: #2B50F4;
 
-  --padding-btn: 15px 20px;
+  --padding-btnA: 15px 20px;
+  --padding-btnB: 10px 20px;
 }

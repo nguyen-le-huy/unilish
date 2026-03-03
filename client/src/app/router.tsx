@@ -1,20 +1,35 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 import React, { Suspense } from 'react';
 import { PATHS } from '@/config/paths';
 import { Loading } from '@/components/common/Loading/Loading';
 import { ProtectedRoute } from '@/app/ProtectedRoute';
+import DashboardLayout from '@/components/common/layouts/dashboard/DashboardLayout';
 
 // Lazy load pages
 const LoginPage = React.lazy(() => import('@/features/auth/pages/LoginPage/LoginPage'));
 const RegisterPage = React.lazy(() => import('@/features/auth/pages/RegisterPage/RegisterPage'));
-const HomePage = React.lazy(() => import('@/pages/dashboard/home/Home'));
+const DashboardHomePage = React.lazy(() => import('@/features/dashboard/home/pages/home-page/home-page'));
+const GoalSelectionPage = React.lazy(() => import('@/features/dashboard/goal-selection/pages/goal-selection-page'));
+const MarketingHomePage = React.lazy(() => import('@/features/marketing/pages/home-page/home-page'));
 const OTPPage = React.lazy(() => import('@/features/auth/pages/OTPVerifyPage/OTPVerifyPage'));
 const AuthSuccessPage = React.lazy(() => import('@/features/auth/pages/AuthSuccessPage/AuthSuccessPage'));
 
 export const router = createBrowserRouter([
     {
         path: PATHS.HOME,
-        element: <Navigate to={PATHS.DASHBOARD.HOME} replace />,
+        element: (
+            <Suspense fallback={<Loading />}>
+                <MarketingHomePage />
+            </Suspense>
+        ),
+    },
+    {
+        path: PATHS.MARKETING.HOME,
+        element: (
+            <Suspense fallback={<Loading />}>
+                <MarketingHomePage />
+            </Suspense>
+        ),
     },
     {
         path: PATHS.AUTH.LOGIN,
@@ -53,12 +68,25 @@ export const router = createBrowserRouter([
         element: <ProtectedRoute />,
         children: [
             {
-                index: true,
-                element: (
-                    <Suspense fallback={<Loading />}>
-                        <HomePage />
-                    </Suspense>
-                ),
+                element: <DashboardLayout />,
+                children: [
+                    {
+                        index: true,
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <DashboardHomePage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'goal-selection',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <GoalSelectionPage />
+                            </Suspense>
+                        ),
+                    },
+                ],
             },
         ],
     },

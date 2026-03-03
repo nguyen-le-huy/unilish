@@ -13,7 +13,7 @@ import { useAuthStore } from '@/stores/auth.store';
 
 api.interceptors.request.use((config) => {
     const token = useAuthStore.getState().token;
-    if (token) {
+    if (token && token !== 'cookie') {
         config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -21,9 +21,5 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
     (response) => response.data,
-    (error) => {
-        const message = error.response?.data?.message || error.message;
-        console.error('API Error:', message);
-        return Promise.reject(error);
-    }
+    (error) => Promise.reject(error)
 );

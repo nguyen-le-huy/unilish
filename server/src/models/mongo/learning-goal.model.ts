@@ -6,6 +6,7 @@ export interface ILearningGoal extends mongoose.Document {
     title: string;
     description?: string;
     targetAudience?: string;
+    iconUrl?: string;
 
     // --- 2. SUPPORTED LANGUAGES ---
     supportedLanguages: mongoose.Types.ObjectId[];
@@ -56,6 +57,11 @@ const LearningGoalSchema = new mongoose.Schema<ILearningGoal>(
             default: null,
         },
         targetAudience: {
+            type: String,
+            trim: true,
+            default: null,
+        },
+        iconUrl: {
             type: String,
             trim: true,
             default: null,

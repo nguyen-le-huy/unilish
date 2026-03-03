@@ -1,0 +1,259 @@
+.layout {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+    padding: 130px 20px 20px 20px;
+}
+
+.logo {
+    font-size: 28px;
+    color: var(--dark-green);
+}
+
+.header {
+	display: flex;
+    justify-content: space-between;
+	align-items: center;
+	width: auto;
+	padding: 10px 20px;
+	border: 1px solid rgba(28, 73, 255, 0);
+	border-radius: 32px;
+	box-shadow: rgba(0, 0, 0, 0.2) 0px 2px 5px 0px;
+	box-sizing: border-box;
+	position: fixed;
+	top: 20px;
+	left: 20px;
+	right: 20px;
+    background-color: white;
+    z-index: 10;
+}
+
+.buttonList {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.buttonList p {
+    font-weight: 500;
+}
+
+.buttonExplore,
+.buttonLanguage {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.5s ease;
+    padding: 15px 20px;
+    border-radius: 32px;
+}
+
+.buttonExplore:hover {
+    color: var(--dark-green);
+    background-color: var(--light-grey);
+}
+
+.buttonLanguage {
+    border: 1px solid var(--grey);
+    background-color: var(--light-grey);
+}
+
+.languageWrapper {
+    position: relative;
+}
+
+.arrowDown {
+    transform: rotate(0deg);
+    transition: transform 0.3s ease;
+}
+
+.languageDropdown {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 300px;
+    background-color: #f3f3f6;
+    border-radius: 40px;
+    padding: 12px 20px 18px;
+    box-shadow: rgba(0, 0, 0, 0.16) 0px 14px 34px;
+    z-index: 20;
+}
+
+.languageDropdownTop {
+    height: 84px;
+    border: 2px solid #d8dbe3;
+    border-radius: 42px;
+    background-color: #f5f6f8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-family: 'Axiforma', Arial, sans-serif;
+    font-size: 43px;
+    font-weight: 500;
+    line-height: 1;
+    color: #111111;
+    cursor: pointer;
+    width: 100%;
+    border-width: 2px;
+}
+
+.dropdownTopArrow {
+    transform: rotate(180deg);
+}
+
+.languageDropdownList {
+    margin-top: 14px;
+}
+
+.languageItem,
+.languageItemActive {
+    font-family: 'Axiforma', Arial, sans-serif;
+    font-size: 43px;
+    font-weight: 500;
+    line-height: 1.1;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    padding: 20px 0;
+    cursor: pointer;
+}
+
+.languageItemActive {
+    color: #2249e6;
+}
+
+.dropdownDivider {
+    height: 1px;
+    background-color: #d7d9e0;
+}
+
+@media (max-width: 1200px) {
+    .languageDropdown {
+        width: 260px;
+        border-radius: 32px;
+        padding: 10px 16px 16px;
+    }
+
+    .languageDropdownTop {
+        height: 60px;
+        font-size: 28px;
+    }
+
+    .languageItem,
+    .languageItemActive {
+        font-size: 28px;
+        padding: 14px 0;
+    }
+}
+
+.buttonLanguage:hover {
+    background-color: var(--grey);
+    color: var(--dark-green)
+}
+
+.footer {
+    margin-top: 80px;
+}
+
+.footerInner {
+    background-color: var(--dark-green);
+    border-radius: 28px;
+    padding: 44px 72px 40px;
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) auto;
+    column-gap: 64px;
+    row-gap: 24px;
+}
+
+.footerBrand {
+    display: flex;
+    align-items: flex-start;
+}
+
+.footerLogo {
+    width: 560px;
+    max-width: 100%;
+    height: auto;
+    filter: brightness(0) invert(1);
+}
+
+.footerLinks {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(120px, auto));
+    gap: 42px;
+}
+
+.footerColumn {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.footerHeading {
+    color: var(--light-grey);
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.footerLink {
+    color: rgba(246, 246, 246, 0.6);
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.2;
+    text-decoration: none;
+    transition: 0.5s;
+}
+
+.footerLink:hover {
+    color: white;
+}
+
+.footerCopy {
+    grid-column: 2;
+    justify-self: end;
+    color: rgba(246, 246, 246, 0.35);
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+@media (max-width: 1400px) {
+    .footerInner {
+        grid-template-columns: 1fr;
+        padding: 36px 28px;
+    }
+
+    .footerLinks {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 26px;
+    }
+
+    .footerCopy {
+        grid-column: 1;
+        justify-self: start;
+    }
+}
+
+@media (max-width: 900px) {
+    .footerLogo {
+        width: 320px;
+    }
+
+    .footerLinks {
+        grid-template-columns: 1fr;
+    }
+
+    .footerHeading {
+        font-size: 20px;
+    }
+
+    .footerLink,
+    .footerCopy {
+        font-size: 16px;
+    }
+}

@@ -57,4 +57,13 @@ export const learningGoalApi = {
         const response = await apiClient.post<ApiResponse<TestLearningGoalResult>>(`${BASE_PATH}/${slug}/test`, payload);
         return response.data.data;
     },
+
+    uploadGoalIcon: async (file: File): Promise<{ url: string; type: string }> => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'curriculum/goals/icons');
+
+        const response = await apiClient.post<ApiResponse<{ url: string; type: string }>>('/upload/image', formData);
+        return response.data.data;
+    },
 };

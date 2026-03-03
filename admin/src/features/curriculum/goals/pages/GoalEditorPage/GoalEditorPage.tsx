@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Save } from 'lucide-react';
+import { Loader2, Save, Upload } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import { SkillWeightEditor } from '../../components/SkillWeightEditor/SkillWeigh
 import { AISandbox } from '../../components/AISandbox/AISandbox';
 import { SupportedLanguagesCard } from '../../components/SupportedLanguagesCard/SupportedLanguagesCard';
 import { useLearningGoalDetail } from '../../hooks/useLearningGoals';
-import { useCreateLearningGoal, useUpdateLearningGoal } from '../../hooks/useLearningGoalMutations';
+import { useCreateLearningGoal, useUpdateLearningGoal, useUploadGoalIcon } from '../../hooks/useLearningGoalMutations';
 import { useGoalForm } from '../../hooks/useLearningGoalForm';
 
 // ─── Local sub-component ────────────────────────────────────────────────────
@@ -120,19 +120,59 @@ export default function GoalEditorPage() {
     const { data: goalDetail, isLoading } = useLearningGoalDetail(slug);
     const createMutation = useCreateLearningGoal();
     const updateMutation = useUpdateLearningGoal();
+    const uploadIconMutation = useUploadGoalIcon();
 
     const { form, handleTitleChange } = useGoalForm({ isCreateMode, goalDetail });
     const skillWeights = form.watch('skillWeights');
+    const iconFile = form.watch('_iconFile');
+    const iconUrl = form.watch('iconUrl');
+    const [localPreviewUrl, setLocalPreviewUrl] = useState<string>('');
 
-    const isPending = createMutation.isPending || updateMutation.isPending;
+    useEffect(() => {
+        if (!iconFile) {
+            setLocalPreviewUrl('');
+            return;
+        }
+        const url = URL.createObjectURL(iconFile);
+        setLocalPreviewUrl(url);
+        return () => URL.revokeObjectURL(url);
+    }, [iconFile]);
+
+    const previewIconUrl = localPreviewUrl || iconUrl;
+
+    const handleIconFileChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0] ?? undefined;
+        form.setValue('_iconFile', file);
+    }, [form]);
+
+    const isPending = createMutation.isPending || updateMutation.isPending || uploadIconMutation.isPending;
 
     const handleSubmit = form.handleSubmit(async (values) => {
         try {
+            let resolvedIconUrl = values.iconUrl?.trim() || undefined;
+
+            if (values._iconFile) {
+                const uploaded = await uploadIconMutation.mutateAsync(values._iconFile);
+                resolvedIconUrl = uploaded.url;
+                form.setValue('iconUrl', uploaded.url);
+                form.setValue('_iconFile', undefined);
+                setLocalPreviewUrl('');
+            }
+
             if (isCreateMode) {
-                await createMutation.mutateAsync(values);
+                await createMutation.mutateAsync({
+                    ...values,
+                    iconUrl: resolvedIconUrl,
+                });
                 navigate('/curriculum/goals');
             } else {
-                await updateMutation.mutateAsync({ slug: slug as string, payload: values });
+                await updateMutation.mutateAsync({
+                    slug: slug as string,
+                    payload: {
+                        ...values,
+                        iconUrl: resolvedIconUrl ?? null,
+                    },
+                });
             }
         } catch {
             return;
@@ -177,6 +217,44 @@ export default function GoalEditorPage() {
                                         <Input {...field} disabled={!isCreateMode} />
                                     </FormControl><FormMessage /></FormItem>
                                 )} />
+                                <div className="space-y-2">
+                                    <FormLabel htmlFor="goal-icon-file">Icon mục tiêu (Cloudinary)</FormLabel>
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                        <Input
+                                            id="goal-icon-file"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleIconFileChange}
+                                            aria-label="Upload goal icon image"
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={async () => {
+                                                if (!iconFile) return;
+                                                const uploaded = await uploadIconMutation.mutateAsync(iconFile);
+                                                form.setValue('iconUrl', uploaded.url, { shouldValidate: true });
+                                                form.setValue('_iconFile', undefined);
+                                                setLocalPreviewUrl('');
+                                            }}
+                                            disabled={!iconFile || uploadIconMutation.isPending}
+                                            aria-label="Upload selected goal icon"
+                                        >
+                                            {uploadIconMutation.isPending ? (
+                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            ) : (
+                                                <Upload className="h-4 w-4 mr-2" />
+                                            )}
+                                            Upload
+                                        </Button>
+                                    </div>
+                                    {previewIconUrl ? (
+                                        <div className="flex items-center gap-2 rounded-md border p-2 w-fit">
+                                            <img src={previewIconUrl} alt="Goal icon preview" className="h-8 w-8 rounded object-cover" />
+                                            <span className="text-xs text-muted-foreground">Preview</span>
+                                        </div>
+                                    ) : null}
+                                </div>
                                 <FormField control={form.control} name="description" render={({ field }) => (
                                     <FormItem><FormLabel>Mô tả</FormLabel><FormControl>
                                         <Textarea {...field} rows={2} placeholder="Mô tả ngắn gọn về mục tiêu này..." />

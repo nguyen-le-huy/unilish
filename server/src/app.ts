@@ -20,7 +20,27 @@ app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 app.use(cors({
-    origin: [env.CLIENT_URL, 'http://localhost:5174'],
+    origin: (origin, callback) => {
+        if (env.NODE_ENV !== 'production') {
+            callback(null, true);
+            return;
+        }
+
+        if (!origin) {
+            callback(null, true);
+            return;
+        }
+
+        const allowList = new Set([env.CLIENT_URL, 'http://localhost:5174']);
+        const isAllowedByList = allowList.has(origin);
+
+        if (isAllowedByList) {
+            callback(null, true);
+            return;
+        }
+
+        callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: true,
 }));
 app.use(express.json());

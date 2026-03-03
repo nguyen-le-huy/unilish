@@ -3,13 +3,8 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useNavigate } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
 import { toast } from 'sonner';
-import { api } from '@/lib/axios';
-import type { User } from '../types';
 import { useEffect } from 'react';
-
-interface UserResponse {
-    data: User;
-}
+import { getCurrentUser } from '../api/get-current-user';
 
 export const useGoogleCallback = () => {
     const setAuth = useAuthStore((state) => state.setAuth);
@@ -22,8 +17,7 @@ export const useGoogleCallback = () => {
             useAuthStore.getState().logout();
 
             // Fetch user profile using session cookie
-            const response = await api.get<UserResponse>('/users/me');
-            return (response as any).data as User;
+            return getCurrentUser();
         },
         retry: false, // Don't retry on failure
         refetchOnWindowFocus: false, // Don't refetch when window regains focus
@@ -34,7 +28,7 @@ export const useGoogleCallback = () => {
     // Handle success
     useEffect(() => {
         if (isSuccess && data) {
-            setAuth(data, 'cookie'); // Use 'cookie' as placeholder token
+            setAuth(data, null);
             toast.success('Successfully logged in with Google');
             navigate(PATHS.DASHBOARD.HOME);
         }
@@ -43,7 +37,6 @@ export const useGoogleCallback = () => {
     // Handle error
     useEffect(() => {
         if (isError) {
-            console.error('Auth check failed', error);
             toast.error('Authentication failed. Please try again.');
             navigate(PATHS.AUTH.LOGIN);
         }

@@ -1,0 +1,192 @@
+@keyframes scrollLeft {
+	from {
+		transform: translate3d(0, 0, 0);
+	}
+
+	to {
+		transform: translate3d(-50%, 0, 0);
+	}
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: 52px;
+}
+
+.headingWrap {
+	text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 26px;
+}
+
+.title {
+	font-size: 54px;
+    line-height: 1.2;
+	font-weight: 500;
+	color: var(--dark-green);
+}
+
+.metrics {
+	display: flex;
+	align-items: center;
+	gap: 40px;
+	color: var(--brand-blue);
+}
+
+.metricBlock {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+}
+
+.metricValue {
+	font-size: 48px;
+	font-weight: 500;
+	line-height: 0.95;
+}
+
+.metricLabel {
+	font-size: 24px;
+	line-height: 1;
+	font-weight: 500;
+}
+
+.metricDivider {
+	width: 1px;
+	height: 84px;
+	background-color: rgba(24, 45, 119, 0.2);
+}
+
+.wall {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+	width: 100%;
+}
+
+.rowViewport {
+	overflow: hidden;
+	width: 100%;
+}
+
+.track {
+	display: flex;
+	width: max-content;
+	animation: scrollLeft 42s linear infinite;
+	will-change: transform;
+}
+
+.reverse {
+	animation-direction: reverse;
+	animation-duration: 48s;
+}
+
+.group {
+	display: flex;
+	gap: 20px;
+	padding-right: 20px;
+}
+
+.card {
+	flex: 0 0 auto;
+	width: 450px;
+	min-height: 320px;
+	padding: 20px 22px;
+	border-radius: 14px;
+	background-color: var(--light-grey);
+	border: 1px solid var(--grey);
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.stars {
+	display: flex;
+	align-items: center;
+	line-height: 1;
+}
+
+.starIcon {
+	width: 35px;
+	height: 35px;
+	filter: brightness(0) saturate(100%) invert(69%) sepia(89%) saturate(1555%) hue-rotate(358deg)
+		brightness(98%) contrast(97%);
+}
+
+.author {
+	font-weight: 600;
+	line-height: 1.2;
+	color: rgba(24, 45, 119, 0.58);
+    font-size: 14px;
+}
+
+.cardTitle {
+	margin-top: auto;
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 1.15;
+	color: var(--brand-blue);
+}
+
+.cardContent {
+	font-size: 14px;
+	line-height: 1.35;
+	color: rgba(24, 45, 119, 0.62);
+}
+
+@media (max-width: 1200px) {
+	.title {
+		font-size: 54px;
+	}
+
+	.metricValue {
+		font-size: 44px;
+	}
+
+	.metricLabel {
+		font-size: 18px;
+	}
+
+	.card {
+		width: 340px;
+		min-height: 220px;
+	}
+}
+
+@media (max-width: 768px) {
+	.section {
+		gap: 36px;
+	}
+
+	.title {
+		font-size: 40px;
+	}
+
+	.metrics {
+		gap: 16px;
+	}
+
+	.metricValue {
+		font-size: 34px;
+	}
+
+	.metricLabel {
+		font-size: 16px;
+	}
+
+	.card {
+		width: 300px;
+	}
+
+	.cardTitle {
+		font-size: 18px;
+	}
+
+	.cardContent {
+		font-size: 14px;
+	}
+}

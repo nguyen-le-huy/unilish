@@ -45,6 +45,7 @@ export const createLearningGoalSchema = z.object({
         slug: z.string().min(3).max(64).regex(/^[a-z0-9-]+$/, 'Invalid slug format'),
         title: z.string().min(3).max(120),
         targetAudience: z.string().max(300).optional(),
+        iconUrl: z.string().url().optional(),
         systemPrompt: z.string().min(30).max(5000),
         skillWeights: skillWeightsSchema,
         ignoredSkills: z.array(z.string().min(1)).default([]),
@@ -58,6 +59,7 @@ export const updateLearningGoalSchema = z.object({
         .object({
             title: z.string().min(3).max(120).optional(),
             targetAudience: z.string().max(300).nullable().optional(),
+            iconUrl: z.string().url().nullable().optional(),
             systemPrompt: z.string().min(30).max(5000).optional(),
             skillWeights: skillWeightsSchema.optional(),
             ignoredSkills: z.array(z.string().min(1)).optional(),

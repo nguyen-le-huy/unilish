@@ -107,3 +107,12 @@ export const useTestLearningGoal = () => {
         },
     });
 };
+
+export const useUploadGoalIcon = () => {
+    return useMutation({
+        mutationFn: (file: File) => learningGoalApi.uploadGoalIcon(file),
+        onError: (error) => {
+            toast.error(getApiErrorMessage(error, 'Upload icon mục tiêu thất bại'));
+        },
+    });
+};

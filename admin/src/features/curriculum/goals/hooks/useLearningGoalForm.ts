@@ -20,6 +20,7 @@ export const goalFormSchema = z.object({
         .min(3, 'Tối thiểu 3 ký tự')
         .regex(/^[a-z0-9-]+$/, 'Chỉ dùng chữ thường, số và dấu gạch ngang'),
     title: z.string().min(3, 'Tối thiểu 3 ký tự'),
+    iconUrl: z.union([z.string().url('URL icon không hợp lệ'), z.literal(''), z.undefined()]),
     description: z.string(),
     targetAudience: z.string(),
     supportedLanguages: z.array(z.string()),
@@ -38,6 +39,7 @@ export const goalFormSchema = z.object({
             message: 'Tổng trọng số phải bằng 100%',
         }),
     isActive: z.boolean(),
+    _iconFile: z.custom<File>().optional(),
 });
 
 export type GoalFormValues = z.infer<typeof goalFormSchema>;
@@ -53,6 +55,7 @@ export const useGoalForm = ({ isCreateMode, goalDetail }: UseGoalFormOptions) =>
         defaultValues: {
             slug: '',
             title: '',
+            iconUrl: '',
             description: '',
             targetAudience: '',
             supportedLanguages: [],
@@ -60,6 +63,7 @@ export const useGoalForm = ({ isCreateMode, goalDetail }: UseGoalFormOptions) =>
             ignoredSkills: [],
             skillWeights: DEFAULT_SKILL_WEIGHTS,
             isActive: true,
+            _iconFile: undefined,
         },
     });
 
@@ -70,6 +74,7 @@ export const useGoalForm = ({ isCreateMode, goalDetail }: UseGoalFormOptions) =>
         form.reset({
             slug: goalDetail.slug,
             title: goalDetail.title,
+            iconUrl: goalDetail.iconUrl ?? '',
             description: goalDetail.description ?? '',
             targetAudience: goalDetail.targetAudience ?? '',
             supportedLanguages: goalDetail.supportedLanguages ?? [],
@@ -77,6 +82,7 @@ export const useGoalForm = ({ isCreateMode, goalDetail }: UseGoalFormOptions) =>
             ignoredSkills: (goalDetail.ignoredSkills ?? []).map((s) => LEGACY_SKILL_MAP[s] ?? s).filter(Boolean),
             skillWeights: goalDetail.skillWeights,
             isActive: goalDetail.isActive,
+            _iconFile: undefined,
         });
     }, [goalDetail, form]);
 

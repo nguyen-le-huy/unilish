@@ -52,6 +52,8 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:5432/api
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=100
     env_file:
       - ./client/.env
     networks:
@@ -70,6 +72,8 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:5432/api
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=100
     env_file:
       - ./admin/.env
     networks:

@@ -1,0 +1,166 @@
+.section {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 42px;
+}
+
+.title {
+	max-width: 660px;
+	text-align: center;
+	font-size: 54px;
+	line-height: 1.2;
+	font-weight: 500;
+	color: var(--brand-blue);
+}
+
+.panel {
+	width: 100%;
+	max-width: 650px;
+	background-color: var(--light-grey);
+	border: 1px solid var(--grey);
+	border-radius: 36px;
+	padding: 24px 52px;
+}
+
+.item {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	padding: 28px 0;
+	border-bottom: 1px solid rgba(24, 45, 119, 0.14);
+}
+
+.item:last-child {
+	border-bottom: 0;
+	padding-bottom: 18px;
+}
+
+.itemButton {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20px;
+	width: 100%;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	text-align: left;
+	cursor: pointer;
+}
+
+.question {
+	font-size: 20px;
+	line-height: 1.2;
+	font-weight: 500;
+	color: var(--dark-green);
+}
+
+.plus {
+	color: var(--dark-green);
+	font-size: 35px;
+	line-height: 1;
+	font-weight: 400;
+	flex: 0 0 auto;
+	transform: translateY(-2px);
+	transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.itemButton[aria-expanded='true'] .plus {
+	transform: translateY(-2px) rotate(90deg);
+}
+
+.answerWrap {
+	display: grid;
+	grid-template-rows: 0fr;
+	transition: grid-template-rows 0.3s ease;
+}
+
+.answerOpen {
+	grid-template-rows: 1fr;
+}
+
+.answerInner {
+	overflow: hidden;
+}
+
+.answer {
+	margin-top: 12px;
+	font-size: 16px;
+	line-height: 1.4;
+	font-weight: 500;
+	color: rgba(24, 45, 119, 0.6);
+	max-width: 85%;
+	opacity: 0;
+	transform: translateY(-4px);
+	transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.answerOpen .answer {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+.answer a {
+	color: #3f56ff;
+	text-decoration: none;
+	font-weight: 700;
+}
+
+.answer a:hover {
+	text-decoration: underline;
+}
+
+@media (max-width: 1200px) {
+	.title {
+		font-size: 54px;
+	}
+
+	.panel {
+		border-radius: 28px;
+		padding: 20px 28px;
+	}
+
+	.question {
+		font-size: 32px;
+	}
+
+	.plus {
+		font-size: 42px;
+	}
+}
+
+@media (max-width: 768px) {
+	.section {
+		gap: 28px;
+	}
+
+	.title {
+		font-size: 44px;
+	}
+
+	.panel {
+		padding: 14px 18px;
+		border-radius: 20px;
+	}
+
+	.item {
+		padding: 18px 0;
+	}
+
+	.itemButton {
+		gap: 12px;
+	}
+
+	.question {
+		font-size: 24px;
+	}
+
+	.plus {
+		font-size: 34px;
+	}
+
+	.answer {
+		max-width: 100%;
+	}
+}

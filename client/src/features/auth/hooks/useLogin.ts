@@ -23,7 +23,18 @@ export const useLogin = () => {
             navigate(PATHS.DASHBOARD.HOME);
         },
         onError: (error: AxiosError<ApiErrorResponse>, variables) => {
-            const message = error.response?.data?.message || 'Failed to sign in';
+            let message = error.response?.data?.message;
+
+            if (!message) {
+                if (!error.response) {
+                    message = 'Cannot connect to server. Please check backend/CORS and try again.';
+                } else if (error.response.status === 401) {
+                    message = 'Email hoặc mật khẩu không đúng';
+                } else {
+                    message = 'Failed to sign in';
+                }
+            }
+
             toast.error(message);
 
             // Redirect to OTP if account is not verified (403 Forbidden)

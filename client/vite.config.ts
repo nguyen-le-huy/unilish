@@ -12,8 +12,20 @@ export default defineConfig({
   server: {
     watch: {
       usePolling: true, // Required for Docker hot-reload on some OS
+      interval: 200,
+      awaitWriteFinish: {
+        stabilityThreshold: 200,
+        pollInterval: 100,
+      },
     },
-    host: true,
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: 5173,
+      clientPort: 5173,
+      overlay: true,
+    },
+    host: '0.0.0.0',
     port: 5173,
     strictPort: true,
   },
