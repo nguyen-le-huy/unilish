@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import styles from './goal-selection-form.module.css';
-import GoalOptionCard from '../goal-option-card/Goal-Option-Card';
-import { Button } from '@/components/core/Button/Button';
+import SelectionCard from '@/components/core/SelectionCard/SelectionCard';
+import SelectionForm from '@/components/core/SelectionForm/SelectionForm';
 import planeIcon from '@/assets/icons/plane.svg';
 
 const GOALS = [
@@ -17,14 +17,14 @@ const GoalSelectionForm = () => {
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
     return (
-        <div className={styles.container}>
-            <div className={styles.title}>
-                <h3>Chọn mục tiêu học tập của bạn</h3>
-                <p>Hãy chọn mục tiêu học tập bạn mong muốn, bạn có thể thay đổi lựa chọn này sau.</p>
-            </div>
+        <SelectionForm
+            title="Chọn mục tiêu học tập của bạn"
+            subtitle="Hãy chọn mục tiêu học tập bạn mong muốn, bạn có thể thay đổi lựa chọn này sau."
+            primaryAction={{ label: 'Tiếp tục', disabled: !selectedId }}
+        >
             <div className={styles.cardGrid}>
                 {GOALS.map((goal) => (
-                    <GoalOptionCard
+                    <SelectionCard
                         key={goal.id}
                         icon={<img src={goal.icon} alt="" width={24} height={24} />}
                         title={goal.title}
@@ -34,15 +34,7 @@ const GoalSelectionForm = () => {
                     />
                 ))}
             </div>
-            <Button
-                variant="primary"
-                padding="B"
-                className={styles.continueButton}
-                disabled={!selectedId}
-            >
-                Tiếp tục
-            </Button>
-        </div>
+        </SelectionForm>
     );
 };
 

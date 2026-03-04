@@ -10,6 +10,7 @@ const LoginPage = React.lazy(() => import('@/features/auth/pages/LoginPage/Login
 const RegisterPage = React.lazy(() => import('@/features/auth/pages/RegisterPage/RegisterPage'));
 const DashboardHomePage = React.lazy(() => import('@/features/dashboard/home/pages/home-page/home-page'));
 const GoalSelectionPage = React.lazy(() => import('@/features/dashboard/goal-selection/pages/goal-selection-page'));
+const LevelSelectionPage = React.lazy(() => import('@/features/dashboard/level-selection/pages/level-selection-page'));
 const MarketingHomePage = React.lazy(() => import('@/features/marketing/pages/home-page/home-page'));
 const OTPPage = React.lazy(() => import('@/features/auth/pages/OTPVerifyPage/OTPVerifyPage'));
 const AuthSuccessPage = React.lazy(() => import('@/features/auth/pages/AuthSuccessPage/AuthSuccessPage'));
@@ -83,6 +84,14 @@ export const router = createBrowserRouter([
                         element: (
                             <Suspense fallback={<Loading />}>
                                 <GoalSelectionPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'level-selection',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <LevelSelectionPage />
                             </Suspense>
                         ),
                     },

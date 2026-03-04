@@ -21,7 +21,10 @@ const SeriesEditorPage = lazy(() => import("@/features/curriculum/series/pages/S
 const CourseListPage = lazy(() => import("@/features/curriculum/courses/pages/CourseListPage/CourseListPage"));
 const CourseStudioPage = lazy(() => import("@/features/curriculum/courses/pages/CourseStudioPage/CourseStudioPage"));
 
-// Loading fallback component
+const QuestionBankPage = lazy(() => import("@/features/question-bank/pages/QuestionBankPage/QuestionBankPage"));
+const QuestionEditorPage = lazy(() => import("@/features/question-bank/pages/QuestionEditorPage/QuestionEditorPage"));
+const PlacementTestListPage = lazy(() => import("@/features/placement-test/pages/PlacementTestListPage/PlacementTestListPage"));
+const PlacementTestWizardPage = lazy(() => import("@/features/placement-test/pages/PlacementTestWizardPage/PlacementTestWizardPage"));
 const PageLoader = () => (
     <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -109,7 +112,52 @@ export const router = createBrowserRouter([
                     </Suspense>
                 ),
             },
-            { path: "questions", element: <PlaceholderPage title="Kho câu hỏi" /> },
+            { path: "questions", element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <QuestionBankPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "questions/new",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <QuestionEditorPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "questions/:id/edit",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <QuestionEditorPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "placement-tests",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <PlacementTestListPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "placement-tests/create",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <PlacementTestWizardPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "placement-tests/:id/edit",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <PlacementTestWizardPage />
+                    </Suspense>
+                ),
+            },
             {
                 path: "curriculum/series",
                 element: (

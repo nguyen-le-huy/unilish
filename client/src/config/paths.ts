@@ -15,5 +15,6 @@ export const PATHS = {
         HOME: '/dashboard',
         LEARNING: '/dashboard/learning',
         GOAL_SELECTION: '/dashboard/goal-selection',
+        LEVEL_SELECTION: '/dashboard/level-selection',
     }
 } as const;

@@ -1,0 +1,68 @@
+.card {
+	border: 1.5px solid var(--grey);
+	border-radius: 20px;
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	cursor: pointer;
+	transition: border-color 0.2s;
+}
+
+.card:hover {
+	border-color: black;
+}
+
+.selected {
+	border-color: black;
+}
+
+.topRow {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+}
+
+.iconBox {
+	padding: 15px;
+	background: var(--light-grey);
+	border-radius: 12px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.iconBoxPlain {
+	background: transparent;
+	border-radius: 0;
+	padding: 0;
+}
+
+.radio {
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	border: 2px solid var(--grey);
+	background: transparent;
+	flex-shrink: 0;
+	transition: background 0.2s, border-color 0.2s;
+}
+
+.radioSelected {
+	background: radial-gradient(circle, white 35%, black 35%);
+	border-color: black;
+}
+
+.title {
+	font-size: 16px;
+	font-weight: 700;
+	margin: 0;
+}
+
+.description {
+	font-size: 14px;
+	color: var(--dark-grey);
+	line-height: 1.5;
+	margin: 0;
+}

@@ -152,6 +152,11 @@ export const sidebarConfig: SidebarConfig = {
           description: "Question Bank tái sử dụng",
         },
         {
+          title: "Bài Kiểm tra Đầu vào",
+          url: "/placement-tests",
+          description: "Quản lý bài kiểm tra xếp lớp theo ngôn ngữ",
+        },
+        {
           title: "Tài nguyên mở rộng",
           url: "/curriculum/resources",
           description: "News (CNN/BBC) & YouTube Gap-Fill",
