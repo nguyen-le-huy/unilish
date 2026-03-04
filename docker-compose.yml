@@ -39,45 +39,16 @@ services:
 
 
 
-  # 3. Client Service (User Frontend)
-  client:
-    build:
-      context: ./client
-      target: development
-    container_name: unilish-client
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./client:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:5432/api
-      - CHOKIDAR_USEPOLLING=true
-      - CHOKIDAR_INTERVAL=100
-    env_file:
-      - ./client/.env
-    networks:
-      - unilish-net
-
-  # 4. Admin Service (CMS Dashboard)
-  admin:
-    build:
-      context: ./admin
-      target: development
-    container_name: unilish-admin
-    ports:
-      - "5174:5174"
-    volumes:
-      - ./admin:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:5432/api
-      - CHOKIDAR_USEPOLLING=true
-      - CHOKIDAR_INTERVAL=100
-    env_file:
-      - ./admin/.env
-    networks:
-      - unilish-net
+  # 3. Client & Admin run NATIVELY on macOS (not in Docker)
+  # Reason: Docker Desktop VirtioFS caches mtime, breaking all file watchers
+  #         (both inotify and polling). Vite HMR requires mtime propagation.
+  #
+  # Run locally:
+  #   cd client && npm run dev   → http://localhost:5173
+  #   cd admin  && npm run dev   → http://localhost:5174
+  #
+  # client:  ← intentionally omitted
+  # admin:   ← intentionally omitted
 
 
 networks:

@@ -7,6 +7,44 @@ import { Switch } from '@/components/ui/switch';
 import { RadarSkillChart } from '../RadarSkillChart/RadarSkillChart';
 import type { LearningGoal } from '../../types/learning-goal.types';
 
+// ---------------------------------------------------------------------------
+// GoalIcon — shows iconUrl as image, falls back to first-letter avatar
+// ---------------------------------------------------------------------------
+interface GoalIconProps {
+    iconUrl?: string | null;
+    title: string;
+}
+
+function GoalIcon({ iconUrl, title }: GoalIconProps) {
+    const fallbackLetter = title.charAt(0).toUpperCase();
+
+    if (iconUrl) {
+        return (
+            <div className="h-10 w-10 flex-shrink-0 rounded-lg border bg-muted flex items-center justify-center overflow-hidden">
+                <img
+                    src={iconUrl}
+                    alt={title}
+                    className="h-6 w-6 object-contain"
+                    onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    }}
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div className="h-10 w-10 flex-shrink-0 rounded-lg bg-muted flex items-center justify-center">
+            <span className="text-sm font-semibold text-muted-foreground select-none">
+                {fallbackLetter}
+            </span>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// GoalCard
+// ---------------------------------------------------------------------------
 interface GoalCardProps {
     goal: LearningGoal;
     onToggleStatus: (slug: string) => void;
@@ -24,14 +62,18 @@ export const GoalCard = memo(function GoalCard({ goal, onToggleStatus, onDuplica
         <Card>
             <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-3">
-                    <div>
-                        <CardTitle className="text-base">{goal.title}</CardTitle>
-                        <CardDescription className="mt-1">/{goal.slug}</CardDescription>
+                    <div className="flex items-start gap-3 min-w-0">
+                        <GoalIcon iconUrl={goal.iconUrl} title={goal.title} />
+                        <div className="min-w-0">
+                            <CardTitle className="text-base leading-snug">{goal.title}</CardTitle>
+                            <CardDescription className="mt-0.5 truncate">/{goal.slug}</CardDescription>
+                        </div>
                     </div>
                     <Switch
                         checked={goal.isActive}
                         onCheckedChange={handleToggle}
                         aria-label={`Toggle status for ${goal.title}`}
+                        className="flex-shrink-0"
                     />
                 </div>
             </CardHeader>

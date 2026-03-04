@@ -4,6 +4,10 @@
     gap: 30px;
 }
 
+.hero {
+    margin-top: 150px;
+}
+
 .content h1 {
     line-height: 1.2;
     font-size: 54px;

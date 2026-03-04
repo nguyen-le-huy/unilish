@@ -11,19 +11,13 @@ export default defineConfig({
   },
   server: {
     watch: {
-      usePolling: true, // Required for Docker hot-reload on some OS
-      interval: 200,
-      awaitWriteFinish: {
-        stabilityThreshold: 200,
-        pollInterval: 100,
-      },
+      usePolling: true, // Required for Docker hot-reload on macOS (inotify doesn't work in containers)
+      interval: 100,
     },
     hmr: {
       protocol: 'ws',
       host: 'localhost',
-      port: 5173,
       clientPort: 5173,
-      overlay: true,
     },
     host: '0.0.0.0',
     port: 5173,
