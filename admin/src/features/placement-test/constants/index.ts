@@ -24,10 +24,10 @@ export const CEFR_LEVEL_LABELS: Record<CEFRLevel, string> = {
 
 // ─── Language Standards ───────────────────────────────────────────────────────
 
-export type LanguageStandardSuggestion = {
+export interface LanguageStandardSuggestion {
     standards: string[];
     output: string[];
-};
+}
 
 export const LANGUAGE_STANDARD_SUGGESTIONS: Record<string, LanguageStandardSuggestion> = {
     en: { standards: ['TOEIC', 'IELTS', 'Hybrid'], output: ['CEFR'] },

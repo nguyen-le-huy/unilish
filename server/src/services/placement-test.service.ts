@@ -7,6 +7,7 @@ import { logger } from '../utils/logger.js';
 import { env } from '../config/env.js';
 import { placementTestMongoRepository } from '../repositories/mongo/placement-test.mongo.repository.js';
 import { Question } from '../models/mongo/question.model.js';
+import { Concept, EConceptType } from '../models/mongo/concept.model.js';
 import {
     EPlacementTestStatus,
     type IPlacementTest,
@@ -17,6 +18,7 @@ import type {
     CreatePlacementTestBody,
     UpdatePlacementTestBody,
     AnalyticsQuery,
+    PushToQuestionBankBody,
 } from '../validations/placement-test.validation.js';
 import type { PlacementTestListResult } from '../repositories/mongo/placement-test.mongo.repository.js';
 
@@ -499,6 +501,22 @@ class PlacementTestService {
 
                 const partResults = await Promise.all(
                     mcqModule.parts.map(async (part) => {
+                        const manualCount = part.manualContent?.questionItems?.length ?? 0;
+
+                        // If the part is fully covered by manually-entered questions,
+                        // skip pool validation — no need to query the question bank.
+                        if (manualCount >= part.questionsCount) {
+                            return {
+                                part: part.part,
+                                name: part.name,
+                                poolTag: part.poolTag,
+                                required: part.questionsCount,
+                                minimumPool: part.questionsCount,
+                                publishedCount: manualCount,
+                                isValid: true,
+                            };
+                        }
+
                         const publishedCount = await Question.countDocuments({
                             tags: part.poolTag,
                             status: 'published',
@@ -753,6 +771,85 @@ ${rawText}
             questionItems,
             ...(shouldAttachGroupPattern ? { groupPattern: normalizedGroupPattern } : {}),
         };
+    }
+
+    // ─── POST /placement-tests/:id/push-to-question-bank ─────────────────────
+    async pushToQuestionBank(
+        id: string,
+        adminId: string,
+        body: PushToQuestionBankBody,
+    ): Promise<{ inserted: number; skipped: number }> {
+        const test = await this.getById(id);
+        const languageId = new mongoose.Types.ObjectId(test.languageId as unknown as string);
+        const adminObjId = new mongoose.Types.ObjectId(adminId);
+        let inserted = 0;
+        let skipped = 0;
+
+        for (const module of test.modules) {
+            if (module.type !== 'mcq') continue;
+            const mcqModule = module as IModuleMCQ;
+
+            for (const part of mcqModule.parts) {
+                const items = part.manualContent?.questionItems ?? [];
+                if (items.length === 0) continue;
+
+                const skill = part.part <= 4 ? 'listening' : 'reading';
+
+                // Upsert Concept by poolTag as key
+                let concept = await Concept.findOne({ languageId, key: part.poolTag }).lean();
+                if (!concept) {
+                    concept = await Concept.create({
+                        languageId,
+                        key: part.poolTag,
+                        name: part.name,
+                        type: EConceptType.SKILL,
+                    });
+                }
+
+                for (const item of items) {
+                    const exists = await Question.exists({
+                        languageId,
+                        'stem.text': item.question,
+                        tags: part.poolTag,
+                    });
+                    if (exists) {
+                        skipped++;
+                        continue;
+                    }
+
+                    const options = (['A', 'B', 'C', 'D'] as const).map((k) => ({
+                        id: k,
+                        text: item.options[k],
+                        isCorrect: item.correctOption === k,
+                    }));
+
+                    await Question.create({
+                        languageId,
+                        testedConcept: concept._id,
+                        source: 'placement_test',
+                        skill,
+                        part: part.part,
+                        difficulty: 'B1',
+                        difficultyLevel: 3,
+                        type: 'MULTIPLE_CHOICE',
+                        stem: {
+                            text: item.question,
+                            ...(item.audioUrl ? { audioUrl: item.audioUrl } : {}),
+                            ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
+                        },
+                        content: { options },
+                        ...(item.explanation ? { explanation: item.explanation } : {}),
+                        tags: [part.poolTag],
+                        status: body.status,
+                        createdBy: adminObjId,
+                    });
+                    inserted++;
+                }
+            }
+        }
+
+        logger.info(`pushToQuestionBank: test=${id} inserted=${inserted} skipped=${skipped}`);
+        return { inserted, skipped };
     }
 }
 

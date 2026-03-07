@@ -11,6 +11,7 @@ import type {
     RollbackParams,
     AnalyticsQuery,
     ParseMcqPart3ImportBody,
+    PushToQuestionBankBody,
 } from '../validations/placement-test.validation.js';
 
 // ─── Controller ───────────────────────────────────────────────────────────────
@@ -98,4 +99,14 @@ export class PlacementTestController {
         const result = await placementTestService.parseMcqPart3Import(rawText, part);
         sendResponse(res, HttpStatus.OK, 'AI phân tích nội dung thành công', result);
     });
-}
+    // ─── POST /placement-tests/:id/push-to-question-bank ─────────────────
+    static pushToQuestionBank = catchAsync(async (req: Request, res: Response) => {
+        const { id } = req.params as { id: string };
+        const adminId = String(req.user?._id);
+        const result = await placementTestService.pushToQuestionBank(
+            id,
+            adminId,
+            req.body as PushToQuestionBankBody,
+        );
+        sendResponse(res, HttpStatus.OK, `Đã đẩy ${result.inserted} câu hỏi vào Question Bank`, result);
+    });}

@@ -10,6 +10,9 @@ import type {
     IVersionHistoryItem,
     IPoolValidationResult,
     IAnalyticsSummary,
+    AiImportedQuestion,
+    IPushToQuestionBankResult,
+    IPushToQuestionBankPayload,
 } from '../types';
 
 const BASE_PATH = '/placement-tests';
@@ -18,8 +21,8 @@ const BASE_PATH = '/placement-tests';
 
 function serializeFilters(filters: IPlacementTestFilters): Record<string, unknown> {
     const params: Record<string, unknown> = {};
-    if (filters.page) params.page = filters.page;
-    if (filters.limit) params.limit = filters.limit;
+    if (filters.page !== undefined) params.page = filters.page;
+    if (filters.limit !== undefined) params.limit = filters.limit;
     if (filters.search) params.search = filters.search;
     if (filters.language) params.language = filters.language;
     if (filters.status) params.status = filters.status;
@@ -92,6 +95,31 @@ export const placementTestApi = {
     rollback: async (id: string, version: number): Promise<IPlacementTest> => {
         const response = await apiClient.post<ApiResponse<IPlacementTest>>(
             `${BASE_PATH}/${id}/rollback/${version}`,
+        );
+        return response.data.data;
+    },
+
+    // ─── AI ─────────────────────────────────────────────────────────────────
+
+    parseMcqContent: async (
+        rawText: string,
+        part: 1 | 2 | 3 | 4 | 5 | 6 | 7,
+    ): Promise<{ questionItems: AiImportedQuestion[]; groupPattern?: number[] }> => {
+        const response = await apiClient.post<
+            ApiResponse<{ questionItems: AiImportedQuestion[]; groupPattern?: number[] }>
+        >(`${BASE_PATH}/ai/parse-mcq-part3`, { rawText, part });
+        return response.data.data;
+    },
+
+    // ─── Push to Question Bank ────────────────────────────────────────────────
+
+    pushToQuestionBank: async (
+        id: string,
+        payload: IPushToQuestionBankPayload = { status: 'published' },
+    ): Promise<IPushToQuestionBankResult> => {
+        const response = await apiClient.post<ApiResponse<IPushToQuestionBankResult>>(
+            `${BASE_PATH}/${id}/push-to-question-bank`,
+            payload,
         );
         return response.data.data;
     },

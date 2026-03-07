@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -49,52 +49,26 @@ export function Step1GeneralInfo({ defaultValues, onNext }: Props) {
             languageId: defaultValues?.languageId ?? '',
         },
     });
-    const lastHydrationKeyRef = useRef<string>('');
 
-    const normalizedLanguageCode = useMemo(() => {
-        const rawLanguage = defaultValues?.language?.trim().toLowerCase();
-        const rawLanguageId = defaultValues?.languageId;
-
-        const directByCode = languages.find((lang) => lang.code.toLowerCase() === rawLanguage);
-        if (directByCode) return directByCode.code;
-
-        const byId = rawLanguageId ? languages.find((lang) => lang._id === rawLanguageId) : undefined;
-        if (byId) return byId.code;
-
-        const byName = rawLanguage
-            ? languages.find(
-                (lang) =>
-                    lang.name.toLowerCase() === rawLanguage ||
-                    lang.nativeName.toLowerCase() === rawLanguage,
-            )
-            : undefined;
-        return byName?.code ?? '';
-    }, [defaultValues?.language, defaultValues?.languageId, languages]);
-
-    const hydratedValues = useMemo(() => {
-        const matchedLanguage = languages.find((lang) => lang.code === normalizedLanguageCode);
-        return {
-            language: normalizedLanguageCode,
-            languageId: matchedLanguage?._id ?? defaultValues?.languageId ?? '',
-        };
-    }, [
-        languages,
-        normalizedLanguageCode,
-        defaultValues?.languageId,
-    ]);
-
-    const hydrationKey = useMemo(
-        () => JSON.stringify(hydratedValues),
-        [hydratedValues],
-    );
-
+    // Hydrate form when languages are loaded OR when defaultValues change (edit mode async load)
     useEffect(() => {
-        if (!defaultValues) return;
-        if (lastHydrationKeyRef.current === hydrationKey) return;
+        if (!defaultValues?.language || languages.length === 0) return;
 
-        lastHydrationKeyRef.current = hydrationKey;
-        form.reset(hydratedValues);
-    }, [defaultValues, form, hydratedValues, hydrationKey]);
+        const rawLanguage = defaultValues.language.trim().toLowerCase();
+        const rawLanguageId = defaultValues.languageId;
+
+        const matched =
+            languages.find((l) => l.code.toLowerCase() === rawLanguage) ||
+            (rawLanguageId ? languages.find((l) => l._id === rawLanguageId) : undefined) ||
+            languages.find((l) => l.name.toLowerCase() === rawLanguage || l.nativeName.toLowerCase() === rawLanguage);
+
+        form.reset({
+            language: matched?.code ?? rawLanguage,
+            languageId: matched?._id ?? rawLanguageId ?? '',
+        });
+    // form is stable (useForm ref); defaultValues identity may change when existingTest loads
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [languages, defaultValues?.language, defaultValues?.languageId]);
 
     function onSubmit(values: Step1FormValues) {
         onNext({

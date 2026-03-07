@@ -13,6 +13,7 @@ import {
     poolValidationSchema,
     analyticsSchema,
     parseMcqPart3ImportSchema,
+    pushToQuestionBankSchema,
 } from '../validations/placement-test.validation.js';
 
 const router = express.Router();
@@ -94,6 +95,13 @@ router.post(
     restrictTo('admin'),
     validate(rollbackSchema),
     PlacementTestController.rollback,
+);
+
+router.post(
+    '/:id/push-to-question-bank',
+    restrictTo('admin'),
+    validate(pushToQuestionBankSchema),
+    PlacementTestController.pushToQuestionBank,
 );
 
 export default router;

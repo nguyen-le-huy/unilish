@@ -107,7 +107,7 @@ export interface ISpeakingParts {
     warmupMinutes: number;
     part1: { minutes: number; questionsRange: [number, number]; topics: string[] };
     part2: { minutes: number; prepSeconds: number; cueCards: { level: 'low' | 'mid' | 'high'; text: string }[] };
-    part3: { minutes: number; questionsRange: [number, number] };
+    part3: { minutes: number; questionsRange: [number, number]; topics: string[] };
 }
 
 export interface IModuleSpeaking {
@@ -282,6 +282,7 @@ const SpeakingPartsSchema = new mongoose.Schema(
         part3: {
             minutes: { type: Number, default: 5 },
             questionsRange: { type: [Number], default: [2, 3] },
+            topics: { type: [String], default: [] },
         },
     },
     { _id: false },

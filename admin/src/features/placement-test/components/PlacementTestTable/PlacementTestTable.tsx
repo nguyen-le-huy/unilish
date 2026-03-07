@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MoreHorizontal, Pencil, BarChart2, History, Pause, Play, Archive } from 'lucide-react';
+import { MoreHorizontal, Pencil, BarChart2, History, Pause, Play, Archive, Send, Database } from 'lucide-react';
 import {
     Table,
     TableBody,
@@ -20,6 +20,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { StatusBadge } from '../StatusBadge/StatusBadge';
+import { usePushToQuestionBank } from '../../hooks/usePlacementTestMutations';
 import type { IPlacementTestSummary } from '../../types';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -78,6 +79,15 @@ export function PlacementTestTable({
         (id: string) => navigate(`/placement-tests/${id}/edit`),
         [navigate],
     );
+
+    const handlePublish = useCallback(
+        (test: IPlacementTestSummary) => {
+            onUpdateStatus(test._id, 'active');
+        },
+        [onUpdateStatus],
+    );
+
+    const { mutate: pushToQuestionBank, isPending: isPushing } = usePushToQuestionBank();
 
     return (
         <div className="rounded-md border">
@@ -164,6 +174,15 @@ export function PlacementTestTable({
                                                     Lịch sử phiên bản
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
+                                                {(test.status === 'draft' || test.status === 'archived') && (
+                                                    <DropdownMenuItem
+                                                        onClick={() => handlePublish(test)}
+                                                        className="text-green-700"
+                                                    >
+                                                        <Send className="mr-2 h-4 w-4" />
+                                                        Công bố
+                                                    </DropdownMenuItem>
+                                                )}
                                                 {test.status === 'active' ? (
                                                     <DropdownMenuItem
                                                         onClick={() => onUpdateStatus(test._id, 'paused')}
@@ -190,6 +209,14 @@ export function PlacementTestTable({
                                                         Lưu trữ
                                                     </DropdownMenuItem>
                                                 )}
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                    onClick={() => pushToQuestionBank({ id: test._id })}
+                                                    disabled={isPushing}
+                                                >
+                                                    <Database className="mr-2 h-4 w-4" />
+                                                    Đẩy vào Question Bank
+                                                </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>

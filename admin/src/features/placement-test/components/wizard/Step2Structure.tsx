@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, memo } from 'react';
 import {
     DndContext,
     closestCenter,
@@ -53,7 +53,7 @@ interface SortableItemProps {
     onRemove: () => void;
 }
 
-function SortableItem({ module, onEdit, onRemove }: SortableItemProps) {
+function SortableItemBase({ module, onEdit, onRemove }: SortableItemProps) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
         useSortable({ id: module.id });
 
@@ -110,6 +110,8 @@ function SortableItem({ module, onEdit, onRemove }: SortableItemProps) {
         </div>
     );
 }
+
+const SortableItem = memo(SortableItemBase);
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -244,7 +246,13 @@ export function Step2Structure({
                 <Button variant="outline" onClick={onBack}>← Quay lại</Button>
                 <Button
                     disabled={modules.length === 0 || isSubmitting}
-                    onClick={() => onNext(modules.map(({ id: _, ...rest }) => rest as IPlacementTestModule))}
+                    onClick={() => {
+                            const normalized = modules.map((m) => {
+                                const { id: omitted, ...rest } = m; // eslint-disable-line @typescript-eslint/no-unused-vars
+                                return rest as IPlacementTestModule;
+                            });
+                            onNext(normalized);
+                        }}
                 >
                     {isSubmitting ? 'Đang lưu...' : nextLabel}
                 </Button>

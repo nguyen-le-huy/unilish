@@ -110,6 +110,7 @@ const speakingPartsSchema = z.object({
     part3: z.object({
         minutes: z.number().min(1),
         questionsRange: z.tuple([z.number().int().min(1), z.number().int().min(1)]),
+        topics: z.array(z.string().trim()).default([]),
     }),
 });
 
@@ -256,7 +257,7 @@ export const poolValidationSchema = z.object({
 export const analyticsSchema = z.object({
     params: z.object({ id: mongoIdSchema }),
     query: z.object({
-        range: z.enum(['7d', '30d', 'custom']).default('7d'),
+        range: z.enum(['7d', '30d', '90d', 'all', 'custom']).default('7d'),
         from: z.string().optional(),
         to: z.string().optional(),
     }),
@@ -271,7 +272,18 @@ export const parseMcqPart3ImportSchema = z.object({
     }),
 });
 
+// ─── 11. POST /placement-tests/:id/push-to-question-bank ───────────────────────
+
+export const pushToQuestionBankSchema = z.object({
+    params: z.object({ id: mongoIdSchema }),
+    body: z.object({
+        status: z.enum(['draft', 'published']).default('published'),
+    }),
+});
+
 // ─── Inferred Types ───────────────────────────────────────────────────────────
+
+export type PushToQuestionBankBody = z.infer<typeof pushToQuestionBankSchema>['body'];
 
 export type GetPlacementTestsQuery = z.infer<typeof getPlacementTestsSchema>['query'];
 export type CreatePlacementTestBody = z.infer<typeof createPlacementTestSchema>['body'];

@@ -27,9 +27,13 @@ const speakingSchema = z.object({
     warmupMinutes: z.coerce.number().min(0).default(2),
     part1Minutes: z.coerce.number().min(1).default(4),
     part2Minutes: z.coerce.number().min(1).default(4),
+    part3Minutes: z.coerce.number().min(1).default(5),
     part2PrepSeconds: z.coerce.number().min(0).default(60),
+    part3MinQuestions: z.coerce.number().int().min(1).default(2),
+    part3MaxQuestions: z.coerce.number().int().min(1).default(3),
     part1TopicsText: z.string().default(''),
     part2CueCardsText: z.string().default(''),
+    part3TopicsText: z.string().default(''),
 });
 
 type SpeakingFormValues = z.infer<typeof speakingSchema>;
@@ -70,15 +74,22 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
             warmupMinutes: defaultValues?.parts?.warmupMinutes ?? 2,
             part1Minutes: defaultValues?.parts?.part1?.minutes ?? 4,
             part2Minutes: defaultValues?.parts?.part2?.minutes ?? 4,
+            part3Minutes: defaultValues?.parts?.part3?.minutes ?? 5,
             part2PrepSeconds: defaultValues?.parts?.part2?.prepSeconds ?? 60,
+            part3MinQuestions: defaultValues?.parts?.part3?.questionsRange?.[0] ?? 2,
+            part3MaxQuestions: defaultValues?.parts?.part3?.questionsRange?.[1] ?? 3,
             part1TopicsText: toMultilineText(defaultValues?.parts?.part1?.topics),
             part2CueCardsText: toMultilineText(uniqueCueCards),
+            part3TopicsText: toMultilineText(defaultValues?.parts?.part3?.topics),
         },
     });
 
     function onSubmit(values: SpeakingFormValues) {
         const part1Topics = toStringList(values.part1TopicsText);
         const cueCards = toStringList(values.part2CueCardsText).map((text) => ({ level: 'mid' as const, text }));
+        const part3Topics = toStringList(values.part3TopicsText);
+        const part3Min = Math.min(values.part3MinQuestions, values.part3MaxQuestions);
+        const part3Max = Math.max(values.part3MinQuestions, values.part3MaxQuestions);
 
         onSave({
             order,
@@ -101,8 +112,9 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
                     cueCards,
                 },
                 part3: {
-                    minutes: defaultValues?.parts?.part3?.minutes ?? 5,
-                    questionsRange: defaultValues?.parts?.part3?.questionsRange ?? [3, 5],
+                    minutes: values.part3Minutes,
+                    questionsRange: [part3Min, part3Max],
+                    topics: part3Topics,
                 },
             },
         });
@@ -194,6 +206,16 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
                             <FormMessage />
                         </FormItem>
                     )} />
+
+                    <FormField control={form.control} name="part3TopicsText" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-xs">Part 3 — Câu hỏi thảo luận</FormLabel>
+                            <FormControl>
+                                <Textarea rows={5} placeholder="What are the advantages and disadvantages of living in a big city?" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
                 </div>
 
                 <Separator />
@@ -206,6 +228,7 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
                             { key: 'warmupMinutes' as const, label: 'Warm-up (phút)' },
                             { key: 'part1Minutes' as const, label: 'Part 1 (phút)' },
                             { key: 'part2Minutes' as const, label: 'Part 2 (phút)' },
+                            { key: 'part3Minutes' as const, label: 'Part 3 (phút)' },
                         ].map(({ key, label }) => (
                             <FormField key={key} control={form.control} name={key} render={({ field }) => (
                                 <FormItem>
@@ -216,11 +239,27 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
                             )} />
                         ))}
                     </div>
-                    <div className="mt-3 max-w-xs">
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <FormField control={form.control} name="part2PrepSeconds" render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="text-xs">Part 2 — Chuẩn bị (giây)</FormLabel>
                                 <FormControl><Input type="number" min={0} className="h-8" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+
+                        <FormField control={form.control} name="part3MinQuestions" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-xs">Part 3 — Số câu tối thiểu</FormLabel>
+                                <FormControl><Input type="number" min={1} className="h-8" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+
+                        <FormField control={form.control} name="part3MaxQuestions" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-xs">Part 3 — Số câu tối đa</FormLabel>
+                                <FormControl><Input type="number" min={1} className="h-8" {...field} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />

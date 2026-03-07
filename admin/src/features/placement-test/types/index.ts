@@ -1,12 +1,6 @@
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 export type PlacementTestStatus = 'draft' | 'active' | 'paused' | 'archived';
-export const PlacementTestStatus = {
-    DRAFT: 'draft' as PlacementTestStatus,
-    ACTIVE: 'active' as PlacementTestStatus,
-    PAUSED: 'paused' as PlacementTestStatus,
-    ARCHIVED: 'archived' as PlacementTestStatus,
-} as const;
 
 export type ModuleType = 'mcq' | 'essay' | 'speaking';
 export type CEFRLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
@@ -98,7 +92,7 @@ export interface IModuleSpeaking {
         warmupMinutes: number;
         part1: { minutes: number; questionsRange: [number, number]; topics: string[] };
         part2: { minutes: number; prepSeconds: number; cueCards: ISpeakingCueCard[] };
-        part3: { minutes: number; questionsRange: [number, number] };
+        part3: { minutes: number; questionsRange: [number, number]; topics: string[] };
     };
 }
 
@@ -250,13 +244,26 @@ export interface IAnalyticsSummary {
     moduleDropoutRates?: { moduleName: string; rate: number }[];
 }
 
-// ─── Wizard State (Frontend-only) ────────────────────────────────────────────
+// ─── AI Parsing ──────────────────────────────────────────────────────────────
 
-export interface WizardFormState {
-    step: 1 | 2 | 3 | 4;
-    isDirty: boolean;
-    step1: Partial<ICreatePlacementTestPayload>;
-    step2: { modules: IPlacementTestModule[] };
-    step3: { topicsEdited: boolean };
-    step4: { cefrMappingEdited: boolean };
+export interface AiImportedQuestion {
+    question: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    correctOption: 'A' | 'B' | 'C' | 'D';
+    transcript?: string;
+    explanation?: string;
+}
+
+// ─── Push to Question Bank ──────────────────────────────────────────────────
+
+export interface IPushToQuestionBankResult {
+    inserted: number;
+    skipped: number;
+}
+
+export interface IPushToQuestionBankPayload {
+    status: 'draft' | 'published';
 }

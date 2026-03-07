@@ -54,9 +54,10 @@ export function AnalyticsModal({ testId, onClose }: Props) {
     const open = !!testId;
     const [range, setRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
     const { data, isLoading } = useAnalytics(testId ?? '', range);
+    const cefrDistribution = data?.cefrDistribution ?? {};
 
     const totalCefr = data
-        ? Object.values(data.cefrDistribution).reduce((s, v) => s + (v ?? 0), 0)
+        ? Object.values(cefrDistribution).reduce((s, v) => s + (v ?? 0), 0)
         : 0;
 
     return (
@@ -95,16 +96,16 @@ export function AnalyticsModal({ testId, onClose }: Props) {
                     <div className="space-y-5 mt-2">
                         {/* KPIs */}
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                            <StatCard label="Tổng lượt thi" value={data.totalAttempts} icon={Users} />
-                            <StatCard label="Hoàn thành" value={data.completedAttempts} icon={Users} />
+                            <StatCard label="Tổng lượt thi" value={data.totalAttempts ?? 0} icon={Users} />
+                            <StatCard label="Hoàn thành" value={data.completedAttempts ?? 0} icon={Users} />
                             <StatCard
                                 label="Tỷ lệ bỏ thi"
-                                value={`${(data.dropoutRate * 100).toFixed(1)}%`}
+                                value={`${((data.dropoutRate ?? 0) * 100).toFixed(1)}%`}
                                 icon={TrendingDown}
                             />
                             <StatCard
                                 label="Thời gian TB"
-                                value={`${data.avgDurationMinutes.toFixed(0)} phút`}
+                                value={`${(data.avgDurationMinutes ?? 0).toFixed(0)} phút`}
                                 icon={Clock}
                             />
                         </div>
@@ -114,7 +115,7 @@ export function AnalyticsModal({ testId, onClose }: Props) {
                             <p className="text-sm font-medium mb-2">Phân bố CEFR</p>
                             <div className="flex flex-wrap gap-2">
                                 {CEFR_LEVELS.map((level) => {
-                                    const count = data.cefrDistribution[level] ?? 0;
+                                    const count = cefrDistribution[level] ?? 0;
                                     const pct = totalCefr > 0 ? ((count / totalCefr) * 100).toFixed(1) : '0.0';
                                     return (
                                         <div key={level} className="flex flex-col items-center gap-1">

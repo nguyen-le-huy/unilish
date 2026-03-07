@@ -11,13 +11,14 @@ import {
     useCreatePlacementTest,
     useUpdatePlacementTest,
 } from '../../hooks/usePlacementTestMutations';
+import type { WizardFormState } from '../../types/wizard.types';
 import type {
-    WizardFormState,
     ICreatePlacementTestPayload,
     IPlacementTestModule,
     ICEFRMapping,
     IPlacementTest,
 } from '../../types';
+import { STORAGE_KEYS } from '../../constants/storage-keys';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -86,18 +87,16 @@ const DEFAULT_TEST_MODULES: IPlacementTestModule[] = [
             warmupMinutes: 1,
             part1: { minutes: 5, questionsRange: [4, 6], topics: [] },
             part2: { minutes: 4, prepSeconds: 60, cueCards: [] },
-            part3: { minutes: 5, questionsRange: [2, 3] },
+            part3: { minutes: 5, questionsRange: [2, 3], topics: [] },
         },
     },
 ];
-
-const LS_KEY = 'placement-test-wizard';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function loadDraft(): Partial<WizardFormState> | null {
     try {
-        const raw = localStorage.getItem(LS_KEY);
+        const raw = localStorage.getItem(STORAGE_KEYS.WIZARD_DRAFT);
         return raw ? (JSON.parse(raw) as Partial<WizardFormState>) : null;
     } catch {
         return null;
@@ -106,14 +105,14 @@ function loadDraft(): Partial<WizardFormState> | null {
 
 function saveDraft(state: Partial<WizardFormState>) {
     try {
-        localStorage.setItem(LS_KEY, JSON.stringify(state));
+        localStorage.setItem(STORAGE_KEYS.WIZARD_DRAFT, JSON.stringify(state));
     } catch {
         // silently ignore storage errors
     }
 }
 
 function clearDraft() {
-    localStorage.removeItem(LS_KEY);
+    localStorage.removeItem(STORAGE_KEYS.WIZARD_DRAFT);
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -127,37 +126,38 @@ export default function PlacementTestWizardPage() {
     const { data: existingTest } = usePlacementTest(id);
 
     // ── Wizard state ──────────────────────────────────────────────────────────
-    const [currentStep, setCurrentStep] = useState<1 | 2>(1);
-    const [step1Data, setStep1Data] = useState<Partial<ICreatePlacementTestPayload>>({});
-    const [modules, setModules] = useState<IPlacementTestModule[]>(DEFAULT_TEST_MODULES);
+    const [currentStep, setCurrentStep] = useState<1 | 2>(() => {
+        if (id) return 1; // edit mode always starts at step 1
+        return (loadDraft()?.step as 1 | 2) ?? 1;
+    });
+    const [step1Data, setStep1Data] = useState<Partial<ICreatePlacementTestPayload>>(() => {
+        if (id) return {}; // will be populated from existingTest once loaded
+        return loadDraft()?.step1 ?? {};
+    });
+    const [modules, setModules] = useState<IPlacementTestModule[]>(() => {
+        if (id) return DEFAULT_TEST_MODULES; // will be populated from existingTest
+        const draft = loadDraft();
+        return draft?.step2?.modules?.length ? draft.step2.modules : DEFAULT_TEST_MODULES;
+    });
     const [cefrMapping, setCefrMapping] = useState<ICEFRMapping>(DEFAULT_CEFR_MAPPING);
 
-    // ── Initialize from edit data or draft ────────────────────────────────────
+    // ── Sync from remote data once loaded (edit mode) ─────────────────────────
     useEffect(() => {
-        if (isEditMode && existingTest) {
-            setStep1Data({
-                language: existingTest.language,
-                languageId: existingTest.languageId,
-                name: existingTest.name,
-                standard: existingTest.standard,
-                outputFramework: existingTest.outputFramework,
-                description: existingTest.description,
-                settings: existingTest.settings,
-            });
-            setModules(existingTest.modules ?? []);
-            setCefrMapping(existingTest.cefrMapping ?? DEFAULT_CEFR_MAPPING);
-            return;
-        }
-
-        if (!isEditMode) {
-            const draft = loadDraft();
-            if (draft) {
-                setStep1Data(draft.step1 ?? {});
-                setModules(draft.step2?.modules?.length ? draft.step2.modules : DEFAULT_TEST_MODULES);
-                setCurrentStep((draft.step as 1 | 2) ?? 1);
-            }
-        }
-    }, [isEditMode, existingTest]);
+        if (!isEditMode || !existingTest) return;
+        setStep1Data({
+            language: existingTest.language,
+            languageId: existingTest.languageId,
+            name: existingTest.name,
+            standard: existingTest.standard,
+            outputFramework: existingTest.outputFramework,
+            description: existingTest.description,
+            settings: existingTest.settings,
+        });
+        setModules(existingTest.modules ?? []);
+        setCefrMapping(existingTest.cefrMapping ?? DEFAULT_CEFR_MAPPING);
+    // existingTest is the only reactive dep — id cannot change after mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [existingTest]);
 
     // ── Persist draft ─────────────────────────────────────────────────────────
     useEffect(() => {
@@ -223,19 +223,6 @@ export default function PlacementTestWizardPage() {
         }
     }, [step1Data, cefrMapping, isEditMode, id, updateTest, createTest, navigate]);
 
-    // ── Step1 default values ──────────────────────────────────────────────────
-    const step1Defaults = isEditMode && existingTest
-        ? {
-            language: existingTest.language,
-            languageId: existingTest.languageId,
-            name: existingTest.name,
-            standard: existingTest.standard,
-            outputFramework: existingTest.outputFramework,
-            description: existingTest.description,
-            settings: existingTest.settings,
-        }
-        : step1Data;
-
     return (
         <div className="flex flex-col gap-6 p-6 max-w-3xl mx-auto">
             <PageHeader
@@ -254,7 +241,7 @@ export default function PlacementTestWizardPage() {
             <div className="rounded-xl border bg-background p-6 shadow-sm">
                 {currentStep === 1 && (
                     <Step1GeneralInfo
-                        defaultValues={step1Defaults}
+                        defaultValues={step1Data}
                         onNext={handleStep1Next}
                     />
                 )}

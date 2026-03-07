@@ -7,6 +7,7 @@ import type {
     ICreatePlacementTestPayload,
     IUpdatePlacementTestPayload,
     IUpdateStatusPayload,
+    IPushToQuestionBankPayload,
 } from '../types';
 
 // ─── Create ───────────────────────────────────────────────────────────────────
@@ -102,6 +103,23 @@ export const useRollbackPlacementTest = () => {
         },
         onError: (error) => {
             toast.error(getApiErrorMessage(error, 'Rollback thất bại'));
+        },
+    });
+};
+
+// ─── Push to Question Bank ────────────────────────────────────────────────────
+
+export const usePushToQuestionBank = () => {
+    return useMutation({
+        mutationFn: ({ id, payload }: { id: string; payload?: IPushToQuestionBankPayload }) =>
+            placementTestApi.pushToQuestionBank(id, payload),
+        onSuccess: (result) => {
+            toast.success(
+                `Đã đẩy ${result.inserted} câu hỏi vào Question Bank${result.skipped > 0 ? ` (bỏ qua ${result.skipped} câu trùng)` : ''}`,
+            );
+        },
+        onError: (error) => {
+            toast.error(getApiErrorMessage(error, 'Đẩy vào Question Bank thất bại'));
         },
     });
 };
