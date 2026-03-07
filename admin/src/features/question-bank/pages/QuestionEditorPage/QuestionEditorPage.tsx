@@ -6,7 +6,7 @@ import { QuestionForm } from '../../components/QuestionForm/QuestionForm';
 import { questionApi } from '../../api/question.api';
 import { useQuestionByIdQuery } from '../../hooks/useQuestionByIdQuery';
 import { useCreateQuestion, useUpdateQuestion } from '../../hooks/useQuestionMutations';
-import type { ICreateQuestionPayload } from '../../types';
+import { QuestionSkill, QuestionSource, type ICreateQuestionPayload } from '../../types';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -22,9 +22,26 @@ export default function QuestionEditorPage() {
         const part = searchParams.get('part');
         const languageId = searchParams.get('languageId');
 
+        const normalizedSource =
+            source === QuestionSource.COURSE
+            || source === QuestionSource.PRACTICE
+            || source === QuestionSource.PLACEMENT
+                ? source
+                : undefined;
+
+        const normalizedSkill =
+            skill === QuestionSkill.GRAMMAR
+            || skill === QuestionSkill.VOCABULARY
+            || skill === QuestionSkill.LISTENING
+            || skill === QuestionSkill.READING
+            || skill === QuestionSkill.WRITING
+            || skill === QuestionSkill.SPEAKING
+                ? skill
+                : undefined;
+
         return {
-            source: source ?? undefined,
-            skill: skill ?? undefined,
+            source: normalizedSource,
+            skill: normalizedSkill,
             part: part ? Number(part) : undefined,
             languageId: languageId ?? undefined,
         };

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Settings2, CheckCircle2, FileText, Mic, BookOpen, AlertCircle } from 'lucide-react';
@@ -46,7 +46,7 @@ interface CEFRMappingModalProps {
 
 function CEFRMappingModal({ open, mapping, onSave, onClose }: CEFRMappingModalProps) {
     const form = useForm<CEFRMappingFormValues>({
-        resolver: zodResolver(cefrMappingSchema),
+        resolver: zodResolver(cefrMappingSchema) as Resolver<CEFRMappingFormValues>,
         defaultValues: {
             weightMcq: mapping.weights.mcq,
             weightWriting: mapping.weights.writing,

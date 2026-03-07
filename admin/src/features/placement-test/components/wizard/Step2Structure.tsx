@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
@@ -260,6 +261,9 @@ export function Step2Structure({
                             {editingIndex !== null ? 'Chỉnh sửa' : 'Thêm'} module{' '}
                             {dialogType ? MODULE_META[dialogType].label : ''}
                         </DialogTitle>
+                        <DialogDescription className="sr-only">
+                            Form cấu hình chi tiết module, dữ liệu sẽ được lưu khi bấm nút Lưu module.
+                        </DialogDescription>
                     </DialogHeader>
 
                     {dialogType === 'mcq' && (
@@ -268,6 +272,7 @@ export function Step2Structure({
                             defaultValues={editingModule?.type === 'mcq' ? editingModule : undefined}
                             onSave={handleSaveModule}
                             onCancel={handleCancel}
+                            draftKey={`placement-test:module-draft:mcq:${editingModule?.id ?? 'new'}`}
                         />
                     )}
                     {dialogType === 'essay' && (

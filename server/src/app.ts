@@ -43,8 +43,9 @@ app.use(cors({
     },
     credentials: true,
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Placement test authoring can send large nested payloads (many question items/media URLs).
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(compression());
 
 app.use(

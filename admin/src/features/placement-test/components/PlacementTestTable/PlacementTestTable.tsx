@@ -130,7 +130,7 @@ export function PlacementTestTable({
                                     {/* Module count */}
                                     <TableCell>
                                         <span className="text-sm text-muted-foreground">
-                                            {test.moduleCount ?? '—'} modules
+                                            {test.moduleCount ?? 0} modules
                                         </span>
                                     </TableCell>
 

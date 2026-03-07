@@ -167,7 +167,7 @@ export function Step3QuestionBank({ testId, languageId, modules, onNext, onBack 
                                                 <Progress value={pct} className="h-1.5" />
                                                 <div className="flex items-center justify-between gap-2">
                                                     <p className="text-[10px] text-muted-foreground">
-                                                        {part.questionsCount} × {POOL_BUFFER_MULTIPLIER_VALUE} = {part.minimumPool} câu tối thiểu
+                                                        {part.required} × {POOL_BUFFER_MULTIPLIER_VALUE} = {part.minimumPool} câu tối thiểu
                                                     </p>
                                                     <Button
                                                         size="sm"

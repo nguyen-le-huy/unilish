@@ -11,16 +11,24 @@ import {
     SheetFooter,
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
-import type { IQuestionFilters, QuestionDifficulty, QuestionStatus } from '../../types';
+import type {
+    IQuestionFilters,
+    QuestionDifficulty,
+    QuestionStatus,
+    QuestionSource as QuestionSourceType,
+    QuestionSkill as QuestionSkillType,
+} from '../../types';
 import { QuestionSkill, QuestionSource } from '../../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DIFFICULTY_OPTIONS: { value: QuestionDifficulty; label: string }[] = [
-    { value: 'easy', label: 'Dễ' },
-    { value: 'medium', label: 'Trung bình' },
-    { value: 'hard', label: 'Khó' },
-    { value: 'very_hard', label: 'Rất khó' },
+    { value: 'A1', label: 'A1' },
+    { value: 'A2', label: 'A2' },
+    { value: 'B1', label: 'B1' },
+    { value: 'B2', label: 'B2' },
+    { value: 'C1', label: 'C1' },
+    { value: 'C2', label: 'C2' },
 ];
 
 const STATUS_OPTIONS: { value: QuestionStatus; label: string }[] = [
@@ -185,7 +193,7 @@ export function FilterPanel({ isOpen, filters, onFiltersChange, onClose }: Props
                             id="source"
                             options={SOURCE_OPTIONS}
                             selected={draft.source ?? []}
-                            onChange={(values) => patchDraft({ source: values })}
+                            onChange={(values) => patchDraft({ source: values as QuestionSourceType[] })}
                         />
                     </div>
 
@@ -200,7 +208,7 @@ export function FilterPanel({ isOpen, filters, onFiltersChange, onClose }: Props
                             id="skill"
                             options={SKILL_OPTIONS}
                             selected={draft.skill ?? []}
-                            onChange={(values) => patchDraft({ skill: values })}
+                            onChange={(values) => patchDraft({ skill: values as QuestionSkillType[] })}
                         />
                     </div>
 

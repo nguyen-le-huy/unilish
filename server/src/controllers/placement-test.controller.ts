@@ -10,6 +10,7 @@ import type {
     UpdatePlacementTestStatusBody,
     RollbackParams,
     AnalyticsQuery,
+    ParseMcqPart3ImportBody,
 } from '../validations/placement-test.validation.js';
 
 // ─── Controller ───────────────────────────────────────────────────────────────
@@ -89,5 +90,12 @@ export class PlacementTestController {
             req.query as unknown as AnalyticsQuery,
         );
         sendResponse(res, HttpStatus.OK, 'Lấy thống kê thành công', result);
+    });
+
+    // ─── POST /placement-tests/ai/parse-mcq-part3 ───────────────────────────
+    static parseMcqPart3Import = catchAsync(async (req: Request, res: Response) => {
+        const { rawText, part } = req.body as ParseMcqPart3ImportBody;
+        const result = await placementTestService.parseMcqPart3Import(rawText, part);
+        sendResponse(res, HttpStatus.OK, 'AI phân tích nội dung thành công', result);
     });
 }

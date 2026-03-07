@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2, Eye, Save, Send } from 'lucide-react';
@@ -64,7 +64,7 @@ const formSchema = z.object({
     ),
     options: z.array(optionSchema).min(2, 'Cần tối thiểu 2 đáp án').max(6).optional().default([]),
     correctAnswer: z.string().optional().default(''),
-    content: z.record(z.unknown()).optional().default({}),
+    content: z.record(z.string(), z.unknown()).optional().default({}),
     explanation: z.string().optional(),
     tags: z.array(z.string()).max(20).default([]),
 });
@@ -122,7 +122,7 @@ export function QuestionForm({ defaultValues, prefillValues, isSubmitting, onSav
     const [lastAutoSavedAt, setLastAutoSavedAt] = useState<Date | null>(null);
 
     const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
+        resolver: zodResolver(formSchema) as Resolver<FormValues>,
         defaultValues: defaultValues
             ? (toFormValues(defaultValues) as FormValues)
             : {
@@ -185,6 +185,11 @@ export function QuestionForm({ defaultValues, prefillValues, isSubmitting, onSav
             mismatchDifficulty: watchedValues.difficulty !== 'B1' && watchedValues.skill === 'listening',
         };
     }, [checklist.doneCount, checklist.total, watchedValues.options, watchedValues.difficulty, watchedValues.skill]);
+
+    const previewValues = useMemo<Partial<ICreateQuestionPayload>>(
+        () => toPayload(watchedValues as FormValues),
+        [watchedValues],
+    );
 
     useEffect(() => {
         if (!onAutoSave) return;
@@ -490,7 +495,7 @@ export function QuestionForm({ defaultValues, prefillValues, isSubmitting, onSav
 
                 {/* ── Right: Live preview ── */}
                 <div className="flex flex-col gap-4">
-                    <QuestionPreview formValues={watchedValues} />
+                    <QuestionPreview formValues={previewValues} />
 
                     <div className="rounded-xl border bg-card p-4 space-y-3">
                         <p className="text-sm font-semibold">Trạng thái & Workflow</p>

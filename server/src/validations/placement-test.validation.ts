@@ -21,6 +21,7 @@ const partConfigSchema = z.object({
     manualContent: z
         .object({
             passageText: z.string().trim().max(5000).optional(),
+            groupPattern: z.array(z.number().int().min(2).max(7)).default([]),
             questions: z.array(z.string().trim().min(1)).default([]),
             questionItems: z
                 .array(
@@ -37,6 +38,7 @@ const partConfigSchema = z.object({
                         transcript: z.string().trim().max(5000).optional(),
                         mediaUrl: z.string().url().optional(),
                         imageUrl: z.string().url().optional(),
+                        imageUrls: z.array(z.string().url()).default([]),
                         audioUrl: z.string().url().optional(),
                     }),
                 )
@@ -260,6 +262,15 @@ export const analyticsSchema = z.object({
     }),
 });
 
+// ─── 10. POST /placement-tests/ai/parse-mcq-part3 ───────────────────────────
+
+export const parseMcqPart3ImportSchema = z.object({
+    body: z.object({
+        rawText: z.string().trim().min(20).max(200000),
+        part: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7)]).default(3),
+    }),
+});
+
 // ─── Inferred Types ───────────────────────────────────────────────────────────
 
 export type GetPlacementTestsQuery = z.infer<typeof getPlacementTestsSchema>['query'];
@@ -268,5 +279,6 @@ export type UpdatePlacementTestBody = z.infer<typeof updatePlacementTestSchema>[
 export type UpdatePlacementTestStatusBody = z.infer<typeof updatePlacementTestStatusSchema>['body'];
 export type RollbackParams = z.infer<typeof rollbackSchema>['params'];
 export type AnalyticsQuery = z.infer<typeof analyticsSchema>['query'];
+export type ParseMcqPart3ImportBody = z.infer<typeof parseMcqPart3ImportSchema>['body'];
 
 export { moduleTypeEnum, placementStatusEnum, cefrLevelEnum };

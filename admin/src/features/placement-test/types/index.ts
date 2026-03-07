@@ -26,6 +26,7 @@ export interface IPartConfig {
     topicFilter?: string[];
     manualContent?: {
         passageText?: string;
+        groupPattern?: number[];
         questions?: string[];
         questionItems?: Array<{
             question: string;
@@ -40,6 +41,7 @@ export interface IPartConfig {
             transcript?: string;
             mediaUrl?: string;
             imageUrl?: string;
+            imageUrls?: string[];
             audioUrl?: string;
         }>;
         media?: {
@@ -147,7 +149,9 @@ export interface IPlacementTest {
 export type IPlacementTestSummary = Pick<
     IPlacementTest,
     '_id' | 'languageId' | 'language' | 'name' | 'standard' | 'outputFramework' | 'status' | 'version' | 'settings' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'
->;
+> & {
+    moduleCount?: number;
+};
 
 export interface IPaginatedPlacementTests {
     data: IPlacementTestSummary[];

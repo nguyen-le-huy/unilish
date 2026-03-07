@@ -52,6 +52,7 @@ export interface IPartConfig {
     topicFilter?: string[];
     manualContent?: {
         passageText?: string;
+        groupPattern?: number[];
         questions?: string[];
         questionItems?: Array<{
             question: string;
@@ -66,6 +67,7 @@ export interface IPartConfig {
             transcript?: string;
             mediaUrl?: string;
             imageUrl?: string;
+            imageUrls?: string[];
             audioUrl?: string;
         }>;
         media?: {
@@ -181,6 +183,7 @@ const PartConfigSchema = new mongoose.Schema<IPartConfig>(
         topicFilter: { type: [String], default: [] },
         manualContent: {
             passageText: { type: String, default: null },
+            groupPattern: { type: [Number], default: [] },
             questions: { type: [String], default: [] },
             questionItems: {
                 type: [
@@ -197,6 +200,7 @@ const PartConfigSchema = new mongoose.Schema<IPartConfig>(
                         transcript: { type: String, default: null },
                         mediaUrl: { type: String, default: null },
                         imageUrl: { type: String, default: null },
+                        imageUrls: { type: [String], default: [] },
                         audioUrl: { type: String, default: null },
                     },
                 ],

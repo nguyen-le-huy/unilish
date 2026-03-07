@@ -35,9 +35,9 @@ export function VersionHistoryModal({ testId, onClose }: Props) {
     const { data: history, isLoading } = useVersionHistory(testId ?? '');
     const { mutate: rollback, isPending: isRollingBack } = useRollbackPlacementTest();
 
-    function handleRollback(versionId: string) {
+    function handleRollback(version: number) {
         if (!testId) return;
-        rollback({ id: testId, versionId }, { onSuccess: onClose });
+        rollback({ id: testId, version }, { onSuccess: onClose });
     }
 
     return (
@@ -95,7 +95,7 @@ export function VersionHistoryModal({ testId, onClose }: Props) {
                                                     variant="outline"
                                                     size="sm"
                                                     disabled={isRollingBack}
-                                                    onClick={() => handleRollback(item._id)}
+                                                    onClick={() => handleRollback(item.version)}
                                                     className="gap-1.5 text-xs"
                                                 >
                                                     {isRollingBack ? (

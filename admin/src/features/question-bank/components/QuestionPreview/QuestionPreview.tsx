@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { CheckCircle, Volume2, Image } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';

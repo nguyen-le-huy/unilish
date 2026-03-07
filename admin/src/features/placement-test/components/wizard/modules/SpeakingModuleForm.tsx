@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -14,14 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { AI_MODELS, TTS_VOICES, SPEAKING_CRITERIA_OPTIONS } from '../../../constants';
+import { SPEAKING_CRITERIA_OPTIONS } from '../../../constants';
 import type { IModuleSpeaking } from '../../../types';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
@@ -29,22 +22,14 @@ import type { IModuleSpeaking } from '../../../types';
 const speakingSchema = z.object({
     name: z.string().min(1, 'Bắt buộc'),
     totalMinutes: z.coerce.number().min(1),
-    conversationModel: z.string().min(1),
-    ttsModel: z.string().default('openai-tts'),
-    ttsVoice: z.string().min(1),
-    gradingModel: z.string().min(1),
-    speechAnalytics: z.string().default('deepgram'),
     silenceThresholdSeconds: z.coerce.number().min(1).default(5),
     criteria: z.array(z.string()).min(1),
     warmupMinutes: z.coerce.number().min(0).default(2),
     part1Minutes: z.coerce.number().min(1).default(4),
     part2Minutes: z.coerce.number().min(1).default(4),
     part2PrepSeconds: z.coerce.number().min(0).default(60),
-    part3Minutes: z.coerce.number().min(1).default(5),
     part1TopicsText: z.string().default(''),
-    part2CueCardsLowText: z.string().default(''),
-    part2CueCardsMidText: z.string().default(''),
-    part2CueCardsHighText: z.string().default(''),
+    part2CueCardsText: z.string().default(''),
 });
 
 type SpeakingFormValues = z.infer<typeof speakingSchema>;
@@ -68,52 +53,43 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
             .map((item) => item.trim())
             .filter(Boolean);
 
+    const mergedCueCards = [
+        ...(defaultValues?.parts?.part2?.cueCards?.filter((item) => item.level === 'low').map((item) => item.text) ?? []),
+        ...(defaultValues?.parts?.part2?.cueCards?.filter((item) => item.level === 'mid').map((item) => item.text) ?? []),
+        ...(defaultValues?.parts?.part2?.cueCards?.filter((item) => item.level === 'high').map((item) => item.text) ?? []),
+    ];
+    const uniqueCueCards = Array.from(new Set(mergedCueCards.map((item) => item.trim()).filter(Boolean)));
+
     const form = useForm<SpeakingFormValues>({
-        resolver: zodResolver(speakingSchema),
+        resolver: zodResolver(speakingSchema) as Resolver<SpeakingFormValues>,
         defaultValues: {
             name: defaultValues?.name ?? 'Speaking Test',
             totalMinutes: defaultValues?.totalMinutes ?? 15,
-            conversationModel: defaultValues?.conversationModel ?? 'gpt-4o',
-            ttsModel: defaultValues?.ttsModel ?? 'openai-tts',
-            ttsVoice: defaultValues?.ttsVoice ?? 'nova',
-            gradingModel: defaultValues?.gradingModel ?? 'gpt-4o',
-            speechAnalytics: defaultValues?.speechAnalytics ?? 'deepgram',
             silenceThresholdSeconds: defaultValues?.silenceThresholdSeconds ?? 5,
             criteria: defaultValues?.criteria ?? ['fluency', 'lexical', 'grammar', 'pronunciation'],
             warmupMinutes: defaultValues?.parts?.warmupMinutes ?? 2,
             part1Minutes: defaultValues?.parts?.part1?.minutes ?? 4,
             part2Minutes: defaultValues?.parts?.part2?.minutes ?? 4,
             part2PrepSeconds: defaultValues?.parts?.part2?.prepSeconds ?? 60,
-            part3Minutes: defaultValues?.parts?.part3?.minutes ?? 5,
             part1TopicsText: toMultilineText(defaultValues?.parts?.part1?.topics),
-            part2CueCardsLowText: toMultilineText(
-                defaultValues?.parts?.part2?.cueCards?.filter((item) => item.level === 'low').map((item) => item.text),
-            ),
-            part2CueCardsMidText: toMultilineText(
-                defaultValues?.parts?.part2?.cueCards?.filter((item) => item.level === 'mid').map((item) => item.text),
-            ),
-            part2CueCardsHighText: toMultilineText(
-                defaultValues?.parts?.part2?.cueCards?.filter((item) => item.level === 'high').map((item) => item.text),
-            ),
+            part2CueCardsText: toMultilineText(uniqueCueCards),
         },
     });
 
     function onSubmit(values: SpeakingFormValues) {
         const part1Topics = toStringList(values.part1TopicsText);
-        const cueCardsLow = toStringList(values.part2CueCardsLowText).map((text) => ({ level: 'low' as const, text }));
-        const cueCardsMid = toStringList(values.part2CueCardsMidText).map((text) => ({ level: 'mid' as const, text }));
-        const cueCardsHigh = toStringList(values.part2CueCardsHighText).map((text) => ({ level: 'high' as const, text }));
+        const cueCards = toStringList(values.part2CueCardsText).map((text) => ({ level: 'mid' as const, text }));
 
         onSave({
             order,
             type: 'speaking',
             name: values.name,
             totalMinutes: values.totalMinutes,
-            conversationModel: values.conversationModel,
-            ttsModel: values.ttsModel,
-            ttsVoice: values.ttsVoice,
-            gradingModel: values.gradingModel,
-            speechAnalytics: values.speechAnalytics,
+            conversationModel: defaultValues?.conversationModel ?? 'gpt-4.1-mini',
+            ttsModel: defaultValues?.ttsModel ?? 'tts-1',
+            ttsVoice: defaultValues?.ttsVoice ?? 'alloy',
+            gradingModel: defaultValues?.gradingModel ?? 'gpt-5-mini',
+            speechAnalytics: defaultValues?.speechAnalytics ?? 'azure-ai-speech',
             silenceThresholdSeconds: values.silenceThresholdSeconds,
             criteria: values.criteria,
             parts: {
@@ -122,9 +98,12 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
                 part2: {
                     minutes: values.part2Minutes,
                     prepSeconds: values.part2PrepSeconds,
-                    cueCards: [...cueCardsLow, ...cueCardsMid, ...cueCardsHigh],
+                    cueCards,
                 },
-                part3: { minutes: values.part3Minutes, questionsRange: [3, 5] },
+                part3: {
+                    minutes: defaultValues?.parts?.part3?.minutes ?? 5,
+                    questionsRange: defaultValues?.parts?.part3?.questionsRange ?? [3, 5],
+                },
             },
         });
     }
@@ -157,50 +136,6 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
                         </FormItem>
                     )} />
 
-                    <FormField control={form.control} name="conversationModel" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Conversation AI</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    {AI_MODELS.map((m) => (
-                                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-
-                    <FormField control={form.control} name="gradingModel" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Grading AI</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    {AI_MODELS.map((m) => (
-                                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-
-                    <FormField control={form.control} name="ttsVoice" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>TTS Voice</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    {TTS_VOICES.map((v) => (
-                                        <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
                 </div>
 
                 {/* Criteria */}
@@ -237,7 +172,7 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
                 <div className="space-y-3">
                     <p className="text-sm font-medium">Câu hỏi thủ công — Speaking</p>
                     <p className="text-xs text-muted-foreground">
-                        Mỗi dòng là 1 câu hỏi/chủ đề. Có thể để trống để hệ thống sinh tự động theo level.
+                        Mỗi dòng là 1 câu hỏi/chủ đề dùng chung. Có thể để trống để hệ thống sinh tự động.
                     </p>
 
                     <FormField control={form.control} name="part1TopicsText" render={({ field }) => (
@@ -250,37 +185,15 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
                         </FormItem>
                     )} />
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <FormField control={form.control} name="part2CueCardsLowText" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-xs">Part 2 Cue Cards — Low</FormLabel>
-                                <FormControl>
-                                    <Textarea rows={4} placeholder="Describe your favorite place in your city." {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-
-                        <FormField control={form.control} name="part2CueCardsMidText" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-xs">Part 2 Cue Cards — Mid</FormLabel>
-                                <FormControl>
-                                    <Textarea rows={4} placeholder="Describe a skill you learned recently." {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-
-                        <FormField control={form.control} name="part2CueCardsHighText" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-xs">Part 2 Cue Cards — High</FormLabel>
-                                <FormControl>
-                                    <Textarea rows={4} placeholder="Describe a policy that can improve urban life." {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                    </div>
+                    <FormField control={form.control} name="part2CueCardsText" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-xs">Part 2 Cue Cards (One for all)</FormLabel>
+                            <FormControl>
+                                <Textarea rows={6} placeholder="Describe your favorite place in your city." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
                 </div>
 
                 <Separator />
@@ -288,12 +201,11 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
                 {/* Part timing */}
                 <div>
                     <p className="text-sm font-medium mb-3">Cấu hình Parts</p>
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                         {[
                             { key: 'warmupMinutes' as const, label: 'Warm-up (phút)' },
                             { key: 'part1Minutes' as const, label: 'Part 1 (phút)' },
                             { key: 'part2Minutes' as const, label: 'Part 2 (phút)' },
-                            { key: 'part3Minutes' as const, label: 'Part 3 (phút)' },
                         ].map(({ key, label }) => (
                             <FormField key={key} control={form.control} name={key} render={({ field }) => (
                                 <FormItem>

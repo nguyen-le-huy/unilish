@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -15,14 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { AI_MODELS, ESSAY_CRITERIA_OPTIONS } from '../../../constants';
+import { ESSAY_CRITERIA_OPTIONS } from '../../../constants';
 import type { IModuleEssay } from '../../../types';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
@@ -32,14 +25,10 @@ const essaySchema = z.object({
     timeLimitMinutes: z.coerce.number().min(1),
     aiModel: z.string().min(1),
     criteria: z.array(z.string()).min(1, 'Chọn ít nhất 1 tiêu chí'),
-    wordLimitLow: z.coerce.number().min(1).default(150),
-    wordLimitMid: z.coerce.number().min(1).default(250),
-    wordLimitHigh: z.coerce.number().min(1).default(350),
+    wordLimit: z.coerce.number().min(1).default(250),
     disablePaste: z.boolean().default(true),
     disableSpellcheck: z.boolean().default(false),
-    topicsLowText: z.string().default(''),
-    topicsMidText: z.string().default(''),
-    topicsHighText: z.string().default(''),
+    topicsText: z.string().default(''),
 });
 
 type EssayFormValues = z.infer<typeof essaySchema>;
@@ -63,46 +52,54 @@ export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Prop
             .map((item) => item.trim())
             .filter(Boolean);
 
+    const mergedTopics = [
+        ...(defaultValues?.topicsByLevel?.low ?? []),
+        ...(defaultValues?.topicsByLevel?.mid ?? []),
+        ...(defaultValues?.topicsByLevel?.high ?? []),
+    ];
+
+    const uniqueTopics = Array.from(new Set(mergedTopics.map((topic) => topic.trim()).filter(Boolean)));
+
+    const resolvedWordLimit =
+        defaultValues?.wordLimits?.mid
+        ?? defaultValues?.wordLimits?.low
+        ?? defaultValues?.wordLimits?.high
+        ?? 250;
+
     const form = useForm<EssayFormValues>({
-        resolver: zodResolver(essaySchema),
+        resolver: zodResolver(essaySchema) as Resolver<EssayFormValues>,
         defaultValues: {
             name: defaultValues?.name ?? 'Writing Task',
             timeLimitMinutes: defaultValues?.timeLimitMinutes ?? 60,
             aiModel: defaultValues?.aiModel ?? 'gpt-4o-mini',
             criteria: defaultValues?.criteria ?? ['TR', 'CC', 'LR', 'GRA'],
-            wordLimitLow: defaultValues?.wordLimits?.low ?? 150,
-            wordLimitMid: defaultValues?.wordLimits?.mid ?? 250,
-            wordLimitHigh: defaultValues?.wordLimits?.high ?? 350,
+            wordLimit: resolvedWordLimit,
             disablePaste: defaultValues?.secureMode?.disablePaste ?? true,
             disableSpellcheck: defaultValues?.secureMode?.disableSpellcheck ?? false,
-            topicsLowText: toMultilineText(defaultValues?.topicsByLevel?.low),
-            topicsMidText: toMultilineText(defaultValues?.topicsByLevel?.mid),
-            topicsHighText: toMultilineText(defaultValues?.topicsByLevel?.high),
+            topicsText: toMultilineText(uniqueTopics),
         },
     });
 
     function onSubmit(values: EssayFormValues) {
-        const topicsLow = toStringList(values.topicsLowText);
-        const topicsMid = toStringList(values.topicsMidText);
-        const topicsHigh = toStringList(values.topicsHighText);
+        const sharedTopics = toStringList(values.topicsText);
 
         onSave({
             order,
             type: 'essay',
-            promptSource: topicsLow.length || topicsMid.length || topicsHigh.length ? 'library' : 'ai_generated',
+            promptSource: sharedTopics.length ? 'library' : 'ai_generated',
             topicsByLevel: {
-                low: topicsLow,
-                mid: topicsMid,
-                high: topicsHigh,
+                low: sharedTopics,
+                mid: sharedTopics,
+                high: sharedTopics,
             },
             name: values.name,
             timeLimitMinutes: values.timeLimitMinutes,
             aiModel: values.aiModel,
             criteria: values.criteria,
             wordLimits: {
-                low: values.wordLimitLow,
-                mid: values.wordLimitMid,
-                high: values.wordLimitHigh,
+                low: values.wordLimit,
+                mid: values.wordLimit,
+                high: values.wordLimit,
             },
             secureMode: {
                 disablePaste: values.disablePaste,
@@ -131,22 +128,6 @@ export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Prop
                         </FormItem>
                     )} />
 
-                    <FormField control={form.control} name="aiModel" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>AI Model chấm điểm</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {AI_MODELS.map((m) => (
-                                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
                 </div>
 
                 {/* Criteria */}
@@ -180,60 +161,27 @@ export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Prop
 
                 <Separator />
 
-                {/* Word limits */}
-                <div>
-                    <p className="text-sm font-medium mb-3">Giới hạn từ theo trình độ</p>
-                    <div className="grid grid-cols-3 gap-3">
-                        {(['wordLimitLow', 'wordLimitMid', 'wordLimitHigh'] as const).map((key) => (
-                            <FormField key={key} control={form.control} name={key} render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs">
-                                        {key === 'wordLimitLow' ? 'A1–A2' : key === 'wordLimitMid' ? 'B1–B2' : 'C1–C2'}
-                                    </FormLabel>
-                                    <FormControl><Input type="number" min={1} className="h-8" {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                        ))}
-                    </div>
-                </div>
+                <FormField control={form.control} name="wordLimit" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Giới hạn từ (one for all)</FormLabel>
+                        <FormControl><Input type="number" min={1} className="h-9 max-w-xs" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )} />
 
                 <div className="space-y-3">
-                    <p className="text-sm font-medium">Đề bài thủ công theo trình độ</p>
+                    <p className="text-sm font-medium">Đề bài thủ công (one for all)</p>
                     <p className="text-xs text-muted-foreground">
-                        Mỗi dòng là 1 đề bài Writing Task 2. Để trống nếu muốn hệ thống sinh đề bằng AI.
+                        Mỗi dòng là 1 đề bài Writing Task 2 dùng chung cho mọi trình độ. Để trống nếu muốn hệ thống sinh đề bằng AI.
                     </p>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <FormField control={form.control} name="topicsLowText" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-xs">A1–A2 (Low)</FormLabel>
-                                <FormControl>
-                                    <Textarea rows={5} placeholder="Do you prefer living in a city or the countryside?" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-
-                        <FormField control={form.control} name="topicsMidText" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-xs">B1–B2 (Mid)</FormLabel>
-                                <FormControl>
-                                    <Textarea rows={5} placeholder="Some people think social media is harmful. Do you agree?" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-
-                        <FormField control={form.control} name="topicsHighText" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-xs">C1–C2 (High)</FormLabel>
-                                <FormControl>
-                                    <Textarea rows={5} placeholder="To what extent does globalization threaten cultural identity?" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                    </div>
+                    <FormField control={form.control} name="topicsText" render={({ field }) => (
+                        <FormItem>
+                            <FormControl>
+                                <Textarea rows={8} placeholder="Do you prefer living in a city or the countryside?" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
                 </div>
 
                 <Separator />

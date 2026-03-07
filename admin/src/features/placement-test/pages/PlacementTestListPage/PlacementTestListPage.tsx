@@ -57,7 +57,7 @@ export default function PlacementTestListPage() {
     // ── Handlers ──────────────────────────────────────────────────────────────
     const handleStatusChange = useCallback(
         (id: string, status: 'active' | 'paused' | 'archived') => {
-            updateStatus({ id, status });
+            updateStatus({ id, payload: { status } });
         },
         [updateStatus],
     );

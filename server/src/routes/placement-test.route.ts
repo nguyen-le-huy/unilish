@@ -12,6 +12,7 @@ import {
     rollbackSchema,
     poolValidationSchema,
     analyticsSchema,
+    parseMcqPart3ImportSchema,
 } from '../validations/placement-test.validation.js';
 
 const router = express.Router();
@@ -48,6 +49,13 @@ router.get(
     restrictTo('admin', 'content_creator'),
     validate(analyticsSchema),
     PlacementTestController.getAnalytics,
+);
+
+router.post(
+    '/ai/parse-mcq-part3',
+    restrictTo('admin', 'content_creator'),
+    validate(parseMcqPart3ImportSchema),
+    PlacementTestController.parseMcqPart3Import,
 );
 
 router.get(

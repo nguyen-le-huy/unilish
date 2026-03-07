@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Trash2, CheckCircle, Archive, Tag } from 'lucide-react';
+import { X, Trash2, CheckCircle, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,

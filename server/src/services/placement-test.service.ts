@@ -1,7 +1,10 @@
 import mongoose from 'mongoose';
+import OpenAI from 'openai';
+import { z } from 'zod';
 import { HttpStatus } from '../constants/http-status.js';
 import { AppError } from '../utils/app-error.js';
 import { logger } from '../utils/logger.js';
+import { env } from '../config/env.js';
 import { placementTestMongoRepository } from '../repositories/mongo/placement-test.mongo.repository.js';
 import { Question } from '../models/mongo/question.model.js';
 import {
@@ -16,6 +19,8 @@ import type {
     AnalyticsQuery,
 } from '../validations/placement-test.validation.js';
 import type { PlacementTestListResult } from '../repositories/mongo/placement-test.mongo.repository.js';
+
+const openaiClient = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +44,35 @@ export interface PoolPartValidation {
     isValid: boolean;
 }
 
+interface ParsedPart3QuestionItem {
+    question: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    correctOption: 'A' | 'B' | 'C' | 'D';
+    transcript?: string;
+    explanation?: string;
+}
+
+const aiParsedQuestionSchema = z.object({
+    questionNumber: z.number().int().positive().optional(),
+    question: z.string().trim().min(1),
+    optionA: z.string().trim().min(1),
+    optionB: z.string().trim().min(1),
+    optionC: z.string().trim().min(1),
+    optionD: z.string().trim().min(1),
+    correctOption: z.string().trim().optional(),
+    transcript: z.string().trim().optional(),
+    explanation: z.string().trim().optional(),
+});
+
+const aiParseResponseSchema = z.object({
+    questionItems: z.array(aiParsedQuestionSchema).default([]),
+});
+
+type AiParsedQuestion = z.infer<typeof aiParsedQuestionSchema>;
+
 // ─── Default CEFR Thresholds ──────────────────────────────────────────────────
 
 const DEFAULT_CEFR_THRESHOLDS = [
@@ -53,6 +87,191 @@ const DEFAULT_CEFR_THRESHOLDS = [
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 class PlacementTestService {
+
+    private static extractAnswerKeyMap(rawText: string): Map<number, 'A' | 'B' | 'C' | 'D'> {
+        const answerMap = new Map<number, 'A' | 'B' | 'C' | 'D'>();
+
+        const lines = rawText
+            .replace(/\r/g, '')
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+
+        let pendingQuestionNumber: number | null = null;
+
+        for (const line of lines) {
+            const normalizedLine = line.replace(/\s+/g, ' ');
+
+            const standaloneNumberMatch = normalizedLine.match(/^(\d{1,3})$/);
+            if (standaloneNumberMatch) {
+                pendingQuestionNumber = Number(standaloneNumberMatch[1] ?? 0);
+                continue;
+            }
+
+            const pendingAnswerOnlyMatch = normalizedLine.match(/^(?:đáp\s*án\s*đúng|đáp\s*án|answer\s*key|answers?)\s*[:\-]?\s*([ABCD])\b/i);
+            if (pendingQuestionNumber && pendingAnswerOnlyMatch) {
+                const option = (pendingAnswerOnlyMatch[1] ?? '').toUpperCase() as 'A' | 'B' | 'C' | 'D';
+                answerMap.set(pendingQuestionNumber, option);
+                pendingQuestionNumber = null;
+                continue;
+            }
+
+            const explicitAnswerMatch = normalizedLine.match(
+                /^(\d{1,3})\s*(?:[\.|\)|\-|:]\s*)?(?:đáp\s*án\s*đúng|đáp\s*án|answer\s*key|answers?)\s*[:\-]?\s*([ABCD])\b/i,
+            );
+            if (explicitAnswerMatch) {
+                const questionNumber = Number(explicitAnswerMatch[1] ?? 0);
+                const option = (explicitAnswerMatch[2] ?? '').toUpperCase() as 'A' | 'B' | 'C' | 'D';
+                if (questionNumber > 0) {
+                    answerMap.set(questionNumber, option);
+                }
+                pendingQuestionNumber = null;
+                continue;
+            }
+
+            const compactAnswerMatch = normalizedLine.match(/^(\d{1,3})\s*[\.|\)|\-|:]?\s*([ABCD])\b$/i);
+            if (compactAnswerMatch) {
+                const questionNumber = Number(compactAnswerMatch[1] ?? 0);
+                const option = (compactAnswerMatch[2] ?? '').toUpperCase() as 'A' | 'B' | 'C' | 'D';
+                if (questionNumber > 0) {
+                    answerMap.set(questionNumber, option);
+                }
+                pendingQuestionNumber = null;
+                continue;
+            }
+
+            pendingQuestionNumber = null;
+        }
+
+        return answerMap;
+    }
+
+    private static normalizeQuestionText(text: string): string {
+        return text
+            .replace(/^\s*(?:q(?:uestion)?\s*)?\d{1,3}\s*[\.|\)|\-|:]\s*/i, '')
+            .trim();
+    }
+
+    private static normalizeOptionText(text: string): string {
+        return text
+            .replace(/^\s*[\(\[]?[ABCD][\)\]\.|\-|:]\s*/i, '')
+            .trim();
+    }
+
+    private static extractPart7GroupPattern(rawText: string): number[] {
+        const lines = rawText
+            .replace(/\r/g, '')
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+
+        for (const line of lines) {
+            if (/^[2-7]{4,}$/.test(line)) {
+                return line.split('').map((digit) => Number(digit));
+            }
+        }
+
+        return [];
+    }
+
+    private static extractQuestionsFromRawText(rawText: string, part: 1 | 2 | 3 | 4 | 5 | 6 | 7): AiParsedQuestion[] {
+        const lines = rawText
+            .replace(/\r/g, '')
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+
+        const parsedItems: AiParsedQuestion[] = [];
+
+        let currentQuestionNumber: number | undefined;
+        let currentQuestionParts: string[] = [];
+        let currentOptions: Partial<Record<'A' | 'B' | 'C' | 'D', string>> = {};
+
+        const flushCurrent = () => {
+            const question = currentQuestionParts.join(' ').trim();
+            if (!question) {
+                return;
+            }
+
+            const optionA = (currentOptions.A ?? '').trim();
+            const optionB = (currentOptions.B ?? '').trim();
+            const optionC = (currentOptions.C ?? '').trim();
+            const optionD = part === 2 ? 'N/A' : (currentOptions.D ?? '').trim();
+
+            if (!optionA || !optionB || !optionC || !optionD) {
+                return;
+            }
+
+            parsedItems.push({
+                questionNumber: currentQuestionNumber,
+                question,
+                optionA,
+                optionB,
+                optionC,
+                optionD,
+                correctOption: '',
+                transcript: '',
+                explanation: '',
+            });
+        };
+
+        for (const line of lines) {
+            if (/(?:^|\b)(?:đáp\s*án\s*đúng|đáp\s*án|answer\s*key|answers?)(?:\b|:)/i.test(line)) {
+                continue;
+            }
+
+            const questionMatch = line.match(/^(\d{1,3})\s*[\.|\)|\-|:]\s*(.+)$/i);
+            if (questionMatch) {
+                flushCurrent();
+                currentQuestionNumber = Number(questionMatch[1] ?? 0);
+                currentQuestionParts = [(questionMatch[2] ?? '').trim()];
+                currentOptions = {};
+                continue;
+            }
+
+            const bareQuestionNumberMatch = line.match(/^(\d{1,3})$/);
+            if (bareQuestionNumberMatch) {
+                flushCurrent();
+                currentQuestionNumber = Number(bareQuestionNumberMatch[1] ?? 0);
+                currentQuestionParts = [`Question ${currentQuestionNumber}`];
+                currentOptions = {};
+                continue;
+            }
+
+            if (/^\d{4,}$/.test(line)) {
+                // Ignore compact group pattern markers like 222233434455555 in Part 7 content.
+                continue;
+            }
+
+            const optionMatch = line.match(/^(?:[\(\[])?([ABCD])(?:[\)\]])?\s*[\.|\)|\-|:]\s*(.+)$/i);
+            if (optionMatch) {
+                const optionKey = (optionMatch[1] ?? '').toUpperCase() as 'A' | 'B' | 'C' | 'D';
+                const optionValue = (optionMatch[2] ?? '').trim();
+                if (optionValue.length > 0) {
+                    currentOptions[optionKey] = optionValue;
+                }
+                continue;
+            }
+
+            if (currentQuestionParts.length === 0) {
+                continue;
+            }
+
+            const lastOptionKey = (['D', 'C', 'B', 'A'] as const).find((optionKey) => {
+                const value = currentOptions[optionKey];
+                return typeof value === 'string' && value.length > 0;
+            });
+
+            if (lastOptionKey) {
+                currentOptions[lastOptionKey] = `${currentOptions[lastOptionKey] ?? ''} ${line}`.trim();
+            } else {
+                currentQuestionParts = [...currentQuestionParts, line];
+            }
+        }
+
+        flushCurrent();
+        return parsedItems;
+    }
 
     // ─── READ ─────────────────────────────────────────────────────────────────
 
@@ -319,6 +538,221 @@ class PlacementTestService {
     async getAnalytics(id: string, query: AnalyticsQuery): Promise<Record<string, unknown>> {
         await this.getById(id); // validate exists
         return placementTestMongoRepository.getAnalyticsSummary(id, query.range);
+    }
+
+    async parseMcqPart3Import(rawText: string, part: 1 | 2 | 3 | 4 | 5 | 6 | 7 = 3): Promise<{ questionItems: ParsedPart3QuestionItem[]; groupPattern?: number[] }> {
+        const answerMap = PlacementTestService.extractAnswerKeyMap(rawText);
+        const part7GroupPattern = part === 7 ? PlacementTestService.extractPart7GroupPattern(rawText) : [];
+
+        const partLabel = part === 1
+            ? 'Part 1 (Photographs)'
+            : part === 2
+                ? 'Part 2 (Question-Response)'
+                : part === 5
+                    ? 'Part 5 (Incomplete Sentences)'
+                    : part === 6
+                        ? 'Part 6 (Text Completion)'
+                        : part === 7
+                            ? 'Part 7 (Reading Comprehension)'
+                : part === 4
+                    ? 'Part 4 (Short Talks)'
+                    : 'Part 3 (Short Conversations)';
+        const partSpecificRules = part === 1
+            ? `
+5) Với Part 1, nếu không có câu hỏi rõ ràng, đặt question = "Part 1 Question <số câu>".
+6) Với Part 1, BẮT BUỘC tạo transcript tiếng Anh cho mỗi câu theo dạng đọc đề TOEIC.
+7) Với Part 1, BẮT BUỘC tạo explanation bằng tiếng Việt, ngắn gọn (1-2 câu), có dịch ý phương án đúng.
+8) Trả thêm trường "transcript" và "explanation" cho từng câu.
+`
+            : part === 2
+                ? `
+5) Với Part 2, trích xuất theo dạng Question-Response.
+6) Với Part 2, question là câu hỏi/lời nói chính (ví dụ: "Where should I put ...?").
+7) Với Part 2, chỉ có A/B/C. Hãy đặt optionD = "N/A".
+8) Với Part 2, transcript là câu hỏi/lời nói chính bằng tiếng Anh.
+9) Với Part 2, BẮT BUỘC tạo explanation bằng tiếng Việt ngắn gọn, có dịch ý đáp án đúng.
+`
+                : part === 5
+                    ? `
+5) Với Part 5, mỗi câu là 1 câu hoàn chỉnh có chỗ trống hoặc lựa chọn ngữ pháp/từ vựng.
+6) question phải là câu gốc của đề (giữ nguyên dấu câu, chỗ trống nếu có).
+7) Trích xuất đủ optionA/optionB/optionC/optionD.
+8) transcript có thể để rỗng.
+9) BẮT BUỘC tạo explanation bằng tiếng Việt ngắn gọn, nêu vì sao đáp án đúng phù hợp ngữ pháp/ngữ nghĩa.
+`
+                    : part === 6
+                        ? `
+5) Với Part 6, trích xuất các câu theo cụm 4 câu (điền vào đoạn văn), nhưng output vẫn là danh sách questionItems phẳng theo thứ tự.
+6) question giữ nguyên câu/vế câu trong đề bài; nếu là câu chọn câu phù hợp trong đoạn văn thì giữ nguyên nội dung.
+7) Trích xuất đủ optionA/optionB/optionC/optionD.
+8) transcript để chuỗi rỗng nếu không có.
+9) BẮT BUỘC tạo explanation bằng tiếng Việt ngắn gọn cho đáp án đúng.
+`
+                        : part === 7
+                            ? `
+5) Với Part 7, trích xuất câu hỏi đọc hiểu theo đúng thứ tự số câu.
+6) Trích xuất đủ optionA/optionB/optionC/optionD cho từng câu.
+7) Nếu input có dòng chỉ gồm chữ số như "222233434455555", đó là group pattern (số câu theo từng cụm passage); KHÔNG đưa dòng này vào option/question.
+8) transcript để chuỗi rỗng nếu không có.
+9) BẮT BUỘC tạo explanation bằng tiếng Việt ngắn gọn cho đáp án đúng.
+`
+            : `
+5) Với Part ${part}, transcript/explanation có thể để chuỗi rỗng nếu không suy ra được.
+`;
+
+        const prompt = `
+    Bạn là trợ lý trích xuất dữ liệu đề TOEIC ${partLabel}.
+Từ văn bản thô bên dưới, hãy trích xuất các câu hỏi trắc nghiệm thành JSON.
+
+YÊU CẦU:
+1) Chỉ lấy các câu dạng trắc nghiệm có 4 lựa chọn A/B/C/D.
+2) Chuẩn hóa output thành đúng schema:
+{
+  "questionItems": [
+    {
+      "questionNumber": 32,
+      "question": "...",
+      "optionA": "...",
+      "optionB": "...",
+      "optionC": "...",
+      "optionD": "...",
+            "correctOption": "A",
+            "transcript": "...",
+            "explanation": "..."
+    }
+  ]
+}
+3) Nếu không xác định được đáp án, để "correctOption" là chuỗi rỗng "".
+4) Không trả Markdown, chỉ trả JSON hợp lệ.
+${partSpecificRules}
+
+NỘI DUNG ĐẦU VÀO:
+${rawText}
+`.trim();
+
+        let aiQuestionItems: AiParsedQuestion[] = [];
+        try {
+            const completion = await openaiClient.chat.completions.create({
+                model: env.OPENAI_MODEL,
+                response_format: { type: 'json_object' },
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You extract TOEIC MCQ items and return strict JSON only.',
+                    },
+                    {
+                        role: 'user',
+                        content: prompt,
+                    },
+                ],
+            });
+
+            const raw = completion.choices[0]?.message?.content ?? '{}';
+            const parsedJson = JSON.parse(raw) as unknown;
+            const validated = aiParseResponseSchema.safeParse(parsedJson);
+
+            if (validated.success) {
+                aiQuestionItems = validated.data.questionItems;
+            } else {
+                logger.warn('[PlacementTestService] Invalid AI parse schema, fallback to raw parser', {
+                    issues: validated.error.issues,
+                });
+            }
+        } catch (error) {
+            logger.warn('[PlacementTestService] OpenAI parse failed, fallback to raw parser', { error });
+        }
+
+        const sourceItems = aiQuestionItems.length > 0
+            ? aiQuestionItems
+            : PlacementTestService.extractQuestionsFromRawText(rawText, part);
+
+        const questionItems: ParsedPart3QuestionItem[] = sourceItems
+            .map((item, index) => {
+                const inferredQuestionNumber = Number((item.question.match(/\d{1,3}/)?.[0] ?? '').trim());
+                const questionNumber = item.questionNumber ?? (Number.isFinite(inferredQuestionNumber) && inferredQuestionNumber > 0
+                    ? inferredQuestionNumber
+                    : undefined);
+
+                const aiCorrect = (item.correctOption ?? '').trim().toUpperCase();
+                const answerKeyCorrect = questionNumber ? answerMap.get(questionNumber) : undefined;
+                const correctOption =
+                    (['A', 'B', 'C', 'D'].includes(aiCorrect)
+                        ? (aiCorrect as 'A' | 'B' | 'C' | 'D')
+                        : answerKeyCorrect)
+                    ?? 'A';
+
+                const normalizedOptionA = PlacementTestService.normalizeOptionText(item.optionA);
+                const normalizedOptionB = PlacementTestService.normalizeOptionText(item.optionB);
+                const normalizedOptionC = PlacementTestService.normalizeOptionText(item.optionC);
+                const normalizedOptionD = part === 2
+                    ? 'N/A'
+                    : PlacementTestService.normalizeOptionText(item.optionD);
+                const normalizedQuestion = PlacementTestService.normalizeQuestionText(item.question);
+                const resolvedQuestionNumber = questionNumber ?? (index + 1);
+
+                const part1Question = normalizedQuestion.length > 0
+                    ? normalizedQuestion
+                    : `Part 1 Question ${resolvedQuestionNumber}`;
+
+                const fallbackPart1Transcript = `Look at the picture marked number ${resolvedQuestionNumber} in your test book.\n(A) ${normalizedOptionA}\n(B) ${normalizedOptionB}\n(C) ${normalizedOptionC}\n(D) ${normalizedOptionD}`;
+
+                const transcript = part === 1
+                    ? ((item.transcript ?? '').trim() || fallbackPart1Transcript)
+                    : part === 2
+                        ? ((item.transcript ?? '').trim() || normalizedQuestion)
+                    : ((item.transcript ?? '').trim() || '');
+                const explanation = part === 1
+                    ? ((item.explanation ?? '').trim() || `Đáp án đúng là ${correctOption}.`)
+                    : part === 2
+                        ? ((item.explanation ?? '').trim() || `Đáp án đúng là ${correctOption}.`) 
+                        : part === 5
+                            ? ((item.explanation ?? '').trim() || `Đáp án đúng là ${correctOption}.`) 
+                            : part === 6
+                                ? ((item.explanation ?? '').trim() || `Đáp án đúng là ${correctOption}.`) 
+                                : part === 7
+                                    ? ((item.explanation ?? '').trim() || `Đáp án đúng là ${correctOption}.`) 
+                    : ((item.explanation ?? '').trim() || '');
+
+                const normalizedCorrectOption = part === 2 && correctOption === 'D'
+                    ? 'A'
+                    : correctOption;
+
+                return {
+                    question: part === 1 ? part1Question : normalizedQuestion,
+                    optionA: normalizedOptionA,
+                    optionB: normalizedOptionB,
+                    optionC: normalizedOptionC,
+                    optionD: normalizedOptionD,
+                    correctOption: normalizedCorrectOption,
+                    ...(transcript ? { transcript } : {}),
+                    ...(explanation ? { explanation } : {}),
+                };
+            })
+            .filter((item) =>
+                item.question.length > 0
+                && item.optionA.length > 0
+                && item.optionB.length > 0
+                && item.optionC.length > 0
+                && item.optionD.length > 0,
+            );
+
+        if (questionItems.length === 0) {
+            throw new AppError('Không trích xuất được câu hỏi hợp lệ từ nội dung đã dán', HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        const normalizedGroupPattern = part === 7
+            ? part7GroupPattern.filter((groupSize) => Number.isFinite(groupSize) && groupSize >= 2 && groupSize <= 7)
+            : [];
+
+        const shouldAttachGroupPattern =
+            part === 7
+            && normalizedGroupPattern.length > 0
+            && normalizedGroupPattern.reduce((sum, groupSize) => sum + groupSize, 0) === questionItems.length;
+
+        return {
+            questionItems,
+            ...(shouldAttachGroupPattern ? { groupPattern: normalizedGroupPattern } : {}),
+        };
     }
 }
 

@@ -1,7 +1,6 @@
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState, useRef, type KeyboardEvent } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { X } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import type { ICreateQuestionPayload } from '../../../types';
