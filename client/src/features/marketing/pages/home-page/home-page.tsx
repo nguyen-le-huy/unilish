@@ -43,7 +43,7 @@ const MarketingHomePage = () => {
         <div className={styles.pageLoadingOverlay} role="status" aria-live="polite" aria-label="Trang đang tải tài nguyên">
           <div className={styles.loadingContent}>
             <Loading variant="inline" size="lg" className={styles.loadingSpinner} />
-            <p className={styles.loadingText}>Dang tai trai nghiem hoc tap...</p>
+            <p className={styles.loadingText}>Đang tải trải nghiệm học tập...</p>
           </div>
         </div>
       )}

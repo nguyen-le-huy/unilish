@@ -11,8 +11,8 @@ const Hero = () => {
     return (
         <div className={styles.hero}>
             <div className={styles.content}>
-                <h1>The most effective way to<br />learn a language</h1>
-                <p>Talk out loud, get instant feedback, and become fluent<br />with the world’s most advanced AI language tutor.</p>
+                <h1>Cách hiệu quả nhất để<br />học một ngôn ngữ</h1>
+                <p>Luyện nói thành tiếng, nhận phản hồi tức thì và trở nên tự tin<br />với gia sư ngôn ngữ AI tiên tiến nhất.</p>
                 <Button
                     type="button"
                     variant="cta"
@@ -20,7 +20,7 @@ const Hero = () => {
                     rightIcon={arrowRight}
                     onClick={() => navigate(PATHS.DASHBOARD.ROOT)}
                 >
-                    Start Speaking
+                    Bắt đầu luyện nói
                 </Button>
             </div>
             <video src={heroVideo} autoPlay loop muted playsInline className={styles.video}/>

@@ -6,12 +6,11 @@ interface Props {}
 
 const Introduction = ({}: Props) => {
 	return (
-		<section className={styles.section} aria-label="Introduction to learning method">
+		<section className={styles.section} aria-label="Giới thiệu phương pháp học">
 			<div className={styles.headingWrap}>
-				<h2 className={styles.title}>You need to speak a language out loud to<br/>learn it.</h2>
+				<h2 className={styles.title}>Bạn cần nói thành tiếng để<br/>học một ngôn ngữ.</h2>
 				<p className={styles.subtitle}>
-					Speak&apos;s core philosophy is centered around getting you speaking out loud, as much
-					as possible.
+					Triết lý cốt lõi của UniLish là giúp bạn luyện nói thành tiếng nhiều nhất có thể.
 				</p>
 			</div>
 

@@ -11,15 +11,15 @@ const Header = () => {
 
     return (
         <header className={styles.header}>
-            <img src={unilishLogo} alt="Unilish logo" width="80"/>
+            <img src={unilishLogo} alt="Logo Unilish" width="80"/>
             <div className={styles.buttonList}>
                 <div className={styles.buttonExplore}>
-                    <p>Explore</p>
-                    <img src={arrowDown} alt="Arrow down" width="12"/>
+                    <p>Khám phá</p>
+                    <img src={arrowDown} alt="Mũi tên xuống" width="12"/>
                 </div>
                 <div className={styles.buttonLanguage}>
-                    <p>English</p>
-                    <img src={arrowDown} alt="Arrow down" width="12"/>
+                    <p>Tiếng Việt</p>
+                    <img src={arrowDown} alt="Mũi tên xuống" width="12"/>
                 </div>
                 <Button
                     type="button"
@@ -27,7 +27,7 @@ const Header = () => {
                     rightIcon={arrowRight}
                     onClick={() => navigate(PATHS.DASHBOARD.ROOT)}
                 >
-                    Get Started
+                    Bắt đầu
                 </Button>
             </div>
         </header>

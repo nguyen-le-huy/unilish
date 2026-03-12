@@ -9,14 +9,14 @@ const EndInvitation = ({}: Props) => {
 	const navigate = useNavigate();
 
 	return (
-		<section className={styles.section} aria-label="Get started invitation">
-			<h2 className={styles.title}>Start learning a new<br/>language today.</h2>
+		<section className={styles.section} aria-label="Lời mời bắt đầu học">
+			<h2 className={styles.title}>Bắt đầu học một<br/>ngôn ngữ mới ngay hôm nay.</h2>
 			<Button
 				type="button"
 				variant="cta"
 				onClick={() => navigate(PATHS.DASHBOARD.ROOT)}
 			>
-				Get started for free
+				Bắt đầu miễn phí
 			</Button>
 		</section>
 	);

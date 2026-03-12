@@ -11,24 +11,24 @@ const Footer = () => {
 
                 <div className={styles.footerLinks}>
                     <div className={styles.footerColumn}>
-                        <p className={styles.footerHeading}>About us</p>
-                        <a href="#" className={styles.footerLink}>Speak For Business</a>
-                        <a href="#" className={styles.footerLink}>Careers</a>
-                        <a href="#" className={styles.footerLink}>FAQ</a>
-                        <a href="#" className={styles.footerLink}>Contact</a>
+                        <p className={styles.footerHeading}>Về chúng tôi</p>
+                        <a href="#" className={styles.footerLink}>UniLish cho doanh nghiệp</a>
+                        <a href="#" className={styles.footerLink}>Tuyển dụng</a>
+                        <a href="#" className={styles.footerLink}>Câu hỏi thường gặp</a>
+                        <a href="#" className={styles.footerLink}>Liên hệ</a>
                         <a href="#" className={styles.footerLink}>Blog</a>
-                        <a href="#" className={styles.footerLink}>Press Inquiries</a>
+                        <a href="#" className={styles.footerLink}>Liên hệ báo chí</a>
                         <a href="#" className={styles.footerLink}>Instagram</a>
                     </div>
 
                     <div className={styles.footerColumn}>
-                        <p className={styles.footerHeading}>Policy</p>
-                        <a href="#" className={styles.footerLink}>Privacy</a>
-                        <a href="#" className={styles.footerLink}>Terms</a>
+                        <p className={styles.footerHeading}>Chính sách</p>
+                        <a href="#" className={styles.footerLink}>Quyền riêng tư</a>
+                        <a href="#" className={styles.footerLink}>Điều khoản</a>
                     </div>
 
                     <div className={styles.footerColumn}>
-                        <p className={styles.footerHeading}>Languages</p>
+                        <p className={styles.footerHeading}>Ngôn ngữ</p>
                         <a href="#" className={styles.footerLink}>한국어</a>
                         <a href="#" className={styles.footerLink}>日本語</a>
                         <a href="#" className={styles.footerLink}>Español</a>
@@ -37,18 +37,18 @@ const Footer = () => {
                         <a href="#" className={styles.footerLink}>Português</a>
                         <a href="#" className={styles.footerLink}>Français</a>
                         <a href="#" className={styles.footerLink}>Deutsch</a>
-                        <a href="#" className={styles.footerLink}>English</a>
+                        <a href="#" className={styles.footerLink}>Tiếng Việt</a>
                     </div>
 
                     <div className={styles.footerColumn}>
-                        <p className={styles.footerHeading}>Download</p>
+                        <p className={styles.footerHeading}>Tải ứng dụng</p>
                         <a href="#" className={styles.footerLink}>iOS</a>
                         <a href="#" className={styles.footerLink}>Android</a>
-                        <a href="#" className={styles.footerLink}>Gift Speak</a>
+                        <a href="#" className={styles.footerLink}>Tặng UniLish</a>
                     </div>
                 </div>
 
-                <p className={styles.footerCopy}>© 2026 HYSTUDIO, INC. ALL RIGHTS RESERVED</p>
+                <p className={styles.footerCopy}>© 2026 HYSTUDIO, INC. BẢO LƯU MỌI QUYỀN</p>
             </div>
         </footer>
     );

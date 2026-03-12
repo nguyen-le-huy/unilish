@@ -10,44 +10,44 @@ interface FaqItem {
 
 const faqItems: FaqItem[] = [
 	{
-		question: 'How do I get started?',
+		question: 'Làm sao để bắt đầu?',
 		answer: (
 			<>
-				Download our app from the <a href="#">Android Playstore</a> or <a href="#">Apple App store</a>,
-				 or <a href="#">sign up on web.</a>
+				Tải ứng dụng của chúng tôi từ <a href="#">CH Play trên Android</a> hoặc <a href="#">App Store của Apple</a>,
+				 hoặc <a href="#">đăng ký trên web.</a>
 			</>
 		),
 	},
 	{
-		question: 'Is UniLish completely free?',
-		answer: <>UniLish offers users a 7 day free trial where they can experience all features of the app!</>,
+		question: 'UniLish có hoàn toàn miễn phí không?',
+		answer: <>UniLish tặng người dùng 7 ngày dùng thử miễn phí để trải nghiệm toàn bộ tính năng của ứng dụng!</>,
 	},
 	{
-		question: 'I can’t log in to my account, what should I do?',
+		question: 'Tôi không thể đăng nhập vào tài khoản, tôi nên làm gì?',
 		answer: (
 			<>
-				1. Try resetting your password <a href="#">here</a>
+				1. Hãy thử đặt lại mật khẩu <a href="#">tại đây</a>
 				<br />
-				2. If still having trouble, feel free to reach out to our support team:{' '}
+				2. Nếu vẫn gặp sự cố, vui lòng liên hệ đội ngũ hỗ trợ của chúng tôi:{' '}
 				<a href="mailto:support@unilish.com">support@unilish.com</a>
 			</>
 		),
 	},
 	{
-		question: 'When will Speak teach my requested language or support my native language?',
+		question: 'Khi nào UniLish sẽ có ngôn ngữ tôi yêu cầu hoặc hỗ trợ tiếng mẹ đẻ của tôi?',
 		answer: (
 			<>
-				Join our <a href="#">waitlist</a>! Your opinions and requests help guide our language roadmap.
+				Tham gia <a href="#">danh sách chờ</a> của chúng tôi! Ý kiến và yêu cầu của bạn giúp định hướng lộ trình ngôn ngữ.
 			</>
 		),
 	},
 	{
-		question: 'I have other questions!',
+		question: 'Tôi còn câu hỏi khác!',
 		answer: (
 			<>
-				We love questions! Please reach out to our customer support team{' '}
-				<a href="mailto:support@unilish.com">support@unilish.com</a> or use our{' '}
-				<a href="#">extended FAQ.</a>
+				Chúng tôi luôn sẵn sàng giải đáp! Vui lòng liên hệ đội ngũ chăm sóc khách hàng{' '}
+				<a href="mailto:support@unilish.com">support@unilish.com</a> hoặc xem{' '}
+				<a href="#">FAQ mở rộng.</a>
 			</>
 		),
 	},
@@ -71,8 +71,8 @@ const FAQ = ({}: Props) => {
 	};
 
 	return (
-		<section className={styles.section} aria-label="Frequently asked questions">
-			<h2 className={styles.title}>Frequently Asked Questions</h2>
+		<section className={styles.section} aria-label="Các câu hỏi thường gặp">
+			<h2 className={styles.title}>Câu hỏi thường gặp</h2>
 
 			<div className={styles.panel}>
 				{faqItems.map((item, index) => (
