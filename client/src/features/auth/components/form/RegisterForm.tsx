@@ -38,6 +38,7 @@ const RegisterForm = () => {
             <Button
                 variant="ghost"
                 size="full"
+                padding="A"
                 leftIcon={GoogleLogo}
                 onClick={signInWithGoogle}
                 disabled={isRegisterPending}
@@ -89,6 +90,7 @@ const RegisterForm = () => {
                     type="submit"
                     variant="primary"
                     size="full"
+                    padding="A"
                     disabled={isRegisterPending}
                 >
                     {isRegisterPending ? <Loading variant="inline" size="sm" /> : 'Đăng ký'}

@@ -1,0 +1,205 @@
+/* Backdrop overlay */
+.backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.6);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+	padding: 24px;
+	animation: fadeIn 0.2s ease forwards;
+}
+
+/* Modal card */
+.modal {
+	position: relative;
+	background: #ffffff;
+	border-radius: 20px;
+	width: 100%;
+	max-width: 600px;
+	max-height: 90vh;
+	overflow-y: auto;
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 30px;
+    border: 1px solid var(--grey);
+	box-shadow:
+		0 20px 60px rgba(0, 0, 0, 0.18),
+		0 4px 16px rgba(0, 0, 0, 0.08);
+	animation: slideUp 0.25s ease forwards;
+}
+
+/* Close button */
+.closeButton {
+	position: absolute;
+	top: 20px;
+	right: 20px;
+	width: 30px;
+	height: 30px;
+	border: none;
+	background: transparent;
+	cursor: pointer;
+	font-size: 18px;
+	color: black;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 6px;
+	padding: 0;
+	line-height: 1;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.closeButton:hover {
+	background: var(--light-grey);
+	color: #111;
+}
+
+/* Header */
+.header {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	text-align: center;
+}
+
+.oupLogo {
+	width: 140px;
+	height: auto;
+}
+
+.title {
+	font-size: 18px;
+	font-weight: 500;
+}
+
+.subtitle {
+	font-size: 14px;
+	color: var(--dark-grey);
+	max-width: 400px;
+}
+
+/* Sections */
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+    background-color: var(--light-grey);
+    padding: 20px;
+    border-radius: 20px;
+}
+
+.sectionLabel {
+	font-size: 16px;
+	font-weight: 500;
+	margin: 0;
+}
+
+/* Module table */
+.tableWrapper {
+	border-radius: 10px;
+	overflow: hidden;
+	border: 1px solid var(--dark-grey);
+}
+
+.table {
+	width: 100%;
+	border-collapse: collapse;
+	background: var(--light-grey);
+	font-size: 13px;
+}
+
+.th {
+	padding: 10px 12px;
+	text-align: left;
+	font-weight: 500;
+	font-size: 14px;
+	border-bottom: 1px solid var(--dark-grey);
+}
+
+.thNum {
+	width: 36px;
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--dark-grey);
+}
+
+.thTime {
+	padding: 10px 12px;
+	text-align: right;
+	white-space: nowrap;
+	font-weight: 500;
+	font-size: 14px;
+	border-bottom: 1px solid var(--dark-grey);
+}
+
+.tr {
+	border-bottom: 1px solid var(--dark-grey);
+}
+
+.tr:last-child {
+	border-bottom: none;
+}
+
+.tdNum {
+	padding: 12px 12px;
+	font-size: 14px;
+	vertical-align: top;
+}
+
+.tdName {
+	padding: 12px 12px;
+	font-weight: 500;
+	font-size: 14px;
+	vertical-align: top;
+	white-space: nowrap;
+}
+
+.tdContent {
+	padding: 12px 12px;
+	font-size: 14px;
+	vertical-align: top;
+	line-height: 1.5;
+}
+
+.tdTime {
+	padding: 12px 12px;
+	text-align: right;
+	white-space: nowrap;
+	font-size: 14px;
+	vertical-align: top;
+}
+
+/* Checklist */
+.checklist {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	counter-reset: checklist;
+}
+
+.checklistItem {
+	counter-increment: checklist;
+	position: relative;
+	padding-left: 22px;
+	font-size: 14px;
+	line-height: 1.55;
+}
+
+.checklistItem::before {
+	content: counter(checklist) '.';
+	position: absolute;
+	left: 0;
+	font-size: 14px;
+}
+
+/* Footer */
+.footer {
+	display: flex;
+	justify-content: flex-end;
+}

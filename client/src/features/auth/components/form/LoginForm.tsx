@@ -38,6 +38,7 @@ const LoginForm = () => {
             <Button
                 variant="ghost"
                 size="full"
+                padding="A"
                 leftIcon={GoogleLogo}
                 onClick={signInWithGoogle}
                 disabled={isLoginPending}
@@ -77,6 +78,7 @@ const LoginForm = () => {
                     type="submit"
                     variant="primary"
                     size="full"
+                    padding="A"
                     disabled={isLoginPending}
                 >
                     {isLoginPending ? <Loading variant="inline" size="sm" /> : 'Đăng nhập'}

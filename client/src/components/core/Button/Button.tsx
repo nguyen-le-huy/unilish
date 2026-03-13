@@ -24,13 +24,18 @@ export const Button: React.FC<ButtonProps> = ({
     size = 'md',
     leftIcon,
     rightIcon,
-    padding = 'A',
+    padding,
     iconWidth = 24,
     fontSize = 16,
     className,
     style,
     ...props
 }) => {
+    const resolvedPadding = useMemo<ButtonPadding>(() => {
+        if (padding) return padding;
+        return size === 'full' ? 'B' : 'A';
+    }, [padding, size]);
+
     const iconContent = useMemo(() => {
         if (!leftIcon) return null;
         if (typeof leftIcon === 'string') {
@@ -48,10 +53,10 @@ export const Button: React.FC<ButtonProps> = ({
     }, [rightIcon]);
 
     const buttonPadding = useMemo(() => {
-        if (padding === 'A') return 'var(--padding-btnA)';
-        if (padding === 'B') return 'var(--padding-btnB)';
-        return padding;
-    }, [padding]);
+        if (resolvedPadding === 'A') return '15px 20px';
+        if (resolvedPadding === 'B') return '10px 20px';
+        return resolvedPadding;
+    }, [resolvedPadding]);
 
     const buttonIconWidth = useMemo(() => {
         if (typeof iconWidth === 'number') {
@@ -72,7 +77,7 @@ export const Button: React.FC<ButtonProps> = ({
     const buttonStyle = useMemo(
         () => ({
             ...style,
-            '--button-padding': buttonPadding,
+            padding: buttonPadding,
             '--button-icon-width': buttonIconWidth,
             '--button-font-size': buttonFontSize,
         }) as React.CSSProperties,

@@ -13,6 +13,7 @@ const GoalSelectionPage = React.lazy(() => import('@/features/dashboard/goal-sel
 const LevelSelectionPage = React.lazy(() => import('@/features/dashboard/level-selection/pages/level-selection-page'));
 const MarketingHomePage = React.lazy(() => import('@/features/marketing/pages/home-page/home-page'));
 const OTPPage = React.lazy(() => import('@/features/auth/pages/OTPVerifyPage/OTPVerifyPage'));
+const ListeningReadingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/ListeningReading/ListeningReading'));
 const AuthSuccessPage = React.lazy(() => import('@/features/auth/pages/AuthSuccessPage/AuthSuccessPage'));
 
 export const router = createBrowserRouter([
@@ -71,6 +72,14 @@ export const router = createBrowserRouter([
             {
                 element: <DashboardLayout />,
                 children: [
+                    {
+                        path: 'placement-test/lr',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <ListeningReadingPage />
+                            </Suspense>
+                        ),
+                    },
                     {
                         index: true,
                         element: (

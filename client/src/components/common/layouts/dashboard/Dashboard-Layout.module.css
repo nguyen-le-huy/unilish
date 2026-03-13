@@ -6,8 +6,8 @@
 
 .contentArea {
     flex: 1;
-    margin-top: 50px;      /* header height */
-    padding-bottom: 50px;  /* dock height + gap */
+    margin-top: 65px;      /* header height */
+    padding-bottom: 80px;  /* dock height + gap */
     overflow-y: auto;
     display: flex;
     justify-content: center;
@@ -15,8 +15,6 @@
 
 .main {
     width: 100%;
-    max-width: 900px;
-    padding: 40px 24px;
 }
 
 .header {

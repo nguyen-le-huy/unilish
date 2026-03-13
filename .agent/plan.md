@@ -1,423 +1,519 @@
-# Refactor Plan: `admin/src/features/placement-test`
+# Kế Hoạch Triển Khai UI — Placement Test: Phần Nghe & Đọc TOEIC
 
-> **Role:** Technical Architect & Planner
-> **Date:** 2026-03-07
-> **Scope:** Audit + Refactor Plan cho toàn bộ feature `placement-test` trong Admin app.
-> **Mục tiêu:** Đưa feature về chuẩn Enterprise (SRP, tái sử dụng, type-safe, performance, maintainability).
-
----
-
-## 1. Audit Summary — Điểm mạnh hiện tại ✅
-
-| Khu vực | Nhận xét |
-|---|---|
-| `types/index.ts` | Strongly-typed, rõ ràng, phân vùng tốt với comment divider |
-| `constants/query-keys.ts` | Factory Pattern chuẩn, `as const`, không magic string |
-| `api/placement-test.api.ts` | Thin API layer, typed response, tách rõ READ / WRITE |
-| `hooks/usePlacementTests.ts` | TanStack Query đúng chuẩn, `staleTime`, `placeholderData` |
-| `hooks/usePlacementTestMutations.ts` | Cache invalidation chính xác, toast feedback đúng lớp |
-| `PlacementTestTable.tsx` | Decompose tốt: `SkeletonRow`, `EmptyState` — không inline |
-| `Step2Structure.tsx` | DnD đúng chuẩn, `useCallback` cho `handleSaveModule` |
-| `EssayModuleForm.tsx` | Gọn, rõ, 212 dòng — đạt chuẩn |
-| `SpeakingModuleForm.tsx` | Gọn, rõ, 237 dòng — đạt chuẩn |
+> **Phạm vi:** UI-only.
+> **Ưu tiên:** Trang thi **Nghe & Đọc TOEIC** (7 Part) — bắt đầu từ **Part 1**.
+> **App:** `/client` — CSS Modules + GSAP, tuyệt đối không dùng Tailwind.
+> **Chuẩn:** Feature-First, lazy-loaded routes, strict TypeScript, không `any`.
 
 ---
 
-## 2. Audit Summary — Vấn đề cần xử lý ❌
+## 1. Tổng Quan Luồng Người Dùng
 
-### 2.1 [CRITICAL] MCQModuleForm.tsx — 1866 dòng, God Component
-
-**Vấn đề:** Một file duy nhất chứa toàn bộ:
-- 15+ `useState` variables
-- 10+ helper/handler functions
-- 6 factory functions tạo câu hỏi (gần như duplicate nhau)
-- Logic detect part (`isPart1Listening`, `isPart2Listening`...) lặp lại ≥ 3 lần trong render
-- AI Import Dialog nhúng trực tiếp vào form
-- Group image management logic
-- Tất cả rendering logic hòa lẫn business logic
-
-**Vi phạm:** SRP, file size, re-render performance, mental legibility.
-
----
-
-### 2.2 [HIGH] Question Factory Functions — Duplicate Code
-
-6 hàm `createPartXQuestion()` có nội dung gần như giống nhau:
-```ts
-// createPart3Question, createPart4Question, createPart6Question, createPart7Question
-// → chỉ khác chuỗi question: `Part X Question N`
 ```
-**Vi phạm:** DRY Principle.
-
----
-
-### 2.3 [HIGH] Part Detection Flags — Logic Duplication inside Render
-
-Đoạn code dưới đây xuất hiện ≥ 3 lần trong `.map()` loops của JSX:
-```ts
-const isPart1Listening = partNumber === 1 || poolTag.includes('toeic-listening-part1');
-const isPart2Listening = partNumber === 2 || poolTag.includes('toeic-listening-part2');
-// ... (7 biến như vậy)
-```
-**Vi phạm:** Không extract logic ra utility function, gây re-tính toán mỗi render.
-
----
-
-### 2.4 [HIGH] apiClient imported directly in MCQModuleForm
-
-```ts
-import apiClient from '@/lib/axios'; // ← trong component!
-```
-MCQModuleForm gọi thẳng `apiClient.post('/placement-tests/ai/parse-mcq-part3', ...)`.
-
-**Vi phạm:** API call phải nằm trong `api/placement-test.api.ts`, không trong component. Đây là vi phạm layered architecture cơ bản.
-
----
-
-### 2.5 [MEDIUM] PlacementTestStatus — Enum Anti-Pattern
-
-```ts
-// types/index.ts
-export type PlacementTestStatus = 'draft' | 'active' | 'paused' | 'archived';
-export const PlacementTestStatus = { DRAFT: 'draft', ... } as const; // ← trùng tên!
-```
-TypeScript không khuyến khích dùng type và const cùng tên (gây nhầm lẫn namespace).
-`PLACEMENT_STATUS_LABELS` trong `constants/index.ts` đã cover use-case → const object này thừa.
-
----
-
-### 2.6 [MEDIUM] WizardFormState — Frontend Type trong Domain Types File
-
-`WizardFormState` là frontend-only wizard state nhưng nằm chung `types/index.ts` với các domain interface backend.
-
----
-
-### 2.7 [MEDIUM] LS_KEY và draftKey — Magic Strings rải rác
-
-```ts
-// PlacementTestWizardPage.tsx
-const LS_KEY = 'placement-test-wizard'; // ← local constant
-
-// Step2Structure.tsx
-draftKey={`placement-test:module-draft:mcq:${editingModule?.id ?? 'new'}`} // ← inline string
-```
-Nên tập trung vào `constants/storage-keys.ts`.
-
----
-
-### 2.8 [MEDIUM] useWatch trên toàn bộ form — Re-render Thừa
-
-```ts
-const watchedValues = useWatch({ control: form.control }); // subscribe ALL fields
-```
-`useWatch` không có `name` sẽ trigger re-render mỗi keystroke của bất kỳ field nào.
-Dùng để auto-save draft — nên thay bằng `form.getValues()` inside debounced effect.
-
----
-
-### 2.9 [MEDIUM] Step1GeneralInfo — Hydration Logic Over-engineered
-
-Chuỗi `hydrationKey → useMemo → lastHydrationKeyRef → useEffect` quá phức tạp cho một tác vụ đơn giản (reset form khi languages load). Cần simplify.
-
----
-
-### 2.10 [LOW] LanguageStandardSuggestion Type trong constants/index.ts
-
-```ts
-// constants/index.ts
-export type LanguageStandardSuggestion = { ... }; // ← type trong constants file
-```
-Types phải nằm trong `types/`, không trong `constants/`.
-
----
-
-### 2.11 [LOW] SortableItem không có React.memo
-
-`SortableItem` trong `Step2Structure.tsx` re-render theo mọi thay đổi của mảng modules.
-Cần `React.memo`.
-
----
-
-### 2.12 [LOW] serializeFilters — Falsy Guard Thiếu Nhất Quán
-
-```ts
-if (filters.page) params.page = filters.page; // bỏ qua page=0 (hiếm gặp nhưng sai về semantic)
-```
-Cần dùng `if (filters.page !== undefined)`.
-
----
-
-## 3. Refactor Plan
-
-### PHASE 1 — API Layer (1 ngày) 🔴 Ưu tiên cao nhất
-
-**Mục tiêu:** Di chuyển AI parse call ra khỏi component vào đúng lớp API.
-
-#### File thay đổi:
-
-**`api/placement-test.api.ts`** — Thêm method:
-```ts
-// ADD
-parseMcqContent: async (rawText: string, part: 1|2|3|4|5|6|7) => {
-  const response = await apiClient.post<ApiResponse<{
-    questionItems: AiImportedQuestion[];
-    groupPattern?: number[];
-  }>>('/placement-tests/ai/parse-mcq-part3', { rawText, part });
-  return response.data.data;
-},
+[LevelSelectionPage]
+       │  click "Làm bài kiểm tra đầu vào"
+       ▼
+[PlacementTestIntroModal]       ← Modal giới thiệu (đã done ✓)
+       │  click "Bắt đầu"
+       ▼
+[ToeicListeningReadingPage]     ← ĐÂY LÀ TRỌNG TÂM CỦA PLAN NÀY
+       │                          7 Part | 120 phút | ~100 câu
+       │  nộp bài / hết giờ
+       ▼
+[IeltsWritingPage]              ← Giai đoạn sau
+       │
+       ▼
+[IeltsSpeakingPage]             ← Giai đoạn sau
+       │
+       ▼
+[PlacementTestResultPage]       ← Giai đoạn sau
 ```
 
-**`types/index.ts`** — Export `AiImportedQuestion` type (hiện đang define local trong MCQModuleForm):
-```ts
-export interface AiImportedQuestion {
-  question: string;
-  optionA: string; optionB: string; optionC: string; optionD: string;
-  correctOption: 'A' | 'B' | 'C' | 'D';
-  transcript?: string;
-  explanation?: string;
+---
+
+## 2. Thiết Kế Giao Diện — Trang Nghe & Đọc
+
+### 2.1 Layout Tổng Thể
+
+Trang thi là **full-screen**, **KHÔNG** dùng `DashboardLayout`. Có 3 layer:
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ HEADER (fixed, height: 56px)                                         │
+│  [Unilish Logo]  |  Bài thi đầu vào - Phần Kỹ Năng Nghe & Đọc  [Thoát]  |  [Upgrade to Pro] [🔔] [Avatar] │
+├──────────────────────────────────────────────────────────────────────┤
+│ PART TABS (sticky dưới header)                                       │
+│  [Part 1●] [Part 2] [Part 3] [Part 4] [Part 5] [Part 6] [Part 7]   │
+├────────────────────────────────────────────┬─────────────────────────┤
+│                                            │ SIDEBAR (sticky)        │
+│  CONTENT AREA (scrollable)                 │                         │
+│                                            │  Thời gian còn lại:     │
+│  ┌─────────────────────────────────────┐   │  120:00                 │
+│  │ AUDIO PLAYER (sticky dưới part tabs)│   │                         │
+│  └─────────────────────────────────────┘   │  [Nộp bài]  ← xanh lá │
+│                                            │                         │
+│  [Questions — thay đổi theo Part]          │  Part 1                 │
+│                                            │  [1][2][3][4]           │
+│                                            │  [5][6]                 │
+│     [Tiếp tục Part X]  ← góc phải dưới   │                         │
+│                                            │  Part 2                 │
+│                                            │  [1][2][3]...           │
+└────────────────────────────────────────────┴─────────────────────────┘
+```
+
+**Tỉ lệ cột:**
+- Content area: `calc(100% - 240px)` 
+- Sidebar: `240px`, `position: sticky`, `top: 56px` (dưới header), `height: calc(100vh - 56px)`, `overflow-y: auto`
+
+---
+
+### 2.2 Header Bar
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  [Logo]     Bài thi đầu vào – Phần Kỹ Năng Nghe & Đọc   [Thoát]   [Upgrade to Pro] [🔔] [👤] │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Chi tiết:**
+- Logo: nhỏ hơn marketing, 24px height
+- Title: `font-weight: 500`, `font-size: 14px`, `color: #333`
+- Nút **Thoát**: outline, nhỏ, navigate về `PATHS.DASHBOARD.LEVEL_SELECTION` (sau khi confirm)
+- "Upgrade to Pro": ghost button, icon ⚡
+- Border-bottom: `1px solid var(--grey)`
+- Background: `white`
+
+---
+
+### 2.3 Part Tabs
+
+```
+  [Part 1●]  [Part 2]  [Part 3]  [Part 4]  [Part 5]  [Part 6]  [Part 7]
+```
+
+**Behavior quan trọng (theo annotation):**
+- Khi bấm đổi Part → **audio thay đổi theo** (load audio track của part đó)
+- Khi bấm đổi Part → **nội dung câu hỏi thay đổi theo**
+- Part đang active: `background: #1a1a1a; color: white; border-radius: 8px`
+- Part chưa chọn: `background: white; color: #333; border: 1px solid var(--grey)`
+- `position: sticky`, `top: 56px` (dưới header)
+
+**Part Information Table:**
+
+| Part | Kỹ năng | Loại câu hỏi | Số câu | Mô tả |
+|------|---------|-------------|--------|-------|
+| 1 | Listening | Photo Description | 6 | Xem 1 ảnh, nghe 4 câu mô tả, chọn câu đúng |
+| 2 | Listening | Question Response | 25 | Nghe câu hỏi + 3 câu trả lời, chọn 1 |
+| 3 | Listening | Conversation | 39 | Nghe đoạn hội thoại, trả lời 3 câu/nhóm |
+| 4 | Listening | Short Talk | 30 | Nghe bài phát biểu ngắn, trả lời 3 câu/nhóm |
+| 5 | Reading | Incomplete Sentence | 30 | Điền từ vào chỗ trống trong câu |
+| 6 | Reading | Text Completion | 16 | Điền từ vào đoạn văn |
+| 7 | Reading | Reading Comprehension | 54 | Đọc passage, trả lời câu hỏi |
+
+> **Lưu ý:** Đây là bài kiểm tra đầu vào, số câu có thể ít hơn TOEIC thật. Mock data dùng số câu rút gọn.
+
+---
+
+### 2.4 Audio Player
+
+Nằm trong **Content Area**, sticky dưới Part Tabs khi scroll.
+
+```
+  [▶]  ─────────────────●─────────────  02:14 / 05:30  [🔊─────]
+```
+
+**Spec:**
+- Nút play/pause: hình tròn 36px, `background: var(--dark-green)`
+- Progress bar: không cho seek — dùng `pointer-events: none` trên thanh seek (Part 1–4 nghe 1 lần)
+- Thời gian: `[elapsed] / [total]`
+- Volume control: slider nhỏ bên phải
+- Khi đổi Part → audio src thay đổi, auto play
+- Khi audio kết thúc → badge "✓ Đã phát xong" (màu xanh lá nhạt)
+
+---
+
+### 2.5 Question Content — Part 1 (Photo Description)
+
+**Đây là phần ưu tiên triển khai đầu tiên.**
+
+**Layout 1 câu hỏi Part 1:**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Question 1  [🚩]                                       │
+│                                                         │
+│  ┌──────────────────────┐   ○ A.  [text mô tả A]       │
+│  │                      │                              │
+│  │   [Ảnh B&W]          │   ○ B.  [text mô tả B]       │
+│  │   ~280×200px         │                              │
+│  │                      │   ○ C.  [text mô tả C]       │
+│  └──────────────────────┘                              │
+│                          ● D.  [text mô tả D]  ←selected│
+│                               (highlighted row)         │
+├─────────────────────────────────────────────────────────┤
+│  Question 2  [🚩]                                       │
+│  ...                                                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Chi tiết MCQ Option:**
+- Radio button native ẩn (`display: none`), thay bằng custom circle
+- Unselected: circle outline `var(--grey)`, row background transparent
+- Selected: circle filled `var(--dark-green)`, **toàn bộ row** có background `var(--light-grey)`, text bold
+- Hover: row background `#f9f9f9`
+- Label: `A.` `B.` `C.` `D.` — chữ màu `var(--dark-grey)`
+
+**Flag Button (🚩):**
+- Icon mờ khi chưa đánh dấu, icon đỏ khi đã đánh dấu
+- Toggle trạng thái `flagged` trong question state
+
+**Phần cuối content (dưới câu hỏi cuối cùng của Part):**
+
+```
+                              ┌────────────────────────────┐
+                              │  Tiếp tục Part 2  →       │
+                              └────────────────────────────┘
+```
+- Button `border-radius: 24px`, `background: #1a1a1a`, `color: white`
+- Căn phải, click → chuyển sang tab Part 2
+
+---
+
+### 2.6 Sidebar (Sticky)
+
+```
+┌─────────────────────┐
+│  Thời gian còn lại: │
+│  120:00             │  ← bold, size lớn
+│                     │
+│  ┌───────────────┐  │
+│  │   Nộp bài     │  │  ← background: var(--dark-green), white text
+│  └───────────────┘  │
+│                     │
+│  Part 1             │  ← small label, bold
+│  ┌─┐ ┌─┐ ┌─┐ ┌─┐  │
+│  │1│ │2│ │3│ │4│  │
+│  └─┘ └─┘ └─┘ └─┘  │
+│  ┌─┐ ┌─┐          │
+│  │5│ │6│          │
+│  └─┘ └─┘          │
+│                     │
+│  Part 2             │
+│  ┌─┐ ┌─┐ ┌─┐ ┌─┐  │
+│  │1│ │2│ ...       │
+└─────────────────────┘
+```
+
+**Question Box States:**
+| State | Style |
+|-------|-------|
+| `unanswered` | Border: `1px solid var(--grey)`, bg: white |
+| `answered` | Bg: `var(--dark-green)`, color: white |
+| `flagged` | Bg: `#F59E0B`, color: white |
+| `current` | Border: `2px solid var(--brand-blue-strong)` |
+
+**Timer:**
+- Format: `MM:SS` (e.g. `120:00` → `60:00` → `00:00`)
+- Khi còn < 5 phút: màu đỏ `#EF4444`, pulse animation nhẹ
+
+---
+
+## 3. Cấu Trúc Thư Mục
+
+```
+client/src/features/dashboard/placement-test/
+│
+├── index.ts
+│
+├── pages/
+│   └── toeic-listening-reading-page/         ← MỘT page cho cả 7 Part
+│       ├── toeic-listening-reading-page.tsx
+│       └── toeic-listening-reading-page.module.css
+│
+└── components/
+    │
+    ├── test-header/                           ← Header fullscreen
+    │   ├── test-header.tsx
+    │   └── test-header.module.css
+    │
+    ├── part-tab-bar/                          ← 7 Part tabs
+    │   ├── part-tab-bar.tsx
+    │   └── part-tab-bar.module.css
+    │
+    ├── audio-player/                          ← Player (không seek)
+    │   ├── audio-player.tsx
+    │   └── audio-player.module.css
+    │
+    ├── question-navigator/                    ← Sidebar grid
+    │   ├── question-navigator.tsx
+    │   └── question-navigator.module.css
+    │
+    ├── countdown-timer/                       ← Timer MM:SS
+    │   ├── countdown-timer.tsx
+    │   └── countdown-timer.module.css
+    │
+    ├── question-types/
+    │   │
+    │   ├── photo-description/                 ← Part 1 ★ TRIỂN KHAI ĐẦU
+    │   │   ├── photo-description.tsx
+    │   │   └── photo-description.module.css
+    │   │
+    │   ├── question-response/                 ← Part 2
+    │   │   ├── question-response.tsx
+    │   │   └── question-response.module.css
+    │   │
+    │   ├── conversation-group/                ← Part 3
+    │   │   ├── conversation-group.tsx
+    │   │   └── conversation-group.module.css
+    │   │
+    │   ├── short-talk-group/                  ← Part 4
+    │   │   ├── short-talk-group.tsx
+    │   │   └── short-talk-group.module.css
+    │   │
+    │   ├── incomplete-sentence/               ← Part 5
+    │   │   ├── incomplete-sentence.tsx
+    │   │   └── incomplete-sentence.module.css
+    │   │
+    │   ├── text-completion/                   ← Part 6
+    │   │   ├── text-completion.tsx
+    │   │   └── text-completion.module.css
+    │   │
+    │   └── reading-comprehension/             ← Part 7
+    │       ├── reading-comprehension.tsx
+    │       └── reading-comprehension.module.css
+    │
+    └── mcq-option/                            ← Shared MCQ button dùng lại
+        ├── mcq-option.tsx
+        └── mcq-option.module.css
+```
+
+---
+
+## 4. TypeScript Types
+
+### `types/question.types.ts`
+
+```typescript
+export type ToeicPart = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type MCQLabel = 'A' | 'B' | 'C' | 'D';
+export type QuestionStatus = 'unanswered' | 'answered' | 'flagged';
+
+export interface MCQOption {
+  label: MCQLabel;
+  text: string;
+}
+
+export interface BaseQuestion {
+  id: string;
+  part: ToeicPart;
+  questionNumber: number;    // số thứ tự toàn bài, ví dụ Part 2 bắt đầu từ 7
+  partQuestionNumber: number; // số thứ tự trong part (luôn bắt đầu từ 1)
+  status: QuestionStatus;
+  selectedAnswer: MCQLabel | null;
+}
+
+// Part 1: Mỗi câu hỏi có 1 ảnh + 4 MCQ
+export interface PhotoDescriptionQuestion extends BaseQuestion {
+  part: 1;
+  imageUrl: string;           // URL ảnh
+  options: [MCQOption, MCQOption, MCQOption, MCQOption]; // luôn 4 option
+}
+
+// Part 2: Nghe câu hỏi, chọn 1 trong 3 câu trả lời
+export interface QuestionResponseQuestion extends BaseQuestion {
+  part: 2;
+  options: [MCQOption, MCQOption, MCQOption]; // 3 option (A/B/C)
+}
+
+// Part 3 & 4: Nhóm câu hỏi cho 1 đoạn audio
+export interface QuestionGroup extends BaseQuestion {
+  part: 3 | 4;
+  groupId: string;            // ID nhóm (1 nhóm có 3 câu)
+  transcript?: string;        // (optional) hiển thị sau khi nộp bài
+  options: [MCQOption, MCQOption, MCQOption, MCQOption];
+}
+
+// Part 5: Điền từ vào câu
+export interface IncompleteSentenceQuestion extends BaseQuestion {
+  part: 5;
+  sentenceBefore: string;     // phần câu trước chỗ trống
+  sentenceAfter: string;      // phần câu sau chỗ trống
+  options: [MCQOption, MCQOption, MCQOption, MCQOption];
+}
+
+// Part 6: Điền từ vào đoạn văn
+export interface TextCompletionQuestion extends BaseQuestion {
+  part: 6;
+  passageId: string;          // nhóm theo passage
+  blankIndex: number;         // vị trí blank trong passage (0-based)
+  options: [MCQOption, MCQOption, MCQOption, MCQOption];
+}
+
+// Part 7: Đọc passage + trả lời
+export interface ReadingComprehensionQuestion extends BaseQuestion {
+  part: 7;
+  passageId: string;
+  options: [MCQOption, MCQOption, MCQOption, MCQOption];
+}
+
+export type AnyQuestion =
+  | PhotoDescriptionQuestion
+  | QuestionResponseQuestion
+  | QuestionGroup
+  | IncompleteSentenceQuestion
+  | TextCompletionQuestion
+  | ReadingComprehensionQuestion;
+```
+
+### `types/test-session.types.ts`
+
+```typescript
+import type { AnyQuestion, ToeicPart } from './question.types';
+
+// Audio track của từng Part
+export interface PartAudioTrack {
+  part: ToeicPart;
+  src: string;          // URL audio file
+  durationSeconds: number;
+}
+
+// Trạng thái UI của trang thi (Zustand store shape)
+export interface ToeicTestUIState {
+  activePart: ToeicPart;
+  answers: Record<string, string | null>;   // questionId → MCQLabel | null
+  flaggedIds: Set<string>;
+  timeRemainingSeconds: number;
+  isTimerRunning: boolean;
+  audioElapsed: Record<ToeicPart, number>;  // thời gian audio đã phát của từng part
+  audioFinished: Record<ToeicPart, boolean>;
+}
+
+// Mock data shape cho 1 Part
+export interface PartData {
+  part: ToeicPart;
+  audioTrack: PartAudioTrack;
+  questions: AnyQuestion[];
 }
 ```
 
 ---
 
-### PHASE 2 — Type System Cleanup (0.5 ngày)
+## 5. CSS Variables Cần Bổ Sung
 
-#### File thay đổi:
+Thêm vào `client/src/assets/styles/_variables.css`:
 
-**`types/index.ts`**
-1. Xóa `export const PlacementTestStatus` (giữ `export type PlacementTestStatus`)
-2. Di chuyển `WizardFormState` sang `types/wizard.types.ts` (tạo mới)
-3. Thêm `AiImportedQuestion` interface (từ Phase 1)
+```css
+:root {
+  /* === Placement Test Layout === */
+  --pt-header-height: 56px;
+  --pt-tabs-height: 48px;
+  --pt-sidebar-width: 240px;
+  --pt-content-max-width: 860px;
 
-**`types/wizard.types.ts`** _(file mới)_
-```ts
-// Frontend-only Wizard State
-export interface WizardFormState { ... }
-export type WizardStep = 1 | 2;
-```
+  /* === Question Status Colors === */
+  --q-answered-bg:   var(--dark-green);
+  --q-flagged-bg:    #F59E0B;
+  --q-active-border: var(--brand-blue-strong);
+  --q-unanswered-border: var(--grey);
 
-**`constants/index.ts`**
-1. Xóa `LanguageStandardSuggestion` type → chỉ giữ value object `LANGUAGE_STANDARD_SUGGESTIONS`
-2. Đảm bảo type import từ `../types`
-
-**`constants/storage-keys.ts`** _(file mới)_
-```ts
-export const STORAGE_KEYS = {
-  WIZARD_DRAFT: 'placement-test-wizard',
-  MCQ_MODULE_DRAFT: (id: string) => `placement-test:module-draft:mcq:${id}`,
-} as const;
-```
-
-**`index.ts`** — Update re-exports sau cleanup.
-
----
-
-### PHASE 3 — MCQModuleForm Decomposition (2-3 ngày) 🔴 Ưu tiên cao nhất
-
-**Mục tiêu:** Phá vỡ God Component 1866 dòng thành các units có SRP.
-
-#### Cấu trúc thư mục đề xuất:
-
-```
-wizard/
-  modules/
-    MCQModuleForm/
-      index.ts                      ← re-export MCQModuleForm
-      MCQModuleForm.tsx             ← form shell, ~150 dòng
-      MCQPartCard.tsx               ← card per-part (header + pool tag + audio)
-      MCQPartAudioSection.tsx       ← shared audio for listening parts
-      MCQQuestionRow.tsx            ← single question view/edit
-      MCQGroupRow.tsx               ← grouped question cluster (Part 3/4/6/7)
-      MCQGroupMediaPanel.tsx        ← shared image list + upload + reorder
-      MCQAiImportDialog.tsx         ← AI import dialog (tách hoàn toàn)
-      hooks/
-        useMCQDraft.ts              ← localStorage draft logic
-        usePart7Groups.ts           ← buildPart7Groups + group pattern state
-        useGroupImages.ts           ← sharedImages read/write/upload/reorder
-      utils/
-        partFlags.ts                ← getPartFlags(partNumber, poolTag) → boolean flags
-        questionFactory.ts          ← createDefaultQuestion(part, index) — unified
-        audioUrl.ts                 ← resolveAudioPreviewUrl()
-    EssayModuleForm.tsx
-    SpeakingModuleForm.tsx
+  /* === Timer === */
+  --timer-warning-color: #EF4444;
+}
 ```
 
 ---
 
-#### Chi tiết từng file mới:
+## 6. Mock Data — Part 1
 
-##### `utils/partFlags.ts`
-```ts
-export interface PartFlags {
-  isPart1: boolean; isPart2: boolean; isPart3: boolean;
-  isPart4: boolean; isPart5: boolean; isPart6: boolean; isPart7: boolean;
-  isListeningPart: boolean;
-  isGroupedPart: boolean;
-}
+Tạo file `client/src/features/dashboard/placement-test/data/mock-part1.ts` để dev UI mà không cần API:
 
-export function getPartFlags(partNumber: number, poolTag: string): PartFlags { ... }
-```
+```typescript
+import type { PhotoDescriptionQuestion } from '../types/question.types';
 
-##### `utils/questionFactory.ts`
-Thay thế 6 hàm duplicate bằng 1 hàm unified:
-```ts
-export function createDefaultQuestion(part: number, index: number): ManualQuestion {
-  const base = { question: `Part ${part} Question ${index + 1}`, ... };
-  if (part === 2) base.optionD = 'N/A';
-  if (part === 1) { base.optionA = 'A'; base.optionB = 'B'; ...} // fill defaults
-  return base;
-}
-```
+export const MOCK_PART1_QUESTIONS: PhotoDescriptionQuestion[] = [
+  {
+    id: 'q-p1-1',
+    part: 1,
+    questionNumber: 1,
+    partQuestionNumber: 1,
+    status: 'unanswered',
+    selectedAnswer: null,
+    imageUrl: '/mock/part1-photo-1.jpg',
+    options: [
+      { label: 'A', text: 'A woman is trying on a dress.' },
+      { label: 'B', text: 'A woman is looking at some clothes.' },
+      { label: 'C', text: 'A woman is folding some shirts.' },
+      { label: 'D', text: 'A woman is paying for her purchase.' },
+    ],
+  },
+  // ... 5 câu còn lại tương tự
+];
 
-##### `hooks/useMCQDraft.ts`
-```ts
-export function useMCQDraft(draftKey: string | undefined, form: UseFormReturn<MCQModuleFormValues>) {
-  // Load draft on mount
-  // Auto-save with debounce (dùng form.getValues(), KHÔNG dùng useWatch)
-}
-```
-
-##### `hooks/usePart7Groups.ts`
-```ts
-export function usePart7Groups(form: UseFormReturn<...>) {
-  // part7GroupSizes state
-  // part7GroupPatterns state
-  // getPart7GroupPattern / setPart7GroupPattern
-  // buildPart7Groups
-  // getPart7GroupSize / setPart7GroupSize
-}
-```
-
-##### `hooks/useGroupImages.ts`
-```ts
-export function useGroupImages(form: UseFormReturn<...>) {
-  // getSharedImagesForGroup / setSharedImagesForGroup
-  // moveGroupImage / removeGroupImage
-  // handleSharedImageUpload
-}
-```
-
-##### `MCQAiImportDialog.tsx`
-```ts
-interface Props {
-  open: boolean;
-  partIndex: number | null;
-  partNumber: number;
-  onClose: () => void;
-  onApply: (questions: AiImportedQuestion[], groupPattern: number[] | null) => void;
-}
-```
-Chứa toàn bộ state/logic AI import (aiImportText, aiImportLoading, parsedQuestions, part7Pattern).
-Gọi `placementTestApi.parseMcqContent()` (từ Phase 1) thay vì `apiClient` trực tiếp.
-
-##### `MCQGroupRow.tsx`
-```ts
-interface Props {
-  partIndex: number; groupStart: number; groupSize: number;
-  groupOrder: number; globalStart: number; globalEnd: number;
-  mode: 'view' | 'edit' | undefined;
-  sharedImageUrls: string[];
-  onChangeMode: (mode: 'view' | 'edit' | undefined) => void;
-  onRemove: () => void;
-  form: UseFormReturn<MCQModuleFormValues>;
-  // image handlers injected from useGroupImages
-  onMoveImage: (...) => void;
-  onRemoveImage: (...) => void;
-  onUploadImage: (...) => void;
-}
-```
-
-##### `MCQModuleForm.tsx` (sau refactor)
-```
-~150 dòng:
-  - useForm setup
-  - useFieldArray
-  - useMCQDraft hook
-  - usePart7Groups hook
-  - useGroupImages hook
-  - onSubmit handler
-  - JSX: header fields + Separator + parts.map(<MCQPartCard>)
-  - <MCQAiImportDialog>
+export const MOCK_PART1_AUDIO: PartAudioTrack = {
+  part: 1,
+  src: '/mock/part1-audio.mp3',
+  durationSeconds: 330,
+};
 ```
 
 ---
 
-### PHASE 4 — Performance & Correctness Fixes (0.5 ngày)
+## 7. Thứ Tự Triển Khai
 
-| Item | File | Fix |
-|---|---|---|
-| `useWatch` toàn bộ form | `MCQModuleForm.tsx` | Dùng `form.getValues()` inside debounced `setTimeout`, bỏ `useWatch` |
-| `SortableItem` không memo | `Step2Structure.tsx` | Bọc `React.memo` |
-| `if (filters.page)` falsy | `api/placement-test.api.ts` | Đổi thành `filters.page !== undefined` |
-| `step1Defaults` derived state | `PlacementTestWizardPage.tsx` | Xóa biến trung gian, dùng `step1Data` trực tiếp |
-| `Step1GeneralInfo` hydration | `Step1GeneralInfo.tsx` | Simplify xuống 1 `useEffect` duy nhất khi `languages` load |
+> Bắt đầu từ Part 1. Mỗi bước hoàn chỉnh trước khi sang bước tiếp.
 
----
+### Giai đoạn 1 — Setup
+1. **Types** — tạo `question.types.ts`, `test-session.types.ts`
+2. **CSS Variables** — bổ sung vào `_variables.css`
+3. **Mock Data** — tạo `data/mock-part1.ts`
+4. **Paths** — đã done ✓ (`PATHS.DASHBOARD.PLACEMENT_TEST`)
 
-### PHASE 5 — constants/index.ts cleanup (0.5 ngày)
+### Giai đoạn 2 — Shared Components (không phụ thuộc nhau)
+5. **`<McqOption />`** — component dùng lại trong tất cả part
+   - Props: `label`, `text`, `isSelected`, `onSelect`
+   - Toàn bộ row highlight khi selected
+6. **`<CountdownTimer />`** — hiển thị `MM:SS`, đổi màu đỏ khi < 5 phút
+7. **`<QuestionNavigator />`** — nhận mảng questions, render grid theo Part label
+8. **`<TestHeader />`** — logo + title + nút Thoát + Upgrade Pro + bell + avatar
+9. **`<PartTabBar />`** — 7 tab, active tab được highlight đen
+10. **`<AudioPlayer />`** — progress bar không seek, play/pause, duration
 
-```ts
-// REMOVE from constants/index.ts:
-export type LanguageStandardSuggestion = { ... }; // → move to types/
+### Giai đoạn 3 — Part 1 (Photo Description) ★ MILESTONE ĐẦU TIÊN
+11. **`<PhotoDescription />`** — layout 2 cột: ảnh trái + MCQ phải, có flag button
+12. **`<ToeicListeningReadingPage />`** — ghép toàn bộ: TestHeader + PartTabBar + AudioPlayer + content + Sidebar
+    - `activePart` state điều khiển: audio src + loại câu hỏi render
+    - Sidebar sticky
+    - Nút "Tiếp tục Part X" cuối mỗi part
 
-// ADD to constants/storage-keys.ts (từ Phase 2):
-export const STORAGE_KEYS = { ... };
+### Giai đoạn 4 — Các Part còn lại (Listening)
+13. **`<QuestionResponse />`** — Part 2: 3 MCQ (A/B/C)
+14. **`<ConversationGroup />`** — Part 3: badge nhóm + 3 câu hỏi
+15. **`<ShortTalkGroup />`** — Part 4: tương tự Part 3
 
-// UPDATE index.ts barrel to re-export from wizard.types.ts
-```
+### Giai đoạn 5 — Reading Parts
+16. **`<IncompleteSentence />`** — Part 5: câu + blank + 4 MCQ
+17. **`<TextCompletion />`** — Part 6: passage + highlight blank
+18. **`<ReadingComprehension />`** — Part 7: split panel passage | câu hỏi
 
----
-
-## 4. File Map — Tóm tắt thay đổi
-
-| File | Action | Lý do |
-|---|---|---|
-| `types/index.ts` | MODIFY | Xóa duplicate const, thêm AiImportedQuestion |
-| `types/wizard.types.ts` | CREATE | Frontend-only types tách khỏi domain types |
-| `constants/index.ts` | MODIFY | Xóa type LanguageStandardSuggestion |
-| `constants/storage-keys.ts` | CREATE | Tập trung localStorage key strings |
-| `api/placement-test.api.ts` | MODIFY | Thêm parseMcqContent() |
-| `components/wizard/modules/MCQModuleForm.tsx` | REFACTOR → folder | Phá vỡ God Component |
-| `components/wizard/modules/MCQModuleForm/MCQPartCard.tsx` | CREATE | Per-part card |
-| `components/wizard/modules/MCQModuleForm/MCQPartAudioSection.tsx` | CREATE | Listening audio |
-| `components/wizard/modules/MCQModuleForm/MCQQuestionRow.tsx` | CREATE | Single question |
-| `components/wizard/modules/MCQModuleForm/MCQGroupRow.tsx` | CREATE | Group cluster |
-| `components/wizard/modules/MCQModuleForm/MCQGroupMediaPanel.tsx` | CREATE | Image management |
-| `components/wizard/modules/MCQModuleForm/MCQAiImportDialog.tsx` | CREATE | AI import dialog |
-| `components/wizard/modules/MCQModuleForm/hooks/useMCQDraft.ts` | CREATE | Draft persistence |
-| `components/wizard/modules/MCQModuleForm/hooks/usePart7Groups.ts` | CREATE | Part 7 grouping |
-| `components/wizard/modules/MCQModuleForm/hooks/useGroupImages.ts` | CREATE | Image state |
-| `components/wizard/modules/MCQModuleForm/utils/partFlags.ts` | CREATE | Flags helper |
-| `components/wizard/modules/MCQModuleForm/utils/questionFactory.ts` | CREATE | Question factories |
-| `components/wizard/modules/MCQModuleForm/utils/audioUrl.ts` | CREATE | Audio URL resolve |
-| `components/wizard/Step2Structure.tsx` | MODIFY | Memo SortableItem |
-| `components/wizard/Step1GeneralInfo.tsx` | MODIFY | Simplify hydration |
-| `pages/PlacementTestWizardPage/PlacementTestWizardPage.tsx` | MODIFY | Dùng STORAGE_KEYS, cleanup step1Defaults |
-| `index.ts` | MODIFY | Update exports |
+### Giai đoạn 6 — Router Integration
+19. Cập nhật `router.tsx` — thêm route `PATHS.DASHBOARD.PLACEMENT_TEST.LISTENING` lazy-loaded
+20. Wire routing từ `PlacementTestIntroModal` → navigate khi bấm "Bắt đầu"
 
 ---
 
-## 5. Thứ tự thực hiện (Priority → Impact)
+## 8. Checklist Kiến Trúc
 
-```
-Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5
-  API fix   Types    God      Perf fix   Cleanup
-  (1 ngày)  (0.5)   (2-3d)   (0.5d)    (0.5d)
-```
-
-> ⚠️ **Lưu ý thực hiện Phase 3**: Refactor từng sub-component một, build+test sau mỗi file để tránh regression. Không refactor toàn bộ MCQModuleForm trong 1 commit.
+- [ ] Không dùng Tailwind, không dùng UI library — CSS Modules only
+- [ ] Mọi component có `interface Props` tường minh, không `any`
+- [ ] CSS class dùng `camelCase` (`.questionCard`, `.isSelected`, `.isFlagged`)
+- [ ] Màu sắc dùng CSS Variables, không hardcode hex trực tiếp trong JSX
+- [ ] GSAP dùng `useGSAP` từ `@gsap/react` (scoped cleanup)
+- [ ] Page lazy-loaded qua `React.lazy`
+- [ ] Trang thi full-screen, bypass `DashboardLayout`
+- [ ] Sidebar `position: sticky`, tự scroll độc lập
+- [ ] Audio player block seek để tránh gian lận
+- [ ] Tất cả interactive elements có `aria-label`
+- [ ] Dùng mock data — không gọi API ở phase UI
 
 ---
 
-## 6. Acceptance Criteria
-
-- [ ] `MCQModuleForm.tsx` (root shell) ≤ 200 dòng
-- [ ] Không có file nào > 400 dòng trong feature này
-- [ ] Không `import apiClient` trong bất kỳ component nào
-- [ ] Không duplicate `isPart1Listening / isPart2Listening...` logic
-- [ ] Không `useWatch` không có `name` trong production forms
-- [ ] `SortableItem` được `React.memo`
-- [ ] `STORAGE_KEYS` là single source of truth cho localStorage keys
-- [ ] `PlacementTestStatus` const object bị xóa (chỉ giữ type)
-- [ ] `WizardFormState` nằm trong `types/wizard.types.ts`
-- [ ] `admin build` pass không warning TypeScript

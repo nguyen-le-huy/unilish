@@ -2,6 +2,7 @@ import { useState } from 'react';
 import styles from './level-selection-form.module.css';
 import SelectionCard from '@/components/core/SelectionCard/SelectionCard';
 import SelectionForm from '@/components/core/SelectionForm/SelectionForm';
+import PlacementTestIntroModal from '@/features/dashboard/placement-test/components/placement-test-intro-modal/placement-test-intro-modal';
 import a1Icon from '@/assets/icons/A1.svg';
 import a2Icon from '@/assets/icons/A2.svg';
 import b1Icon from '@/assets/icons/B1.svg';
@@ -47,13 +48,15 @@ const LEVELS: LevelItem[] = [
 
 const LevelSelectionForm = () => {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
 	return (
+		<>
 		<SelectionForm
 			title="Chọn trình độ tiếng Anh của bạn"
 			subtitle="Hãy chọn trình độ hiện tại của bạn theo khung tham chiếu CEFR (A1–C2) hoặc bạn có thể làm bài kiểm tra đầu vào để được đánh giá chính xác hơn."
 			primaryAction={{ label: 'Tiếp tục', disabled: !selectedId }}
-			secondaryAction={{ label: 'Làm bài kiểm tra đầu vào' }}
+			secondaryAction={{ label: 'Làm bài kiểm tra đầu vào', onClick: () => setIsModalOpen(true) }}
 		>
 			<div className={styles.cardGrid}>
 				{LEVELS.map((level) => (
@@ -69,6 +72,10 @@ const LevelSelectionForm = () => {
 				))}
 			</div>
 		</SelectionForm>
+		{isModalOpen && (
+			<PlacementTestIntroModal onClose={() => setIsModalOpen(false)} />
+		)}
+		</>
 	);
 };
 

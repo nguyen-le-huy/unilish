@@ -1,0 +1,77 @@
+.right {
+    flex: 0 0 20%;
+    padding: 20px;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    border-left: 1px solid var(--light-grey);
+}
+
+.timerSection {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.timerLabel {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.timerValue {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.partLabel {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.questionGrid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+}
+
+.questionBox {
+    aspect-ratio: 1;
+    border: 1px solid black;
+    border-radius: 10px;
+    background: white;
+    font-size: 16px;
+    font-family: var(--font-family);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    font-weight: 500;
+}
+
+.questionBox:hover {
+    border-color: var(--dark-green);
+    color: white;
+    background: var(--dark-green);
+}
+
+.questionBoxAnswered {
+    background: var(--dark-green);
+    color: white;
+    border-color: var(--dark-green);
+}
+
+.questionBoxFlagged {
+    background: #F59E0B;
+    color: white;
+    border-color: #F59E0B;
+}
+
+.questionBoxActive {
+    border: 2px solid var(--brand-blue-strong);
+    font-weight: 700;
+}

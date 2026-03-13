@@ -16,5 +16,14 @@ export const PATHS = {
         LEARNING: '/dashboard/learning',
         GOAL_SELECTION: '/dashboard/goal-selection',
         LEVEL_SELECTION: '/dashboard/level-selection',
+        PLACEMENT_TEST: {
+            ROOT:      '/dashboard/placement-test',
+            INTRO:     '/dashboard/placement-test/intro',
+            LISTENING: '/dashboard/placement-test/lr',
+            READING:   '/dashboard/placement-test/toeic/reading',
+            WRITING:   '/dashboard/placement-test/writing',
+            SPEAKING:  '/dashboard/placement-test/speaking',
+            RESULT:    '/dashboard/placement-test/result',
+        },
     }
 } as const;
