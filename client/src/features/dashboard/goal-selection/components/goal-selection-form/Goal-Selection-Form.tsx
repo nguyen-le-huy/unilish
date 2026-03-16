@@ -1,39 +1,106 @@
-import { useState } from 'react';
-import styles from './goal-selection-form.module.css';
+import { useCallback, useMemo, useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/core/Button/Button';
 import SelectionCard from '@/components/core/SelectionCard/SelectionCard';
 import SelectionForm from '@/components/core/SelectionForm/SelectionForm';
+import { PATHS } from '@/config/paths';
+import { useAuthStore } from '@/stores/auth.store';
+import { useOnboardingDraftStore } from '@/stores/onboarding.store';
+import {
+    GOAL_DESCRIPTION_FALLBACK,
+    GOAL_EMPTY_STATE_MESSAGE,
+} from '../../constants/goal-selection.constants';
+import { useLearningGoalsQuery } from '../../hooks/use-learning-goals-query';
 import planeIcon from '@/assets/icons/plane.svg';
-
-const GOALS = [
-    { id: 'travel', icon: planeIcon, title: 'Du lịch & Sinh tồn', description: 'Lộ trình giao tiếp cấp tốc giúp bạn tự tin xử lý mọi tình huống thực tế khi đi du lịch hoặc công tác nước ngoài.' },
-    { id: 'business', icon: planeIcon, title: 'Kinh doanh & Công việc', description: 'Nâng cao kỹ năng giao tiếp chuyên nghiệp trong môi trường công sở và đàm phán quốc tế.' },
-    { id: 'academic', icon: planeIcon, title: 'Học thuật & Thi cử', description: 'Chuẩn bị cho các kỳ thi quốc tế như IELTS, TOEFL, SAT với lộ trình học bài bản.' },
-    { id: 'daily', icon: planeIcon, title: 'Giao tiếp hàng ngày', description: 'Xây dựng vốn từ vựng và phản xạ ngôn ngữ tự nhiên trong các tình huống đời thường.' },
-    { id: 'culture', icon: planeIcon, title: 'Văn hóa & Giải trí', description: 'Khám phá văn hóa qua phim, âm nhạc, sách và các nội dung giải trí bằng tiếng Anh.' },
-    { id: 'kids', icon: planeIcon, title: 'Dành cho trẻ em', description: 'Phương pháp học vui nhộn, phù hợp lứa tuổi giúp trẻ tiếp thu ngôn ngữ tự nhiên.' },
-] as const;
+import styles from './goal-selection-form.module.css';
 
 const GoalSelectionForm = () => {
-    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const navigate = useNavigate();
+    const user = useAuthStore((state) => state.user);
+    const languageId = useOnboardingDraftStore((state) => state.languageId);
+    const languageCode = useOnboardingDraftStore((state) => state.languageCode);
+    const draftGoal = useOnboardingDraftStore((state) => state.learningGoal);
+    const setLearningGoalDraft = useOnboardingDraftStore((state) => state.setLearningGoal);
+
+    const [selectedId, setSelectedId] = useState<string | null>(draftGoal ?? user?.learningGoal ?? null);
+    const { data: goals = [], isLoading, isError, refetch } = useLearningGoalsQuery(languageId ?? undefined);
+
+    const filteredGoals = useMemo(() => {
+        if (!languageId) {
+            return [];
+        }
+
+        return goals.filter((goal) =>
+            Array.isArray(goal.supportedLanguages)
+                ? goal.supportedLanguages.includes(languageId)
+                : true,
+        );
+    }, [goals, languageId]);
+
+    const handleContinue = useCallback(() => {
+        if (!selectedId || filteredGoals.length === 0) {
+            return;
+        }
+
+        const selectedGoal = filteredGoals.find((goal) => selectedId === goal.slug || selectedId === goal._id);
+        if (!selectedGoal) {
+            return;
+        }
+
+        setLearningGoalDraft(selectedGoal.slug);
+        navigate(PATHS.DASHBOARD.LEVEL_SELECTION);
+    }, [filteredGoals, navigate, selectedId, setLearningGoalDraft]);
+
+    if (!languageId || !languageCode) {
+        return <Navigate to={PATHS.DASHBOARD.LANGUAGE_SELECTION} replace />;
+    }
 
     return (
         <SelectionForm
             title="Chọn mục tiêu học tập của bạn"
             subtitle="Hãy chọn mục tiêu học tập bạn mong muốn, bạn có thể thay đổi lựa chọn này sau."
-            primaryAction={{ label: 'Tiếp tục', disabled: !selectedId }}
+            primaryAction={{ label: 'Tiếp tục', disabled: !selectedId || isLoading, onClick: handleContinue }}
         >
-            <div className={styles.cardGrid}>
-                {GOALS.map((goal) => (
-                    <SelectionCard
-                        key={goal.id}
-                        icon={<img src={goal.icon} alt="" width={24} height={24} />}
-                        title={goal.title}
-                        description={goal.description}
-                        selected={selectedId === goal.id}
-                        onClick={() => setSelectedId(goal.id)}
-                    />
-                ))}
-            </div>
+            {isLoading && <p className={styles.feedback}>Đang tải mục tiêu học tập...</p>}
+            {isError && (
+                <div className={styles.errorState}>
+                    <p className={styles.feedback}>Không thể tải danh sách mục tiêu. Vui lòng thử lại.</p>
+                    <Button type="button" variant="outline" padding="B" onClick={() => void refetch()}>
+                        Thử lại
+                    </Button>
+                </div>
+            )}
+
+            {!isLoading && !isError && filteredGoals.length === 0 && (
+                <p className={styles.feedback}>{GOAL_EMPTY_STATE_MESSAGE}</p>
+            )}
+
+            {!isLoading && !isError && filteredGoals.length > 0 && (
+                <div className={styles.cardGrid}>
+                    {filteredGoals.map((goal) => (
+                        <SelectionCard
+                            key={goal._id}
+                            icon={(
+                                <img
+                                    src={goal.iconUrl ?? planeIcon}
+                                    alt={goal.title}
+                                    width={24}
+                                    height={24}
+                                    onError={(event) => {
+                                        event.currentTarget.onerror = null;
+                                        event.currentTarget.src = planeIcon;
+                                    }}
+                                />
+                            )}
+                            title={goal.title}
+                            description={goal.description ?? goal.targetAudience ?? GOAL_DESCRIPTION_FALLBACK}
+                            ariaLabel={`Chọn mục tiêu học tập ${goal.title}`}
+                            selected={selectedId === goal.slug || selectedId === goal._id}
+                            onClick={() => setSelectedId(goal.slug)}
+                        />
+                    ))}
+                </div>
+            )}
         </SelectionForm>
     );
 };

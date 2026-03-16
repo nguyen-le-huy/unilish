@@ -90,6 +90,7 @@ import listeningRouter from './routes/listening.route.js';
 import writingRouter from './routes/writing.route.js';
 import audioRouter from './routes/audio.route.js';
 import questionRouter from './routes/question.route.js';
+import placementTestRuntimeRouter from './routes/placement-test-runtime.route.js';
 import placementTestRouter from './routes/placement-test.route.js';
 import { streamListeningAudio } from './controllers/listening.controller.js';
 
@@ -115,6 +116,7 @@ app.use('/api/curriculum/lessons', listeningRouter);
 app.use('/api/curriculum/lessons', writingRouter);
 app.use('/api/audio', audioRouter);
 app.use('/api/questions', questionRouter);
+app.use('/api/placement-tests/runtime', placementTestRuntimeRouter);
 app.use('/api/placement-tests', placementTestRouter);
 
 app.get('/', (req, res) => {

@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
     Select,
     SelectContent,
@@ -10,15 +10,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { useLanguages, useUpdateLanguage, type TTSProvider } from '@/features/curriculum/languages';
+import { useLanguages, useUpdateLanguage } from '@/features/curriculum/languages';
 
 export function LanguageConfig() {
     const { data: languages = [], isLoading } = useLanguages({ isActive: true });
     const updateMutation = useUpdateLanguage();
 
     const [selectedCode, setSelectedCode] = useState<string>('');
-    const [provider, setProvider] = useState<TTSProvider>('OPENAI');
-    const [voiceId, setVoiceId] = useState<string>('');
+    const [greeting, setGreeting] = useState<string>('');
+    const [greetingSound, setGreetingSound] = useState<string>('');
 
     const selectedLanguage = useMemo(() => {
         return languages.find((language) => language.code === selectedCode) ?? null;
@@ -31,8 +31,8 @@ export function LanguageConfig() {
             return;
         }
 
-        setProvider(language.ttsConfig.provider);
-        setVoiceId(language.ttsConfig.voiceId ?? '');
+        setGreeting(language.greeting ?? '');
+        setGreetingSound(language.greetingSound ?? '');
     };
 
     const handleSave = async () => {
@@ -43,10 +43,8 @@ export function LanguageConfig() {
         await updateMutation.mutateAsync({
             code: selectedLanguage.code,
             payload: {
-                ttsConfig: {
-                    provider,
-                    voiceId: voiceId.trim() || undefined,
-                },
+                greeting: greeting.trim() || null,
+                greetingSound: greetingSound.trim() || null,
             },
         });
     };
@@ -54,7 +52,7 @@ export function LanguageConfig() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Cấu hình TTS ngôn ngữ</CardTitle>
+                <CardTitle>Cấu hình Greeting ngôn ngữ</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -74,22 +72,27 @@ export function LanguageConfig() {
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="lc-provider">Nhà cung cấp TTS</Label>
-                    <Select value={provider} onValueChange={(value) => setProvider(value as TTSProvider)}>
-                        <SelectTrigger id="lc-provider" aria-label="Chọn nhà cung cấp TTS">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="OPENAI">OpenAI</SelectItem>
-                            <SelectItem value="AZURE">Azure</SelectItem>
-                            <SelectItem value="ELEVENLABS">ElevenLabs</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <Label htmlFor="lc-greeting">Greeting</Label>
+                    <Textarea
+                        id="lc-greeting"
+                        value={greeting}
+                        onChange={(event) => setGreeting(event.target.value)}
+                        placeholder="Hello, welcome to UniLish."
+                        aria-label="Greeting"
+                        rows={3}
+                    />
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="lc-voice-id">Mã giọng đọc</Label>
-                    <Input id="lc-voice-id" value={voiceId} onChange={(event) => setVoiceId(event.target.value)} placeholder="alloy / en-US-JennyNeural" aria-label="Mã giọng đọc" />
+                    <Label htmlFor="lc-greeting-sound">Greeting sound URL</Label>
+                    <Textarea
+                        id="lc-greeting-sound"
+                        value={greetingSound}
+                        onChange={(event) => setGreetingSound(event.target.value)}
+                        placeholder="https://... hoặc /audio/..."
+                        aria-label="Greeting sound URL"
+                        rows={2}
+                    />
                 </div>
 
                 <Button type="button" className="w-full" disabled={!selectedLanguage || updateMutation.isPending} onClick={handleSave}>

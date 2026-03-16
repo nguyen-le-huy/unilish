@@ -4,8 +4,6 @@ import type {
     CreateLanguagePayload,
     Language,
     LanguageListQuery,
-    TestVoicePayload,
-    TestVoiceResult,
     UpdateLanguagePayload,
 } from '../types/language.types';
 
@@ -37,17 +35,21 @@ export const languageApi = {
         return response.data.data;
     },
 
-    testVoice: async (code: string, payload: TestVoicePayload): Promise<TestVoiceResult> => {
-        const response = await apiClient.post<ApiResponse<TestVoiceResult>>(`${BASE_PATH}/${code}/test-voice`, payload);
-        return response.data.data;
-    },
-
     uploadFlagIcon: async (file: File): Promise<{ url: string; type: string }> => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('folder', 'curriculum/languages/flags');
 
         const response = await apiClient.post<ApiResponse<{ url: string; type: string }>>('/upload/image', formData);
+        return response.data.data;
+    },
+
+    uploadGreetingSound: async (file: File): Promise<{ url: string; type: string }> => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'curriculum/languages/greetings');
+
+        const response = await apiClient.post<ApiResponse<{ url: string; type: string }>>('/upload', formData);
         return response.data.data;
     },
 };

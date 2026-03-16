@@ -5,7 +5,6 @@ import OpenAI from 'openai';
 import { env } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
 import { LessonMongoRepository } from '../../repositories/mongo/lesson.mongo.repository.js';
-import { Language } from '../../models/mongo/language.model.js';
 import type { TTSJobPayload } from '../queues/tts.queue.js';
 
 // ─── Infrastructure Clients ───────────────────────────────────────────────────
@@ -49,18 +48,9 @@ async function processTTSJob(job: Job<TTSJobPayload>): Promise<void> {
 
     logger.info(`[TTS Worker] Starting job ${job.id} — lesson: ${lessonId}, items: ${items.length}`);
 
-    // 1. Fetch language TTS config
-    const language = await Language.findById(languageId)
-        .select('ttsConfig')
-        .lean()
-        .exec();
-
-    if (!language) {
-        throw new Error(`Language ${languageId} not found`);
-    }
-
-    const voiceId = (language.ttsConfig?.voiceId ?? 'alloy') as OpenAI.Audio.SpeechCreateParams['voice'];
-    const speed = language.ttsConfig?.speed ?? 1.0;
+    // 1. Use default TTS config for background generation
+    const voiceId = 'alloy' as OpenAI.Audio.SpeechCreateParams['voice'];
+    const speed = 1.0;
 
     // 2. Set generation status to GENERATING_AUDIO
     await lessonRepo.updateVocabGenerationStatus(lessonId, 'GENERATING_AUDIO');

@@ -44,7 +44,7 @@ export class AuthService {
             otp: hashedOtp,
             otpExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
             authProvider: EAuthProvider.LOCAL,
-            currentLevel: ELevel.A1,
+            currentLevel: ELevel.A0,
             lastActiveAt: new Date(),
         } as Partial<IUser>);
 
@@ -108,7 +108,10 @@ export class AuthService {
                 fullName: user.fullName,
                 avatarUrl: user.avatarUrl,
                 role: user.role,
+                nativeLanguage: user.nativeLanguage,
                 currentLevel: user.currentLevel,
+                learningGoal: user.learningGoal,
+                placementTestScore: user.placementTestScore,
                 subscription: user.subscription,
             }
         };
@@ -164,7 +167,10 @@ export class AuthService {
                 fullName: user.fullName,
                 avatarUrl: user.avatarUrl,
                 role: user.role,
+                nativeLanguage: user.nativeLanguage,
                 currentLevel: user.currentLevel,
+                learningGoal: user.learningGoal,
+                placementTestScore: user.placementTestScore,
                 subscription: user.subscription,
                 dateOfBirth: user.dateOfBirth,
             },
@@ -221,7 +227,7 @@ export class AuthService {
                 authProvider: EAuthProvider.GOOGLE,
                 isVerified: true,
                 role: EUserRole.STUDENT,
-                currentLevel: ELevel.A1,
+                currentLevel: ELevel.A0,
                 lastActiveAt: new Date(),
             } as any);
         }
@@ -241,7 +247,10 @@ export class AuthService {
                 fullName: user.fullName,
                 avatarUrl: user.avatarUrl,
                 role: user.role,
+                nativeLanguage: user.nativeLanguage,
                 currentLevel: user.currentLevel,
+                learningGoal: user.learningGoal,
+                placementTestScore: user.placementTestScore,
                 subscription: user.subscription,
                 phoneNumber: user.phoneNumber,
                 dateOfBirth: user.dateOfBirth,

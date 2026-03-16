@@ -5,4 +5,4 @@ export { default as LanguageEditorPage } from './pages/LanguageEditorPage/Langua
 // Cross-feature hooks (allowed via public barrel only — FSD §2)
 export { useLanguages } from './hooks/useLanguages';
 export { useUpdateLanguage } from './hooks/useLanguageMutations';
-export type { Language, TTSProvider } from './types/language.types';
+export type { Language } from './types/language.types';

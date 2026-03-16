@@ -31,9 +31,13 @@ const useHeaderAvatarData = (): HeaderAvatarData => {
 
   return useMemo(() => {
     const displayName = fullName.trim() || email.trim() || 'User';
+    const normalizedAvatarUrl =
+      avatarUrl === 'https://res.cloudinary.com/demo/image/upload/v1/default_avatar.png'
+        ? null
+        : avatarUrl;
 
     return {
-      avatarUrl,
+      avatarUrl: normalizedAvatarUrl,
       displayName,
       initials: getInitials(displayName),
     };

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User } from '@/features/auth/types';
+import { useOnboardingDraftStore } from './onboarding.store';
 
 interface AuthState {
     user: User | null;
@@ -24,6 +25,7 @@ export const useAuthStore = create<AuthState>()(
                 set((state) => ({ ...state, user }));
             },
             logout: () => {
+                useOnboardingDraftStore.getState().clear();
                 set({ user: null, token: null, isAuthenticated: false });
             },
         }),

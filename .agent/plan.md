@@ -1,519 +1,499 @@
-# Kế Hoạch Triển Khai UI — Placement Test: Phần Nghe & Đọc TOEIC
+# Audit Round 3: `placement-test` Feature
 
-> **Phạm vi:** UI-only.
-> **Ưu tiên:** Trang thi **Nghe & Đọc TOEIC** (7 Part) — bắt đầu từ **Part 1**.
-> **App:** `/client` — CSS Modules + GSAP, tuyệt đối không dùng Tailwind.
-> **Chuẩn:** Feature-First, lazy-loaded routes, strict TypeScript, không `any`.
-
----
-
-## 1. Tổng Quan Luồng Người Dùng
-
-```
-[LevelSelectionPage]
-       │  click "Làm bài kiểm tra đầu vào"
-       ▼
-[PlacementTestIntroModal]       ← Modal giới thiệu (đã done ✓)
-       │  click "Bắt đầu"
-       ▼
-[ToeicListeningReadingPage]     ← ĐÂY LÀ TRỌNG TÂM CỦA PLAN NÀY
-       │                          7 Part | 120 phút | ~100 câu
-       │  nộp bài / hết giờ
-       ▼
-[IeltsWritingPage]              ← Giai đoạn sau
-       │
-       ▼
-[IeltsSpeakingPage]             ← Giai đoạn sau
-       │
-       ▼
-[PlacementTestResultPage]       ← Giai đoạn sau
-```
+> **Scope**: `client/src/features/dashboard/placement-test/`
+> **Auditor Role**: Senior Technical Architect (Unilish)
+> **Date**: 2026-03-16 (Round 3 — Final Verification)
+> **Baseline**: `language-selection` (8.5), `goal-selection` (8.8)
 
 ---
 
-## 2. Thiết Kế Giao Diện — Trang Nghe & Đọc
+## 1. Đối Chiếu Round 2 vs Thực Tế
 
-### 2.1 Layout Tổng Thể
+| # | Issue Round 2 | Trạng thái |
+|---|---|---|
+| R2-1 | `mutation` object (unstable) trong `useEffect` deps | ❌ **Chưa fix** — `[placementTestId, mutation]` vẫn còn |
+| R2-2 | 401 branch trong `useEffect` redundant | ❌ **Chưa fix** — `useEffect` lines 86–100 vẫn còn nguyên |
+| R2-3 | `as unknown as` trong test helper cần comment | ❌ **Chưa fix** — line 22 chưa có comment |
+| R2-4 | `right-panel` native `<button>` cần comment | ❌ **Chưa fix** — chưa có exception comment |
+| R2-5 | Component 204 dòng — optional extract `renderError` | ❌ **Chưa fix** — optional, 204 dòng |
+| R2-6 | **Data loss bug** — `useEffect` dep `[attempt]` → `[attempt?.attemptId]` | ❌ **Chưa fix** — line 28 vẫn `[attempt]` |
+| R2-7 | `autosaveErrorMessage` trong deps — nên dùng ref pattern | ❌ **Chưa fix** — line 79 vẫn có `autosaveErrorMessage` |
+| R2-8 | `as AxiosError<>` unsafe cast — nên dùng type guard | ❌ **Chưa fix** — line 35, 44 vẫn còn |
+| R2-9 | `DEFAULT_LANGUAGE` ở global config | ❌ **Chưa fix** — low priority, trong scope |
+| R2-10 | `use-answer-state.ts` chưa có test | ❌ **Chưa fix** — chưa có test file |
 
-Trang thi là **full-screen**, **KHÔNG** dùng `DashboardLayout`. Có 3 layer:
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│ HEADER (fixed, height: 56px)                                         │
-│  [Unilish Logo]  |  Bài thi đầu vào - Phần Kỹ Năng Nghe & Đọc  [Thoát]  |  [Upgrade to Pro] [🔔] [Avatar] │
-├──────────────────────────────────────────────────────────────────────┤
-│ PART TABS (sticky dưới header)                                       │
-│  [Part 1●] [Part 2] [Part 3] [Part 4] [Part 5] [Part 6] [Part 7]   │
-├────────────────────────────────────────────┬─────────────────────────┤
-│                                            │ SIDEBAR (sticky)        │
-│  CONTENT AREA (scrollable)                 │                         │
-│                                            │  Thời gian còn lại:     │
-│  ┌─────────────────────────────────────┐   │  120:00                 │
-│  │ AUDIO PLAYER (sticky dưới part tabs)│   │                         │
-│  └─────────────────────────────────────┘   │  [Nộp bài]  ← xanh lá │
-│                                            │                         │
-│  [Questions — thay đổi theo Part]          │  Part 1                 │
-│                                            │  [1][2][3][4]           │
-│                                            │  [5][6]                 │
-│     [Tiếp tục Part X]  ← góc phải dưới   │                         │
-│                                            │  Part 2                 │
-│                                            │  [1][2][3]...           │
-└────────────────────────────────────────────┴─────────────────────────┘
-```
-
-**Tỉ lệ cột:**
-- Content area: `calc(100% - 240px)` 
-- Sidebar: `240px`, `position: sticky`, `top: 56px` (dưới header), `height: calc(100vh - 56px)`, `overflow-y: auto`
+> **Nhận xét**: Cả 10 items từ Round 2 đều chưa được xử lý. Codebase giữ nguyên trạng thái Round 2.
 
 ---
 
-### 2.2 Header Bar
+## 2. Phân Tích Sâu Hơn Round 3
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  [Logo]     Bài thi đầu vào – Phần Kỹ Năng Nghe & Đọc   [Thoát]   [Upgrade to Pro] [🔔] [👤] │
-└──────────────────────────────────────────────────────────────────────┘
-```
-
-**Chi tiết:**
-- Logo: nhỏ hơn marketing, 24px height
-- Title: `font-weight: 500`, `font-size: 14px`, `color: #333`
-- Nút **Thoát**: outline, nhỏ, navigate về `PATHS.DASHBOARD.LEVEL_SELECTION` (sau khi confirm)
-- "Upgrade to Pro": ghost button, icon ⚡
-- Border-bottom: `1px solid var(--grey)`
-- Background: `white`
+### Deep Review Các Files Chưa Đổi
 
 ---
 
-### 2.3 Part Tabs
+### 🔴 [R3-CRITICAL-1] Data Loss Bug Xác Nhận — `use-answer-state.ts:28`
 
-```
-  [Part 1●]  [Part 2]  [Part 3]  [Part 4]  [Part 5]  [Part 6]  [Part 7]
-```
-
-**Behavior quan trọng (theo annotation):**
-- Khi bấm đổi Part → **audio thay đổi theo** (load audio track của part đó)
-- Khi bấm đổi Part → **nội dung câu hỏi thay đổi theo**
-- Part đang active: `background: #1a1a1a; color: white; border-radius: 8px`
-- Part chưa chọn: `background: white; color: #333; border: 1px solid var(--grey)`
-- `position: sticky`, `top: 56px` (dưới header)
-
-**Part Information Table:**
-
-| Part | Kỹ năng | Loại câu hỏi | Số câu | Mô tả |
-|------|---------|-------------|--------|-------|
-| 1 | Listening | Photo Description | 6 | Xem 1 ảnh, nghe 4 câu mô tả, chọn câu đúng |
-| 2 | Listening | Question Response | 25 | Nghe câu hỏi + 3 câu trả lời, chọn 1 |
-| 3 | Listening | Conversation | 39 | Nghe đoạn hội thoại, trả lời 3 câu/nhóm |
-| 4 | Listening | Short Talk | 30 | Nghe bài phát biểu ngắn, trả lời 3 câu/nhóm |
-| 5 | Reading | Incomplete Sentence | 30 | Điền từ vào chỗ trống trong câu |
-| 6 | Reading | Text Completion | 16 | Điền từ vào đoạn văn |
-| 7 | Reading | Reading Comprehension | 54 | Đọc passage, trả lời câu hỏi |
-
-> **Lưu ý:** Đây là bài kiểm tra đầu vào, số câu có thể ít hơn TOEIC thật. Mock data dùng số câu rút gọn.
-
----
-
-### 2.4 Audio Player
-
-Nằm trong **Content Area**, sticky dưới Part Tabs khi scroll.
-
-```
-  [▶]  ─────────────────●─────────────  02:14 / 05:30  [🔊─────]
-```
-
-**Spec:**
-- Nút play/pause: hình tròn 36px, `background: var(--dark-green)`
-- Progress bar: không cho seek — dùng `pointer-events: none` trên thanh seek (Part 1–4 nghe 1 lần)
-- Thời gian: `[elapsed] / [total]`
-- Volume control: slider nhỏ bên phải
-- Khi đổi Part → audio src thay đổi, auto play
-- Khi audio kết thúc → badge "✓ Đã phát xong" (màu xanh lá nhạt)
-
----
-
-### 2.5 Question Content — Part 1 (Photo Description)
-
-**Đây là phần ưu tiên triển khai đầu tiên.**
-
-**Layout 1 câu hỏi Part 1:**
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  Question 1  [🚩]                                       │
-│                                                         │
-│  ┌──────────────────────┐   ○ A.  [text mô tả A]       │
-│  │                      │                              │
-│  │   [Ảnh B&W]          │   ○ B.  [text mô tả B]       │
-│  │   ~280×200px         │                              │
-│  │                      │   ○ C.  [text mô tả C]       │
-│  └──────────────────────┘                              │
-│                          ● D.  [text mô tả D]  ←selected│
-│                               (highlighted row)         │
-├─────────────────────────────────────────────────────────┤
-│  Question 2  [🚩]                                       │
-│  ...                                                    │
-└─────────────────────────────────────────────────────────┘
-```
-
-**Chi tiết MCQ Option:**
-- Radio button native ẩn (`display: none`), thay bằng custom circle
-- Unselected: circle outline `var(--grey)`, row background transparent
-- Selected: circle filled `var(--dark-green)`, **toàn bộ row** có background `var(--light-grey)`, text bold
-- Hover: row background `#f9f9f9`
-- Label: `A.` `B.` `C.` `D.` — chữ màu `var(--dark-grey)`
-
-**Flag Button (🚩):**
-- Icon mờ khi chưa đánh dấu, icon đỏ khi đã đánh dấu
-- Toggle trạng thái `flagged` trong question state
-
-**Phần cuối content (dưới câu hỏi cuối cùng của Part):**
-
-```
-                              ┌────────────────────────────┐
-                              │  Tiếp tục Part 2  →       │
-                              └────────────────────────────┘
-```
-- Button `border-radius: 24px`, `background: #1a1a1a`, `color: white`
-- Căn phải, click → chuyển sang tab Part 2
-
----
-
-### 2.6 Sidebar (Sticky)
-
-```
-┌─────────────────────┐
-│  Thời gian còn lại: │
-│  120:00             │  ← bold, size lớn
-│                     │
-│  ┌───────────────┐  │
-│  │   Nộp bài     │  │  ← background: var(--dark-green), white text
-│  └───────────────┘  │
-│                     │
-│  Part 1             │  ← small label, bold
-│  ┌─┐ ┌─┐ ┌─┐ ┌─┐  │
-│  │1│ │2│ │3│ │4│  │
-│  └─┘ └─┘ └─┘ └─┘  │
-│  ┌─┐ ┌─┐          │
-│  │5│ │6│          │
-│  └─┘ └─┘          │
-│                     │
-│  Part 2             │
-│  ┌─┐ ┌─┐ ┌─┐ ┌─┐  │
-│  │1│ │2│ ...       │
-└─────────────────────┘
-```
-
-**Question Box States:**
-| State | Style |
-|-------|-------|
-| `unanswered` | Border: `1px solid var(--grey)`, bg: white |
-| `answered` | Bg: `var(--dark-green)`, color: white |
-| `flagged` | Bg: `#F59E0B`, color: white |
-| `current` | Border: `2px solid var(--brand-blue-strong)` |
-
-**Timer:**
-- Format: `MM:SS` (e.g. `120:00` → `60:00` → `00:00`)
-- Khi còn < 5 phút: màu đỏ `#EF4444`, pulse animation nhẹ
-
----
-
-## 3. Cấu Trúc Thư Mục
-
-```
-client/src/features/dashboard/placement-test/
-│
-├── index.ts
-│
-├── pages/
-│   └── toeic-listening-reading-page/         ← MỘT page cho cả 7 Part
-│       ├── toeic-listening-reading-page.tsx
-│       └── toeic-listening-reading-page.module.css
-│
-└── components/
-    │
-    ├── test-header/                           ← Header fullscreen
-    │   ├── test-header.tsx
-    │   └── test-header.module.css
-    │
-    ├── part-tab-bar/                          ← 7 Part tabs
-    │   ├── part-tab-bar.tsx
-    │   └── part-tab-bar.module.css
-    │
-    ├── audio-player/                          ← Player (không seek)
-    │   ├── audio-player.tsx
-    │   └── audio-player.module.css
-    │
-    ├── question-navigator/                    ← Sidebar grid
-    │   ├── question-navigator.tsx
-    │   └── question-navigator.module.css
-    │
-    ├── countdown-timer/                       ← Timer MM:SS
-    │   ├── countdown-timer.tsx
-    │   └── countdown-timer.module.css
-    │
-    ├── question-types/
-    │   │
-    │   ├── photo-description/                 ← Part 1 ★ TRIỂN KHAI ĐẦU
-    │   │   ├── photo-description.tsx
-    │   │   └── photo-description.module.css
-    │   │
-    │   ├── question-response/                 ← Part 2
-    │   │   ├── question-response.tsx
-    │   │   └── question-response.module.css
-    │   │
-    │   ├── conversation-group/                ← Part 3
-    │   │   ├── conversation-group.tsx
-    │   │   └── conversation-group.module.css
-    │   │
-    │   ├── short-talk-group/                  ← Part 4
-    │   │   ├── short-talk-group.tsx
-    │   │   └── short-talk-group.module.css
-    │   │
-    │   ├── incomplete-sentence/               ← Part 5
-    │   │   ├── incomplete-sentence.tsx
-    │   │   └── incomplete-sentence.module.css
-    │   │
-    │   ├── text-completion/                   ← Part 6
-    │   │   ├── text-completion.tsx
-    │   │   └── text-completion.module.css
-    │   │
-    │   └── reading-comprehension/             ← Part 7
-    │       ├── reading-comprehension.tsx
-    │       └── reading-comprehension.module.css
-    │
-    └── mcq-option/                            ← Shared MCQ button dùng lại
-        ├── mcq-option.tsx
-        └── mcq-option.module.css
-```
-
----
-
-## 4. TypeScript Types
-
-### `types/question.types.ts`
+**File**: `hooks/use-answer-state.ts` — line 14–28
 
 ```typescript
-export type ToeicPart = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-export type MCQLabel = 'A' | 'B' | 'C' | 'D';
-export type QuestionStatus = 'unanswered' | 'answered' | 'flagged';
+useEffect(() => {
+    if (!attempt) return;
 
-export interface MCQOption {
-  label: MCQLabel;
-  text: string;
-}
+    const answerMap: Record<string, LocalAnswerState> = {};
+    for (const item of attempt.answerSheet) {
+        answerMap[item.questionId] = { ... };
+    }
 
-export interface BaseQuestion {
-  id: string;
-  part: ToeicPart;
-  questionNumber: number;    // số thứ tự toàn bài, ví dụ Part 2 bắt đầu từ 7
-  partQuestionNumber: number; // số thứ tự trong part (luôn bắt đầu từ 1)
-  status: QuestionStatus;
-  selectedAnswer: MCQLabel | null;
-}
-
-// Part 1: Mỗi câu hỏi có 1 ảnh + 4 MCQ
-export interface PhotoDescriptionQuestion extends BaseQuestion {
-  part: 1;
-  imageUrl: string;           // URL ảnh
-  options: [MCQOption, MCQOption, MCQOption, MCQOption]; // luôn 4 option
-}
-
-// Part 2: Nghe câu hỏi, chọn 1 trong 3 câu trả lời
-export interface QuestionResponseQuestion extends BaseQuestion {
-  part: 2;
-  options: [MCQOption, MCQOption, MCQOption]; // 3 option (A/B/C)
-}
-
-// Part 3 & 4: Nhóm câu hỏi cho 1 đoạn audio
-export interface QuestionGroup extends BaseQuestion {
-  part: 3 | 4;
-  groupId: string;            // ID nhóm (1 nhóm có 3 câu)
-  transcript?: string;        // (optional) hiển thị sau khi nộp bài
-  options: [MCQOption, MCQOption, MCQOption, MCQOption];
-}
-
-// Part 5: Điền từ vào câu
-export interface IncompleteSentenceQuestion extends BaseQuestion {
-  part: 5;
-  sentenceBefore: string;     // phần câu trước chỗ trống
-  sentenceAfter: string;      // phần câu sau chỗ trống
-  options: [MCQOption, MCQOption, MCQOption, MCQOption];
-}
-
-// Part 6: Điền từ vào đoạn văn
-export interface TextCompletionQuestion extends BaseQuestion {
-  part: 6;
-  passageId: string;          // nhóm theo passage
-  blankIndex: number;         // vị trí blank trong passage (0-based)
-  options: [MCQOption, MCQOption, MCQOption, MCQOption];
-}
-
-// Part 7: Đọc passage + trả lời
-export interface ReadingComprehensionQuestion extends BaseQuestion {
-  part: 7;
-  passageId: string;
-  options: [MCQOption, MCQOption, MCQOption, MCQOption];
-}
-
-export type AnyQuestion =
-  | PhotoDescriptionQuestion
-  | QuestionResponseQuestion
-  | QuestionGroup
-  | IncompleteSentenceQuestion
-  | TextCompletionQuestion
-  | ReadingComprehensionQuestion;
+    setLocalAnswerMap(answerMap);
+}, [attempt]);  // ← CRITICAL: depend vào toàn bộ object
 ```
 
-### `types/test-session.types.ts`
+**Phân tích cơ chế bug**:
 
+1. User chọn đáp án `q1 = 'A'` → `localAnswerMap = { q1: {selectedOption: 'A'} }`
+2. `queueSave` gọi debounce 800ms → chưa flush
+3. Trong lúc chờ 800ms, `createAttemptMutation` state thay đổi (ví dụ status `idle → success`) → `mutation` object thay đổi reference
+4. `attempt = createAttemptMutation.data` — `data` vẫn là cùng object nhưng TanStack Query có thể tạo reference mới khi mutation state thay đổi
+5. `useEffect` re-run với `attempt` mới → `setLocalAnswerMap(serverState)` → **xóa `q1 = 'A'`**
+6. User thấy câu trả lời bị reset
+
+**Trường hợp thực tế dễ trigger nhất**: Khi `saveAnswersMutation` thành công (sau autosave lần đầu), mutation state update → chain cascade → `attempt` object có thể bị re-reference trong một số version TanStack Query.
+
+**Fix chính xác**:
 ```typescript
-import type { AnyQuestion, ToeicPart } from './question.types';
+useEffect(() => {
+    if (!attempt) return;
 
-// Audio track của từng Part
-export interface PartAudioTrack {
-  part: ToeicPart;
-  src: string;          // URL audio file
-  durationSeconds: number;
-}
-
-// Trạng thái UI của trang thi (Zustand store shape)
-export interface ToeicTestUIState {
-  activePart: ToeicPart;
-  answers: Record<string, string | null>;   // questionId → MCQLabel | null
-  flaggedIds: Set<string>;
-  timeRemainingSeconds: number;
-  isTimerRunning: boolean;
-  audioElapsed: Record<ToeicPart, number>;  // thời gian audio đã phát của từng part
-  audioFinished: Record<ToeicPart, boolean>;
-}
-
-// Mock data shape cho 1 Part
-export interface PartData {
-  part: ToeicPart;
-  audioTrack: PartAudioTrack;
-  questions: AnyQuestion[];
-}
+    const answerMap = Object.fromEntries(
+        attempt.answerSheet.map((item) => [
+            item.questionId,
+            { selectedOption: item.selectedOption ?? null, flagged: item.flagged },
+        ])
+    );
+    setLocalAnswerMap(answerMap);
+}, [attempt?.attemptId]); // ← chỉ init khi attemptId thay đổi (session mới)
 ```
+
+**Priority**: 🔴 **P0 — Production bug, silent data loss**
 
 ---
 
-## 5. CSS Variables Cần Bổ Sung
+### 🟠 [R3-HIGH-2] `mutation` object trong `useEffect` dependency
 
-Thêm vào `client/src/assets/styles/_variables.css`:
+**File**: `hooks/use-create-placement-attempt-mutation.ts` — line 16–27
 
-```css
-:root {
-  /* === Placement Test Layout === */
-  --pt-header-height: 56px;
-  --pt-tabs-height: 48px;
-  --pt-sidebar-width: 240px;
-  --pt-content-max-width: 860px;
+```typescript
+const mutation = useMutation<RuntimeAttempt, Error, string>({ ... });
 
-  /* === Question Status Colors === */
-  --q-answered-bg:   var(--dark-green);
-  --q-flagged-bg:    #F59E0B;
-  --q-active-border: var(--brand-blue-strong);
-  --q-unanswered-border: var(--grey);
+useEffect(() => {
+    if (!placementTestId) return;
+    if (lastTriggeredPlacementTestIdRef.current === placementTestId) return;
 
-  /* === Timer === */
-  --timer-warning-color: #EF4444;
-}
+    lastTriggeredPlacementTestIdRef.current = placementTestId;
+    mutation.mutate(placementTestId);  // ← mutation object trong deps
+}, [placementTestId, mutation]);       // ← ❌ mutation thay đổi mỗi render
 ```
+
+**Phân tích**:
+- `mutation` object là không stable — mỗi render trả về object mới (dù `mutate` function stable)
+- `useRef` guard (`lastTriggeredPlacementTestIdRef`) đã ngăn duplicate POST, nhưng `useEffect` vẫn re-run không cần thiết mỗi khi mutation state đổi (pending, success, error)
+- Mỗi re-run thừa sẽ evaluate: `if (lastTriggeredRef === placementTestId) return` → safe nhưng overhead
+
+**Fix đúng** — sử dụng `mutate` function (stable ref) từ destructure:
+```typescript
+const mutation = useMutation<RuntimeAttempt, Error, string>({ ... });
+const { mutate } = mutation; // stable function từ TanStack Query docs
+
+useEffect(() => {
+    if (!placementTestId) return;
+    if (lastTriggeredPlacementTestIdRef.current === placementTestId) return;
+
+    lastTriggeredPlacementTestIdRef.current = placementTestId;
+    mutate(placementTestId);
+}, [placementTestId, mutate]); // ← mutate là stable, deps hợp lệ
+```
+
+**Priority**: 🟠 P1
 
 ---
 
-## 6. Mock Data — Part 1
+### 🟠 [R3-HIGH-3] `useEffect` 401 branch — redundant với `<Navigate>` guard
 
-Tạo file `client/src/features/dashboard/placement-test/data/mock-part1.ts` để dev UI mà không cần API:
+**File**: `pages/listening-reading/listening-reading.tsx` — line 86–100
 
 ```typescript
-import type { PhotoDescriptionQuestion } from '../types/question.types';
+useEffect(() => {
+    const status = (activeError as AxiosError<ApiErrorResponse> | null)?.response?.status
+        ?? (attemptError as AxiosError<ApiErrorResponse> | null)?.response?.status;
 
-export const MOCK_PART1_QUESTIONS: PhotoDescriptionQuestion[] = [
-  {
-    id: 'q-p1-1',
-    part: 1,
-    questionNumber: 1,
-    partQuestionNumber: 1,
-    status: 'unanswered',
-    selectedAnswer: null,
-    imageUrl: '/mock/part1-photo-1.jpg',
-    options: [
-      { label: 'A', text: 'A woman is trying on a dress.' },
-      { label: 'B', text: 'A woman is looking at some clothes.' },
-      { label: 'C', text: 'A woman is folding some shirts.' },
-      { label: 'D', text: 'A woman is paying for her purchase.' },
-    ],
-  },
-  // ... 5 câu còn lại tương tự
-];
+    if (status === 401) {
+        toast.error(PT_MESSAGES.sessionExpired);  // ← toast + navigate trong effect
+        logout();
+        navigate(PATHS.AUTH.LOGIN, { replace: true });
+        return;
+    }
 
-export const MOCK_PART1_AUDIO: PartAudioTrack = {
-  part: 1,
-  src: '/mock/part1-audio.mp3',
-  durationSeconds: 330,
+    if (status === 404) {
+        toast.error(PT_MESSAGES.noActiveTest);
+    }
+}, [activeError, attemptError, logout, navigate]);
+```
+
+**Line 136** đã có `<Navigate>` guard cho `!isAuthenticated`:
+```tsx
+if (!isAuthenticated) {
+    return <Navigate to={PATHS.AUTH.LOGIN} replace />;
+}
+```
+
+**Vấn đề**: 401 error từ API → `logout()` sẽ set `isAuthenticated = false` → `<Navigate>` guard ở line 136 sẽ handle redirect. `useEffect` 401 branch do đó là redundant — sẽ navigate hai lần (một lần imperative, một lần render guard).
+
+**Thêm vào đó**: `[logout, navigate]` trong deps list là 2 stable functions nhưng không cần thiết vì 401 branch nên được remove.
+
+**Fix**:
+```typescript
+useEffect(() => {
+    // 401 is handled by the <Navigate> render guard (line 136) after logout().
+    const status = (activeError as AxiosError<ApiErrorResponse> | null)?.response?.status
+        ?? (attemptError as AxiosError<ApiErrorResponse> | null)?.response?.status;
+
+    if (status === 401) {
+        logout(); // Trigger isAuthenticated → false, <Navigate> guard handles redirect.
+        return;
+    }
+
+    if (status === 404) {
+        toast.error(PT_MESSAGES.noActiveTest);
+    }
+}, [activeError, attemptError, logout]);
+// navigate removed — no longer needed in this effect
+```
+
+**Priority**: 🟠 P1
+
+---
+
+### 🟠 [R3-HIGH-4] `autosaveErrorMessage` string trong `flushPendingChanges` deps — stale closure risk
+
+**File**: `hooks/use-autosave.ts` — line 22–79
+
+```typescript
+const flushPendingChanges = useCallback(async (allowRetry = true) => {
+    ...
+    toast.error(autosaveErrorMessage); // ← closed over from params
+    ...
+}, [attemptId, autosaveErrorMessage, saveAnswersMutation]); // ← string trong deps
+```
+
+**Phân tích**:
+- `autosaveErrorMessage` là string constant (`PT_MESSAGES.autosaveError`) — value không đổi trong runtime
+- Tuy nhiên nếu prop thay đổi (future-proofing), `flushPendingChanges` sẽ recreate → `queueSave` recreate → gây re-render cascade trong components phụ thuộc
+- Thêm vào: `saveAnswersMutation` object (không stable) trong deps → `flushPendingChanges` recreate mỗi khi mutation state thay đổi → `queueSave` recreate → `updateAnswerState` và handlers trong `use-answer-state` cũng recreate
+
+**Đây là root cause quan trọng**: `saveAnswersMutation` là object không stable → cascade recreation chain: `flushPendingChanges` → `queueSave` → `updateAnswerState` → `handleAnswer`/`handleFlag` → re-renders không cần thiết trong `LeftPanel`.
+
+**Fix pattern — ref cho cả message và mutation**:
+```typescript
+const saveAnswersMutationRef = useRef(saveAnswersMutation);
+useEffect(() => {
+    saveAnswersMutationRef.current = saveAnswersMutation;
+});
+
+const autosaveErrorMessageRef = useRef(autosaveErrorMessage);
+useEffect(() => {
+    autosaveErrorMessageRef.current = autosaveErrorMessage;
+});
+
+const flushPendingChanges = useCallback(async (allowRetry = true) => {
+    ...
+    await saveAnswersMutationRef.current.mutateAsync({ ... });
+    ...
+    toast.error(autosaveErrorMessageRef.current);
+    ...
+}, [attemptId]); // ← deps tối giản, stable function
+```
+
+**Priority**: 🟠 P1 — Performance issue, re-render cascade
+
+---
+
+### 🟡 [R3-MEDIUM-5] `get-active-placement-test.ts` — `as AxiosError<>` cast cần type guard
+
+**File**: `api/get-active-placement-test.ts` — line 35, 44
+
+```typescript
+const axiosError = error as AxiosError<ApiErrorResponse>;
+...
+const fallbackAxiosError = fallbackError as AxiosError<ApiErrorResponse>;
+```
+
+**Context**: `catch (error: unknown)` trong TypeScript không có cách nào khác để access `.response?.status` nếu không cast. Tuy nhiên `error instanceof AxiosError` cho phép type-safe narrowing:
+
+```typescript
+import { AxiosError } from 'axios';
+
+if (error instanceof AxiosError) {
+    lastError = error as AxiosError<ApiErrorResponse>;
+    if (error.response?.status === 404) { ... }
+    if (error.response?.status !== 404) { throw error; }
+} else {
+    throw error; // Re-throw non-Axios errors immediately
+}
+```
+
+**Priority**: 🟡 P2
+
+---
+
+### 🟡 [R3-MEDIUM-6] `right-panel.tsx` — Native `<button>` không có exception comment
+
+**File**: `components/listening-reading/right-panel.tsx` — line 54–63
+
+```tsx
+<button
+    key={item.questionId}
+    type="button"
+    className={classes.join(' ')}
+    aria-label={`${p.label} câu ${item.number}`}
+>
+    {item.number}
+</button>
+```
+
+Shared `Button` component không support dynamic className injection pattern này (multi-state: answered/flagged/active). Native `<button>` là exception hợp lệ nhưng không được document.
+
+**Fix**: Thêm comment 1 dòng:
+```tsx
+{/* Native <button>: question-box requires dynamic multi-state className injection
+    not supported by the shared Button component API. */}
+<button ...>
+```
+
+**Priority**: 🟡 P2
+
+---
+
+### 🟡 [R3-MEDIUM-7] `use-autosave.test.ts` — `as unknown as` trong test helper không có comment
+
+**File**: `hooks/use-autosave.test.ts` — line 19–23
+
+```typescript
+const createMutationResult = (
+    mutateAsync: (payload: SavePlacementAnswersPayload) => Promise<SavePlacementAnswersResult>,
+): UseMutationResult<SavePlacementAnswersResult, Error, SavePlacementAnswersPayload> => {
+    return {
+        mutateAsync,
+    } as unknown as UseMutationResult<...>;  // ← intentional partial mock, không có comment
 };
 ```
 
----
+**Fix**:
+```typescript
+// Minimal partial mock: useAutosave only calls `mutateAsync`; other fields are irrelevant.
+return { mutateAsync } as unknown as UseMutationResult<...>;
+```
 
-## 7. Thứ Tự Triển Khai
-
-> Bắt đầu từ Part 1. Mỗi bước hoàn chỉnh trước khi sang bước tiếp.
-
-### Giai đoạn 1 — Setup
-1. **Types** — tạo `question.types.ts`, `test-session.types.ts`
-2. **CSS Variables** — bổ sung vào `_variables.css`
-3. **Mock Data** — tạo `data/mock-part1.ts`
-4. **Paths** — đã done ✓ (`PATHS.DASHBOARD.PLACEMENT_TEST`)
-
-### Giai đoạn 2 — Shared Components (không phụ thuộc nhau)
-5. **`<McqOption />`** — component dùng lại trong tất cả part
-   - Props: `label`, `text`, `isSelected`, `onSelect`
-   - Toàn bộ row highlight khi selected
-6. **`<CountdownTimer />`** — hiển thị `MM:SS`, đổi màu đỏ khi < 5 phút
-7. **`<QuestionNavigator />`** — nhận mảng questions, render grid theo Part label
-8. **`<TestHeader />`** — logo + title + nút Thoát + Upgrade Pro + bell + avatar
-9. **`<PartTabBar />`** — 7 tab, active tab được highlight đen
-10. **`<AudioPlayer />`** — progress bar không seek, play/pause, duration
-
-### Giai đoạn 3 — Part 1 (Photo Description) ★ MILESTONE ĐẦU TIÊN
-11. **`<PhotoDescription />`** — layout 2 cột: ảnh trái + MCQ phải, có flag button
-12. **`<ToeicListeningReadingPage />`** — ghép toàn bộ: TestHeader + PartTabBar + AudioPlayer + content + Sidebar
-    - `activePart` state điều khiển: audio src + loại câu hỏi render
-    - Sidebar sticky
-    - Nút "Tiếp tục Part X" cuối mỗi part
-
-### Giai đoạn 4 — Các Part còn lại (Listening)
-13. **`<QuestionResponse />`** — Part 2: 3 MCQ (A/B/C)
-14. **`<ConversationGroup />`** — Part 3: badge nhóm + 3 câu hỏi
-15. **`<ShortTalkGroup />`** — Part 4: tương tự Part 3
-
-### Giai đoạn 5 — Reading Parts
-16. **`<IncompleteSentence />`** — Part 5: câu + blank + 4 MCQ
-17. **`<TextCompletion />`** — Part 6: passage + highlight blank
-18. **`<ReadingComprehension />`** — Part 7: split panel passage | câu hỏi
-
-### Giai đoạn 6 — Router Integration
-19. Cập nhật `router.tsx` — thêm route `PATHS.DASHBOARD.PLACEMENT_TEST.LISTENING` lazy-loaded
-20. Wire routing từ `PlacementTestIntroModal` → navigate khi bấm "Bắt đầu"
+**Priority**: 🟡 P2
 
 ---
 
-## 8. Checklist Kiến Trúc
+### 🟡 [R3-MEDIUM-8] `listening-reading.tsx` — Error JSX không có component riêng
 
-- [ ] Không dùng Tailwind, không dùng UI library — CSS Modules only
-- [ ] Mọi component có `interface Props` tường minh, không `any`
-- [ ] CSS class dùng `camelCase` (`.questionCard`, `.isSelected`, `.isFlagged`)
-- [ ] Màu sắc dùng CSS Variables, không hardcode hex trực tiếp trong JSX
-- [ ] GSAP dùng `useGSAP` từ `@gsap/react` (scoped cleanup)
-- [ ] Page lazy-loaded qua `React.lazy`
-- [ ] Trang thi full-screen, bypass `DashboardLayout`
-- [ ] Sidebar `position: sticky`, tự scroll độc lập
-- [ ] Audio player block seek để tránh gian lận
-- [ ] Tất cả interactive elements có `aria-label`
-- [ ] Dùng mock data — không gọi API ở phase UI
+**File**: `pages/listening-reading/listening-reading.tsx` — line 144–157
+
+```tsx
+if (isActiveError || isAttemptError || !attempt) {
+    const status = ...;
+
+    if (status === 404) {
+        return <div className={styles.container}>{PT_MESSAGES.notFoundView}</div>;
+    }
+    if (status === 401) {
+        return <div className={styles.container}>{PT_MESSAGES.sessionExpiredView}</div>;
+    }
+    return <div className={styles.container}>{PT_MESSAGES.loadErrorView}</div>;
+}
+```
+
+Pattern lặp `<div className={styles.container}>...</div>`. Có thể extract inline helper:
+
+```tsx
+const ErrorView = ({ message }: { message: string }) => (
+    <div className={styles.container} role="alert">{message}</div>
+);
+
+// Sử dụng:
+if (status === 404) return <ErrorView message={PT_MESSAGES.notFoundView} />;
+```
+
+**Note**: `role="alert"` còn thiếu — accessibility issue khi hiển thị error.
+
+**Priority**: 🟡 P2
 
 ---
 
+### 🟢 [R3-LOW-9] `use-answer-state.ts` — Thiếu unit test
+
+Đây là hook quan trọng nhất trong feature (quản lý state đáp án), nhưng không có test file. Cần cover:
+- Initial hydration từ `attempt.answerSheet`
+- `handleAnswer` — blocked when `isSubmitting`
+- `handleFlag` toggle
+- `applyQuestionStates` — generic type narrowing
+- `buildQuestionStatuses` — answered/flagged/unanswered states
+
+**Priority**: 🟢 P3
+
+---
+
+### 🟢 [R3-LOW-10] `constants/placement-test.constants.ts` — `DEFAULT_LANGUAGE = 'en'` scope
+
+**File**: `constants/placement-test.constants.ts` — line 18
+
+```typescript
+export const DEFAULT_LANGUAGE = 'en';
+```
+
+App-level constant (không chỉ placement-test). Nên là `SUPPORTED_LANGUAGES.default` trong `config/constants.ts`. **Low priority** — không block production.
+
+**Priority**: 🟢 P3
+
+---
+
+## 3. Tổng Kết Round 3
+
+### Score Assessment
+
+```
+Round 1: 4.5/10  (baseline — nhiều critical issues)
+Round 2: 8.2/10  (sau refactor lớn — 19 critical/high fixed)
+Round 3: 8.2/10  (không đổi — 10 issues Round 2 chưa được xử lý)
+```
+
+### Priority Matrix — Tất Cả Issues Còn Tồn Tại
+
+| Priority | ID | Issue | File | Effort |
+|:---:|:---|:---|:---|:---:|
+| 🔴 **P0** | R3-CRITICAL-1 | **Data loss bug**: `[attempt]` → `[attempt?.attemptId]` trong `useEffect` | `use-answer-state.ts:28` | XS |
+| 🟠 P1 | R3-HIGH-2 | `mutation` object (unstable ref) trong `useEffect` deps | `use-create-placement-attempt-mutation.ts:27` | XS |
+| 🟠 P1 | R3-HIGH-3 | 401 redundant branch trong `useEffect` + `navigate` dep thừa | `listening-reading.tsx:86` | XS |
+| 🟠 P1 | R3-HIGH-4 | `saveAnswersMutation` + `autosaveErrorMessage` → ref pattern để tránh re-render cascade | `use-autosave.ts:79` | S |
+| 🟡 P2 | R3-MEDIUM-5 | `instanceof AxiosError` type guard thay vì `as AxiosError<>` cast | `get-active-placement-test.ts:35,44` | S |
+| 🟡 P2 | R3-MEDIUM-6 | Comment cho native `<button>` exception | `right-panel.tsx:54` | XS |
+| 🟡 P2 | R3-MEDIUM-7 | Comment cho `as unknown as` trong test helper | `use-autosave.test.ts:22` | XS |
+| 🟡 P2 | R3-MEDIUM-8 | Extract `ErrorView` component + thêm `role="alert"` | `listening-reading.tsx:144` | XS |
+| 🟢 P3 | R3-LOW-9 | Unit tests cho `use-answer-state.ts` | `hooks/` | M |
+| 🟢 P3 | R3-LOW-10 | `DEFAULT_LANGUAGE` → global config | `constants/` | XS |
+
+---
+
+## 4. Fix Instructions Chi Tiết (P0 + P1)
+
+### Fix R3-CRITICAL-1 — `use-answer-state.ts`
+
+```typescript
+// BEFORE:
+}, [attempt]);
+
+// AFTER:
+}, [attempt?.attemptId]);
+// Lý do: chỉ init answerMap khi session ID thay đổi (attempt mới).
+// Phụ thuộc vào toàn bộ `attempt` object sẽ reset localAnswerMap
+// mỗi khi mutation state thay đổi (vd sau autosave), gây mất đáp án user đang nhập.
+```
+
+### Fix R3-HIGH-2 — `use-create-placement-attempt-mutation.ts`
+
+```typescript
+// BEFORE:
+const mutation = useMutation<RuntimeAttempt, Error, string>({ ... });
+useEffect(() => {
+    ...
+    mutation.mutate(placementTestId);
+}, [placementTestId, mutation]);
+
+// AFTER:
+const mutation = useMutation<RuntimeAttempt, Error, string>({ ... });
+const { mutate } = mutation; // stable ref theo TanStack Query docs
+useEffect(() => {
+    ...
+    mutate(placementTestId);
+}, [placementTestId, mutate]);
+```
+
+### Fix R3-HIGH-3 — `listening-reading.tsx`
+
+```typescript
+// BEFORE:
+useEffect(() => {
+    ...
+    if (status === 401) {
+        toast.error(PT_MESSAGES.sessionExpired);
+        logout();
+        navigate(PATHS.AUTH.LOGIN, { replace: true });
+        return;
+    }
+    ...
+}, [activeError, attemptError, logout, navigate]);
+
+// AFTER:
+useEffect(() => {
+    // 401: logout() will set isAuthenticated=false → <Navigate> render guard handles redirect.
+    const status = ...;
+    if (status === 401) {
+        logout();
+        return;
+    }
+    if (status === 404) {
+        toast.error(PT_MESSAGES.noActiveTest);
+    }
+}, [activeError, attemptError, logout]);
+// navigate removed from deps
+```
+
+### Fix R3-HIGH-4 — `use-autosave.ts`
+
+```typescript
+// Thêm mutation ref và message ref để tránh stale closure + re-render cascade:
+const saveAnswersMutationRef = useRef(saveAnswersMutation);
+saveAnswersMutationRef.current = saveAnswersMutation; // update mỗi render (không cần useEffect)
+
+const autosaveErrorMessageRef = useRef(autosaveErrorMessage);
+autosaveErrorMessageRef.current = autosaveErrorMessage;
+
+const flushPendingChanges = useCallback(async (allowRetry = true) => {
+    ...
+    await saveAnswersMutationRef.current.mutateAsync({ ... });
+    ...
+    toast.error(autosaveErrorMessageRef.current);
+    ...
+}, [attemptId]); // ← chỉ còn attemptId, stable function
+```
+
+---
+
+## 5. So Sánh Final — Tất Cả 4 Features
+
+| Tiêu chí | `language-selection` | `goal-selection` | `level-selection` | `placement-test` |
+|:---|:---:|:---:|:---:|:---:|
+| Score | 8.5/10 ✅ | 8.8/10 ✅ | 3/10 ❌ pending | 8.2/10 ⚠️ |
+| `index.ts` barrel | ✅ | ✅ | ❌ | ✅ |
+| Naming kebab-case | ✅ | ✅ | ❌ | ✅ |
+| Router import chuẩn | ✅ | ✅ | ❌ | ✅ |
+| `ApiEnvelope` global | ✅ | ✅ | - | ✅ |
+| `as unknown as` API | ✅ | ✅ | - | ✅ |
+| String dấu tiếng Việt | ✅ | ✅ | ❌ | ✅ |
+| CSS Variables | ✅ | ✅ | ❌ | ✅ |
+| `constants/` | ✅ | ✅ | ❌ | ✅ |
+| God Component | ✅ | ✅ | ✅ | ⚠️ 204 dòng |
+| Custom hooks SRP | ✅ | ✅ | ✅ | ✅ |
+| Unit tests | ✅ | ✅ | ❌ | ⚠️ Thiếu 1 hook |
+| `<Navigate>` guard | ✅ | ✅ | ❌ | ✅ |
+| `useCallback` đầy đủ | ✅ | ✅ | ❌ | ✅ |
+| Data loss bug | - | - | - | ❌ **P0 active** |
+
+---
+
+*Plan updated by Senior Technical Architect — Unilish*
+*Round 3: Confirmed 10 pending issues unchanged. P0 data loss bug flagged for immediate fix.*
+*Level-selection refactor still pending — 12 items including 4 P0 critical.*

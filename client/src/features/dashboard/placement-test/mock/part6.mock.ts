@@ -3,7 +3,7 @@ import type { ToeicQuestionGroup } from '../components/listening-reading/types';
 export const PART6_MOCK_GROUPS: ToeicQuestionGroup[] = [
     {
         id: 'p6-g1',
-        imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=900&q=80',
+        imageUrl: 'https://picsum.photos/seed/p6g1/900/500',
         questions: [
             {
                 id: 'p6-q131',
@@ -33,7 +33,7 @@ export const PART6_MOCK_GROUPS: ToeicQuestionGroup[] = [
     },
     {
         id: 'p6-g2',
-        imageUrl: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=900&q=80',
+        imageUrl: 'https://picsum.photos/seed/p6g2/900/500',
         questions: [
             {
                 id: 'p6-q135',
@@ -63,7 +63,7 @@ export const PART6_MOCK_GROUPS: ToeicQuestionGroup[] = [
     },
     {
         id: 'p6-g3',
-        imageUrl: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=900&q=80',
+        imageUrl: 'https://picsum.photos/seed/p6g3/900/500',
         questions: [
             {
                 id: 'p6-q139',
@@ -93,7 +93,7 @@ export const PART6_MOCK_GROUPS: ToeicQuestionGroup[] = [
     },
     {
         id: 'p6-g4',
-        imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=900&q=80',
+        imageUrl: 'https://picsum.photos/seed/p6g4/900/500',
         questions: [
             {
                 id: 'p6-q143',

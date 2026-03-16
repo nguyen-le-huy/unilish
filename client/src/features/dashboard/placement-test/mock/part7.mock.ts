@@ -4,8 +4,8 @@ export const PART7_MOCK_GROUPS: ToeicQuestionGroup[] = [
     {
         id: 'p7-g1',
         imageUrls: [
-            'https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?w=900&q=80',
-            'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=900&q=80',
+            'https://picsum.photos/seed/p7g1a/900/500',
+            'https://picsum.photos/seed/p7g1b/900/500',
         ],
         questions: [
             {
@@ -36,7 +36,7 @@ export const PART7_MOCK_GROUPS: ToeicQuestionGroup[] = [
     },
     {
         id: 'p7-g2',
-        imageUrl: 'https://images.unsplash.com/photo-1556740749-887f6717d7e4?w=900&q=80',
+        imageUrl: 'https://picsum.photos/seed/p7g2/900/500',
         questions: [
             {
                 id: 'p7-q151',
@@ -60,7 +60,7 @@ export const PART7_MOCK_GROUPS: ToeicQuestionGroup[] = [
     },
     {
         id: 'p7-g3',
-        imageUrl: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=900&q=80',
+        imageUrl: 'https://picsum.photos/seed/p7g3/900/500',
         questions: [
             {
                 id: 'p7-q154',

@@ -1,80 +1,124 @@
-import { useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import styles from './level-selection-form.module.css';
 import SelectionCard from '@/components/core/SelectionCard/SelectionCard';
 import SelectionForm from '@/components/core/SelectionForm/SelectionForm';
-import PlacementTestIntroModal from '@/features/dashboard/placement-test/components/placement-test-intro-modal/placement-test-intro-modal';
-import a1Icon from '@/assets/icons/A1.svg';
-import a2Icon from '@/assets/icons/A2.svg';
-import b1Icon from '@/assets/icons/B1.svg';
-import b2Icon from '@/assets/icons/B2.svg';
+import { PATHS } from '@/config/paths';
+import { useAuthStore } from '@/stores/auth.store';
+import { useOnboardingDraftStore } from '@/stores/onboarding.store';
+import { useUpdateOnboardingProfile } from '@/features/dashboard/user';
+import {
+	ERROR_MISSING_GOAL,
+	ERROR_MISSING_LANGUAGE,
+	ERROR_ONBOARDING_FAILED,
+	LEVELS,
+} from '../../constants/level-selection.constants';
 
-interface LevelItem {
-	id: string;
-	icon: string;
-	title: string;
-	description: string;
-}
-
-const LEVELS: LevelItem[] = [
-	{
-		id: 'a1',
-		icon: a1Icon,
-		title: 'A1 – Cơ bản',
-		description:
-			'Bạn mới bắt đầu học tiếng Anh. Có thể hiểu và sử dụng những câu đơn giản trong giao tiếp hằng ngày (chào hỏi, giới thiệu bản thân, hỏi thông tin).',
-	},
-	{
-		id: 'a2',
-		icon: a2Icon,
-		title: 'A2 – Sơ cấp',
-		description:
-			'Bạn có thể giao tiếp trong các tình huống quen thuộc như mua sắm, hỏi đường, công việc đơn giản. Hiểu các đoạn hội thoại ngắn, rõ ràng.',
-	},
-	{
-		id: 'b1',
-		icon: b1Icon,
-		title: 'B1 – Trung cấp',
-		description:
-			'Bạn có thể xử lý hầu hết tình huống khi đi du lịch hoặc làm việc cơ bản. Có thể diễn đạt ý kiến, kể chuyện và viết đoạn văn đơn giản.',
-	},
-	{
-		id: 'b2',
-		icon: b2Icon,
-		title: 'B2 – Trung cao cấp',
-		description:
-			'Bạn giao tiếp khá trôi chảy và tự nhiên với người bản xứ. Có thể thảo luận chủ đề chuyên môn, trình bày quan điểm rõ ràng và chi tiết.',
-	},
-];
+const LazyPlacementTestIntroModal = lazy(async () => {
+	const module = await import('@/features/dashboard/placement-test');
+	return { default: module.PlacementTestIntroModal };
+});
 
 const LevelSelectionForm = () => {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+	const navigate = useNavigate();
+	const setUser = useAuthStore((state) => state.setUser);
+	const draftLanguageCode = useOnboardingDraftStore((state) => state.languageCode);
+	const draftLearningGoal = useOnboardingDraftStore((state) => state.learningGoal);
+	const clearOnboardingDraft = useOnboardingDraftStore((state) => state.clear);
+	const { mutate, isPending } = useUpdateOnboardingProfile();
+	const guardRedirectPath = useMemo(() => {
+		if (!draftLanguageCode) {
+			return PATHS.DASHBOARD.LANGUAGE_SELECTION;
+		}
+
+		if (!draftLearningGoal) {
+			return PATHS.DASHBOARD.GOAL_SELECTION;
+		}
+
+		return null;
+	}, [draftLanguageCode, draftLearningGoal]);
+
+	const handleContinue = useCallback(() => {
+		const selectedLevel = LEVELS.find((level) => level.id === selectedId);
+		if (!selectedLevel) {
+			return;
+		}
+
+		if (!draftLanguageCode) {
+			toast.error(ERROR_MISSING_LANGUAGE);
+			navigate(PATHS.DASHBOARD.LANGUAGE_SELECTION);
+			return;
+		}
+
+		if (!draftLearningGoal) {
+			toast.error(ERROR_MISSING_GOAL);
+			navigate(PATHS.DASHBOARD.GOAL_SELECTION);
+			return;
+		}
+
+		mutate(
+			{
+				nativeLanguage: draftLanguageCode,
+				learningGoal: draftLearningGoal,
+				currentLevel: selectedLevel.cefrLevel,
+			},
+			{
+				onSuccess: (updatedUser) => {
+					setUser(updatedUser);
+					clearOnboardingDraft();
+					navigate(PATHS.DASHBOARD.HOME);
+				},
+				onError: (error) => {
+					const message = error.response?.data?.message ?? ERROR_ONBOARDING_FAILED;
+					toast.error(message);
+				},
+			},
+		);
+	}, [clearOnboardingDraft, draftLanguageCode, draftLearningGoal, mutate, navigate, selectedId, setUser]);
+
+	const handleOpenPlacementTestModal = useCallback(() => {
+		setIsModalOpen(true);
+	}, []);
+
+	const handleClosePlacementTestModal = useCallback(() => {
+		setIsModalOpen(false);
+	}, []);
+
+	if (guardRedirectPath) {
+		return <Navigate to={guardRedirectPath} replace />;
+	}
 
 	return (
 		<>
-		<SelectionForm
-			title="Chọn trình độ tiếng Anh của bạn"
-			subtitle="Hãy chọn trình độ hiện tại của bạn theo khung tham chiếu CEFR (A1–C2) hoặc bạn có thể làm bài kiểm tra đầu vào để được đánh giá chính xác hơn."
-			primaryAction={{ label: 'Tiếp tục', disabled: !selectedId }}
-			secondaryAction={{ label: 'Làm bài kiểm tra đầu vào', onClick: () => setIsModalOpen(true) }}
-		>
-			<div className={styles.cardGrid}>
-				{LEVELS.map((level) => (
-					<SelectionCard
-						key={level.id}
-						icon={<img src={level.icon} alt="" width={50} height={50} />}
-						title={level.title}
-						description={level.description}
-						selected={selectedId === level.id}
-						iconBackground={false}
-						onClick={() => setSelectedId(level.id)}
-					/>
-				))}
-			</div>
-		</SelectionForm>
-		{isModalOpen && (
-			<PlacementTestIntroModal onClose={() => setIsModalOpen(false)} />
-		)}
+			<SelectionForm
+				title="Chọn trình độ tiếng Anh của bạn"
+				subtitle="Hãy chọn trình độ hiện tại của bạn theo khung tham chiếu CEFR (A1-C2) hoặc bạn có thể làm bài kiểm tra đầu vào để được đánh giá chính xác hơn."
+				primaryAction={{ label: 'Tiếp tục', disabled: !selectedId || isPending, onClick: handleContinue }}
+				secondaryAction={{ label: 'Làm bài kiểm tra đầu vào', onClick: handleOpenPlacementTestModal }}
+			>
+				<div className={styles.cardGrid}>
+					{LEVELS.map((level) => (
+						<SelectionCard
+							key={level.id}
+							icon={<img src={level.icon} alt={level.title} width={50} height={50} />}
+							title={level.title}
+							description={level.description}
+							ariaLabel={`Chọn trình độ ${level.title}`}
+							selected={selectedId === level.id}
+							iconBackground={false}
+							onClick={() => setSelectedId(level.id)}
+						/>
+					))}
+				</div>
+			</SelectionForm>
+			{isModalOpen && (
+				<Suspense fallback={null}>
+					<LazyPlacementTestIntroModal onClose={handleClosePlacementTestModal} />
+				</Suspense>
+			)}
 		</>
 	);
 };

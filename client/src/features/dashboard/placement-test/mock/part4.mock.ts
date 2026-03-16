@@ -26,7 +26,7 @@ export const PART4_MOCK_GROUPS: ToeicQuestionGroup[] = [
     },
     {
         id: 'p4-g2',
-        imageUrl: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=900&q=80',
+        imageUrl: 'https://picsum.photos/seed/p4g2/900/500',
         questions: [
             {
                 id: 'p4-q74',

@@ -1,4 +1,4 @@
-import { useRef, useState, KeyboardEvent, ClipboardEvent, useCallback, memo } from 'react';
+import { useRef, useState, KeyboardEvent, ClipboardEvent, useCallback, memo, useEffect } from 'react';
 import styles from "./OTPInput.module.css";
 
 interface OTPInputProps {
@@ -10,6 +10,13 @@ const OTPInput = memo(({ length = 4, onComplete }: OTPInputProps) => {
     const [otp, setOtp] = useState<string[]>(new Array(length).fill(''));
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+    useEffect(() => {
+        const combinedOtp = otp.join('');
+        if (combinedOtp.length === length && onComplete) {
+            onComplete(combinedOtp);
+        }
+    }, [length, onComplete, otp]);
+
     const handleChange = useCallback((index: number, value: string) => {
         // Enforce number only
         if (isNaN(Number(value))) return;
@@ -18,12 +25,6 @@ const OTPInput = memo(({ length = 4, onComplete }: OTPInputProps) => {
             const newOtp = [...prevOtp];
             // Take the last character if user types more (though maxlength is 1)
             newOtp[index] = value.substring(value.length - 1);
-            
-            // Trigger complete
-            const combinedOtp = newOtp.join('');
-            if (combinedOtp.length === length && onComplete) {
-                onComplete(combinedOtp);
-            }
             return newOtp;
         });
 
@@ -49,10 +50,6 @@ const OTPInput = memo(({ length = 4, onComplete }: OTPInputProps) => {
                 data.forEach((char, index) => {
                     newOtp[index] = char;
                 });
-                
-                if (data.length === length && onComplete) {
-                    onComplete(data.join(''));
-                }
                 return newOtp;
             });
             // Focus last filled

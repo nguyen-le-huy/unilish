@@ -15,6 +15,7 @@ export const PATHS = {
         HOME: '/dashboard',
         LEARNING: '/dashboard/learning',
         GOAL_SELECTION: '/dashboard/goal-selection',
+        LANGUAGE_SELECTION: '/dashboard/language-selection',
         LEVEL_SELECTION: '/dashboard/level-selection',
         PLACEMENT_TEST: {
             ROOT:      '/dashboard/placement-test',

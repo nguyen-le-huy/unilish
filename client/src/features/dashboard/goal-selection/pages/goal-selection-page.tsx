@@ -1,5 +1,5 @@
 import styles from './goal-selection-page.module.css';
-import GoalSelectionForm from '../components/goal-selection-form/Goal-Selection-Form';
+import GoalSelectionForm from '../components/goal-selection-form/goal-selection-form';
 
 const GoalSelectionPage = () => {
 	return (

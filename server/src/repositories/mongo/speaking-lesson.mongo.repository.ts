@@ -33,10 +33,6 @@ interface SpeakingLessonContentShape {
 
 interface PopulatedLanguageShape {
     code?: string;
-    ttsConfig?: {
-        provider?: string;
-        voiceId?: string | null;
-    };
 }
 
 interface PopulatedSeriesShape {
@@ -106,7 +102,7 @@ export class SpeakingLessonMongoRepository {
                         select: 'languageId',
                         populate: {
                             path: 'languageId',
-                            select: 'code ttsConfig.provider ttsConfig.voiceId',
+                            select: 'code',
                         },
                     },
                 },
@@ -126,12 +122,6 @@ export class SpeakingLessonMongoRepository {
         const language = series?.languageId && typeof series.languageId !== 'string' ? series.languageId : undefined;
 
         const targetLanguage = normalizeLanguageCode(language?.code);
-        const preferredVoiceId =
-            language?.ttsConfig?.provider === 'OPENAI'
-            && typeof language.ttsConfig.voiceId === 'string'
-            && language.ttsConfig.voiceId.trim().length > 0
-                ? language.ttsConfig.voiceId.trim()
-                : undefined;
 
         const requiredKeywordsRaw = content.gradingConfig?.requiredKeywords ?? [];
         const requiredKeywords = requiredKeywordsRaw
@@ -158,10 +148,6 @@ export class SpeakingLessonMongoRepository {
             aiConfig,
             requiredKeywords,
         };
-
-        if (preferredVoiceId) {
-            context.preferredVoiceId = preferredVoiceId;
-        }
 
         return context;
     }

@@ -3,7 +3,12 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCreateLanguage, useUpdateLanguage, useUploadFlagIcon } from './useLanguageMutations';
+import {
+    useCreateLanguage,
+    useUpdateLanguage,
+    useUploadFlagIcon,
+    useUploadGreetingSound,
+} from './useLanguageMutations';
 import type { Language } from '../types/language.types';
 
 // ─── Zod Schema ──────────────────────────────────────────────────────────────
@@ -15,19 +20,13 @@ export const languageFormSchema = z.object({
         .regex(/^[a-z]{2,3}(-[A-Z]{2})?$/, 'Format hợp lệ: "en" hoặc "en-US"'),
     name: z.string().min(2, 'Tối thiểu 2 ký tự'),
     nativeName: z.string().min(2, 'Tối thiểu 2 ký tự'),
+    greeting: z.string().max(300, 'Tối đa 300 ký tự').optional(),
+    greetingSound: z.union([z.string().url('URL không hợp lệ'), z.string().startsWith('/'), z.literal(''), z.undefined()]),
     flagIconUrl: z.union([z.string().url('URL không hợp lệ'), z.literal(''), z.undefined()]),
     isActive: z.boolean(),
-    ttsConfig: z.object({
-        provider: z.enum(['OPENAI', 'AZURE', 'ELEVENLABS']),
-        voiceId: z.string().min(1, 'Voice ID là bắt buộc'),
-        style: z.string().optional(),
-        speed: z
-            .number()
-            .min(0.8, 'Tối thiểu 0.8x')
-            .max(1.2, 'Tối đa 1.2x'),
-    }),
     // Transient field — holds the File object before upload, not sent to API
     _flagFile: z.custom<File>().optional(),
+    _greetingSoundFile: z.custom<File>().optional(),
 });
 
 export type LanguageFormValues = z.infer<typeof languageFormSchema>;
@@ -38,14 +37,10 @@ const DEFAULT_VALUES: LanguageFormValues = {
     code: 'en-US',
     name: '',
     nativeName: '',
+    greeting: '',
+    greetingSound: '',
     flagIconUrl: '',
     isActive: true,
-    ttsConfig: {
-        provider: 'OPENAI',
-        voiceId: 'alloy',
-        style: '',
-        speed: 1,
-    },
 };
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -62,6 +57,7 @@ export const useLanguageForm = ({ code, languageDetail }: UseLanguageFormOptions
     const createMutation = useCreateLanguage();
     const updateMutation = useUpdateLanguage();
     const uploadFlagMutation = useUploadFlagIcon();
+    const uploadGreetingSoundMutation = useUploadGreetingSound();
 
     const form = useForm<LanguageFormValues>({
         resolver: zodResolver(languageFormSchema),
@@ -76,14 +72,10 @@ export const useLanguageForm = ({ code, languageDetail }: UseLanguageFormOptions
             code: languageDetail.code,
             name: languageDetail.name,
             nativeName: languageDetail.nativeName,
+            greeting: languageDetail.greeting ?? '',
+            greetingSound: languageDetail.greetingSound ?? '',
             flagIconUrl: languageDetail.flagIconUrl ?? '',
             isActive: languageDetail.isActive,
-            ttsConfig: {
-                provider: languageDetail.ttsConfig.provider,
-                voiceId: languageDetail.ttsConfig.voiceId ?? '',
-                style: languageDetail.ttsConfig.style ?? '',
-                speed: languageDetail.ttsConfig.speed,
-            },
         });
     }, [languageDetail, form]);
 
@@ -98,20 +90,24 @@ export const useLanguageForm = ({ code, languageDetail }: UseLanguageFormOptions
             form.setValue('_flagFile', undefined);
         }
 
-        const ttsConfig = {
-            provider: values.ttsConfig.provider,
-            voiceId: values.ttsConfig.voiceId.trim(),
-            style: values.ttsConfig.style?.trim() || undefined,
-            speed: values.ttsConfig.speed,
-        };
+        let resolvedGreetingSound = values.greetingSound?.trim() || undefined;
+        if (values._greetingSoundFile) {
+            const uploaded = await uploadGreetingSoundMutation.mutateAsync(values._greetingSoundFile);
+            resolvedGreetingSound = uploaded.url;
+            form.setValue('greetingSound', uploaded.url);
+            form.setValue('_greetingSoundFile', undefined);
+        }
+
+        const resolvedGreeting = values.greeting?.trim() || undefined;
 
         if (isCreateMode) {
             await createMutation.mutateAsync({
                 code: values.code,
                 name: values.name.trim(),
                 nativeName: values.nativeName.trim(),
+                greeting: resolvedGreeting,
+                greetingSound: resolvedGreetingSound,
                 flagIconUrl: resolvedFlagIconUrl,
-                ttsConfig,
                 isActive: values.isActive,
             });
             navigate('/curriculum/languages');
@@ -123,8 +119,9 @@ export const useLanguageForm = ({ code, languageDetail }: UseLanguageFormOptions
             payload: {
                 name: values.name.trim(),
                 nativeName: values.nativeName.trim(),
+                greeting: resolvedGreeting ?? null,
+                greetingSound: resolvedGreetingSound ?? null,
                 flagIconUrl: resolvedFlagIconUrl ?? null,
-                ttsConfig,
                 isActive: values.isActive,
             },
         });
@@ -133,7 +130,8 @@ export const useLanguageForm = ({ code, languageDetail }: UseLanguageFormOptions
     const isSubmitting =
         createMutation.isPending ||
         updateMutation.isPending ||
-        uploadFlagMutation.isPending;
+        uploadFlagMutation.isPending ||
+        uploadGreetingSoundMutation.isPending;
 
     return { form, onSubmit, isSubmitting, isCreateMode };
 };

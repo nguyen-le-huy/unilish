@@ -9,11 +9,12 @@ import DashboardLayout from '@/components/common/layouts/dashboard/DashboardLayo
 const LoginPage = React.lazy(() => import('@/features/auth/pages/LoginPage/LoginPage'));
 const RegisterPage = React.lazy(() => import('@/features/auth/pages/RegisterPage/RegisterPage'));
 const DashboardHomePage = React.lazy(() => import('@/features/dashboard/home/pages/home-page/home-page'));
-const GoalSelectionPage = React.lazy(() => import('@/features/dashboard/goal-selection/pages/goal-selection-page'));
-const LevelSelectionPage = React.lazy(() => import('@/features/dashboard/level-selection/pages/level-selection-page'));
+const GoalSelectionPage = React.lazy(() => import('@/features/dashboard/goal-selection'));
+const LanguageSelectionPage = React.lazy(() => import('@/features/dashboard/language-selection'));
+const LevelSelectionPage = React.lazy(() => import('@/features/dashboard/level-selection'));
 const MarketingHomePage = React.lazy(() => import('@/features/marketing/pages/home-page/home-page'));
 const OTPPage = React.lazy(() => import('@/features/auth/pages/OTPVerifyPage/OTPVerifyPage'));
-const ListeningReadingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/ListeningReading/ListeningReading'));
+const ListeningReadingPage = React.lazy(() => import('@/features/dashboard/placement-test'));
 const AuthSuccessPage = React.lazy(() => import('@/features/auth/pages/AuthSuccessPage/AuthSuccessPage'));
 
 export const router = createBrowserRouter([
@@ -93,6 +94,14 @@ export const router = createBrowserRouter([
                         element: (
                             <Suspense fallback={<Loading />}>
                                 <GoalSelectionPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'language-selection',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <LanguageSelectionPage />
                             </Suspense>
                         ),
                     },

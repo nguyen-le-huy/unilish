@@ -90,7 +90,7 @@ export interface IUser extends mongoose.Document {
     dateOfBirth?: Date;
     phoneNumber?: string;
     gender?: typeof EGender[keyof typeof EGender];
-    nativeLanguage: string; // NEW: Ngôn ngữ mẹ đẻ (vi, en, ja)
+    nativeLanguage: string | null; // NEW: Ngôn ngữ mẹ đẻ (vi, en, ja)
 
     // --- 3. TRẠNG THÁI ACTIVE (APP STATE) ---
     lastActiveAt: Date;
@@ -105,7 +105,7 @@ export interface IUser extends mongoose.Document {
     targetLevel: keyof typeof ELevel;
 
     // B. Mục tiêu học tập (Cốt lõi để định hướng lộ trình)
-    learningGoal: keyof typeof ELearningGoal | string;
+    learningGoal: keyof typeof ELearningGoal | string | null;
 
     // C. Sở thích (Legacy - now using interestIds)
     interests: string[];
@@ -187,7 +187,7 @@ const UserSchema = new mongoose.Schema<IUser>(
 
         // --- 2. HỒ SƠ CÁ NHÂN (PROFILE) ---
         fullName: { type: String, required: true, trim: true },
-        avatarUrl: { type: String, default: "https://res.cloudinary.com/demo/image/upload/v1/default_avatar.png" },
+        avatarUrl: { type: String, default: null },
         dateOfBirth: { type: Date, default: null },
         phoneNumber: { type: String, default: null },
         gender: {
@@ -197,7 +197,8 @@ const UserSchema = new mongoose.Schema<IUser>(
         },
         nativeLanguage: {
             type: String,
-            default: 'vi', // Vietnamese by default
+            default: null,
+            index: true,
         },
 
         // --- 3. TRẠNG THÁI ACTIVE (APP STATE) ---
@@ -231,8 +232,8 @@ const UserSchema = new mongoose.Schema<IUser>(
         // B. Mục tiêu học tập (Cốt lõi để định hướng lộ trình)
         learningGoal: {
             type: String,
-            enum: Object.values(ELearningGoal),
-            default: ELearningGoal.COMMUNICATION,
+            default: null,
+            index: true,
         },
 
         // C. Sở thích (Legacy - keeping for backward compatibility)

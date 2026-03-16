@@ -81,21 +81,20 @@ export const useToggleLanguageStatus = () => {
     });
 };
 
-export const useTestLanguageVoice = () => {
-    return useMutation({
-        mutationFn: ({ code, payload }: { code: string; payload: Parameters<typeof languageApi.testVoice>[1] }) =>
-            languageApi.testVoice(code, payload),
-        onError: (error) => {
-            toast.error(getApiErrorMessage(error, 'Test voice thất bại'));
-        },
-    });
-};
-
 export const useUploadFlagIcon = () => {
     return useMutation({
         mutationFn: (file: File) => languageApi.uploadFlagIcon(file),
         onError: (error) => {
             toast.error(getApiErrorMessage(error, 'Upload flag icon thất bại'));
+        },
+    });
+};
+
+export const useUploadGreetingSound = () => {
+    return useMutation({
+        mutationFn: (file: File) => languageApi.uploadGreetingSound(file),
+        onError: (error) => {
+            toast.error(getApiErrorMessage(error, 'Upload greeting sound thất bại'));
         },
     });
 };

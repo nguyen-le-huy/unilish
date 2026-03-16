@@ -1,5 +1,5 @@
-// NOTE: TTSProvider and Language are re-exported from the languages feature public barrel
-export type { TTSProvider, Language } from '@/features/curriculum/languages';
+// NOTE: Language is re-exported from the languages feature public barrel
+export type { Language } from '@/features/curriculum/languages';
 
 export type IgnoredSkill = string;
 

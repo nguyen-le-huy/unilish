@@ -5,6 +5,7 @@ import { PATHS } from '@/config/paths';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
 import { getCurrentUser } from '../api/get-current-user';
+import { getPostAuthRedirectPath } from '../utils/onboarding';
 
 export const useGoogleCallback = () => {
     const setAuth = useAuthStore((state) => state.setAuth);
@@ -30,7 +31,7 @@ export const useGoogleCallback = () => {
         if (isSuccess && data) {
             setAuth(data, null);
             toast.success('Successfully logged in with Google');
-            navigate(PATHS.DASHBOARD.HOME);
+            navigate(getPostAuthRedirectPath(data));
         }
     }, [isSuccess, data, setAuth, navigate]);
 

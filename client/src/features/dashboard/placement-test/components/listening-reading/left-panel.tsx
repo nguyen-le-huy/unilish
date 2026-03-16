@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/core/Button';
-import { AudioPlayer } from './AudioPlayer';
-import { Part3QuestionSection } from './Part3QuestionSection';
-import { QuestionSection } from './QuestionSection';
+import { AudioPlayer } from './audio-player';
+import { Part3QuestionSection } from './part3-question-section';
+import { QuestionSection } from './question-section';
 import styles from './left-panel.module.css';
-import type { ToeicQuestion, ToeicQuestionGroup, ToeicPart } from './types';
+import type { AnswerOption, ToeicQuestion, ToeicQuestionGroup, ToeicPart } from './types';
 
 interface Props {
     activePart?: ToeicPart;
@@ -13,11 +13,26 @@ interface Props {
     questions?: ToeicQuestion[];
     questionGroups?: ToeicQuestionGroup[];
     nextPart?: ToeicPart;
+    onAnswer: (questionId: string, answer: AnswerOption) => void;
+    onFlag: (questionId: string) => void;
+    onSubmitTest?: () => void;
+    isSubmitPending?: boolean;
 }
 
 const PART_OPTIONS: ToeicPart[] = [1, 2, 3, 4, 5, 6, 7];
 
-export const LeftPanel = ({ activePart = 1, onPartSelect, audioSrc, questions = [], questionGroups = [], nextPart }: Props) => {
+export const LeftPanel = ({
+    activePart = 1,
+    onPartSelect,
+    audioSrc,
+    questions = [],
+    questionGroups = [],
+    nextPart,
+    onAnswer,
+    onFlag,
+    onSubmitTest,
+    isSubmitPending = false,
+}: Props) => {
     const leftRef = useRef<HTMLDivElement>(null);
     const isGroupedPart = activePart === 3 || activePart === 4 || activePart === 5 || activePart === 6 || activePart === 7;
     const isLastPart = activePart === 7;
@@ -28,24 +43,24 @@ export const LeftPanel = ({ activePart = 1, onPartSelect, audioSrc, questions = 
         }))
         : questionGroups;
 
-    const scrollToTop = () => {
+    const scrollToTop = useCallback(() => {
         if (leftRef.current) leftRef.current.scrollTop = 0;
         const qs = leftRef.current?.querySelector<HTMLDivElement>(`.${styles.questionSection}`);
         if (qs) qs.scrollTop = 0;
         window.scrollTo({ top: 0, behavior: 'auto' });
-    };
+    }, []);
 
-    const handlePartChange = (part: ToeicPart) => {
+    const handlePartChange = useCallback((part: ToeicPart) => {
         onPartSelect?.(part);
         // Trigger immediately on click, not only after re-render.
         scrollToTop();
         requestAnimationFrame(scrollToTop);
-    };
+    }, [onPartSelect, scrollToTop]);
 
     useEffect(() => {
         // Fallback to ensure reset even if layout updates asynchronously.
         scrollToTop();
-    }, [activePart]);
+    }, [activePart, scrollToTop]);
 
     return (
         <div ref={leftRef} className={styles.left}>
@@ -69,9 +84,11 @@ export const LeftPanel = ({ activePart = 1, onPartSelect, audioSrc, questions = 
                     );
                 })}
             </div>
-            <div className={styles.audioSection} aria-label="Audio player">
-                <AudioPlayer src={audioSrc} />
-            </div>
+            {audioSrc && (
+                <div className={styles.audioSection} aria-label="Audio player">
+                    <AudioPlayer src={audioSrc} />
+                </div>
+            )}
             <div className={styles.questionSection} aria-label="Questions">
                 {isGroupedPart ? (
                     <Part3QuestionSection
@@ -80,6 +97,10 @@ export const LeftPanel = ({ activePart = 1, onPartSelect, audioSrc, questions = 
                         nextPart={nextPart}
                         onNextPart={handlePartChange}
                         showSubmitButton={isLastPart}
+                        onAnswer={onAnswer}
+                        onFlag={onFlag}
+                        onSubmitTest={onSubmitTest}
+                        isSubmitPending={isSubmitPending}
                     />
                 ) : (
                     <QuestionSection
@@ -89,6 +110,10 @@ export const LeftPanel = ({ activePart = 1, onPartSelect, audioSrc, questions = 
                         onNextPart={handlePartChange}
                         cardLayout="default"
                         showSubmitButton={isLastPart}
+                        onAnswer={onAnswer}
+                        onFlag={onFlag}
+                        onSubmitTest={onSubmitTest}
+                        isSubmitPending={isSubmitPending}
                     />
                 )}
             </div>

@@ -6,7 +6,6 @@ import {
     createLanguageSchema,
     getLanguageByCodeSchema,
     getLanguagesSchema,
-    testLanguageVoiceSchema,
     toggleLanguageStatusSchema,
     updateLanguageSchema,
 } from '../validations/language.validation.js';
@@ -25,12 +24,6 @@ router.patch(
     restrictTo('admin', 'content_creator'),
     validate(toggleLanguageStatusSchema),
     LanguageController.toggleLanguageStatus,
-);
-router.post(
-    '/:code/test-voice',
-    restrictTo('admin', 'content_creator'),
-    validate(testLanguageVoiceSchema),
-    LanguageController.testLanguageVoice,
 );
 
 export default router;

@@ -30,7 +30,7 @@ export default function LanguageListPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <PageHeader
                     title="Ngôn ngữ"
-                    description="Root Data cho Đào tạo: quản lý mã ngôn ngữ, giọng đọc AI và trạng thái hoạt động"
+                    description="Root Data cho Đào tạo: quản lý mã ngôn ngữ, greeting và trạng thái hoạt động"
                 />
                 <Button onClick={() => navigate('/curriculum/languages/new')} aria-label="Add new language">
                     Thêm ngôn ngữ
@@ -53,7 +53,7 @@ export default function LanguageListPage() {
                             <TableHead>Cờ</TableHead>
                             <TableHead>Tên</TableHead>
                             <TableHead>Mã</TableHead>
-                            <TableHead>TTS Provider</TableHead>
+                            <TableHead>Greeting Sound</TableHead>
                             <TableHead>Trạng thái</TableHead>
                             <TableHead className="text-right">Hành động</TableHead>
                         </TableRow>

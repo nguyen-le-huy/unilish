@@ -4,7 +4,6 @@ import { languageService } from '../services/language.service.js';
 import type {
     CreateLanguageBody,
     GetLanguagesQuery,
-    TestLanguageVoiceBody,
     UpdateLanguageBody,
 } from '../validations/language.validation.js';
 import { catchAsync } from '../utils/catch-async.js';
@@ -37,10 +36,5 @@ export class LanguageController {
         const code = req.params.code as string;
         const updated = await languageService.toggleLanguageStatus(code);
         sendResponse(res, HttpStatus.OK, 'Toggle language status successfully', updated);
-    });
-
-    static testLanguageVoice = catchAsync(async (req: Request, res: Response) => {
-        const voiceData = await languageService.testVoice(req.body as TestLanguageVoiceBody);
-        sendResponse(res, HttpStatus.OK, 'Test language voice successfully', voiceData);
     });
 }

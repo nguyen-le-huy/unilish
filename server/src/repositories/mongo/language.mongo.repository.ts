@@ -5,11 +5,6 @@ interface LanguageFilters {
     isActive?: boolean;
 }
 
-interface UpdateLanguageTtsInput {
-    provider: ILanguage['ttsConfig']['provider'];
-    voiceId?: string | undefined;
-}
-
 export class LanguageMongoRepository extends BaseMongoRepository<ILanguage> {
     constructor() {
         super(Language);
@@ -28,22 +23,5 @@ export class LanguageMongoRepository extends BaseMongoRepository<ILanguage> {
             .sort({ name: 1 })
             .lean()
             .exec() as Promise<ILanguage[]>;
-    }
-
-    async updateTtsConfigByCode(code: string, input: UpdateLanguageTtsInput): Promise<ILanguage | null> {
-        return this.model
-            .findOneAndUpdate(
-                { code: code.toUpperCase() },
-                {
-                    ttsConfig: {
-                        provider: input.provider,
-                        voiceId: input.voiceId ?? null,
-                    },
-                },
-                { new: true, runValidators: true },
-            )
-            .select('-__v')
-            .lean()
-            .exec() as Promise<ILanguage | null>;
     }
 }

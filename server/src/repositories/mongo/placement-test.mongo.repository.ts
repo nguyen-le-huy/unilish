@@ -32,6 +32,14 @@ export class PlacementTestMongoRepository extends BaseMongoRepository<IPlacement
         super(PlacementTest);
     }
 
+    private normalizeLanguage(input: string): string {
+        return input.trim().toLowerCase().replace(/_/g, '-');
+    }
+
+    private escapeRegex(input: string): string {
+        return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
     // ─── READ ─────────────────────────────────────────────────────────────────
 
     /**
@@ -114,8 +122,44 @@ export class PlacementTestMongoRepository extends BaseMongoRepository<IPlacement
      * Active test for a given language — used by user-facing onboarding flow.
      */
     async findActiveByLanguage(language: string): Promise<IPlacementTest | null> {
+        const normalized = this.normalizeLanguage(language);
+        const baseLanguage = normalized.split('-')[0] ?? normalized;
+
+        const selectFields = 'languageId language name status version modules cefrMapping';
+
+        const exactMatch = await this.model
+            .findOne({
+                status: EPlacementTestStatus.ACTIVE,
+                language: { $regex: `^${this.escapeRegex(normalized)}$`, $options: 'i' },
+            })
+            .select(selectFields)
+            .lean()
+            .exec();
+
+        if (exactMatch) {
+            return exactMatch as IPlacementTest;
+        }
+
+        const baseMatch = await this.model
+            .findOne({
+                status: EPlacementTestStatus.ACTIVE,
+                language: { $regex: `^${this.escapeRegex(baseLanguage)}$`, $options: 'i' },
+            })
+            .select(selectFields)
+            .lean()
+            .exec();
+
+        if (baseMatch) {
+            return baseMatch as IPlacementTest;
+        }
+
+        // Accept locale variants when client sends only a base language (e.g. "en" => "en-us").
         return this.model
-            .findOne({ language, status: EPlacementTestStatus.ACTIVE })
+            .findOne({
+                status: EPlacementTestStatus.ACTIVE,
+                language: { $regex: `^${this.escapeRegex(baseLanguage)}-[a-z0-9]+$`, $options: 'i' },
+            })
+            .select(selectFields)
             .lean()
             .exec() as Promise<IPlacementTest | null>;
     }

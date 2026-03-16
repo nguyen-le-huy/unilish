@@ -6,6 +6,9 @@ export const updateProfileSchema = z.object({
         bio: z.string().max(200).optional(),
         phoneNumber: z.string().optional(),
         targetLevel: z.string().optional(),
+        currentLevel: z.enum(['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']).optional(),
+        learningGoal: z.string().min(1).nullable().optional(),
+        nativeLanguage: z.string().min(2).max(10).optional(),
         gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
         address: z
             .object({

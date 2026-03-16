@@ -7,6 +7,7 @@ import { PATHS } from '@/config/paths';
 import { useVerifyOTP } from "@/features/auth/hooks/useVerifyOTP";
 import { useState, useCallback } from "react";
 import { Loading } from '@/components/common/Loading/Loading';
+import type { FormEvent } from 'react';
 
 const OTPForm = () => {
     const location = useLocation();
@@ -18,16 +19,16 @@ const OTPForm = () => {
         return <Navigate to={PATHS.AUTH.LOGIN} replace />;
     }
 
-    const handleSubmit = useCallback((e?: React.FormEvent) => {
+    const handleSubmit = useCallback((e?: FormEvent) => {
         e?.preventDefault();
-        // Since otp is in dependency array, this will recreate
-        // But we need current otp value.
-        // In this specific case, cleaner is to pass otp to verify directly
-        // But the check `if (otp.length === 4)` needs otp.
+        if (isPending) {
+            return;
+        }
+
         if (otp.length === 4) {
             verify({ email, otp });
         }
-    }, [otp, email, verify]);
+    }, [otp, email, verify, isPending]);
 
     return (
         <div className={styles.content}>
@@ -39,10 +40,10 @@ const OTPForm = () => {
             <form onSubmit={handleSubmit} className={styles.form}>
                 <OTPInput length={4} onComplete={setOtp} />
                 <Button
-                    onClick={() => handleSubmit()}
                     type="submit"
                     size="full"
                     variant="primary"
+                    padding="A"
                     disabled={isPending || otp.length < 4}
                 >
                     {isPending ? <Loading variant="inline" size="sm" /> : 'Xác thực tài khoản'}

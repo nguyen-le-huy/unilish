@@ -6,6 +6,7 @@ import { PATHS } from '@/config/paths';
 import { LoginPayload } from '../types';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
+import { getPostAuthRedirectPath } from '../utils/onboarding';
 
 interface ApiErrorResponse {
     message?: string;
@@ -20,7 +21,7 @@ export const useLogin = () => {
         onSuccess: (data) => {
             setAuth(data.user, data.token);
             toast.success('Signed in successfully');
-            navigate(PATHS.DASHBOARD.HOME);
+            navigate(getPostAuthRedirectPath(data.user));
         },
         onError: (error: AxiosError<ApiErrorResponse>, variables) => {
             let message = error.response?.data?.message;

@@ -4,6 +4,24 @@
 .cardGrid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
+    gap: var(--space-5);
     width: 100%;
+}
+
+.feedback {
+    margin: var(--space-2) 0;
+    color: var(--text-secondary, #6b7280);
+    font-size: var(--text-sm);
+}
+
+.errorState {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+@media (max-width: 900px) {
+    .cardGrid {
+        grid-template-columns: 1fr;
+    }
 }

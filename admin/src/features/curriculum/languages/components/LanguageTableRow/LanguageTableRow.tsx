@@ -53,8 +53,7 @@ export const LanguageTableRow = memo(function LanguageTableRow({ language }: Lan
 
             <TableCell>
                 <Badge variant="outline">
-                    {language.ttsConfig.provider}
-                    {language.ttsConfig.voiceId ? ` / ${language.ttsConfig.voiceId}` : ''}
+                    {language.greetingSound ? 'Có âm thanh' : 'Chưa có'}
                 </Badge>
             </TableCell>
 

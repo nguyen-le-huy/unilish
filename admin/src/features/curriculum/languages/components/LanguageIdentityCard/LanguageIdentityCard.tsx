@@ -12,7 +12,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { useUploadFlagIcon } from '../../hooks/useLanguageMutations';
+import { Textarea } from '@/components/ui/textarea';
+import { useUploadFlagIcon, useUploadGreetingSound } from '../../hooks/useLanguageMutations';
 import type { LanguageFormValues } from '../../hooks/useLanguageForm';
 import { toLanguageCode } from '../../utils/language.utils';
 
@@ -24,10 +25,14 @@ interface LanguageIdentityCardProps {
 
 export function LanguageIdentityCard({ form, isCreateMode, className }: LanguageIdentityCardProps) {
     const uploadFlagMutation = useUploadFlagIcon();
+    const uploadGreetingSoundMutation = useUploadGreetingSound();
     const [localPreviewUrl, setLocalPreviewUrl] = useState<string>('');
+    const [localGreetingSoundPreviewUrl, setLocalGreetingSoundPreviewUrl] = useState<string>('');
 
     const flagFile = form.watch('_flagFile');
     const flagIconUrl = form.watch('flagIconUrl');
+    const greetingSoundFile = form.watch('_greetingSoundFile');
+    const greetingSound = form.watch('greetingSound');
 
     // Generate object URL for local preview when a file is selected
     useEffect(() => {
@@ -40,12 +45,31 @@ export function LanguageIdentityCard({ form, isCreateMode, className }: Language
         return () => URL.revokeObjectURL(url);
     }, [flagFile]);
 
+    useEffect(() => {
+        if (!greetingSoundFile) {
+            setLocalGreetingSoundPreviewUrl('');
+            return;
+        }
+        const url = URL.createObjectURL(greetingSoundFile);
+        setLocalGreetingSoundPreviewUrl(url);
+        return () => URL.revokeObjectURL(url);
+    }, [greetingSoundFile]);
+
     const previewImageUrl = localPreviewUrl || flagIconUrl;
+    const previewGreetingSoundUrl = localGreetingSoundPreviewUrl || greetingSound;
 
     const handleFileChange = useCallback(
         (event: ChangeEvent<HTMLInputElement>) => {
             const file = event.target.files?.[0] ?? undefined;
             form.setValue('_flagFile', file);
+        },
+        [form],
+    );
+
+    const handleGreetingSoundFileChange = useCallback(
+        (event: ChangeEvent<HTMLInputElement>) => {
+            const file = event.target.files?.[0] ?? undefined;
+            form.setValue('_greetingSoundFile', file);
         },
         [form],
     );
@@ -57,6 +81,14 @@ export function LanguageIdentityCard({ form, isCreateMode, className }: Language
         form.setValue('_flagFile', undefined);
         setLocalPreviewUrl('');
     }, [flagFile, form, uploadFlagMutation]);
+
+    const handleUploadGreetingSound = useCallback(async () => {
+        if (!greetingSoundFile) return;
+        const uploaded = await uploadGreetingSoundMutation.mutateAsync(greetingSoundFile);
+        form.setValue('greetingSound', uploaded.url);
+        form.setValue('_greetingSoundFile', undefined);
+        setLocalGreetingSoundPreviewUrl('');
+    }, [form, greetingSoundFile, uploadGreetingSoundMutation]);
 
     return (
         <Card className={className}>
@@ -114,6 +146,63 @@ export function LanguageIdentityCard({ form, isCreateMode, className }: Language
                         </FormItem>
                     )}
                 />
+
+                <FormField
+                    control={form.control}
+                    name="greeting"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel htmlFor="lang-greeting">Greeting</FormLabel>
+                            <FormControl>
+                                <Textarea
+                                    id="lang-greeting"
+                                    rows={4}
+                                    placeholder="Hello, welcome to UniLish."
+                                    {...field}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <div className="space-y-2">
+                    <FormLabel htmlFor="lang-greeting-sound-file">Greeting Sound</FormLabel>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <Input
+                            id="lang-greeting-sound-file"
+                            type="file"
+                            accept="audio/*"
+                            onChange={handleGreetingSoundFileChange}
+                            aria-label="Upload greeting sound"
+                        />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleUploadGreetingSound}
+                            disabled={!greetingSoundFile || uploadGreetingSoundMutation.isPending}
+                            aria-label="Upload selected greeting sound"
+                        >
+                            {uploadGreetingSoundMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                                <Upload className="h-4 w-4 mr-2" />
+                            )}
+                            Upload
+                        </Button>
+                    </div>
+
+                    {previewGreetingSoundUrl ? (
+                        <audio
+                            controls
+                            src={previewGreetingSoundUrl}
+                            className="w-full"
+                            aria-label="Preview greeting sound"
+                        >
+                            Trình duyệt không hỗ trợ audio preview.
+                        </audio>
+                    ) : null}
+                </div>
 
                 {/* Flag upload */}
                 <div className="space-y-2">

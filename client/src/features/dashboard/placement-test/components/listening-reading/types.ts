@@ -10,8 +10,12 @@ export type AnswerOption = 'A' | 'B' | 'C' | 'D';
 
 export interface ToeicQuestion {
     id: string;
+    part?: ToeicPart;
+    groupId?: string;
     questionNumber: number;
     imageUrl?: string;
+    imageUrls?: string[];
+    audioUrl?: string;
     optionCount?: 3 | 4;
     questionText?: string;
     optionsText?: string[];
@@ -23,8 +27,14 @@ export interface ToeicQuestionGroup {
     id: string;
     imageUrl?: string;
     imageUrls?: string[];
+    audioUrl?: string;
     questions: ToeicQuestion[];
 }
 
-/** @deprecated use ToeicQuestion */
-export type Part1Question = ToeicQuestion;
+export type QuestionBoxState = 'unanswered' | 'answered' | 'flagged';
+
+export interface PartQuestionStatus {
+    questionId: string;
+    number: number;
+    state: QuestionBoxState;
+}

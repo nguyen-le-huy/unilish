@@ -1,27 +1,15 @@
-import OpenAI from 'openai';
 import redisClient from '../config/redis.js';
-import { env } from '../config/env.js';
 import { HttpStatus } from '../constants/http-status.js';
 import { Language, type ILanguage } from '../models/mongo/language.model.js';
 import type {
     CreateLanguageBody,
     GetLanguagesQuery,
-    TestLanguageVoiceBody,
     UpdateLanguageBody,
 } from '../validations/language.validation.js';
 import { AppError } from '../utils/app-error.js';
 import { logger } from '../utils/logger.js';
 
-interface TestVoiceResult {
-    mimeType: string;
-    audioBase64: string;
-}
-
-const OPENAI_VOICES = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'] as const;
-
 class LanguageService {
-    private readonly openAIClient = new OpenAI({ apiKey: env.OPENAI_API_KEY });
-
     async getLanguages(query: GetLanguagesQuery): Promise<ILanguage[]> {
         const cacheKey = `languages:list:${String(query.isActive)}:${query.search ?? ''}`;
 
@@ -68,23 +56,19 @@ class LanguageService {
             code: payload.code,
             name: payload.name,
             nativeName: payload.nativeName,
-            ttsConfig: {
-                provider: payload.ttsConfig.provider,
-                speed: payload.ttsConfig.speed,
-            },
             isActive: payload.isActive,
         };
 
-        if (payload.flagIconUrl) {
-            createPayload.flagIconUrl = payload.flagIconUrl;
+        if (payload.greeting) {
+            createPayload.greeting = payload.greeting;
         }
 
-        const ttsConfig = createPayload.ttsConfig as Record<string, unknown>;
-        if (payload.ttsConfig.voiceId) {
-            ttsConfig.voiceId = payload.ttsConfig.voiceId;
+        if (payload.greetingSound) {
+            createPayload.greetingSound = payload.greetingSound;
         }
-        if (payload.ttsConfig.style) {
-            ttsConfig.style = payload.ttsConfig.style;
+
+        if (payload.flagIconUrl) {
+            createPayload.flagIconUrl = payload.flagIconUrl;
         }
 
         const created = await Language.create(createPayload);
@@ -94,7 +78,7 @@ class LanguageService {
     }
 
     async updateLanguage(code: string, payload: UpdateLanguageBody): Promise<ILanguage> {
-        const current = await Language.findOne({ code }).select('_id ttsConfig').lean().exec();
+        const current = await Language.findOne({ code }).select('_id').lean().exec();
         if (!current) {
             throw new AppError('Language not found', HttpStatus.NOT_FOUND);
         }
@@ -103,28 +87,10 @@ class LanguageService {
 
         if (payload.name !== undefined) updatePayload.name = payload.name;
         if (payload.nativeName !== undefined) updatePayload.nativeName = payload.nativeName;
+        if (payload.greeting !== undefined) updatePayload.greeting = payload.greeting;
+        if (payload.greetingSound !== undefined) updatePayload.greetingSound = payload.greetingSound;
         if (payload.flagIconUrl !== undefined) updatePayload.flagIconUrl = payload.flagIconUrl;
         if (payload.isActive !== undefined) updatePayload.isActive = payload.isActive;
-
-        if (payload.ttsConfig) {
-            const nextTtsConfig: Record<string, unknown> = {
-                provider: payload.ttsConfig.provider ?? current.ttsConfig.provider,
-                speed: payload.ttsConfig.speed ?? current.ttsConfig.speed ?? 1,
-            };
-
-            const nextVoiceId = payload.ttsConfig.voiceId ?? current.ttsConfig.voiceId;
-            const nextStyle = payload.ttsConfig.style ?? current.ttsConfig.style;
-
-            if (nextVoiceId) {
-                nextTtsConfig.voiceId = nextVoiceId;
-            }
-
-            if (nextStyle) {
-                nextTtsConfig.style = nextStyle;
-            }
-
-            updatePayload.ttsConfig = nextTtsConfig;
-        }
 
         const updated = await Language.findOneAndUpdate({ code }, updatePayload, {
             new: true,
@@ -158,34 +124,6 @@ class LanguageService {
         await this.invalidateLanguageListCaches();
         return updated;
     }
-
-    async testVoice(payload: TestLanguageVoiceBody): Promise<TestVoiceResult> {
-        if (payload.provider !== 'OPENAI') {
-            throw new AppError('Test voice currently supports OPENAI provider only', HttpStatus.BAD_REQUEST);
-        }
-
-        if (!OPENAI_VOICES.includes(payload.voiceId as (typeof OPENAI_VOICES)[number])) {
-            throw new AppError('Invalid OpenAI voice ID', HttpStatus.BAD_REQUEST);
-        }
-
-        const speed = payload.speed;
-        const mp3 = await this.openAIClient.audio.speech.create({
-            model: env.OPENAI_TTS_MODEL,
-            voice: payload.voiceId as (typeof OPENAI_VOICES)[number],
-            input: payload.text,
-            speed,
-            response_format: 'mp3',
-        });
-
-        const arrayBuffer = await mp3.arrayBuffer();
-        const audioBase64 = Buffer.from(arrayBuffer).toString('base64');
-
-        return {
-            mimeType: 'audio/mpeg',
-            audioBase64,
-        };
-    }
-
     private async invalidateLanguageListCaches(): Promise<void> {
         if (!redisClient.isOpen) {
             return;

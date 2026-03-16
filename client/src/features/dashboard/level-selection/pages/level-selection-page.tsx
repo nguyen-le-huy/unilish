@@ -1,5 +1,5 @@
 import styles from './level-selection-page.module.css';
-import LevelSelectionForm from '../components/level-selection-form/Level-Selection-Form';
+import LevelSelectionForm from '../components/level-selection-form/level-selection-form';
 
 const LevelSelectionPage = () => {
 	return (

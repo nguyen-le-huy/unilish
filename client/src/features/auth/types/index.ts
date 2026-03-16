@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ApiEnvelope } from '@/types/common';
 
 export const LoginSchema = z.object({
     email: z.string().email('Invalid email address'),
@@ -13,7 +14,10 @@ export interface User {
     fullName: string;
     role: string;
     avatarUrl?: string;
+    nativeLanguage?: string | null;
     currentLevel?: string;
+    learningGoal?: string | null;
+    placementTestScore?: number;
     stats?: UserStats;
     subscription?: unknown;
     phoneNumber?: string;
@@ -35,12 +39,7 @@ export interface AuthResponse {
     user: User;
 }
 
-export interface ApiEnvelope<T> {
-    status: string;
-    code: number;
-    message: string;
-    data: T;
-}
+export type { ApiEnvelope };
 
 export interface RegisterResponse {
     status: string;

@@ -3,12 +3,29 @@
 
   /* Color Variables */
   --dark-green: #204E1E;
+  --green: #84BC5A;
   --light-grey: #F6F6F6;
   --grey: #EEE;
   --dark-grey: #848484;
   --brand-blue: #182D77;
   --brand-blue-muted: #DEE1F2;
   --brand-blue-strong: #2B50F4;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* Typography scale */
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+
+  /* Icon size scale */
+  --icon-size-lg: 50px;
 
   --padding-btnA: 15px 20px;
   --padding-btnB: 10px 20px;
