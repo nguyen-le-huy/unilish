@@ -21,13 +21,14 @@ const GoalSelectionForm = () => {
     const languageCode = useOnboardingDraftStore((state) => state.languageCode);
     const draftGoal = useOnboardingDraftStore((state) => state.learningGoal);
     const setLearningGoalDraft = useOnboardingDraftStore((state) => state.setLearningGoal);
+    const resolvedLanguageCode = (languageCode ?? user?.nativeLanguage)?.trim() || null;
 
     const [selectedId, setSelectedId] = useState<string | null>(draftGoal ?? user?.learningGoal ?? null);
     const { data: goals = [], isLoading, isError, refetch } = useLearningGoalsQuery(languageId ?? undefined);
 
     const filteredGoals = useMemo(() => {
         if (!languageId) {
-            return [];
+            return goals;
         }
 
         return goals.filter((goal) =>
@@ -51,7 +52,7 @@ const GoalSelectionForm = () => {
         navigate(PATHS.DASHBOARD.LEVEL_SELECTION);
     }, [filteredGoals, navigate, selectedId, setLearningGoalDraft]);
 
-    if (!languageId || !languageCode) {
+    if (!resolvedLanguageCode) {
         return <Navigate to={PATHS.DASHBOARD.LANGUAGE_SELECTION} replace />;
     }
 

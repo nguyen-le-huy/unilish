@@ -6,6 +6,16 @@ import { PATHS } from '@/config/paths';
 import { useSyncAuthUser } from '@/features/auth/hooks/use-sync-auth-user';
 import { getRequiredOnboardingPath } from '@/features/auth/utils/onboarding';
 
+const coalesceNonEmpty = (...values: Array<string | null | undefined>) => {
+    for (const value of values) {
+        if (typeof value === 'string' && value.trim().length > 0) {
+            return value;
+        }
+    }
+
+    return null;
+};
+
 export const ProtectedRoute = () => {
     const location = useLocation();
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -14,6 +24,7 @@ export const ProtectedRoute = () => {
     const logout = useAuthStore((state) => state.logout);
     const draftLanguageCode = useOnboardingDraftStore((state) => state.languageCode);
     const draftLearningGoal = useOnboardingDraftStore((state) => state.learningGoal);
+    const clearOnboardingDraft = useOnboardingDraftStore((state) => state.clear);
     const hasAuthCredentials = isAuthenticated && (Boolean(token) || Boolean(user));
 
     useSyncAuthUser();
@@ -31,13 +42,19 @@ export const ProtectedRoute = () => {
     const onboardingGuardUser = user
         ? {
             ...user,
-            nativeLanguage: user.nativeLanguage ?? draftLanguageCode,
-            learningGoal: user.learningGoal ?? draftLearningGoal,
+            nativeLanguage: coalesceNonEmpty(user.nativeLanguage, draftLanguageCode),
+            learningGoal: coalesceNonEmpty(user.learningGoal, draftLearningGoal),
         }
         : user;
 
     const requiredOnboardingPath = getRequiredOnboardingPath(onboardingGuardUser);
     const isPlacementTestPage = location.pathname.startsWith(PATHS.DASHBOARD.PLACEMENT_TEST.ROOT);
+
+    useEffect(() => {
+        if (!requiredOnboardingPath && (draftLanguageCode || draftLearningGoal)) {
+            clearOnboardingDraft();
+        }
+    }, [clearOnboardingDraft, draftLanguageCode, draftLearningGoal, requiredOnboardingPath]);
 
     if (
         requiredOnboardingPath

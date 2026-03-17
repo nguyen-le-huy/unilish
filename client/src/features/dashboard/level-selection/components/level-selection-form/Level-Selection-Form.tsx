@@ -5,6 +5,7 @@ import styles from './level-selection-form.module.css';
 import SelectionCard from '@/components/core/SelectionCard/SelectionCard';
 import SelectionForm from '@/components/core/SelectionForm/SelectionForm';
 import { PATHS } from '@/config/paths';
+import { queryClient } from '@/lib/react-query';
 import { useAuthStore } from '@/stores/auth.store';
 import { useOnboardingDraftStore } from '@/stores/onboarding.store';
 import { useUpdateOnboardingProfile } from '@/features/dashboard/user';
@@ -24,22 +25,26 @@ const LevelSelectionForm = () => {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 	const navigate = useNavigate();
+	const user = useAuthStore((state) => state.user);
 	const setUser = useAuthStore((state) => state.setUser);
-	const draftLanguageCode = useOnboardingDraftStore((state) => state.languageCode);
-	const draftLearningGoal = useOnboardingDraftStore((state) => state.learningGoal);
-	const clearOnboardingDraft = useOnboardingDraftStore((state) => state.clear);
+	const draftLanguageCode = useOnboardingDraftStore((state) => state.languageCode)?.trim() || null;
+	const draftLearningGoal = useOnboardingDraftStore((state) => state.learningGoal)?.trim() || null;
+	const profileLanguageCode = user?.nativeLanguage?.trim() || null;
+	const profileLearningGoal = user?.learningGoal?.trim() || null;
+	const resolvedLanguageCode = draftLanguageCode ?? profileLanguageCode;
+	const resolvedLearningGoal = draftLearningGoal ?? profileLearningGoal;
 	const { mutate, isPending } = useUpdateOnboardingProfile();
 	const guardRedirectPath = useMemo(() => {
-		if (!draftLanguageCode) {
+		if (!resolvedLanguageCode) {
 			return PATHS.DASHBOARD.LANGUAGE_SELECTION;
 		}
 
-		if (!draftLearningGoal) {
+		if (!resolvedLearningGoal) {
 			return PATHS.DASHBOARD.GOAL_SELECTION;
 		}
 
 		return null;
-	}, [draftLanguageCode, draftLearningGoal]);
+	}, [resolvedLanguageCode, resolvedLearningGoal]);
 
 	const handleContinue = useCallback(() => {
 		const selectedLevel = LEVELS.find((level) => level.id === selectedId);
@@ -47,13 +52,13 @@ const LevelSelectionForm = () => {
 			return;
 		}
 
-		if (!draftLanguageCode) {
+		if (!resolvedLanguageCode) {
 			toast.error(ERROR_MISSING_LANGUAGE);
 			navigate(PATHS.DASHBOARD.LANGUAGE_SELECTION);
 			return;
 		}
 
-		if (!draftLearningGoal) {
+		if (!resolvedLearningGoal) {
 			toast.error(ERROR_MISSING_GOAL);
 			navigate(PATHS.DASHBOARD.GOAL_SELECTION);
 			return;
@@ -61,15 +66,22 @@ const LevelSelectionForm = () => {
 
 		mutate(
 			{
-				nativeLanguage: draftLanguageCode,
-				learningGoal: draftLearningGoal,
+				nativeLanguage: resolvedLanguageCode,
+				learningGoal: resolvedLearningGoal,
 				currentLevel: selectedLevel.cefrLevel,
 			},
 			{
 				onSuccess: (updatedUser) => {
-					setUser(updatedUser);
-					clearOnboardingDraft();
-					navigate(PATHS.DASHBOARD.HOME);
+					const mergedUser = {
+						...updatedUser,
+						nativeLanguage: updatedUser.nativeLanguage?.trim() || resolvedLanguageCode,
+						learningGoal: updatedUser.learningGoal?.trim() || resolvedLearningGoal,
+						currentLevel: updatedUser.currentLevel ?? selectedLevel.cefrLevel,
+					};
+
+					setUser(mergedUser);
+					queryClient.setQueryData(['auth', 'me'], mergedUser);
+					navigate(PATHS.DASHBOARD.HOME, { replace: true });
 				},
 				onError: (error) => {
 					const message = error.response?.data?.message ?? ERROR_ONBOARDING_FAILED;
@@ -77,7 +89,7 @@ const LevelSelectionForm = () => {
 				},
 			},
 		);
-	}, [clearOnboardingDraft, draftLanguageCode, draftLearningGoal, mutate, navigate, selectedId, setUser]);
+	}, [mutate, navigate, resolvedLanguageCode, resolvedLearningGoal, selectedId, setUser]);
 
 	const handleOpenPlacementTestModal = useCallback(() => {
 		setIsModalOpen(true);

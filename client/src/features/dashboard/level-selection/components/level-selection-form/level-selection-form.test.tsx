@@ -132,7 +132,7 @@ describe('LevelSelectionForm', () => {
             expect.any(Object),
         );
         expect(setUserMock).toHaveBeenCalledWith(updatedUser);
-        expect(clearDraftMock).toHaveBeenCalledTimes(1);
+        expect(clearDraftMock).not.toHaveBeenCalled();
     });
 
     it('redirects to language selection when language draft is missing', () => {
