@@ -35,10 +35,6 @@ export const ProtectedRoute = () => {
         }
     }, [hasAuthCredentials, isAuthenticated, logout]);
 
-    if (!hasAuthCredentials) {
-        return <Navigate to={PATHS.AUTH.LOGIN} replace />;
-    }
-
     const onboardingGuardUser = user
         ? {
             ...user,
@@ -47,14 +43,20 @@ export const ProtectedRoute = () => {
         }
         : user;
 
-    const requiredOnboardingPath = getRequiredOnboardingPath(onboardingGuardUser);
+    const requiredOnboardingPath = hasAuthCredentials
+        ? getRequiredOnboardingPath(onboardingGuardUser)
+        : null;
     const isPlacementTestPage = location.pathname.startsWith(PATHS.DASHBOARD.PLACEMENT_TEST.ROOT);
 
     useEffect(() => {
-        if (!requiredOnboardingPath && (draftLanguageCode || draftLearningGoal)) {
+        if (hasAuthCredentials && !requiredOnboardingPath && (draftLanguageCode || draftLearningGoal)) {
             clearOnboardingDraft();
         }
-    }, [clearOnboardingDraft, draftLanguageCode, draftLearningGoal, requiredOnboardingPath]);
+    }, [clearOnboardingDraft, draftLanguageCode, draftLearningGoal, hasAuthCredentials, requiredOnboardingPath]);
+
+    if (!hasAuthCredentials) {
+        return <Navigate to={PATHS.AUTH.LOGIN} replace />;
+    }
 
     if (
         requiredOnboardingPath
