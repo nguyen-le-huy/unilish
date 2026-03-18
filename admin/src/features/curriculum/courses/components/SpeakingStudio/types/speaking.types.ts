@@ -1,4 +1,5 @@
 import type { SpeakingLessonFormValues } from '../validations/speaking.validation';
+import type { PronunciationResult } from './pipeline.types';
 
 export type { SpeakingLessonFormValues };
 
@@ -9,6 +10,7 @@ export interface CoachChatMessage {
     role: 'user' | 'assistant';
     content: string;
     createdAt: number;
+    pronunciation?: PronunciationResult | null;
 }
 
 export type SupportedAudioFormat = 'wav' | 'webm' | 'ogg' | 'mp3';

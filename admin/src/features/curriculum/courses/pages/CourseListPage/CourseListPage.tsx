@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, Plus, Trash2, ExternalLink, Search, SlidersHorizontal, X } from 'lucide-react';
+import { Loading } from '@/components/common/Loading';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -272,9 +273,7 @@ export default function CourseListPage() {
                                 disabled={isLoadingSeries}
                             >
                                 <SelectTrigger className="w-[220px]" aria-label="Chọn series">
-                                    <SelectValue
-                                        placeholder={isLoadingSeries ? 'Đang tải...' : 'Chọn một series...'}
-                                    />
+                                    <SelectValue placeholder="Chọn một series..." />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Tất cả series</SelectItem>
@@ -375,7 +374,7 @@ export default function CourseListPage() {
                     <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
                             {isLoadingCourses
-                                ? 'Đang tải...'
+                                ? <Loading size="sm" className="justify-start" />
                                 : `${courses.length} / ${allCourses.length} khóa học`}
                         </CardTitle>
                     </CardHeader>

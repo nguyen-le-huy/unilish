@@ -29,6 +29,8 @@ const speakingSchema = z.object({
     part2Minutes: z.coerce.number().min(1).default(4),
     part3Minutes: z.coerce.number().min(1).default(5),
     part2PrepSeconds: z.coerce.number().min(0).default(60),
+    part1MinQuestions: z.coerce.number().int().min(1).default(4),
+    part1MaxQuestions: z.coerce.number().int().min(1).default(6),
     part3MinQuestions: z.coerce.number().int().min(1).default(2),
     part3MaxQuestions: z.coerce.number().int().min(1).default(3),
     part1TopicsText: z.string().default(''),
@@ -54,7 +56,7 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
     const toStringList = (raw: string) =>
         raw
             .split('\n')
-            .map((item) => item.trim())
+            .map((item) => item.replace(/^\s*(?:[-*]|\d+[.)-])\s*/, '').trim())
             .filter(Boolean);
 
     const mergedCueCards = [
@@ -76,6 +78,8 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
             part2Minutes: defaultValues?.parts?.part2?.minutes ?? 4,
             part3Minutes: defaultValues?.parts?.part3?.minutes ?? 5,
             part2PrepSeconds: defaultValues?.parts?.part2?.prepSeconds ?? 60,
+            part1MinQuestions: defaultValues?.parts?.part1?.questionsRange?.[0] ?? 4,
+            part1MaxQuestions: defaultValues?.parts?.part1?.questionsRange?.[1] ?? 6,
             part3MinQuestions: defaultValues?.parts?.part3?.questionsRange?.[0] ?? 2,
             part3MaxQuestions: defaultValues?.parts?.part3?.questionsRange?.[1] ?? 3,
             part1TopicsText: toMultilineText(defaultValues?.parts?.part1?.topics),
@@ -88,6 +92,8 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
         const part1Topics = toStringList(values.part1TopicsText);
         const cueCards = toStringList(values.part2CueCardsText).map((text) => ({ level: 'mid' as const, text }));
         const part3Topics = toStringList(values.part3TopicsText);
+        const part1Min = Math.min(values.part1MinQuestions, values.part1MaxQuestions);
+        const part1Max = Math.max(values.part1MinQuestions, values.part1MaxQuestions);
         const part3Min = Math.min(values.part3MinQuestions, values.part3MaxQuestions);
         const part3Max = Math.max(values.part3MinQuestions, values.part3MaxQuestions);
 
@@ -105,7 +111,11 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
             criteria: values.criteria,
             parts: {
                 warmupMinutes: values.warmupMinutes,
-                part1: { minutes: values.part1Minutes, questionsRange: [4, 6], topics: part1Topics },
+                part1: {
+                    minutes: values.part1Minutes,
+                    questionsRange: [part1Min, part1Max],
+                    topics: part1Topics,
+                },
                 part2: {
                     minutes: values.part2Minutes,
                     prepSeconds: values.part2PrepSeconds,
@@ -184,14 +194,22 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
                 <div className="space-y-3">
                     <p className="text-sm font-medium">Câu hỏi thủ công — Speaking</p>
                     <p className="text-xs text-muted-foreground">
-                        Mỗi dòng là 1 câu hỏi/chủ đề dùng chung. Có thể để trống để hệ thống sinh tự động.
+                        Mỗi dòng là 1 câu hỏi. Có thể để trống để hệ thống sinh tự động.
                     </p>
 
                     <FormField control={form.control} name="part1TopicsText" render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-xs">Part 1 — Chủ đề/Câu hỏi</FormLabel>
+                            <FormLabel className="text-xs">Part 1 — Danh sách câu hỏi</FormLabel>
                             <FormControl>
-                                <Textarea rows={4} placeholder="Do you work or are you a student?" {...field} />
+                                <Textarea
+                                    rows={6}
+                                    placeholder={[
+                                        'Do you work or are you a student?',
+                                        'What do you like most about your hometown?',
+                                        'How often do you use social media?',
+                                    ].join('\n')}
+                                    {...field}
+                                />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -209,9 +227,17 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
 
                     <FormField control={form.control} name="part3TopicsText" render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-xs">Part 3 — Câu hỏi thảo luận</FormLabel>
+                            <FormLabel className="text-xs">Part 3 — Danh sách câu hỏi thảo luận</FormLabel>
                             <FormControl>
-                                <Textarea rows={5} placeholder="What are the advantages and disadvantages of living in a big city?" {...field} />
+                                <Textarea
+                                    rows={6}
+                                    placeholder={[
+                                        'What are the advantages and disadvantages of living in a big city?',
+                                        'How has technology changed communication in your country?',
+                                        'Should governments invest more in public transport? Why?',
+                                    ].join('\n')}
+                                    {...field}
+                                />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -247,6 +273,25 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
                                 <FormMessage />
                             </FormItem>
                         )} />
+
+                        <FormField control={form.control} name="part1MinQuestions" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-xs">Part 1 — Số câu tối thiểu</FormLabel>
+                                <FormControl><Input type="number" min={1} className="h-8" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+
+                        <FormField control={form.control} name="part1MaxQuestions" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-xs">Part 1 — Số câu tối đa</FormLabel>
+                                <FormControl><Input type="number" min={1} className="h-8" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
 
                         <FormField control={form.control} name="part3MinQuestions" render={({ field }) => (
                             <FormItem>

@@ -11,7 +11,7 @@ import { PATHS } from '@/config/paths';
 import { useAuthStore } from '@/stores/auth.store';
 import { LeftPanel } from '../../components/listening-reading/left-panel';
 import { RightPanel } from '../../components/listening-reading/right-panel';
-import type { AnswerOption, PartQuestionStatus, ToeicPart } from '../../components/listening-reading/types';
+import type { AnswerOption, ToeicPart } from '../../components/listening-reading/types';
 import { PT_MESSAGES } from '../../constants/placement-test.constants';
 import { useActivePlacementTestQuery } from '../../hooks/use-active-placement-test-query';
 import { useAnswerState } from '../../hooks/use-answer-state';
@@ -22,6 +22,7 @@ import { useSubmitPlacementAttemptMutation } from '../../hooks/use-submit-placem
 import { useTestTimer } from '../../hooks/use-test-timer';
 import { mapAttemptToParts } from '../../utils/question-mapper';
 import { formatCountdownLabel } from '../../utils/timer';
+import { SubmissionSuccessCard } from '../../components/listening-reading/submission-success-card';
 
 const getErrorStatus = (error: unknown): number | undefined => {
     if (!isAxiosError<ApiErrorResponse>(error)) {
@@ -34,6 +35,29 @@ const getErrorStatus = (error: unknown): number | undefined => {
 interface ErrorViewProps {
     message: string;
 }
+
+interface SubmissionSummary {
+    completedMinutes: number | null;
+    submittedQuestions: number;
+    totalQuestions: number;
+}
+
+const buildSubmissionSummary = (attemptData: {
+    durationSeconds?: number | null;
+    answerSheet: Array<{ selectedOption?: AnswerOption | null }>;
+    totalQuestions: number;
+}): SubmissionSummary => {
+    const submittedQuestions = attemptData.answerSheet.filter((item) => Boolean(item.selectedOption)).length;
+    const completedMinutes = typeof attemptData.durationSeconds === 'number'
+        ? Math.max(1, Math.round(attemptData.durationSeconds / 60))
+        : null;
+
+    return {
+        completedMinutes,
+        submittedQuestions,
+        totalQuestions: attemptData.totalQuestions,
+    };
+};
 
 const ErrorView = ({ message }: ErrorViewProps) => {
     return (
@@ -49,6 +73,7 @@ const ListeningReading = () => {
     const logout = useAuthStore((state) => state.logout);
     const [activePart, setActivePart] = useState<ToeicPart>(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submissionSummary, setSubmissionSummary] = useState<SubmissionSummary | null>(null);
 
     const {
         data: activeTest,
@@ -70,7 +95,6 @@ const ListeningReading = () => {
         autosaveErrorMessage: PT_MESSAGES.autosaveError,
     });
     const {
-        localAnswerMap,
         handleAnswer,
         handleFlag,
         applyQuestionStates,
@@ -142,15 +166,20 @@ const ListeningReading = () => {
             setIsSubmitting(true);
             cancelScheduledSaves();
             await flushPendingChanges(false);
-            await submitAttemptMutation.mutateAsync(attempt.attemptId);
-            toast.success(PT_MESSAGES.submitSuccess);
-            navigate(PATHS.DASHBOARD.HOME);
+            const result = await submitAttemptMutation.mutateAsync(attempt.attemptId);
+            setSubmissionSummary(buildSubmissionSummary(result.attempt));
         } catch {
             toast.error(PT_MESSAGES.submitError);
         } finally {
             setIsSubmitting(false);
         }
-    }, [attempt?.attemptId, cancelScheduledSaves, flushPendingChanges, isSubmitting, navigate, submitAttemptMutation]);
+    }, [
+        attempt?.attemptId,
+        cancelScheduledSaves,
+        flushPendingChanges,
+        isSubmitting,
+        submitAttemptMutation,
+    ]);
 
     if (!isAuthenticated) {
         return <Navigate to={PATHS.AUTH.LOGIN} replace />;
@@ -175,6 +204,21 @@ const ListeningReading = () => {
     }
 
     const timerLabel = formatCountdownLabel(timeRemaining);
+
+    if (submissionSummary) {
+        return (
+            <div className={styles.successContainer}>
+                <SubmissionSuccessCard
+                    completedMinutes={submissionSummary.completedMinutes}
+                    submittedQuestions={submissionSummary.submittedQuestions}
+                    totalQuestions={submissionSummary.totalQuestions}
+                    onContinue={() => navigate(PATHS.DASHBOARD.HOME)}
+                    description="Bạn đã nộp thành công phần Listening và Reading."
+                    continueLabel="Quay về Dashboard"
+                />
+            </div>
+        );
+    }
 
     return (
         <div className={styles.container}>

@@ -92,6 +92,8 @@ import audioRouter from './routes/audio.route.js';
 import questionRouter from './routes/question.route.js';
 import placementTestRuntimeRouter from './routes/placement-test-runtime.route.js';
 import placementTestRouter from './routes/placement-test.route.js';
+import azureSpeechRouter from './routes/azure-speech.route.js';
+import speakingPipelineRouter from './routes/speaking-pipeline.route.js';
 import { streamListeningAudio } from './controllers/listening.controller.js';
 
 // Routes
@@ -118,6 +120,8 @@ app.use('/api/audio', audioRouter);
 app.use('/api/questions', questionRouter);
 app.use('/api/placement-tests/runtime', placementTestRuntimeRouter);
 app.use('/api/placement-tests', placementTestRouter);
+app.use('/api/v1/azure-speech', azureSpeechRouter);
+app.use('/api/v1/speaking', speakingPipelineRouter);
 
 app.get('/', (req, res) => {
     res.status(HttpStatus.OK).json({

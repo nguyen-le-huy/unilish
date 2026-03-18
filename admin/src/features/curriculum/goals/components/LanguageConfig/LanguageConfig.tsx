@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Loading } from '@/components/common/Loading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -57,9 +58,10 @@ export function LanguageConfig() {
             <CardContent className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="lc-language">Ngôn ngữ</Label>
+                    {isLoading && <Loading size="sm" className="justify-start" />}
                     <Select value={selectedCode} onValueChange={handleLanguageChange}>
                         <SelectTrigger id="lc-language" aria-label="Chọn ngôn ngữ">
-                            <SelectValue placeholder={isLoading ? 'Đang tải...' : 'Chọn ngôn ngữ'} />
+                            <SelectValue placeholder="Chọn ngôn ngữ" />
                         </SelectTrigger>
                         <SelectContent>
                             {languages.map((language) => (

@@ -191,6 +191,7 @@ export const VocabStudio = memo(function VocabStudio({ lesson }: Props) {
                     lessonId={lessonId}
                     lessonTitle={lesson.title}
                     itemCount={items.length}
+                    items={items}
                     passingScore={lesson.practiceConfig.passingScore}
                     generationStatus={generationStatus}
                     isSaving={saveMutation.isPending}

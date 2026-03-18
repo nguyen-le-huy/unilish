@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
+import { Loading } from '@/components/common/Loading';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -286,7 +287,7 @@ export default function SeriesEditorPage() {
                                                                 </Badge>
                                                             </>
                                                         ) : (
-                                                            <span className="text-muted-foreground">Đang tải...</span>
+                                                            <Loading size="sm" className="justify-start" />
                                                         )}
                                                     </div>
                                                 )}
@@ -327,7 +328,7 @@ export default function SeriesEditorPage() {
                                                         {selectedGoal ? (
                                                             <span>{selectedGoal.title}</span>
                                                         ) : (
-                                                            <span className="text-muted-foreground">Đang tải...</span>
+                                                            <Loading size="sm" className="justify-start" />
                                                         )}
                                                     </div>
                                                 )}

@@ -40,10 +40,9 @@ const MarketingHomePage = () => {
   return (
     <MarketingLayout>
       {!isPageReady && (
-        <div className={styles.pageLoadingOverlay} role="status" aria-live="polite" aria-label="Trang đang tải tài nguyên">
+        <div className={styles.pageLoadingOverlay} role="status" aria-live="polite" aria-label="Trạng thái tải trang">
           <div className={styles.loadingContent}>
             <Loading variant="inline" size="lg" className={styles.loadingSpinner} />
-            <p className={styles.loadingText}>Đang tải trải nghiệm học tập...</p>
           </div>
         </div>
       )}

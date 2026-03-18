@@ -99,6 +99,7 @@ export interface IModuleEssay {
     criteria: string[];
     wordLimits: { low: number; mid: number; high: number };
     topicsByLevel: { low: string[]; mid: string[]; high: string[] };
+    promptImageUrl?: string;
     secureMode: { disablePaste: boolean; disableSpellcheck: boolean };
     promptSource: 'ai_generated' | 'library';
 }
@@ -249,6 +250,7 @@ const ModuleEssaySchema = new mongoose.Schema<IModuleEssay>(
             mid: { type: [String], default: [] },
             high: { type: [String], default: [] },
         },
+        promptImageUrl: { type: String, default: null },
         secureMode: {
             disablePaste: { type: Boolean, default: true },
             disableSpellcheck: { type: Boolean, default: true },

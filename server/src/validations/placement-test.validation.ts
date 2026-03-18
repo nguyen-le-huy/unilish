@@ -83,6 +83,7 @@ const moduleEssaySchema = z.object({
         mid: z.array(z.string().trim().min(1)),
         high: z.array(z.string().trim().min(1)),
     }),
+    promptImageUrl: z.string().trim().url().optional(),
     secureMode: z.object({
         disablePaste: z.boolean().default(true),
         disableSpellcheck: z.boolean().default(true),

@@ -1,0 +1,40 @@
+.card {
+    border-radius: 20px;
+    border: 1px solid var(--grey);
+    background: #ffffff;
+    box-shadow: 0 2px 10px rgba(16, 24, 40, 0.05);
+    padding: 50px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon {
+    width: 80px;
+    height: 80px;
+}
+
+.title {
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.description {
+    font-size: 18px;
+    color: var(--dark-grey);
+}
+
+.stats {
+    display: grid;
+    gap: var(--space-3);
+    font-size: 18px;
+    color: var(--dark-grey)
+}
+
+.stats strong {
+    font-weight: 600;
+    color: black;
+}

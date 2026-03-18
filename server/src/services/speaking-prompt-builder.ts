@@ -70,6 +70,8 @@ export class PromptBuilder {
         lines.push(`- Never end the conversation abruptly; always close with one warm, human-sounding goodbye sentence.`);
         lines.push(`- Respond ONLY in ${targetLangName}. Keep responses concise and natural for a spoken conversation.`);
         lines.push(`- Move the conversation forward naturally. Do not repeat the same correction or prompt more than once.`);
+        lines.push(`- CRITICAL: Ask MAXIMUM ONE question per turn. Never ask two or more questions at the same time.`);
+        lines.push(`- CRITICAL: IF the conversation is finished or you have all facts, YOU MUST explicitly say a full closing sentence like "Thank you, you may go now. Have a nice day." NEVER return an empty or silent response under ANY circumstance.`);
         if (context.nativeLanguage) {
             lines.push(`- The learner's native language is ${context.nativeLanguage}. Be patient but stay fully in character.`);
         }

@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { toast } from 'sonner';
 import {
     Form,
     FormControl,
@@ -15,6 +17,8 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import apiClient from '@/lib/axios';
+import type { ApiResponse } from '@/types/api';
 import { ESSAY_CRITERIA_OPTIONS } from '../../../constants';
 import type { IModuleEssay } from '../../../types';
 
@@ -29,6 +33,7 @@ const essaySchema = z.object({
     disablePaste: z.boolean().default(true),
     disableSpellcheck: z.boolean().default(false),
     topicsText: z.string().default(''),
+    promptImageUrl: z.union([z.string().trim().url('URL ảnh không hợp lệ'), z.literal('')]).default(''),
 });
 
 type EssayFormValues = z.infer<typeof essaySchema>;
@@ -45,6 +50,8 @@ interface Props {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Props) {
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
+
     const toMultilineText = (items?: string[]) => (items ?? []).join('\n');
     const toStringList = (raw: string) =>
         raw
@@ -77,11 +84,32 @@ export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Prop
             disablePaste: defaultValues?.secureMode?.disablePaste ?? true,
             disableSpellcheck: defaultValues?.secureMode?.disableSpellcheck ?? false,
             topicsText: toMultilineText(uniqueTopics),
+            promptImageUrl: defaultValues?.promptImageUrl ?? '',
         },
     });
 
+    async function uploadPromptImage(file: File): Promise<void> {
+        setIsUploadingImage(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('folder', 'placement-tests/manual/essay-prompts');
+            const response = await apiClient.post<ApiResponse<{ url: string; type: string }>>('/upload', formData);
+            form.setValue('promptImageUrl', response.data.data.url, {
+                shouldDirty: true,
+                shouldValidate: true,
+            });
+            toast.success('Đã upload ảnh đề bài');
+        } catch {
+            toast.error('Upload ảnh thất bại');
+        } finally {
+            setIsUploadingImage(false);
+        }
+    }
+
     function onSubmit(values: EssayFormValues) {
         const sharedTopics = toStringList(values.topicsText);
+        const normalizedPromptImageUrl = values.promptImageUrl.trim();
 
         onSave({
             order,
@@ -101,6 +129,7 @@ export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Prop
                 mid: values.wordLimit,
                 high: values.wordLimit,
             },
+            ...(normalizedPromptImageUrl ? { promptImageUrl: normalizedPromptImageUrl } : {}),
             secureMode: {
                 disablePaste: values.disablePaste,
                 disableSpellcheck: values.disableSpellcheck,
@@ -179,6 +208,66 @@ export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Prop
                             <FormControl>
                                 <Textarea rows={8} placeholder="Do you prefer living in a city or the countryside?" {...field} />
                             </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+
+                    <FormField control={form.control} name="promptImageUrl" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Ảnh đề bài (tuỳ chọn)</FormLabel>
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto]">
+                                <FormControl>
+                                    <Input
+                                        className="h-9"
+                                        placeholder="https://..."
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                    />
+                                </FormControl>
+
+                                <label className="inline-flex">
+                                    <input
+                                        className="hidden"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={async (event) => {
+                                            const inputElement = event.currentTarget;
+                                            const file = event.target.files?.[0];
+                                            if (!file) return;
+                                            await uploadPromptImage(file);
+                                            inputElement.value = '';
+                                        }}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="h-9"
+                                        disabled={isUploadingImage}
+                                        asChild
+                                    >
+                                        <span>{isUploadingImage ? 'Đang upload...' : 'Upload ảnh'}</span>
+                                    </Button>
+                                </label>
+
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="h-9"
+                                    disabled={!field.value}
+                                    onClick={() => field.onChange('')}
+                                >
+                                    Xoá ảnh
+                                </Button>
+                            </div>
+                            {field.value && (
+                                <div className="mt-2 rounded-lg border bg-muted/20 p-2">
+                                    <img
+                                        src={field.value}
+                                        alt="Prompt preview"
+                                        className="max-h-56 w-auto rounded object-contain"
+                                    />
+                                </div>
+                            )}
                             <FormMessage />
                         </FormItem>
                     )} />

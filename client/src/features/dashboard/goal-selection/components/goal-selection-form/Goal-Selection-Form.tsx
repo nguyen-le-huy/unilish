@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/core/Button/Button';
+import { Loading } from '@/components/common/Loading/Loading';
 import SelectionCard from '@/components/core/SelectionCard/SelectionCard';
 import SelectionForm from '@/components/core/SelectionForm/SelectionForm';
 import { PATHS } from '@/config/paths';
@@ -62,7 +63,7 @@ const GoalSelectionForm = () => {
             subtitle="Hãy chọn mục tiêu học tập bạn mong muốn, bạn có thể thay đổi lựa chọn này sau."
             primaryAction={{ label: 'Tiếp tục', disabled: !selectedId || isLoading, onClick: handleContinue }}
         >
-            {isLoading && <p className={styles.feedback}>Đang tải mục tiêu học tập...</p>}
+            {isLoading && <Loading variant="inline" size="sm" className={styles.feedback} />}
             {isError && (
                 <div className={styles.errorState}>
                     <p className={styles.feedback}>Không thể tải danh sách mục tiêu. Vui lòng thử lại.</p>

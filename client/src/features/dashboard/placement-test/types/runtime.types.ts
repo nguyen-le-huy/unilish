@@ -57,6 +57,7 @@ export interface ActivePlacementTest {
     name: string;
     version: number;
     status: string;
+    modules?: RuntimeModule[];
 }
 
 export interface LocalAnswerState {

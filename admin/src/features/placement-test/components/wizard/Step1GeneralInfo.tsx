@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Loading } from '@/components/common/Loading';
 import {
     Form,
     FormControl,
@@ -88,6 +89,7 @@ export function Step1GeneralInfo({ defaultValues, onNext }: Props) {
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Ngôn ngữ <span className="text-destructive">*</span></FormLabel>
+                                {isLoadingLanguages && <Loading size="sm" className="justify-start" />}
                                 <Select
                                     onValueChange={(value) => {
                                         const selectedLanguage = languages.find((lang) => lang.code === value);
@@ -99,9 +101,7 @@ export function Step1GeneralInfo({ defaultValues, onNext }: Props) {
                                 >
                                     <FormControl>
                                         <SelectTrigger>
-                                            <SelectValue
-                                                placeholder={isLoadingLanguages ? 'Đang tải ngôn ngữ…' : 'Chọn ngôn ngữ…'}
-                                            />
+                                            <SelectValue placeholder="Chọn ngôn ngữ…" />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>

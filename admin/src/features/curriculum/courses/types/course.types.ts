@@ -218,6 +218,48 @@ export interface VocabStatusResponse {
     totalCount: number;
 }
 
+// ─── Pronunciation Assessment Types ──────────────────────────────────────────
+
+export type PhonemeErrorType = 'None' | 'Omission' | 'Insertion' | 'Mispronunciation';
+
+export type WordErrorType =
+    | 'None'
+    | 'Omission'
+    | 'Insertion'
+    | 'Mispronunciation'
+    | 'UnexpectedBreak'
+    | 'MissingBreak';
+
+export interface PhonemeScore {
+    phoneme: string;
+    accuracyScore: number;
+    errorType: PhonemeErrorType;
+}
+
+export interface WordPronunciationScore {
+    word: string;
+    accuracyScore: number;
+    errorType: WordErrorType;
+    phonemes: PhonemeScore[];
+}
+
+export interface PronunciationAssessmentResult {
+    accuracyScore: number;
+    fluencyScore: number;
+    prosodyScore: number;
+    completenessScore: number;
+    pronunciationScore: number;
+    words: WordPronunciationScore[];
+    recognizedText: string;
+}
+
+export type PronunciationTestStatus =
+    | 'idle'
+    | 'recording'
+    | 'processing'
+    | 'done'
+    | 'error';
+
 // ─── Vocab Mutation Payloads ──────────────────────────────────────────────────
 
 export interface GenerateVocabPayload {

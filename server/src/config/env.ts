@@ -55,8 +55,8 @@ const envSchema = z.object({
     OPENAI_TTS_MODEL: z.string().default('gpt-4o-mini-tts-2025-12-15'),
 
     // Azure Speech (Pronunciation Assessment)
-    AZURE_SPEECH_KEY: z.string().optional(),
-    AZURE_SPEECH_REGION: z.string().optional(),
+    AZURE_SPEECH_KEY: z.string().min(1, 'AZURE_SPEECH_KEY is required'),
+    AZURE_SPEECH_REGION: z.string().min(1, 'AZURE_SPEECH_REGION is required'),
     AZURE_SPEECH_ENDPOINT: z.string().optional(),
     AZURE_SPEECH_LANGUAGE: z.string().default('en-US'),
     AZURE_SPEECH_ENABLE_PROSODY: z.string().default('true'),

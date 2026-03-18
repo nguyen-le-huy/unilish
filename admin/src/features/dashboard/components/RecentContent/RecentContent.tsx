@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Loading } from "@/components/common/Loading";
 import { BookOpen, FileText, Youtube, Newspaper } from "lucide-react";
 import { useRecentContent } from "../../hooks/useDashboardData";
 
@@ -37,7 +38,9 @@ export function RecentContent() {
             <Card>
                 <CardHeader>
                     <CardTitle>Nội dung mới cập nhật</CardTitle>
-                    <CardDescription>Đang tải...</CardDescription>
+                    <CardDescription>
+                        <Loading size="sm" className="justify-start" />
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">

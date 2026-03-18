@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loading } from "@/components/common/Loading";
 import { AlertTriangle, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { useSystemAlerts } from "../../hooks/useDashboardData";
 
@@ -24,7 +25,9 @@ export function SystemAlerts() {
             <Card>
                 <CardHeader>
                     <CardTitle>Thông báo hệ thống</CardTitle>
-                    <CardDescription>Đang tải...</CardDescription>
+                    <CardDescription>
+                        <Loading size="sm" className="justify-start" />
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">

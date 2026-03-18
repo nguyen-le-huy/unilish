@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Loading } from "@/components/common/Loading";
 import type { User } from "../../types/users.types";
 import { UserActionMenu } from "../UserActionMenu/UserActionMenu";
 import { formatDistanceToNow, format } from "date-fns";
@@ -23,7 +24,7 @@ interface UserTableProps {
 
 export function UserTable({ users, loading, onEditSubscription, onEditRole, onViewDetails }: UserTableProps) {
     if (loading) {
-        return <div className="p-8 text-center text-sm text-muted-foreground animate-pulse">Đang tải dữ liệu...</div>;
+        return <Loading className="p-8" />;
     }
 
     if (!users || users.length === 0) {

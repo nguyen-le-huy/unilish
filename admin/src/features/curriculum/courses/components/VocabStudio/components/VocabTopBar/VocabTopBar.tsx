@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { AiAssistantSheet } from '../AiAssistantSheet/AiAssistantSheet';
 import { GenerateQuestionsPopover } from '../GenerateQuestionsPopover/GenerateQuestionsPopover';
 import { PracticeSheet } from '../PracticeSheet/PracticeSheet';
-import type { VocabGenerationStatus } from '../../../../types/course.types';
+import type { VocabGenerationStatus, VocabItem } from '../../../../types/course.types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────────────────
 
@@ -14,6 +14,7 @@ interface Props {
     lessonId: string;
     lessonTitle: string;
     itemCount: number;
+    items: VocabItem[];
     passingScore: number;
     generationStatus: VocabGenerationStatus;
     isSaving: boolean;
@@ -39,6 +40,7 @@ export const VocabTopBar = memo(function VocabTopBar({
     lessonId,
     lessonTitle,
     itemCount,
+    items,
     passingScore,
     generationStatus,
     isSaving,
@@ -99,7 +101,7 @@ export const VocabTopBar = memo(function VocabTopBar({
                 <GenerateQuestionsPopover lessonId={lessonId} vocabItemCount={itemCount} />
 
                 {/* Practice Sheet */}
-                <PracticeSheet lessonId={lessonId} passingScore={passingScore} />
+                <PracticeSheet lessonId={lessonId} passingScore={passingScore} items={items} />
 
                 {/* Save */}
                 <Button size="sm" onClick={onSave} disabled={isSaving}>

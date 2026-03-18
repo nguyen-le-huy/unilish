@@ -22,8 +22,6 @@ export const PATHS = {
             INTRO:     '/dashboard/placement-test/intro',
             LISTENING: '/dashboard/placement-test/lr',
             READING:   '/dashboard/placement-test/toeic/reading',
-            WRITING:   '/dashboard/placement-test/writing',
-            SPEAKING:  '/dashboard/placement-test/speaking',
             RESULT:    '/dashboard/placement-test/result',
         },
     }

@@ -8,6 +8,16 @@ interface UseAnswerStateParams {
     queueSave: (questionId: string, value: LocalAnswerState) => void;
 }
 
+type QuestionStateFields = {
+    selectedAnswer?: LocalAnswerState['selectedOption'];
+    flagged?: boolean;
+};
+
+type WithQuestionState<T extends { id: string; questions?: Array<{ id: string }> }> =
+    T extends { questions: Array<infer Q> }
+        ? Omit<T, 'questions'> & { questions: Array<Q & QuestionStateFields> }
+        : T & QuestionStateFields;
+
 export const useAnswerState = ({ attempt, isSubmitting, queueSave }: UseAnswerStateParams) => {
     const [localAnswerMap, setLocalAnswerMap] = useState<Record<string, LocalAnswerState>>({});
 
@@ -65,7 +75,7 @@ export const useAnswerState = ({ attempt, isSubmitting, queueSave }: UseAnswerSt
     }, [isSubmitting, updateAnswerState]);
 
     const applyQuestionStates = useCallback(
-        <T extends { id: string; questions?: Array<{ id: string }> }>(items: T[]): T[] => {
+        <T extends { id: string; questions?: Array<{ id: string }> }>(items: T[]): Array<WithQuestionState<T>> => {
             return items.map((item) => {
                 if ('questions' in item && Array.isArray(item.questions)) {
                     const questions = item.questions.map((question) => {
@@ -80,7 +90,7 @@ export const useAnswerState = ({ attempt, isSubmitting, queueSave }: UseAnswerSt
                     return {
                         ...item,
                         questions,
-                    };
+                    } as unknown as WithQuestionState<T>;
                 }
 
                 const state = localAnswerMap[item.id];
@@ -88,7 +98,7 @@ export const useAnswerState = ({ attempt, isSubmitting, queueSave }: UseAnswerSt
                     ...item,
                     selectedAnswer: state?.selectedOption,
                     flagged: state?.flagged,
-                };
+                } as unknown as WithQuestionState<T>;
             });
         },
         [localAnswerMap],

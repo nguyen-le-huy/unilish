@@ -1,499 +1,613 @@
-# Audit Round 3: `placement-test` Feature
+# Implementation Plan: Vocab Flashcard Pronunciation Test (Admin)
 
-> **Scope**: `client/src/features/dashboard/placement-test/`
-> **Auditor Role**: Senior Technical Architect (Unilish)
-> **Date**: 2026-03-16 (Round 3 — Final Verification)
-> **Baseline**: `language-selection` (8.5), `goal-selection` (8.8)
-
----
-
-## 1. Đối Chiếu Round 2 vs Thực Tế
-
-| # | Issue Round 2 | Trạng thái |
-|---|---|---|
-| R2-1 | `mutation` object (unstable) trong `useEffect` deps | ❌ **Chưa fix** — `[placementTestId, mutation]` vẫn còn |
-| R2-2 | 401 branch trong `useEffect` redundant | ❌ **Chưa fix** — `useEffect` lines 86–100 vẫn còn nguyên |
-| R2-3 | `as unknown as` trong test helper cần comment | ❌ **Chưa fix** — line 22 chưa có comment |
-| R2-4 | `right-panel` native `<button>` cần comment | ❌ **Chưa fix** — chưa có exception comment |
-| R2-5 | Component 204 dòng — optional extract `renderError` | ❌ **Chưa fix** — optional, 204 dòng |
-| R2-6 | **Data loss bug** — `useEffect` dep `[attempt]` → `[attempt?.attemptId]` | ❌ **Chưa fix** — line 28 vẫn `[attempt]` |
-| R2-7 | `autosaveErrorMessage` trong deps — nên dùng ref pattern | ❌ **Chưa fix** — line 79 vẫn có `autosaveErrorMessage` |
-| R2-8 | `as AxiosError<>` unsafe cast — nên dùng type guard | ❌ **Chưa fix** — line 35, 44 vẫn còn |
-| R2-9 | `DEFAULT_LANGUAGE` ở global config | ❌ **Chưa fix** — low priority, trong scope |
-| R2-10 | `use-answer-state.ts` chưa có test | ❌ **Chưa fix** — chưa có test file |
-
-> **Nhận xét**: Cả 10 items từ Round 2 đều chưa được xử lý. Codebase giữ nguyên trạng thái Round 2.
+> **Vai trò:** Technical Architect & Planner (Unilish)
+> **Feature:** Chức năng test đọc — chấm điểm phát âm từng từ vựng (Flashcard mode) trong VocabStudio
+> **Ngày lập:** 2026-03-18
+> **Tech Stack:** Azure Speech SDK (Pronunciation Assessment) + Admin React (Tailwind + Shadcn/UI)
 
 ---
 
-## 2. Phân Tích Sâu Hơn Round 3
+## 1. Functional Overview
 
-### Deep Review Các Files Chưa Đổi
+### Mục tiêu
+Admin cần kiểm tra chất lượng từng từ vựng trong bài học trước khi publish. Chức năng cho phép:
+1. **Flip từng flashcard** để xem thông tin từ vựng (word, IPA, definition, audio)
+2. **Nhấn mic → Đọc từ** → Hệ thống chấm điểm phát âm theo 5 chỉ số của Azure Speech SDK
+3. **Xem kết quả ngay lập tức** trên Score Card với từng phoneme được tô màu theo độ chính xác
+
+### User Personas
+- **Admin / Content Creator** — Người tạo và review nội dung từ vựng
+- **Academic Lead** — Người verify chất lượng trước khi học sinh học
+
+### Tích hợp vào codebase hiện tại
+- Mount trong **`PracticeSheet.tsx`** — Tab mới `"Đọc"` (pronunciation test)
+- Hoặc mở từ **`VocabReviewEditor`** — Nút "Test phát âm" trên từng VocabItem
+- **Quyết định:** Thêm Tab `"Phát âm"` vào `PracticeSheet.tsx` (nhất quán với UX hiện tại)
 
 ---
 
-### 🔴 [R3-CRITICAL-1] Data Loss Bug Xác Nhận — `use-answer-state.ts:28`
+## 2. Architecture & Sequence Diagrams
 
-**File**: `hooks/use-answer-state.ts` — line 14–28
+### Component Architecture
 
-```typescript
-useEffect(() => {
-    if (!attempt) return;
+```mermaid
+graph TD
+    PracticeSheet["PracticeSheet (Sheet)"] --> TabsList
+    TabsList --> ManageTab["Tab: Quản lý (existing)"]
+    TabsList --> TryTab["Tab: Làm thử (existing)"]
+    TabsList --> PronounceTab["Tab: Phát âm (NEW)"]
 
-    const answerMap: Record<string, LocalAnswerState> = {};
-    for (const item of attempt.answerSheet) {
-        answerMap[item.questionId] = { ... };
-    }
+    PronounceTab --> FlashcardDeck["FlashcardDeck"]
+    FlashcardDeck --> FlashcardCard["FlashcardCard (flip animation)"]
+    FlashcardDeck --> MicButton["MicButton (PTT)"]
+    FlashcardDeck --> ScoreCard["PronunciationScoreCard"]
 
-    setLocalAnswerMap(answerMap);
-}, [attempt]);  // ← CRITICAL: depend vào toàn bộ object
+    MicButton --> usePronunciationTest["usePronunciationTest (hook)"]
+    usePronunciationTest --> AzureService["azurePronunciationService.ts"]
+    AzureService --> AzureSDK["Azure Speech SDK"]
 ```
 
-**Phân tích cơ chế bug**:
+### Sequence Diagram — Pronunciation Test Flow
 
-1. User chọn đáp án `q1 = 'A'` → `localAnswerMap = { q1: {selectedOption: 'A'} }`
-2. `queueSave` gọi debounce 800ms → chưa flush
-3. Trong lúc chờ 800ms, `createAttemptMutation` state thay đổi (ví dụ status `idle → success`) → `mutation` object thay đổi reference
-4. `attempt = createAttemptMutation.data` — `data` vẫn là cùng object nhưng TanStack Query có thể tạo reference mới khi mutation state thay đổi
-5. `useEffect` re-run với `attempt` mới → `setLocalAnswerMap(serverState)` → **xóa `q1 = 'A'`**
-6. User thấy câu trả lời bị reset
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant FlashcardDeck
+    participant MicButton
+    participant usePronunciationTest
+    participant Server
+    participant AzureSDK
 
-**Trường hợp thực tế dễ trigger nhất**: Khi `saveAnswersMutation` thành công (sau autosave lần đầu), mutation state update → chain cascade → `attempt` object có thể bị re-reference trong một số version TanStack Query.
+    Admin->>FlashcardDeck: Chọn từ (navigate)
+    FlashcardDeck->>FlashcardDeck: Hiển thị từ front (word + IPA)
+    Admin->>FlashcardDeck: Click flip → xem definition
+    Admin->>MicButton: Nhấn giữ (PTT - Push to Talk)
+    MicButton->>usePronunciationTest: start(referenceText)
+    usePronunciationTest->>AzureSDK: SpeechConfig + PronunciationAssessmentConfig
+    AzureSDK->>AzureSDK: Stream micro input
+    Admin->>MicButton: Nhả nút → stop recording
+    usePronunciationTest->>AzureSDK: recognizeOnceAsync()
+    AzureSDK-->>usePronunciationTest: PronunciationAssessmentResult
+    usePronunciationTest->>usePronunciationTest: Parse 5 scores + phoneme errors
+    usePronunciationTest-->>FlashcardDeck: { scores, phonemes, status }
+    FlashcardDeck->>ScoreCard: Render Score UI
+    Admin->>FlashcardDeck: Nhấn "Từ tiếp theo"
+```
 
-**Fix chính xác**:
+---
+
+## 3. Data Models
+
+### Frontend Types (Thêm vào `course.types.ts`)
+
 ```typescript
-useEffect(() => {
-    if (!attempt) return;
+// ─── Pronunciation Assessment Types ──────────────────────────────────────────
 
-    const answerMap = Object.fromEntries(
-        attempt.answerSheet.map((item) => [
-            item.questionId,
-            { selectedOption: item.selectedOption ?? null, flagged: item.flagged },
-        ])
+export interface PhonemeScore {
+    phoneme: string;       // IPA phoneme symbol: /æ/, /t/, /ɪ/
+    accuracyScore: number; // 0–100
+    errorType: 'None' | 'Omission' | 'Insertion' | 'Mispronunciation';
+}
+
+export interface WordPronunciationScore {
+    word: string;
+    accuracyScore: number;
+    errorType: 'None' | 'Omission' | 'Insertion' | 'Mispronunciation' | 'UnexpectedBreak' | 'MissingBreak';
+    phonemes: PhonemeScore[];
+}
+
+export interface PronunciationAssessmentResult {
+    accuracyScore: number;      // 0–100 — phoneme accuracy
+    fluencyScore: number;       // 0–100 — natural flow
+    prosodyScore: number;       // 0–100 — stress & intonation
+    completenessScore: number;  // 0–100 — % of words spoken
+    pronunciationScore: number; // Weighted overall
+    words: WordPronunciationScore[];
+    recognizedText: string;
+}
+
+export type PronunciationTestStatus =
+    | 'idle'
+    | 'recording'
+    | 'processing'
+    | 'done'
+    | 'error';
+```
+
+### Server — Azure Token Endpoint
+
+```typescript
+// server/src/controllers/azure-speech.controller.ts
+
+// Response shape:
+interface AzureSpeechTokenResponse {
+    token: string;      // Azure cognitive services token
+    region: string;     // e.g. "eastus"
+    expiresInSeconds: number; // 600 (10 min)
+}
+```
+
+---
+
+## 4. API Specification
+
+### 4.1 GET /api/v1/azure-speech/token
+
+> Admin cần lấy Azure token từ server để gọi Azure SDK phía client (không expose key).
+
+- **Method:** `GET`
+- **Auth:** Bearer JWT (Admin only)
+- **Rate Limit:** 30 req/min per user (Redis)
+- **Response:**
+```json
+{
+  "token": "aHR0cHM6...",
+  "region": "eastasia",
+  "expiresInSeconds": 600
+}
+```
+- **Zod schema (server validation):** N/A (no body, query validated at middleware)
+
+### Note về Azure Auth Strategy
+
+```
+Client (Admin Browser)
+    ↓ GET /api/v1/azure-speech/token (JWT protected)
+Server (Node.js)
+    ↓ POST https://eastasia.api.cognitive.microsoft.com/sts/v1.0/issueToken
+    ↓  Header: Ocp-Apim-Subscription-Key: ${AZURE_SPEECH_KEY}
+Azure Cognitive Services
+    → Returns: Bearer Token (TTL 10 min)
+Client receives token → uses with Azure Speech SDK directly
+```
+
+---
+
+## 5. Implementation Workflow — Step by Step
+
+### Phase 1: Backend — Azure Token Proxy (2 files)
+
+#### Step 1.1 — Thêm ENV vars vào `config/env.ts`
+
+```typescript
+// Thêm vào Zod schema validation:
+AZURE_SPEECH_KEY: z.string().min(1),
+AZURE_SPEECH_REGION: z.string().min(1),
+```
+
+#### Step 1.2 — Tạo `controllers/azure-speech.controller.ts`
+
+```typescript
+import { catchAsync } from '../utils/catch-async';
+import { AppError } from '../utils/app-error';
+import axios from 'axios';
+import { env } from '../config/env';
+
+export const getAzureSpeechToken = catchAsync(async (req, res) => {
+    const tokenUrl = `https://${env.AZURE_SPEECH_REGION}.api.cognitive.microsoft.com/sts/v1.0/issueToken`;
+
+    const { data: token } = await axios.post<string>(tokenUrl, null, {
+        headers: { 'Ocp-Apim-Subscription-Key': env.AZURE_SPEECH_KEY },
+    });
+
+    if (!token) throw new AppError('Could not fetch Azure Speech token', 502);
+
+    res.json({
+        token,
+        region: env.AZURE_SPEECH_REGION,
+        expiresInSeconds: 600,
+    });
+});
+```
+
+#### Step 1.3 — Thêm route vào `routes/azure-speech.routes.ts`
+
+```typescript
+import { Router } from 'express';
+import { authMiddleware } from '../middlewares/auth.middleware';
+import { adminGuard } from '../middlewares/admin.middleware';
+import { getAzureSpeechToken } from '../controllers/azure-speech.controller';
+
+const router = Router();
+router.use(authMiddleware, adminGuard);
+router.get('/token', getAzureSpeechToken);
+
+export default router;
+```
+
+*Mount trong `app.ts`: `app.use('/api/v1/azure-speech', azureSpeechRouter)`*
+
+---
+
+### Phase 2: Admin — Service Layer
+
+#### Step 2.1 — Tạo `lib/azure-speech.ts` (Admin)
+
+```typescript
+// admin/src/lib/azure-speech.ts
+// Wrapper khởi tạo Azure SpeechSDK với token từ server
+
+import * as SpeechSDK from 'microsoft-cognitiveservices-speech-sdk';
+
+export interface AzureTokenResponse {
+    token: string;
+    region: string;
+}
+
+export function createSpeechConfigFromToken(
+    { token, region }: AzureTokenResponse
+): SpeechSDK.SpeechConfig {
+    const config = SpeechSDK.SpeechConfig.fromAuthorizationToken(token, region);
+    config.speechRecognitionLanguage = 'en-US';
+    return config;
+}
+
+export function createPronunciationConfig(referenceText: string): SpeechSDK.PronunciationAssessmentConfig {
+    return new SpeechSDK.PronunciationAssessmentConfig(
+        referenceText,
+        SpeechSDK.PronunciationAssessmentGradingSystem.HundredMark,
+        SpeechSDK.PronunciationAssessmentGranularity.Phoneme,
+        true, // enableMiscue
     );
-    setLocalAnswerMap(answerMap);
-}, [attempt?.attemptId]); // ← chỉ init khi attemptId thay đổi (session mới)
-```
-
-**Priority**: 🔴 **P0 — Production bug, silent data loss**
-
----
-
-### 🟠 [R3-HIGH-2] `mutation` object trong `useEffect` dependency
-
-**File**: `hooks/use-create-placement-attempt-mutation.ts` — line 16–27
-
-```typescript
-const mutation = useMutation<RuntimeAttempt, Error, string>({ ... });
-
-useEffect(() => {
-    if (!placementTestId) return;
-    if (lastTriggeredPlacementTestIdRef.current === placementTestId) return;
-
-    lastTriggeredPlacementTestIdRef.current = placementTestId;
-    mutation.mutate(placementTestId);  // ← mutation object trong deps
-}, [placementTestId, mutation]);       // ← ❌ mutation thay đổi mỗi render
-```
-
-**Phân tích**:
-- `mutation` object là không stable — mỗi render trả về object mới (dù `mutate` function stable)
-- `useRef` guard (`lastTriggeredPlacementTestIdRef`) đã ngăn duplicate POST, nhưng `useEffect` vẫn re-run không cần thiết mỗi khi mutation state đổi (pending, success, error)
-- Mỗi re-run thừa sẽ evaluate: `if (lastTriggeredRef === placementTestId) return` → safe nhưng overhead
-
-**Fix đúng** — sử dụng `mutate` function (stable ref) từ destructure:
-```typescript
-const mutation = useMutation<RuntimeAttempt, Error, string>({ ... });
-const { mutate } = mutation; // stable function từ TanStack Query docs
-
-useEffect(() => {
-    if (!placementTestId) return;
-    if (lastTriggeredPlacementTestIdRef.current === placementTestId) return;
-
-    lastTriggeredPlacementTestIdRef.current = placementTestId;
-    mutate(placementTestId);
-}, [placementTestId, mutate]); // ← mutate là stable, deps hợp lệ
-```
-
-**Priority**: 🟠 P1
-
----
-
-### 🟠 [R3-HIGH-3] `useEffect` 401 branch — redundant với `<Navigate>` guard
-
-**File**: `pages/listening-reading/listening-reading.tsx` — line 86–100
-
-```typescript
-useEffect(() => {
-    const status = (activeError as AxiosError<ApiErrorResponse> | null)?.response?.status
-        ?? (attemptError as AxiosError<ApiErrorResponse> | null)?.response?.status;
-
-    if (status === 401) {
-        toast.error(PT_MESSAGES.sessionExpired);  // ← toast + navigate trong effect
-        logout();
-        navigate(PATHS.AUTH.LOGIN, { replace: true });
-        return;
-    }
-
-    if (status === 404) {
-        toast.error(PT_MESSAGES.noActiveTest);
-    }
-}, [activeError, attemptError, logout, navigate]);
-```
-
-**Line 136** đã có `<Navigate>` guard cho `!isAuthenticated`:
-```tsx
-if (!isAuthenticated) {
-    return <Navigate to={PATHS.AUTH.LOGIN} replace />;
 }
 ```
 
-**Vấn đề**: 401 error từ API → `logout()` sẽ set `isAuthenticated = false` → `<Navigate>` guard ở line 136 sẽ handle redirect. `useEffect` 401 branch do đó là redundant — sẽ navigate hai lần (một lần imperative, một lần render guard).
-
-**Thêm vào đó**: `[logout, navigate]` trong deps list là 2 stable functions nhưng không cần thiết vì 401 branch nên được remove.
-
-**Fix**:
-```typescript
-useEffect(() => {
-    // 401 is handled by the <Navigate> render guard (line 136) after logout().
-    const status = (activeError as AxiosError<ApiErrorResponse> | null)?.response?.status
-        ?? (attemptError as AxiosError<ApiErrorResponse> | null)?.response?.status;
-
-    if (status === 401) {
-        logout(); // Trigger isAuthenticated → false, <Navigate> guard handles redirect.
-        return;
-    }
-
-    if (status === 404) {
-        toast.error(PT_MESSAGES.noActiveTest);
-    }
-}, [activeError, attemptError, logout]);
-// navigate removed — no longer needed in this effect
-```
-
-**Priority**: 🟠 P1
-
----
-
-### 🟠 [R3-HIGH-4] `autosaveErrorMessage` string trong `flushPendingChanges` deps — stale closure risk
-
-**File**: `hooks/use-autosave.ts` — line 22–79
+#### Step 2.2 — Tạo `api/azure-speech.api.ts` (Admin)
 
 ```typescript
-const flushPendingChanges = useCallback(async (allowRetry = true) => {
-    ...
-    toast.error(autosaveErrorMessage); // ← closed over from params
-    ...
-}, [attemptId, autosaveErrorMessage, saveAnswersMutation]); // ← string trong deps
-```
+// admin/src/features/curriculum/courses/api/azure-speech.api.ts
 
-**Phân tích**:
-- `autosaveErrorMessage` là string constant (`PT_MESSAGES.autosaveError`) — value không đổi trong runtime
-- Tuy nhiên nếu prop thay đổi (future-proofing), `flushPendingChanges` sẽ recreate → `queueSave` recreate → gây re-render cascade trong components phụ thuộc
-- Thêm vào: `saveAnswersMutation` object (không stable) trong deps → `flushPendingChanges` recreate mỗi khi mutation state thay đổi → `queueSave` recreate → `updateAnswerState` và handlers trong `use-answer-state` cũng recreate
+import { adminApi } from '@/lib/axios'; // Axios instance với JWT
 
-**Đây là root cause quan trọng**: `saveAnswersMutation` là object không stable → cascade recreation chain: `flushPendingChanges` → `queueSave` → `updateAnswerState` → `handleAnswer`/`handleFlag` → re-renders không cần thiết trong `LeftPanel`.
-
-**Fix pattern — ref cho cả message và mutation**:
-```typescript
-const saveAnswersMutationRef = useRef(saveAnswersMutation);
-useEffect(() => {
-    saveAnswersMutationRef.current = saveAnswersMutation;
-});
-
-const autosaveErrorMessageRef = useRef(autosaveErrorMessage);
-useEffect(() => {
-    autosaveErrorMessageRef.current = autosaveErrorMessage;
-});
-
-const flushPendingChanges = useCallback(async (allowRetry = true) => {
-    ...
-    await saveAnswersMutationRef.current.mutateAsync({ ... });
-    ...
-    toast.error(autosaveErrorMessageRef.current);
-    ...
-}, [attemptId]); // ← deps tối giản, stable function
-```
-
-**Priority**: 🟠 P1 — Performance issue, re-render cascade
-
----
-
-### 🟡 [R3-MEDIUM-5] `get-active-placement-test.ts` — `as AxiosError<>` cast cần type guard
-
-**File**: `api/get-active-placement-test.ts` — line 35, 44
-
-```typescript
-const axiosError = error as AxiosError<ApiErrorResponse>;
-...
-const fallbackAxiosError = fallbackError as AxiosError<ApiErrorResponse>;
-```
-
-**Context**: `catch (error: unknown)` trong TypeScript không có cách nào khác để access `.response?.status` nếu không cast. Tuy nhiên `error instanceof AxiosError` cho phép type-safe narrowing:
-
-```typescript
-import { AxiosError } from 'axios';
-
-if (error instanceof AxiosError) {
-    lastError = error as AxiosError<ApiErrorResponse>;
-    if (error.response?.status === 404) { ... }
-    if (error.response?.status !== 404) { throw error; }
-} else {
-    throw error; // Re-throw non-Axios errors immediately
-}
-```
-
-**Priority**: 🟡 P2
-
----
-
-### 🟡 [R3-MEDIUM-6] `right-panel.tsx` — Native `<button>` không có exception comment
-
-**File**: `components/listening-reading/right-panel.tsx` — line 54–63
-
-```tsx
-<button
-    key={item.questionId}
-    type="button"
-    className={classes.join(' ')}
-    aria-label={`${p.label} câu ${item.number}`}
->
-    {item.number}
-</button>
-```
-
-Shared `Button` component không support dynamic className injection pattern này (multi-state: answered/flagged/active). Native `<button>` là exception hợp lệ nhưng không được document.
-
-**Fix**: Thêm comment 1 dòng:
-```tsx
-{/* Native <button>: question-box requires dynamic multi-state className injection
-    not supported by the shared Button component API. */}
-<button ...>
-```
-
-**Priority**: 🟡 P2
-
----
-
-### 🟡 [R3-MEDIUM-7] `use-autosave.test.ts` — `as unknown as` trong test helper không có comment
-
-**File**: `hooks/use-autosave.test.ts` — line 19–23
-
-```typescript
-const createMutationResult = (
-    mutateAsync: (payload: SavePlacementAnswersPayload) => Promise<SavePlacementAnswersResult>,
-): UseMutationResult<SavePlacementAnswersResult, Error, SavePlacementAnswersPayload> => {
-    return {
-        mutateAsync,
-    } as unknown as UseMutationResult<...>;  // ← intentional partial mock, không có comment
+export const fetchAzureSpeechToken = async (): Promise<AzureTokenResponse> => {
+    const { data } = await adminApi.get<AzureTokenResponse>('/azure-speech/token');
+    return data;
 };
 ```
 
-**Fix**:
-```typescript
-// Minimal partial mock: useAutosave only calls `mutateAsync`; other fields are irrelevant.
-return { mutateAsync } as unknown as UseMutationResult<...>;
-```
-
-**Priority**: 🟡 P2
-
 ---
 
-### 🟡 [R3-MEDIUM-8] `listening-reading.tsx` — Error JSX không có component riêng
+### Phase 3: Admin — Hook
 
-**File**: `pages/listening-reading/listening-reading.tsx` — line 144–157
+#### Step 3.1 — Tạo `hooks/usePronunciationTest.ts`
 
-```tsx
-if (isActiveError || isAttemptError || !attempt) {
-    const status = ...;
+```typescript
+// PracticeSheet/hooks/usePronunciationTest.ts
 
-    if (status === 404) {
-        return <div className={styles.container}>{PT_MESSAGES.notFoundView}</div>;
-    }
-    if (status === 401) {
-        return <div className={styles.container}>{PT_MESSAGES.sessionExpiredView}</div>;
-    }
-    return <div className={styles.container}>{PT_MESSAGES.loadErrorView}</div>;
+import { useState, useRef, useCallback } from 'react';
+import * as SpeechSDK from 'microsoft-cognitiveservices-speech-sdk';
+import { useQuery } from '@tanstack/react-query';
+import { fetchAzureSpeechToken } from '../../../../api/azure-speech.api';
+import { createSpeechConfigFromToken, createPronunciationConfig } from '@/lib/azure-speech';
+import type { PronunciationAssessmentResult, PronunciationTestStatus } from '../../../../types/course.types';
+
+const AZURE_TOKEN_QUERY_KEY = ['azure-speech', 'token'] as const;
+
+export function usePronunciationTest() {
+    const [status, setStatus] = useState<PronunciationTestStatus>('idle');
+    const [result, setResult] = useState<PronunciationAssessmentResult | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const recognizerRef = useRef<SpeechSDK.SpeechRecognizer | null>(null);
+
+    // Token fetched via TanStack Query → cached 9 min (Azure TTL = 10 min)
+    const { data: tokenData, refetch: refetchToken } = useQuery({
+        queryKey: AZURE_TOKEN_QUERY_KEY,
+        queryFn: fetchAzureSpeechToken,
+        staleTime: 9 * 60 * 1000,
+        retry: 1,
+        enabled: false, // lazy — only fetch when test starts
+    });
+
+    const startTest = useCallback(async (referenceText: string) => {
+        setStatus('recording');
+        setResult(null);
+        setError(null);
+
+        try {
+            // Ensure token is fresh
+            const token = tokenData ?? (await refetchToken()).data;
+            if (!token) throw new Error('Cannot get Azure token');
+
+            const speechConfig = createSpeechConfigFromToken(token);
+            const pronunciationConfig = createPronunciationConfig(referenceText);
+            const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+
+            const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+            pronunciationConfig.applyTo(recognizer);
+            recognizerRef.current = recognizer;
+
+            recognizer.recognizeOnceAsync((recognitionResult) => {
+                setStatus('processing');
+
+                const assessment = SpeechSDK.PronunciationAssessmentResult.fromResult(recognitionResult);
+
+                const mapped: PronunciationAssessmentResult = {
+                    accuracyScore: assessment.accuracyScore,
+                    fluencyScore: assessment.fluencyScore,
+                    prosodyScore: assessment.prosodyScore,
+                    completenessScore: assessment.completenessScore,
+                    pronunciationScore: assessment.pronunciationScore,
+                    recognizedText: recognitionResult.text,
+                    words: (assessment.detailResult?.Words ?? []).map((w) => ({
+                        word: w.Word,
+                        accuracyScore: w.PronunciationAssessment?.AccuracyScore ?? 0,
+                        errorType: w.PronunciationAssessment?.ErrorType ?? 'None',
+                        phonemes: (w.Phonemes ?? []).map((p) => ({
+                            phoneme: p.Phoneme,
+                            accuracyScore: p.PronunciationAssessment?.AccuracyScore ?? 0,
+                            errorType: p.PronunciationAssessment?.ErrorType ?? 'None',
+                        })),
+                    })),
+                };
+
+                setResult(mapped);
+                setStatus('done');
+                recognizer.close();
+            });
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Lỗi không xác định');
+            setStatus('error');
+        }
+    }, [tokenData, refetchToken]);
+
+    const stopTest = useCallback(() => {
+        recognizerRef.current?.stopContinuousRecognitionAsync();
+    }, []);
+
+    const reset = useCallback(() => {
+        setStatus('idle');
+        setResult(null);
+        setError(null);
+    }, []);
+
+    return { status, result, error, startTest, stopTest, reset };
 }
 ```
 
-Pattern lặp `<div className={styles.container}>...</div>`. Có thể extract inline helper:
+---
+
+### Phase 4: Admin — UI Components
+
+#### Step 4.1 — Cấu trúc thư mục mới
+
+```
+PracticeSheet/
+├── ManageTab.tsx              (existing)
+├── TryTab.tsx                 (existing)
+├── PracticeSheet.tsx          (update — thêm tab "Phát âm")
+├── hooks/
+│   ├── usePracticeQuiz.ts     (existing)
+│   └── usePronunciationTest.ts  ← MỚI
+├── quiz/
+│   ├── MCQuiz.tsx             (existing)
+│   ├── FillQuiz.tsx           (existing)
+│   └── MatchQuiz.tsx          (existing)
+└── pronunciation/             ← MỚI — Toàn bộ pronunciation UI
+    ├── PronounceTab.tsx        ← Container chính
+    ├── FlashcardDeck.tsx       ← Điều hướng + layout
+    ├── FlashcardCard.tsx       ← Flip card animation
+    ├── MicButton.tsx           ← PTT Button với 5 trạng thái
+    └── PronunciationScoreCard.tsx ← Hiển thị kết quả Azure
+```
+
+---
+
+#### Step 4.2 — `pronunciation/FlashcardCard.tsx`
 
 ```tsx
-const ErrorView = ({ message }: { message: string }) => (
-    <div className={styles.container} role="alert">{message}</div>
-);
+// Flip card hiển thị thông tin từ vựng
+// Front: word, IPA, audio player mini
+// Back: definitionNative, definitionEn, exampleSentence
 
-// Sử dụng:
-if (status === 404) return <ErrorView message={PT_MESSAGES.notFoundView} />;
+interface FlashcardCardProps {
+    item: VocabItem;
+    isFlipped: boolean;
+    onFlip: () => void;
+}
 ```
 
-**Note**: `role="alert"` còn thiếu — accessibility issue khi hiển thị error.
-
-**Priority**: 🟡 P2
-
----
-
-### 🟢 [R3-LOW-9] `use-answer-state.ts` — Thiếu unit test
-
-Đây là hook quan trọng nhất trong feature (quản lý state đáp án), nhưng không có test file. Cần cover:
-- Initial hydration từ `attempt.answerSheet`
-- `handleAnswer` — blocked when `isSubmitting`
-- `handleFlag` toggle
-- `applyQuestionStates` — generic type narrowing
-- `buildQuestionStatuses` — answered/flagged/unanswered states
-
-**Priority**: 🟢 P3
+**UI specs:**
+- Card có `perspective: 1000px`, dùng CSS `rotateY(180deg)` cho flip animation
+- Front: từ lớn (text-3xl font-bold), IPA (text-sm text-muted-foreground), nút play audio
+- Back: definition tiếng Việt, định nghĩa English, ví dụ câu
 
 ---
 
-### 🟢 [R3-LOW-10] `constants/placement-test.constants.ts` — `DEFAULT_LANGUAGE = 'en'` scope
+#### Step 4.3 — `pronunciation/MicButton.tsx`
 
-**File**: `constants/placement-test.constants.ts` — line 18
+```tsx
+// 5 trạng thái: idle | recording | processing | done | error
+// Dùng onMouseDown/onMouseUp cho PTT hoặc toggle click
+
+interface MicButtonProps {
+    status: PronunciationTestStatus;
+    onStart: () => void;
+    onStop: () => void;
+}
+```
+
+**Status mapping:**
+
+| Status | Icon | Color | Label |
+|--------|------|-------|-------|
+| `idle` | `Mic` | emerald | "Nhấn để đọc" |
+| `recording` | `MicOff` + pulse ring | red | "Đang ghi…" |
+| `processing` | `Loader2` spin | amber | "Đang phân tích…" |
+| `done` | `CheckCircle2` | emerald | "Đọc lại" |
+| `error` | `AlertTriangle` | red | "Thử lại" |
+
+---
+
+#### Step 4.4 — `pronunciation/PronunciationScoreCard.tsx`
+
+```tsx
+// Hiển thị 5 chỉ số Azure + phoneme breakdown
+// Score circle dùng SVG stroke + color gradient
+
+interface PronunciationScoreCardProps {
+    result: PronunciationAssessmentResult;
+    referenceText: string;
+}
+```
+
+**Layout:**
+```
+┌─────────────────────────────────────────┐
+│  Overall: 87 / 100                       │
+│  ● Accuracy   92  ● Fluency    85        │
+│  ● Prosody    80  ● Completeness 95     │
+├─────────────────────────────────────────┤
+│  Word breakdown:                         │
+│  [beautiful] → Acc: 94  ← tô xanh       │
+│    /b/ 98  /juː/ 90  /tɪ/ 72  ← màu    │
+│  [pronunciation] → Acc: 52 ← đỏ         │
+│    /p/ 90  /r/ 45  /ə/ 38  ← đỏ         │
+└─────────────────────────────────────────┘
+```
+
+**Color coding logic:**
+- `score >= 80` → `text-emerald-600` (xanh — tốt)
+- `score >= 60` → `text-amber-500` (vàng — trung bình)
+- `score < 60` → `text-red-500` (đỏ — yếu)
+
+---
+
+#### Step 4.5 — `pronunciation/FlashcardDeck.tsx`
+
+```tsx
+// Container quản lý state: currentIndex, isFlipped, navigation
+// Layout: [← Trước] [Card] [Sau →] + MicButton + ScoreCard
+
+interface FlashcardDeckProps {
+    items: VocabItem[];
+}
+```
+
+**Logic:**
+- `currentIndex` → navigate qua items
+- Mỗi khi chuyển từ → reset: `isFlipped = false`, `reset()` hook
+- `referenceText` = `items[currentIndex].word`
+
+---
+
+#### Step 4.6 — `pronunciation/PronounceTab.tsx`
+
+```tsx
+// Entry point của tab
+// Empty state nếu không có items
+// Render FlashcardDeck nếu có
+
+interface PronounceTabProps {
+    items: VocabItem[];
+}
+```
+
+---
+
+#### Step 4.7 — Cập nhật `PracticeSheet.tsx`
+
+Thêm tab thứ 3: `"Phát âm"`. Truyền `items` từ props xuống `PronounceTab`.
+
+```tsx
+// PracticeSheet.tsx — cần nhận thêm prop: items: VocabItem[]
+// hoặc fetch song song useVocabContent trong PracticeSheet
+
+// Thêm TabsTrigger:
+<TabsTrigger value="pronounce" disabled={items.length === 0}>
+    Phát âm
+    {items.length === 0 && (
+        <span className="ml-1 text-[10px] text-muted-foreground">(chưa có từ)</span>
+    )}
+</TabsTrigger>
+
+// Thêm TabsContent:
+<TabsContent value="pronounce" className="mt-0 flex-1 overflow-hidden">
+    <PronounceTab items={items} />
+</TabsContent>
+```
+
+---
+
+#### Step 4.8 — Cập nhật `VocabTopBar.tsx` để truyền `items`
+
+Hiện tại `PracticeSheet` nhận `lessonId + passingScore`. Cần thêm `items: VocabItem[]`.
 
 ```typescript
-export const DEFAULT_LANGUAGE = 'en';
-```
-
-App-level constant (không chỉ placement-test). Nên là `SUPPORTED_LANGUAGES.default` trong `config/constants.ts`. **Low priority** — không block production.
-
-**Priority**: 🟢 P3
-
----
-
-## 3. Tổng Kết Round 3
-
-### Score Assessment
-
-```
-Round 1: 4.5/10  (baseline — nhiều critical issues)
-Round 2: 8.2/10  (sau refactor lớn — 19 critical/high fixed)
-Round 3: 8.2/10  (không đổi — 10 issues Round 2 chưa được xử lý)
-```
-
-### Priority Matrix — Tất Cả Issues Còn Tồn Tại
-
-| Priority | ID | Issue | File | Effort |
-|:---:|:---|:---|:---|:---:|
-| 🔴 **P0** | R3-CRITICAL-1 | **Data loss bug**: `[attempt]` → `[attempt?.attemptId]` trong `useEffect` | `use-answer-state.ts:28` | XS |
-| 🟠 P1 | R3-HIGH-2 | `mutation` object (unstable ref) trong `useEffect` deps | `use-create-placement-attempt-mutation.ts:27` | XS |
-| 🟠 P1 | R3-HIGH-3 | 401 redundant branch trong `useEffect` + `navigate` dep thừa | `listening-reading.tsx:86` | XS |
-| 🟠 P1 | R3-HIGH-4 | `saveAnswersMutation` + `autosaveErrorMessage` → ref pattern để tránh re-render cascade | `use-autosave.ts:79` | S |
-| 🟡 P2 | R3-MEDIUM-5 | `instanceof AxiosError` type guard thay vì `as AxiosError<>` cast | `get-active-placement-test.ts:35,44` | S |
-| 🟡 P2 | R3-MEDIUM-6 | Comment cho native `<button>` exception | `right-panel.tsx:54` | XS |
-| 🟡 P2 | R3-MEDIUM-7 | Comment cho `as unknown as` trong test helper | `use-autosave.test.ts:22` | XS |
-| 🟡 P2 | R3-MEDIUM-8 | Extract `ErrorView` component + thêm `role="alert"` | `listening-reading.tsx:144` | XS |
-| 🟢 P3 | R3-LOW-9 | Unit tests cho `use-answer-state.ts` | `hooks/` | M |
-| 🟢 P3 | R3-LOW-10 | `DEFAULT_LANGUAGE` → global config | `constants/` | XS |
-
----
-
-## 4. Fix Instructions Chi Tiết (P0 + P1)
-
-### Fix R3-CRITICAL-1 — `use-answer-state.ts`
-
-```typescript
-// BEFORE:
-}, [attempt]);
-
-// AFTER:
-}, [attempt?.attemptId]);
-// Lý do: chỉ init answerMap khi session ID thay đổi (attempt mới).
-// Phụ thuộc vào toàn bộ `attempt` object sẽ reset localAnswerMap
-// mỗi khi mutation state thay đổi (vd sau autosave), gây mất đáp án user đang nhập.
-```
-
-### Fix R3-HIGH-2 — `use-create-placement-attempt-mutation.ts`
-
-```typescript
-// BEFORE:
-const mutation = useMutation<RuntimeAttempt, Error, string>({ ... });
-useEffect(() => {
+// Thêm vào VocabTopBar Props:
+interface Props {
     ...
-    mutation.mutate(placementTestId);
-}, [placementTestId, mutation]);
+    items: VocabItem[]; // ← Thêm để truyền xuống PracticeSheet
+}
 
-// AFTER:
-const mutation = useMutation<RuntimeAttempt, Error, string>({ ... });
-const { mutate } = mutation; // stable ref theo TanStack Query docs
-useEffect(() => {
+// VocabStudio truyền:
+<VocabTopBar
     ...
-    mutate(placementTestId);
-}, [placementTestId, mutate]);
-```
+    items={items}    // ← Thêm
+/>
 
-### Fix R3-HIGH-3 — `listening-reading.tsx`
-
-```typescript
-// BEFORE:
-useEffect(() => {
-    ...
-    if (status === 401) {
-        toast.error(PT_MESSAGES.sessionExpired);
-        logout();
-        navigate(PATHS.AUTH.LOGIN, { replace: true });
-        return;
-    }
-    ...
-}, [activeError, attemptError, logout, navigate]);
-
-// AFTER:
-useEffect(() => {
-    // 401: logout() will set isAuthenticated=false → <Navigate> render guard handles redirect.
-    const status = ...;
-    if (status === 401) {
-        logout();
-        return;
-    }
-    if (status === 404) {
-        toast.error(PT_MESSAGES.noActiveTest);
-    }
-}, [activeError, attemptError, logout]);
-// navigate removed from deps
-```
-
-### Fix R3-HIGH-4 — `use-autosave.ts`
-
-```typescript
-// Thêm mutation ref và message ref để tránh stale closure + re-render cascade:
-const saveAnswersMutationRef = useRef(saveAnswersMutation);
-saveAnswersMutationRef.current = saveAnswersMutation; // update mỗi render (không cần useEffect)
-
-const autosaveErrorMessageRef = useRef(autosaveErrorMessage);
-autosaveErrorMessageRef.current = autosaveErrorMessage;
-
-const flushPendingChanges = useCallback(async (allowRetry = true) => {
-    ...
-    await saveAnswersMutationRef.current.mutateAsync({ ... });
-    ...
-    toast.error(autosaveErrorMessageRef.current);
-    ...
-}, [attemptId]); // ← chỉ còn attemptId, stable function
+// VocabTopBar truyền xuống:
+<PracticeSheet lessonId={lessonId} passingScore={passingScore} items={items} />
 ```
 
 ---
 
-## 5. So Sánh Final — Tất Cả 4 Features
+### Phase 5: Install Dependencies
 
-| Tiêu chí | `language-selection` | `goal-selection` | `level-selection` | `placement-test` |
-|:---|:---:|:---:|:---:|:---:|
-| Score | 8.5/10 ✅ | 8.8/10 ✅ | 3/10 ❌ pending | 8.2/10 ⚠️ |
-| `index.ts` barrel | ✅ | ✅ | ❌ | ✅ |
-| Naming kebab-case | ✅ | ✅ | ❌ | ✅ |
-| Router import chuẩn | ✅ | ✅ | ❌ | ✅ |
-| `ApiEnvelope` global | ✅ | ✅ | - | ✅ |
-| `as unknown as` API | ✅ | ✅ | - | ✅ |
-| String dấu tiếng Việt | ✅ | ✅ | ❌ | ✅ |
-| CSS Variables | ✅ | ✅ | ❌ | ✅ |
-| `constants/` | ✅ | ✅ | ❌ | ✅ |
-| God Component | ✅ | ✅ | ✅ | ⚠️ 204 dòng |
-| Custom hooks SRP | ✅ | ✅ | ✅ | ✅ |
-| Unit tests | ✅ | ✅ | ❌ | ⚠️ Thiếu 1 hook |
-| `<Navigate>` guard | ✅ | ✅ | ❌ | ✅ |
-| `useCallback` đầy đủ | ✅ | ✅ | ❌ | ✅ |
-| Data loss bug | - | - | - | ❌ **P0 active** |
+```bash
+# Admin — Azure Speech SDK (client-side browser bundle)
+cd admin
+npm install microsoft-cognitiveservices-speech-sdk
+
+# Server — axios đã có (dùng để lấy Azure token)
+# Không cần install thêm
+```
 
 ---
 
-*Plan updated by Senior Technical Architect — Unilish*
-*Round 3: Confirmed 10 pending issues unchanged. P0 data loss bug flagged for immediate fix.*
-*Level-selection refactor still pending — 12 items including 4 P0 critical.*
+## 6. Security & Constraints
+
+| Vấn đề | Giải pháp |
+|--------|-----------|
+| Azure key bị lộ phía client | Server làm token proxy, client chỉ nhận JWT 10min |
+| Token hết hạn giữa phiên | TanStack Query staleTime=9min, refetch tự động |
+| Admin giả mạo call token | `adminGuard` middleware kiểm tra role |
+| Microphone access bị từ chối | `usePronunciationTest` handle `NotAllowedError`, toast hướng dẫn |
+| Audio < 1.5s → noise | Azure tự reject, `recognizedText` sẽ rỗng → hiển thị "Vui lòng nói rõ hơn" |
+
+---
+
+## 7. Compliance Checklist (Admin Stack)
+
+| Rule | Status |
+|------|--------|
+| **Tailwind CSS** (Admin) | ✅ Toàn bộ UI dùng Tailwind |
+| **Shadcn/UI** components | ✅ Dùng Sheet, Tabs, Badge, Button |
+| **TanStack Query** cho Azure token | ✅ `useQuery` với staleTime |
+| **TypeScript strict** — No `any` | ✅ Types khai báo đầy đủ |
+| **Zod** validation ENV server | ✅ `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` |
+| **catchAsync** bọc controller | ✅ |
+| **Rate-limit** Azure token endpoint | ✅ Redis, 30 req/min |
+| **No console.log** (Winston Logger) | ✅ |
+| **Accessibility** aria-label mic btn | ✅ aria-label, aria-pressed |
+
+---
+
+## 8. Thứ Tự Triển Khai (Priority Order)
+
+```
+Phase 1 (Backend)     → ENV + Controller + Route                  → PR #1
+Phase 2 (Admin Lib)   → azure-speech.ts + azure-speech.api.ts     → PR #2
+Phase 3 (Hook)        → usePronunciationTest.ts                    → PR #3
+Phase 4 (UI)          → pronunciation/ folder (5 components)       → PR #4
+Phase 5 (Integration) → Update PracticeSheet + VocabTopBar         → PR #5
+Phase 6 (Polish)      → Flip animation CSS, edge cases, tests      → PR #6
+```
+
+---
+
+## 9. Out of Scope (Cho lần này)
+
+- Lưu lịch sử điểm phát âm vào MongoDB
+- So sánh điểm theo thời gian (progress tracking)
+- Student-facing pronunciation test (chỉ Admin)
+- Text-to-Phoneme (IPA) auto-generation từ Azure

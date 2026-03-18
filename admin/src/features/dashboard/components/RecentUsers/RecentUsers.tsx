@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Loading } from "@/components/common/Loading";
 import { useRecentUsers } from "../../hooks/useDashboardData";
 
 const planColors = {
@@ -23,7 +24,9 @@ export function RecentUsers() {
             <Card>
                 <CardHeader>
                     <CardTitle>Học viên mới đăng ký</CardTitle>
-                    <CardDescription>Đang tải...</CardDescription>
+                    <CardDescription>
+                        <Loading size="sm" className="justify-start" />
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">

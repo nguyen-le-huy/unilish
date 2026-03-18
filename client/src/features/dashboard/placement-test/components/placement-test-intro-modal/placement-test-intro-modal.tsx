@@ -29,26 +29,13 @@ const MODULES: ModuleRow[] = [
 		content: 'Nghe & Đọc hiểu (101 câu trắc nghiệm)',
 		duration: '45 phút',
 	},
-	{
-		number: 2,
-		name: 'IELTS Writing',
-		content: 'Bài luận tiếng Anh (≥150–250 từ)',
-		duration: '30 phút',
-	},
-	{
-		number: 3,
-		name: 'IELTS Speaking',
-		content: 'Phỏng vấn 1:1 với AI Examiner',
-		duration: '15 phút',
-	},
 ];
 
 const CHECKLIST: ChecklistItem[] = [
-	{ label: 'Tai nghe', detail: 'để nghe rõ audio phần Listening và AI Examiner' },
-	{ label: 'Microphone', detail: 'bắt buộc cho phần Nói, trình duyệt sẽ xin quyền truy cập' },
+	{ label: 'Tai nghe', detail: 'để nghe rõ audio phần Listening' },
 	{ label: 'Internet ổn định', detail: 'tránh mất kết nối giữa chừng' },
-	{ label: 'Nơi yên tĩnh', detail: 'giảm tiếng ồn xung quanh cho phần Speaking' },
-	{ label: '~90 phút liên tục', detail: 'không thể tạm dừng giữa các phần' },
+	{ label: 'Nơi yên tĩnh', detail: 'giúp tập trung làm bài hiệu quả hơn' },
+	{ label: '~45 phút liên tục', detail: 'không thể tạm dừng giữa chừng' },
 ];
 
 const PlacementTestIntroModal = ({ onClose }: Props) => {
@@ -110,7 +97,7 @@ const PlacementTestIntroModal = ({ onClose }: Props) => {
 						Bài Kiểm Tra Đầu Vào Theo OUP
 					</h2>
 					<p className={styles.subtitle}>
-						Chúng tôi sẽ đánh giá toàn diện 4 kỹ năng của bạn để tạo lộ trình
+						Chúng tôi sẽ đánh giá kỹ năng Listening và Reading của bạn để tạo lộ trình
 						học cá nhân hóa chính xác nhất.
 					</p>
 				</div>

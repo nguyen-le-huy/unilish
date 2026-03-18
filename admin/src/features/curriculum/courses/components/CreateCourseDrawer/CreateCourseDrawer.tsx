@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Loading } from '@/components/common/Loading';
 import {
     Form,
     FormControl,
@@ -167,6 +168,7 @@ export function CreateCourseDrawer({ open, onOpenChange, defaultSeriesId }: Prop
                                                 *
                                             </span>
                                         </FormLabel>
+                                        {isLoadingSeries && <Loading size="sm" className="justify-start" />}
                                         {isSeriesLocked ? (
                                             // Read-only pill when a series is already chosen
                                             <div
@@ -187,13 +189,7 @@ export function CreateCourseDrawer({ open, onOpenChange, defaultSeriesId }: Prop
                                             >
                                                 <FormControl>
                                                     <SelectTrigger aria-label="Chọn Series">
-                                                        <SelectValue
-                                                            placeholder={
-                                                                isLoadingSeries
-                                                                    ? 'Đang tải...'
-                                                                    : 'Chọn một Series...'
-                                                            }
-                                                        />
+                                                        <SelectValue placeholder="Chọn một Series..." />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>

@@ -21,10 +21,10 @@ import {
     ClipboardList,
     FileText,
     Headphones,
-    Loader2,
     Mic,
     PenLine,
 } from 'lucide-react';
+import { Loading } from '@/components/common/Loading';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -200,9 +200,7 @@ export const CurriculumTree = memo(function CurriculumTree({ courseId }: Props) 
     // ── Render ────────────────────────────────────────────────────────────────
     if (isLoading) {
         return (
-            <div className="flex h-full items-center justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Đang tải..." />
-            </div>
+            <Loading className="h-full" />
         );
     }
 

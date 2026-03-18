@@ -13,19 +13,23 @@ import { Button } from '@/components/ui/button';
 import { useLessonQuestions } from '../../../../hooks/useVocabQuestions';
 import { ManageTab } from './ManageTab';
 import { TryTab } from './TryTab';
+import { PronounceTab } from './pronunciation/PronounceTab';
+import type { VocabItem } from '../../../../types/course.types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
     lessonId: string;
     passingScore: number;
+    items: VocabItem[];
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export const PracticeSheet = memo(function PracticeSheet({ lessonId, passingScore }: Props) {
+export const PracticeSheet = memo(function PracticeSheet({ lessonId, passingScore, items }: Props) {
     const { data: questions, isLoading, isError } = useLessonQuestions(lessonId);
     const hasQuestions = Array.isArray(questions) && questions.length > 0;
+    const hasVocabItems = items.length > 0;
 
     return (
         <Sheet>
@@ -74,6 +78,18 @@ export const PracticeSheet = memo(function PracticeSheet({ lessonId, passingScor
                                 </span>
                             )}
                         </TabsTrigger>
+                        <TabsTrigger
+                            value="pronounce"
+                            className="h-full rounded-none px-3 text-xs data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none"
+                            disabled={!hasVocabItems}
+                        >
+                            Phát âm
+                            {!hasVocabItems && (
+                                <span className="ml-1 text-[10px] text-muted-foreground">
+                                    (chưa có từ)
+                                </span>
+                            )}
+                        </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="manage" className="mt-0 flex-1 overflow-hidden">
@@ -94,6 +110,10 @@ export const PracticeSheet = memo(function PracticeSheet({ lessonId, passingScor
                                 <p className="text-sm text-muted-foreground">Chưa có câu hỏi.</p>
                             </div>
                         )}
+                    </TabsContent>
+
+                    <TabsContent value="pronounce" className="mt-0 flex-1 overflow-hidden">
+                        <PronounceTab items={items} />
                     </TabsContent>
                 </Tabs>
             </SheetContent>

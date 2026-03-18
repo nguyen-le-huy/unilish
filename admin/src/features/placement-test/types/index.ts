@@ -67,6 +67,7 @@ export interface IModuleEssay {
     criteria: string[];
     wordLimits: { low: number; mid: number; high: number };
     topicsByLevel: { low: string[]; mid: string[]; high: string[] };
+    promptImageUrl?: string;
     secureMode: { disablePaste: boolean; disableSpellcheck: boolean };
     promptSource: PromptSource;
 }

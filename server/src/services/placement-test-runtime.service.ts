@@ -212,7 +212,7 @@ export class PlacementTestRuntimeService {
         throw new AppError('Placement attempt has expired', HttpStatus.CONFLICT);
     }
 
-    async getActive(language: string): Promise<Pick<IPlacementTest, '_id' | 'language' | 'name' | 'version' | 'status'>> {
+    async getActive(language: string): Promise<Pick<IPlacementTest, '_id' | 'language' | 'name' | 'version' | 'status' | 'modules'>> {
         const test = await placementTestMongoRepository.findActiveByLanguage(language);
 
         if (!test || test.status !== EPlacementTestStatus.ACTIVE) {
@@ -225,6 +225,7 @@ export class PlacementTestRuntimeService {
             name: test.name,
             version: test.version,
             status: test.status,
+            modules: test.modules.filter((module) => module.type === 'essay'),
         };
     }
 

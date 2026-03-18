@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/core/Button/Button';
 import SelectionCard from '@/components/core/SelectionCard/SelectionCard';
 import SelectionForm from '@/components/core/SelectionForm/SelectionForm';
+import { Loading } from '@/components/common/Loading/Loading';
 import { PATHS } from '@/config/paths';
 import { useAuthStore } from '@/stores/auth.store';
 import { useOnboardingDraftStore } from '@/stores/onboarding.store';
@@ -53,7 +54,7 @@ const LanguageSelectionForm = () => {
                 onClick: handleContinue,
             }}
         >
-            {isLoading && <p className={styles.feedback}>Đang tải danh sách ngôn ngữ...</p>}
+            {isLoading && <Loading variant="inline" size="sm" className={styles.feedback} />}
             {isError && (
                 <div className={styles.errorState}>
                     <p className={styles.feedback}>Không thể tải danh sách ngôn ngữ. Vui lòng thử lại.</p>

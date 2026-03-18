@@ -10,6 +10,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
+import { Loading } from "@/components/common/Loading"
 import {
     ChartContainer,
     ChartTooltip,
@@ -51,7 +52,9 @@ export function InteractiveChart() {
                 <CardHeader className="flex flex-col items-stretch border-b !p-0 sm:flex-row">
                     <div className="flex flex-1 flex-col justify-center gap-1 px-6 pt-4 pb-3 sm:!py-0">
                         <CardTitle>Biểu đồ tương tác</CardTitle>
-                        <CardDescription>Đang tải dữ liệu...</CardDescription>
+                        <CardDescription>
+                            <Loading size="sm" className="justify-start" />
+                        </CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent className="px-2 sm:p-6">
