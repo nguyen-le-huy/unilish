@@ -5,10 +5,13 @@ import { useOnboardingDraftStore } from './onboarding.store';
 
 interface AuthState {
     user: User | null;
-    token: string | null;
+    token: string | null;        // accessToken (alias kept for backward compat)
+    refreshToken: string | null;
     isAuthenticated: boolean;
-    setAuth: (user: User, token: string | null) => void;
+    hasHydrated: boolean;
+    setAuth: (user: User, accessToken: string | null, refreshToken?: string | null) => void;
     setUser: (user: User) => void;
+    setHasHydrated: (value: boolean) => void;
     logout: () => void;
 }
 
@@ -17,16 +20,21 @@ export const useAuthStore = create<AuthState>()(
         (set) => ({
             user: null,
             token: null,
+            refreshToken: null,
             isAuthenticated: false,
-            setAuth: (user, token) => {
-                set({ user, token, isAuthenticated: true });
+            hasHydrated: false,
+            setAuth: (user, accessToken, refreshToken = null) => {
+                set({ user, token: accessToken, refreshToken, isAuthenticated: true });
             },
             setUser: (user) => {
                 set((state) => ({ ...state, user }));
             },
+            setHasHydrated: (value) => {
+                set((state) => ({ ...state, hasHydrated: value }));
+            },
             logout: () => {
                 useOnboardingDraftStore.getState().clear();
-                set({ user: null, token: null, isAuthenticated: false });
+                set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
             },
         }),
         {
@@ -34,9 +42,11 @@ export const useAuthStore = create<AuthState>()(
             storage: createJSONStorage(() => localStorage),
             partialize: (state) => ({ 
                 user: state.user, 
-                token: state.token, 
                 isAuthenticated: state.isAuthenticated 
             }),
+            onRehydrateStorage: () => (state) => {
+                state?.setHasHydrated(true);
+            },
         }
     )
 );

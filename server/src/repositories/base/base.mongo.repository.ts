@@ -13,6 +13,10 @@ export abstract class BaseMongoRepository<T extends Document> implements IBaseRe
         return this.model.findById(id).lean().exec() as Promise<T | null>;
     }
 
+    async findOne(filter: any): Promise<T | null> {
+        return this.model.findOne(filter).lean().exec() as Promise<T | null>;
+    }
+
     async findAll(filter: any = {}): Promise<T[]> {
         return this.model.find(filter).lean().exec() as Promise<T[]>;
     }

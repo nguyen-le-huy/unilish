@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/core/Button';
 import { AudioPlayer } from './audio-player';
 import { Part3QuestionSection } from './part3-question-section';
@@ -9,6 +9,7 @@ import type { AnswerOption, ToeicQuestion, ToeicQuestionGroup, ToeicPart } from 
 interface Props {
     activePart?: ToeicPart;
     onPartSelect?: (part: ToeicPart) => void;
+    availableParts?: ToeicPart[];
     audioSrc?: string;
     questions?: ToeicQuestion[];
     questionGroups?: ToeicQuestionGroup[];
@@ -24,6 +25,7 @@ const PART_OPTIONS: ToeicPart[] = [1, 2, 3, 4, 5, 6, 7];
 export const LeftPanel = ({
     activePart = 1,
     onPartSelect,
+    availableParts = PART_OPTIONS,
     audioSrc,
     questions = [],
     questionGroups = [],
@@ -34,8 +36,9 @@ export const LeftPanel = ({
     isSubmitPending = false,
 }: Props) => {
     const leftRef = useRef<HTMLDivElement>(null);
+    const availablePartsSet = useMemo(() => new Set(availableParts), [availableParts]);
     const isGroupedPart = activePart === 3 || activePart === 4 || activePart === 5 || activePart === 6 || activePart === 7;
-    const isLastPart = activePart === 7;
+    const isLastPart = !nextPart;
     const effectiveGroups = activePart === 5
         ? questions.map((question) => ({
             id: `p5-${question.id}`,
@@ -51,11 +54,14 @@ export const LeftPanel = ({
     }, []);
 
     const handlePartChange = useCallback((part: ToeicPart) => {
+        if (!availablePartsSet.has(part)) {
+            return;
+        }
         onPartSelect?.(part);
         // Trigger immediately on click, not only after re-render.
         scrollToTop();
         requestAnimationFrame(scrollToTop);
-    }, [onPartSelect, scrollToTop]);
+    }, [availablePartsSet, onPartSelect, scrollToTop]);
 
     useEffect(() => {
         // Fallback to ensure reset even if layout updates asynchronously.
@@ -67,16 +73,20 @@ export const LeftPanel = ({
             <div className={styles.partSelection} role="tablist" aria-label="Chon part TOEIC">
                 {PART_OPTIONS.map((part) => {
                     const isActive = activePart === part;
+                    const isDisabled = !availablePartsSet.has(part);
 
                     return (
                         <Button
                             key={part}
                             type="button"
                             variant={isActive ? 'primary' : 'outline'}
+                            className={isDisabled ? styles.partButtonDisabled : ''}
                             role="tab"
                             padding="B"
                             aria-selected={isActive}
+                            aria-disabled={isDisabled}
                             aria-label={`Part ${part}`}
+                            disabled={isDisabled}
                             onClick={() => handlePartChange(part)}
                         >
                             Part {part}

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import mongoSanitize from 'mongo-sanitize';
 import { env } from './config/env.js';
 import { errorConverter, errorHandler } from './middlewares/error.middleware.js';
@@ -31,7 +32,7 @@ app.use(cors({
             return;
         }
 
-        const allowList = new Set([env.CLIENT_URL, 'http://localhost:5174']);
+        const allowList = new Set([env.CLIENT_URL, env.ADMIN_URL]);
         const isAllowedByList = allowList.has(origin);
 
         if (isAllowedByList) {
@@ -46,6 +47,7 @@ app.use(cors({
 // Placement test authoring can send large nested payloads (many question items/media URLs).
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
 app.use(compression());
 
 app.use(
@@ -98,6 +100,7 @@ import { streamListeningAudio } from './controllers/listening.controller.js';
 
 // Routes
 app.use('/api/auth', authRouter);
+app.use('/api/v1/auth', authRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/settings', settingRouter);
 app.use('/api/users', userRouter);

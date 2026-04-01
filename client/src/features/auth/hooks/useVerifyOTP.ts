@@ -18,12 +18,12 @@ export const useVerifyOTP = () => {
     return useMutation({
         mutationFn: (data: VerifyOTPPayload) => verifyOTP(data.email, data.otp),
         onSuccess: (data) => {
-            setAuth(data.user, data.token);
-            toast.success('Account verified successfully!', { id: 'verify-otp-success' });
+            setAuth(data.user, data.accessToken, data.refreshToken);
+            toast.success('Xác thực tài khoản thành công!', { id: 'verify-otp-success' });
             navigate(getPostAuthRedirectPath(data.user));
         },
         onError: (error: AxiosError<ApiErrorResponse>) => {
-            const message = error.response?.data?.message || 'Verification failed';
+            const message = error.response?.data?.message || 'Xác thực tài khoản thất bại';
             toast.error(message);
         },
     });

@@ -14,9 +14,13 @@ export interface User {
     fullName: string;
     role: string;
     avatarUrl?: string;
+    // Backend fields (ObjectId refs)
+    learningLanguageId?: string | null;
+    learningGoalId?: string | null;
+    // Legacy/client-side fields (for backward compatibility)
     nativeLanguage?: string | null;
-    currentLevel?: string;
     learningGoal?: string | null;
+    currentLevel?: string;
     placementTestScore?: number;
     stats?: UserStats;
     subscription?: unknown;
@@ -35,7 +39,8 @@ export interface UserStats {
 }
 
 export interface AuthResponse {
-    token: string;
+    accessToken: string;
+    refreshToken: string;
     user: User;
 }
 
@@ -55,9 +60,9 @@ export interface VerifyOTPPayload {
 
 
 export const RegisterSchema = z.object({
-    fullName: z.string().min(2, 'Full name must be at least 2 characters'),
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    fullName: z.string().min(2, 'Họ và tên phải có ít nhất 2 ký tự'),
+    email: z.string().email('Địa chỉ email không hợp lệ'),
+    password: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
 });
 
 export type RegisterPayload = z.infer<typeof RegisterSchema>;

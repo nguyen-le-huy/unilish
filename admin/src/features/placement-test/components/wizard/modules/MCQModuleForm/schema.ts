@@ -19,6 +19,7 @@ export const manualQuestionSchema = z.object({
 
 export const partSchema = z.object({
     part: z.coerce.number().min(1),
+    enabled: z.boolean().default(true),
     name: z.string().min(1),
     questionsCount: z.coerce.number().min(1).default(1),
     poolTag: z.string().min(1),
@@ -31,9 +32,6 @@ export const partSchema = z.object({
 export const mcqModuleSchema = z.object({
     name: z.string().min(1, 'Bắt buộc'),
     timeLimitMinutes: z.coerce.number().min(1),
-    showCountdown: z.boolean().default(true),
-    allowBackNavigation: z.boolean().default(false),
-    adaptive: z.boolean().default(false),
     parts: z.array(partSchema).min(1, 'Cần ít nhất 1 part'),
 });
 

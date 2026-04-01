@@ -1,27 +1,29 @@
 import mongoose from 'mongoose';
 
-// --- Enums & Types ---
+// ============================================================
+// ENUMS
+// ============================================================
+
 export const EUserRole = {
-    STUDENT: 'student',
-    ADMIN: 'admin',
+    STUDENT:         'student',
+    ADMIN:           'admin',
     CONTENT_CREATOR: 'content_creator',
 } as const;
 
 export const EAuthProvider = {
-    LOCAL: 'local',
+    LOCAL:  'local',
     GOOGLE: 'google',
 } as const;
 
 export const EGender = {
-    MALE: 'male',
-    FEMALE: 'female',
-    OTHER: 'other',
+    MALE:              'male',
+    FEMALE:            'female',
+    OTHER:             'other',
     PREFER_NOT_TO_SAY: 'prefer_not_to_say',
 } as const;
 
 export const ELevel = {
-    // A0: Foundation (Level 0) - "Mất gốc"
-    A0: 'A0',
+    A0: 'A0', // "Mất gốc" — Foundation
     A1: 'A1',
     A2: 'A2',
     B1: 'B1',
@@ -30,272 +32,278 @@ export const ELevel = {
     C2: 'C2',
 } as const;
 
-// 6 Mục tiêu đề xuất (System Focus)
-export const ELearningGoal = {
-    COMMUNICATION: 'general_communication',  // Speaking + Listening
-    EXAM_THPTQG: 'exam_thptqg',              // Grammar + Vocabulary + Reading
-    EXAM_IELTS: 'exam_ielts',                // All 4 Skills (Academic)
-    EXAM_TOEIC: 'exam_toeic',                // Listening + Reading (Business)
-    BUSINESS: 'business_work',               // Writing + Speaking (Formal)
-    TRAVEL: 'travel_survival',               // Listening + Speaking (Casual)
-} as const;
-
-export const EInterest = {
-    TECHNOLOGY: 'technology',
-    BUSINESS: 'business',
-    ENTERTAINMENT: 'entertainment',
-    HEALTH: 'health',
-    SPORTS: 'sports',
-    CULTURE: 'culture',
-    DAILY_LIFE: 'daily_life',
-} as const;
-
 export const ESkill = {
-    SPEAKING: 'speaking',
-    LISTENING: 'listening',
-    READING: 'reading',
-    WRITING: 'writing',
-    GRAMMAR: 'grammar',
-    VOCABULARY: 'vocabulary',
+    SPEAKING:      'speaking',
+    LISTENING:     'listening',
+    READING:       'reading',
+    WRITING:       'writing',
+    GRAMMAR:       'grammar',
+    VOCABULARY:    'vocabulary',
     PRONUNCIATION: 'pronunciation',
 } as const;
 
 export const ESubscriptionPlan = {
-    FREE: 'FREE',
+    FREE:    'FREE',
     PREMIUM: 'PREMIUM',
 } as const;
 
 export const ESubscriptionStatus = {
-    ACTIVE: 'active',
-    EXPIRED: 'expired',
-    CANCELLED: 'cancelled', // NEW: Added cancelled status
+    ACTIVE:    'active',
+    EXPIRED:   'expired',
+    CANCELLED: 'cancelled',
 } as const;
 
+export const ERenewalType = {
+    MONTHLY: 'MONTHLY',
+    YEARLY:  'YEARLY',
+} as const;
+
+// ============================================================
+// INTERFACE
+// ============================================================
+
 export interface IUser extends mongoose.Document {
-    // --- 1. ĐỊNH DANH & BẢO MẬT (IDENTITY) ---
-    email: string;
-    googleId?: string;
+    // --- 1. ĐỊNH DANH & BẢO MẬT ---
+    email:        string;
+    googleId?:    string;
     authProvider: typeof EAuthProvider[keyof typeof EAuthProvider];
-    password?: string;
-    isVerified: boolean;
-    role: typeof EUserRole[keyof typeof EUserRole];
+    password?:    string;
+    isVerified:   boolean;
+    role:         typeof EUserRole[keyof typeof EUserRole];
+    otp?:         string | null;
+    otpExpires?:  Date | null;
 
-    // Internal Auth Fields (OTP)
-    otp?: string;
-    otpExpires?: Date;
-
-    // --- 2. HỒ SƠ CÁ NHÂN (PROFILE) ---
-    fullName: string;
-    avatarUrl: string;
+    // --- 2. HỒ SƠ CÁ NHÂN ---
+    fullName:     string;
+    avatarUrl:    string | null;
     dateOfBirth?: Date;
     phoneNumber?: string;
-    gender?: typeof EGender[keyof typeof EGender];
-    nativeLanguage: string | null; // NEW: Ngôn ngữ mẹ đẻ (vi, en, ja)
+    gender?:      typeof EGender[keyof typeof EGender];
 
-    // --- 3. TRẠNG THÁI ACTIVE (APP STATE) ---
-    lastActiveAt: Date;
-    lastActiveCourseId?: mongoose.Types.ObjectId; // NEW: Course đang học
+    // --- 3. TRẠNG THÁI ACTIVE ---
+    lastActiveAt:       Date;
+    lastActiveCourseId: mongoose.Types.ObjectId | null;
 
-    // --- 4. SỞ THÍCH (ADAPTIVE INPUT) ---
-    interestIds: mongoose.Types.ObjectId[]; // NEW: Reference to Interest collection
-
-    // --- 5. BỐI CẢNH HỌC TẬP (CONTEXTUAL LEARNING PROFILE) ---
-    // A. Trình độ (CEFR Standard)
-    currentLevel: keyof typeof ELevel;
-    targetLevel: keyof typeof ELevel;
-
-    // B. Mục tiêu học tập (Cốt lõi để định hướng lộ trình)
-    learningGoal: keyof typeof ELearningGoal | string | null;
-
-    // C. Sở thích (Legacy - now using interestIds)
-    interests: string[];
-
-    // D. Kỹ năng cần cải thiện (Dựa trên Placement Test)
-    weakSkills: string[];
-
-    // Điểm test đầu vào (Lưu để tham khảo lịch sử)
+    // --- 4. BỐI CẢNH HỌC TẬP ---
+    learningLanguageId: mongoose.Types.ObjectId | null;
+    learningGoalId:     mongoose.Types.ObjectId | null;
+    currentLevel:       keyof typeof ELevel;
+    targetLevel:        keyof typeof ELevel;
+    weakSkills:         (typeof ESkill[keyof typeof ESkill])[];
     placementTestScore: number;
 
-    // --- 6. GAMIFICATION & RETENTION ---
-    streakDays: number; // NEW: Chuỗi ngày học liên tiếp
-    gamification: {     // NEW: Hệ thống game hóa
-        totalXP: number;
-        gems: number;
-        level: number;
-    };
-
-    // --- 7. TRẠNG THÁI HỆ THỐNG (SYSTEM STATUS) ---
+    // --- 5. SUBSCRIPTION ---
     subscription: {
-        plan: typeof ESubscriptionPlan[keyof typeof ESubscriptionPlan];
-        startDate?: Date; // NEW: Ngày bắt đầu
-        endDate?: Date;
-        status: typeof ESubscriptionStatus[keyof typeof ESubscriptionStatus];
+        plan:              typeof ESubscriptionPlan[keyof typeof ESubscriptionPlan];
+        renewalType:       typeof ERenewalType[keyof typeof ERenewalType] | null;
+        startDate:         Date | null;
+        endDate:           Date | null;
+        status:            typeof ESubscriptionStatus[keyof typeof ESubscriptionStatus];
+        lastTransactionId: mongoose.Types.ObjectId | null;
     };
 
-    settings: {
-        dailyGoalMinutes: number;
-        reminderTime: string; // NEW: Thời gian nhắc nhở
-        appLanguage: string;  // NEW: Ngôn ngữ giao diện
-        soundEffects: boolean; // NEW: Hiệu ứng âm thanh
-        notification: boolean; // Legacy
-    };
+    // --- VIRTUALS ---
+    isPremium: boolean;
 
     createdAt: Date;
     updatedAt: Date;
 }
 
+// ============================================================
+// SCHEMA
+// ============================================================
+
 const UserSchema = new mongoose.Schema<IUser>(
     {
-        // --- 1. ĐỊNH DANH & BẢO MẬT (IDENTITY) ---
+        // ── 1. ĐỊNH DANH & BẢO MẬT ─────────────────────────────
         email: {
-            type: String,
-            required: true,
-            unique: true,
+            type:      String,
+            required:  true,
+            unique:    true,
             lowercase: true,
-            trim: true,
-            index: true,
+            trim:      true,
+            index:     true,
         },
         googleId: {
-            type: String,
+            type:   String,
             unique: true,
-            sparse: true,
-            index: true,
+            sparse: true, // unique nhưng không conflict với LOCAL users (null != null trong MongoDB)
+            index:  true,
         },
         authProvider: {
-            type: String,
-            enum: Object.values(EAuthProvider),
+            type:    String,
+            enum:    Object.values(EAuthProvider),
             default: EAuthProvider.LOCAL,
         },
         password: {
-            type: String,
-            select: false
+            type:   String,
+            select: false, // không bao giờ trả về trong API response
         },
         isVerified: {
-            type: Boolean,
-            default: false
+            type:    Boolean,
+            default: false,
         },
         role: {
-            type: String,
-            enum: Object.values(EUserRole),
+            type:    String,
+            enum:    Object.values(EUserRole),
             default: EUserRole.STUDENT,
-            index: true, // Enterprise: Indexed for Admin Dashboards
+            index:   true, // query Admin Dashboard
+        },
+        otp: {
+            type:   String,
+            select: false, // bảo mật
+        },
+        otpExpires: {
+            type:   Date,
+            select: false, // bảo mật
         },
 
-        // Internal Auth Fields (OTP)
-        otp: { type: String, select: false },
-        otpExpires: { type: Date, select: false },
-
-        // --- 2. HỒ SƠ CÁ NHÂN (PROFILE) ---
-        fullName: { type: String, required: true, trim: true },
-        avatarUrl: { type: String, default: null },
-        dateOfBirth: { type: Date, default: null },
-        phoneNumber: { type: String, default: null },
+        // ── 2. HỒ SƠ CÁ NHÂN ───────────────────────────────────
+        fullName: {
+            type:     String,
+            required: true,
+            trim:     true,
+        },
+        avatarUrl: {
+            type:    String,
+            default: null,
+        },
+        dateOfBirth: {
+            type:    Date,
+            default: null,
+        },
+        phoneNumber: {
+            type:    String,
+            default: null,
+        },
         gender: {
-            type: String,
-            enum: Object.values(EGender),
+            type:    String,
+            enum:    Object.values(EGender),
             default: EGender.PREFER_NOT_TO_SAY,
         },
-        nativeLanguage: {
-            type: String,
-            default: null,
-            index: true,
-        },
 
-        // --- 3. TRẠNG THÁI ACTIVE (APP STATE) ---
-        lastActiveAt: { type: Date, default: Date.now, index: true },
+        // ── 3. TRẠNG THÁI ACTIVE ────────────────────────────────
+        lastActiveAt: {
+            type:    Date,
+            default: Date.now,
+            index:   true, // query user inactive để gửi re-engagement email
+        },
         lastActiveCourseId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Course',
-            default: null,
+            type:    mongoose.Schema.Types.ObjectId,
+            ref:     'Course',
+            default: null, // dùng cho nút "Tiếp tục học" ở Home screen
         },
 
-        // --- 4. SỞ THÍCH (ADAPTIVE INPUT) ---
-        interestIds: [{
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Interest',
-        }],
+        // ── 4. BỐI CẢNH HỌC TẬP ────────────────────────────────
 
-        // --- 5. BỐI CẢNH HỌC TẬP (CONTEXTUAL LEARNING PROFILE) ---
-        // A. Trình độ (CEFR Standard)
+        // Ngôn ngữ đang theo học (ref Language collection)
+        learningLanguageId: {
+            type:    mongoose.Schema.Types.ObjectId,
+            ref:     'Language',
+            default: null,
+            index:   true, // "có bao nhiêu user đang học tiếng Anh?"
+        },
+
+        // Mục tiêu học tập (ref LearningGoal collection)
+        // populate để lấy systemPrompt + skillWeights cho AI
+        learningGoalId: {
+            type:    mongoose.Schema.Types.ObjectId,
+            ref:     'LearningGoal',
+            default: null,
+            index:   true,
+        },
+
         currentLevel: {
-            type: String,
-            enum: Object.values(ELevel),
+            type:    String,
+            enum:    Object.values(ELevel),
             default: ELevel.A0,
-            index: true, // Enterprise: Indexed for Analytics
+            index:   true, // analytics phân bổ trình độ user
         },
         targetLevel: {
-            type: String,
-            enum: Object.values(ELevel),
-            default: ELevel.B2
+            type:    String,
+            enum:    Object.values(ELevel),
+            default: ELevel.B2,
         },
-
-        // B. Mục tiêu học tập (Cốt lõi để định hướng lộ trình)
-        learningGoal: {
-            type: String,
-            default: null,
-            index: true,
-        },
-
-        // C. Sở thích (Legacy - keeping for backward compatibility)
-        interests: [{
-            type: String,
-            enum: Object.values(EInterest),
-        }],
-
-        // D. Kỹ năng cần cải thiện (Dựa trên Placement Test)
         weakSkills: [{
             type: String,
             enum: Object.values(ESkill),
         }],
-
-        // Điểm test đầu vào (Lưu để tham khảo lịch sử)
-        placementTestScore: { type: Number, default: 0 },
-
-        // --- 6. GAMIFICATION & RETENTION ---
-        streakDays: { type: Number, default: 0, index: true }, // Indexed for leaderboard
-        gamification: {
-            totalXP: { type: Number, default: 0, index: true }, // Indexed for leaderboard
-            gems: { type: Number, default: 0 },
-            level: { type: Number, default: 1 },
+        placementTestScore: {
+            type:    Number,
+            default: 0,
+            min:     0,
+            max:     100,
         },
 
-        // --- 7. TRẠNG THÁI HỆ THỐNG (SYSTEM STATUS) ---
+        // ── 5. SUBSCRIPTION ─────────────────────────────────────
         subscription: {
             plan: {
-                type: String,
-                enum: Object.values(ESubscriptionPlan),
-                default: ESubscriptionPlan.FREE
+                type:    String,
+                enum:    Object.values(ESubscriptionPlan),
+                default: ESubscriptionPlan.FREE,
             },
-            startDate: { type: Date, default: null },
-            endDate: { type: Date, default: null },
+            renewalType: {
+                type:    String,
+                enum:    Object.values(ERenewalType), // null được cho phép vì field không có `required: true`
+                default: null, // null = FREE (không có chu kỳ gia hạn)
+            },
+            startDate: {
+                type:    Date,
+                default: null,
+            },
+            endDate: {
+                type:    Date,
+                default: null,
+            },
             status: {
-                type: String,
-                enum: Object.values(ESubscriptionStatus),
+                type:    String,
+                enum:    Object.values(ESubscriptionStatus),
                 default: ESubscriptionStatus.ACTIVE,
-                index: true, // Enterprise: Indexed for Subscription Management
-            }
+            },
+            lastTransactionId: {
+                type:    mongoose.Schema.Types.ObjectId,
+                ref:     'Transaction',
+                default: null, // audit trail khi user khiếu nại thanh toán
+            },
         },
-
-        settings: {
-            dailyGoalMinutes: { type: Number, default: 15 },
-            reminderTime: { type: String, default: '20:00' },
-            appLanguage: { type: String, default: 'vi' },
-            soundEffects: { type: Boolean, default: true },
-            notification: { type: Boolean, default: true }, // Legacy
-        }
     },
     {
         timestamps: true,
-        toJSON: { virtuals: true },
-        toObject: { virtuals: true },
+        toJSON:     { virtuals: true },
+        toObject:   { virtuals: true },
     }
 );
 
-// --- INDEXES (Enterprise Performance) ---
-// Compound index for leaderboard queries
-UserSchema.index({ 'gamification.totalXP': -1, streakDays: -1 });
+// ============================================================
+// INDEXES
+// ============================================================
 
-// Compound index for subscription analytics
+// Freemium analytics: COUNT(*) GROUP BY plan, status
 UserSchema.index({ 'subscription.plan': 1, 'subscription.status': 1 });
+
+// Cron job nhắc gia hạn: tìm PREMIUM sắp hết hạn trong N ngày tới
+UserSchema.index({ 'subscription.endDate': 1, 'subscription.plan': 1 });
+
+// Query user theo trạng thái subscription (vd: tìm tất cả ACTIVE users)
+UserSchema.index({ 'subscription.status': 1 });
+
+// ============================================================
+// VIRTUALS
+// ============================================================
+
+/**
+ * isPremium — check nhanh quyền truy cập
+ * Dùng trong AuthGuard / FeatureGate mà không cần query thêm collection
+ */
+UserSchema.virtual('isPremium').get(function (this: IUser): boolean {
+    if (this.subscription.plan !== ESubscriptionPlan.PREMIUM) return false;
+    if (this.subscription.status !== ESubscriptionStatus.ACTIVE) return false;
+    if (this.subscription.endDate && this.subscription.endDate < new Date()) return false;
+    return true;
+});
+
+// ============================================================
+// MODEL
+// ============================================================
 
 export const User = mongoose.model<IUser>('User', UserSchema);

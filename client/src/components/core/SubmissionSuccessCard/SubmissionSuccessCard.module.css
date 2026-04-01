@@ -25,16 +25,22 @@
 .description {
     font-size: 18px;
     color: var(--dark-grey);
+    line-height: 1.6;
 }
 
 .stats {
     display: grid;
     gap: var(--space-3);
     font-size: 18px;
-    color: var(--dark-grey)
+    color: var(--dark-grey);
+    text-align: center;
 }
 
 .stats strong {
     font-weight: 600;
     color: black;
+}
+
+.continueButton {
+    margin-top: 10px;
 }

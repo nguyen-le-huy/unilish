@@ -12,7 +12,8 @@ export const useLogin = () => {
     return useMutation({
         mutationFn: loginApi,
         onSuccess: (response) => {
-            const { user, token } = response.data;
+            const { user, accessToken, token } = response.data;
+            const resolvedToken = accessToken ?? token;
 
             // Check if user has admin role
             if (user.role !== 'admin') {
@@ -20,7 +21,12 @@ export const useLogin = () => {
                 return;
             }
 
-            setAuth(user, token);
+            if (!resolvedToken) {
+                notify.auth.loginError('Không nhận được access token từ server');
+                return;
+            }
+
+            setAuth(user, resolvedToken);
             notify.auth.loginSuccess();
             navigate('/dashboard');
         },

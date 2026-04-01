@@ -64,6 +64,7 @@ function buildNormalizedParts(defaultValues: Partial<IModuleMCQ> | undefined): M
 
         return {
             part: preset.part,
+            enabled: existingPart !== undefined,
             name: existingPart?.name ?? preset.name,
             questionsCount: existingPart?.questionsCount ?? 1,
             poolTag: existingPart?.poolTag ?? preset.poolTag,
@@ -87,9 +88,6 @@ export function MCQModuleForm({ defaultValues, order, onSave, onCancel, draftKey
         defaultValues: {
             name: defaultValues?.name ?? 'TOEIC Compact (Listening + Reading)',
             timeLimitMinutes: defaultValues?.timeLimitMinutes ?? 45,
-            showCountdown: defaultValues?.showCountdown ?? true,
-            allowBackNavigation: defaultValues?.allowBackNavigation ?? false,
-            adaptive: defaultValues?.adaptive ?? false,
             parts: buildNormalizedParts(defaultValues),
         },
     });
@@ -296,13 +294,19 @@ export function MCQModuleForm({ defaultValues, order, onSave, onCancel, draftKey
             localStorage.removeItem(draftKey);
         }
 
+        const enabledParts = values.parts.filter((part) => part.enabled);
+
         onSave({
             order,
             type: 'mcq',
+            showCountdown: defaultValues?.showCountdown ?? true,
+            allowBackNavigation: defaultValues?.allowBackNavigation ?? false,
+            adaptive: defaultValues?.adaptive ?? true,
             samplingMode: 'random',
             difficultyDistribution: {},
             ...values,
-            parts: values.parts.map((part, partIndex) => {
+            parts: enabledParts.map((part) => {
+                const partIndex = values.parts.findIndex((candidate) => candidate.part === part.part);
                 const partPoolTag = part.poolTag.toLowerCase();
                 const flags = getPartFlags(part.part, partPoolTag);
                 const normalizedSharedAudioUrl = part.sharedAudioUrl?.trim() || undefined;
@@ -389,26 +393,6 @@ export function MCQModuleForm({ defaultValues, order, onSave, onCancel, draftKey
                     />
                 </div>
 
-                <div className="flex flex-wrap gap-6">
-                    {(['showCountdown', 'allowBackNavigation', 'adaptive'] as const).map((key) => (
-                        <FormField
-                            key={key}
-                            control={form.control}
-                            name={key}
-                            render={({ field }) => (
-                                <FormItem className="flex items-center gap-2">
-                                    <FormControl>
-                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                    </FormControl>
-                                    <FormLabel className="!mt-0 text-sm">
-                                        {key === 'showCountdown' ? 'Đếm ngược' : key === 'allowBackNavigation' ? 'Cho phép xem lại' : 'Adaptive'}
-                                    </FormLabel>
-                                </FormItem>
-                            )}
-                        />
-                    ))}
-                </div>
-
                 <Separator />
 
                 {/* Parts */}
@@ -418,10 +402,33 @@ export function MCQModuleForm({ defaultValues, order, onSave, onCancel, draftKey
                         <p className="text-xs text-muted-foreground">Mặc định 7 part TOEIC</p>
                     </div>
 
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                        {fields.map((partField, partIndex) => (
+                            <FormField
+                                key={`${partField.id}-enabled`}
+                                control={form.control}
+                                name={`parts.${partIndex}.enabled`}
+                                render={({ field }) => (
+                                    <FormItem className="flex items-center justify-between rounded-lg border p-2">
+                                        <FormLabel className="!mt-0 text-xs">Part {partIndex + 1}</FormLabel>
+                                        <FormControl>
+                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        ))}
+                    </div>
+
                     {fields.map((partField, partIndex) => {
                         const partNumber = Number(form.watch(`parts.${partIndex}.part`));
+                        const isEnabled = form.watch(`parts.${partIndex}.enabled`);
                         const poolTag = form.watch(`parts.${partIndex}.poolTag`) ?? '';
                         const flags = getPartFlags(partNumber, poolTag);
+
+                        if (!isEnabled) {
+                            return null;
+                        }
 
                         return (
                             <MCQPartCard

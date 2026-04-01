@@ -37,6 +37,13 @@
     border-color: black;
 }
 
+.partButtonDisabled {
+    opacity: 0.3;
+    cursor: not-allowed !important;
+}
+
+.partButtonDisabled>
+
 .audioSection {
     width: 100%;
     flex-shrink: 0;
@@ -61,4 +68,3 @@
     background: #d0d0d0;
     border-radius: 999px;
 }
-

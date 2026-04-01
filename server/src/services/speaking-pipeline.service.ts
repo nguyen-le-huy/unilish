@@ -99,8 +99,8 @@ export const speakingPipelineService = {
                 messages,
                 stream: true,
                 stream_options: { include_usage: true },
-                // Disable extended reasoning for gpt-5 series — dramatically reduces latency
-                // reasoning_effort: 'low' tells the model to skip deep chain-of-thought
+                // Disable extended reasoning for gpt-5 series to reduce latency.
+                // reasoning_effort: 'minimal' keeps response quality while minimizing extra reasoning.
                 ...(requestedModel.startsWith('gpt-5') || requestedModel.startsWith('o') ? {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     reasoning_effort: 'low' as any,

@@ -20,7 +20,9 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
 describe('onboarding flow utils', () => {
     it('requires language first', () => {
         const user = makeUser({
+            learningLanguageId: null,
             nativeLanguage: null,
+            learningGoalId: null,
             learningGoal: null,
             currentLevel: 'A0',
             placementTestScore: 0,
@@ -32,7 +34,9 @@ describe('onboarding flow utils', () => {
 
     it('requires learning goal after language', () => {
         const user = makeUser({
+            learningLanguageId: '507f1f77bcf86cd799439011',
             nativeLanguage: 'en',
+            learningGoalId: null,
             learningGoal: null,
             currentLevel: 'A0',
             placementTestScore: 0,
@@ -45,7 +49,9 @@ describe('onboarding flow utils', () => {
 
     it('requires level when language and goal exist', () => {
         const user = makeUser({
+            learningLanguageId: '507f1f77bcf86cd799439011',
             nativeLanguage: 'en',
+            learningGoalId: '507f1f77bcf86cd799439012',
             learningGoal: 'travel_survival',
             currentLevel: 'A0',
             placementTestScore: 0,
@@ -57,7 +63,9 @@ describe('onboarding flow utils', () => {
 
     it('treats level as complete when CEFR is above A0', () => {
         const user = makeUser({
+            learningLanguageId: '507f1f77bcf86cd799439011',
             nativeLanguage: 'en',
+            learningGoalId: '507f1f77bcf86cd799439012',
             learningGoal: 'travel_survival',
             currentLevel: 'A2',
             placementTestScore: 0,
@@ -70,7 +78,9 @@ describe('onboarding flow utils', () => {
 
     it('treats A0 as complete only when placement score > 0', () => {
         const user = makeUser({
+            learningLanguageId: '507f1f77bcf86cd799439011',
             nativeLanguage: 'en',
+            learningGoalId: '507f1f77bcf86cd799439012',
             learningGoal: 'travel_survival',
             currentLevel: 'A0',
             placementTestScore: 65,

@@ -1,5 +1,5 @@
 import { v2 as cloudinary } from 'cloudinary';
-import { S3Client } from '@aws-sdk/client-s3';
+import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { env } from '../config/env.js';
 import { AppError } from '../utils/app-error.js';
@@ -81,6 +81,63 @@ export class UploadService {
         } catch (error) {
             logger.error('R2 Upload Error:', error);
             throw new AppError('Failed to upload media to R2', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Upload a speaking question audio file to a structured R2 path:
+     * `speaking-questions/{part}/{questionId}.{ext}`
+     */
+    static async uploadSpeakingQuestionAudio(
+        file: Express.Multer.File,
+        part: string,
+        questionId: string,
+    ): Promise<{ key: string; url: string }> {
+        if (!r2Client || !env.R2_BUCKET_NAME) {
+            throw new AppError('R2 Storage not configured', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        const ext = file.originalname.split('.').pop() ?? 'mp3';
+        const key = `speaking-questions/${part}/${questionId}.${ext}`;
+
+        try {
+            const upload = new Upload({
+                client: r2Client,
+                params: {
+                    Bucket: env.R2_BUCKET_NAME,
+                    Key: key,
+                    Body: file.buffer,
+                    ContentType: file.mimetype,
+                },
+            });
+
+            await upload.done();
+
+            const domain = env.R2_PUBLIC_DOMAIN ?? `https://${env.R2_BUCKET_NAME}.r2.dev`;
+            const baseUrl = domain.endsWith('/') ? domain.slice(0, -1) : domain;
+
+            return { key, url: `${baseUrl}/${key}` };
+        } catch (error) {
+            logger.error('R2 Speaking Audio Upload Error:', error);
+            throw new AppError('Failed to upload speaking question audio', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Delete an object from R2 by its key.
+     */
+    static async deleteR2Object(key: string): Promise<void> {
+        if (!r2Client || !env.R2_BUCKET_NAME) {
+            throw new AppError('R2 Storage not configured', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        try {
+            await r2Client.send(
+                new DeleteObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key }),
+            );
+        } catch (error) {
+            logger.error('R2 Delete Error:', error);
+            throw new AppError('Failed to delete object from R2', HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

@@ -22,7 +22,7 @@ import { useSubmitPlacementAttemptMutation } from '../../hooks/use-submit-placem
 import { useTestTimer } from '../../hooks/use-test-timer';
 import { mapAttemptToParts } from '../../utils/question-mapper';
 import { formatCountdownLabel } from '../../utils/timer';
-import { SubmissionSuccessCard } from '../../components/listening-reading/submission-success-card';
+import { SubmissionSuccessCard } from '@/components/core/SubmissionSuccessCard';
 
 const getErrorStatus = (error: unknown): number | undefined => {
     if (!isAxiosError<ApiErrorResponse>(error)) {
@@ -205,61 +205,63 @@ const ListeningReading = () => {
 
     const timerLabel = formatCountdownLabel(timeRemaining);
 
-    if (submissionSummary) {
-        return (
-            <div className={styles.successContainer}>
-                <SubmissionSuccessCard
-                    completedMinutes={submissionSummary.completedMinutes}
-                    submittedQuestions={submissionSummary.submittedQuestions}
-                    totalQuestions={submissionSummary.totalQuestions}
-                    onContinue={() => navigate(PATHS.DASHBOARD.HOME)}
-                    description="Bạn đã nộp thành công phần Listening và Reading."
-                    continueLabel="Quay về Dashboard"
-                />
-            </div>
-        );
-    }
-
     return (
-        <div className={styles.container}>
-            <header className={styles.header}>
-                <h3 className={styles.title}>Bài thi đầu vào - Phần kỹ năng nghe và đọc</h3>
-                <Button
-                    type="button"
-                    padding="B"
-                    variant="outline"
-                    onClick={() => navigate(PATHS.DASHBOARD.HOME)}
-                >
-                    Thoát
-                </Button>
-            </header>
-            <div className={styles.main}>
-                <LeftPanel
-                    activePart={activePart}
-                    audioSrc={audioSrc}
-                    questions={questions}
-                    questionGroups={questionGroups}
-                    nextPart={nextPart}
-                    onPartSelect={setActivePart}
-                    onAnswer={handleAnswer}
-                    onFlag={handleFlag}
-                    onSubmitTest={() => {
-                        void handleSubmit();
-                    }}
-                    isSubmitPending={isSubmitting}
-                />
-                <RightPanel
-                    parts={mapped.partInfos}
-                    timeRemainingLabel={timerLabel}
-                    questionStatuses={questionStatuses}
-                    activePart={activePart}
-                    isSubmitPending={isSubmitting}
-                    onSubmit={() => {
-                        void handleSubmit();
-                    }}
-                />
+        <>
+            <div className={styles.container}>
+                <header className={styles.header}>
+                    <h3 className={styles.title}>Bài thi đầu vào - Phần kỹ năng nghe và đọc</h3>
+                    <Button
+                        type="button"
+                        padding="B"
+                        variant="outline"
+                        onClick={() => navigate(PATHS.DASHBOARD.HOME)}
+                    >
+                        Thoát
+                    </Button>
+                </header>
+                <div className={styles.main}>
+                    <LeftPanel
+                        activePart={activePart}
+                        availableParts={mapped.partInfos.map((item) => item.part)}
+                        audioSrc={audioSrc}
+                        questions={questions}
+                        questionGroups={questionGroups}
+                        nextPart={nextPart}
+                        onPartSelect={setActivePart}
+                        onAnswer={handleAnswer}
+                        onFlag={handleFlag}
+                        onSubmitTest={() => {
+                            void handleSubmit();
+                        }}
+                        isSubmitPending={isSubmitting}
+                    />
+                    <RightPanel
+                        parts={mapped.partInfos}
+                        timeRemainingLabel={timerLabel}
+                        questionStatuses={questionStatuses}
+                        activePart={activePart}
+                        isSubmitPending={isSubmitting}
+                        onSubmit={() => {
+                            void handleSubmit();
+                        }}
+                    />
+                </div>
             </div>
-        </div>
+
+            {submissionSummary && (
+                <div className={styles.overlay} role="dialog" aria-modal="true">
+                    <SubmissionSuccessCard
+                        stats={[
+                            { label: 'Thời gian hoàn thành', value: submissionSummary.completedMinutes ? `${submissionSummary.completedMinutes}p` : '--' },
+                            { label: 'Số câu đã nộp', value: `${submissionSummary.submittedQuestions}/${submissionSummary.totalQuestions}` },
+                        ]}
+                        onContinue={() => navigate(PATHS.DASHBOARD.HOME)}
+                        description={"Bạn đã nộp thành công phần Listening và Reading.\nVui lòng chuẩn bị cho các phần tiếp theo."}
+                        continueLabel="Tiếp tục phần Writing"
+                    />
+                </div>
+            )}
+        </>
     );
 };
 

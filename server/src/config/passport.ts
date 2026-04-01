@@ -3,6 +3,7 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { env } from './env.js';
 import { authService } from '../services/auth.service.js';
 import { logger } from '../utils/logger.js';
+import { AppError } from '../utils/app-error.js';
 
 passport.serializeUser((user: any, done) => {
     done(null, user.user._id || user._id);
@@ -24,19 +25,33 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
             {
                 clientID: env.GOOGLE_CLIENT_ID,
                 clientSecret: env.GOOGLE_CLIENT_SECRET,
-                callbackURL: '/api/auth/google/callback',
+                callbackURL: `${env.SERVER_URL}/api/v1/auth/google/callback`,
             },
-            async (accessToken, refreshToken, profile, done) => {
+            async (_accessToken, _refreshToken, profile, done) => {
                 try {
+                    const email = profile.emails?.[0]?.value;
+                    const emailVerified = Boolean(
+                        (profile as { _json?: { email_verified?: boolean } })._json?.email_verified,
+                    );
+
+                    if (!email) {
+                        throw new AppError('Google account chưa có email hợp lệ', 400);
+                    }
+
+                    if (!emailVerified) {
+                        throw new AppError('Email Google chưa được xác minh', 400);
+                    }
+
                     const result = await authService.findOrCreateFromGoogle({
                         googleId: profile.id,
-                        email: profile.emails?.[0]?.value || '',
+                        email,
                         fullName: profile.displayName,
                         avatarUrl: profile.photos?.[0]?.value || '',
+                        emailVerified,
                     });
 
                     // Passport expects a user object. 
-                    // We can pass the whole result { user, token }
+                    // We pass the enriched auth payload for callback redirect handling.
                     return done(null, result as any);
                 } catch (error) {
                     logger.error('Google Auth Error:', error);

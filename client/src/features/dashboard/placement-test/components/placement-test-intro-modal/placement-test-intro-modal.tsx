@@ -27,7 +27,19 @@ const MODULES: ModuleRow[] = [
 		number: 1,
 		name: 'TOEIC Thu Gọn',
 		content: 'Nghe & Đọc hiểu (101 câu trắc nghiệm)',
-		duration: '45 phút',
+		duration: '~45 phút',
+	},
+	{
+		number: 2,
+		name: 'IELTS Writing',
+		content: 'Bài luận tiếng Anh (≥150–250 từ)',
+		duration: '30 phút',
+	},
+	{
+		number: 3,
+		name: 'IELTS Speaking',
+		content: 'Phỏng vấn 1:1 với AI Examiner',
+		duration: '~15 phút',
 	},
 ];
 

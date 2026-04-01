@@ -1,3 +1,7 @@
+---
+description: 
+---
+
 # Hướng Dẫn Setup N8N Workflow: Gửi Email OTP
 
 Tài liệu này hướng dẫn cách thiết lập workflow tự động gửi email OTP trong n8n, sử dụng template JSON đã được chuẩn bị sẵn.

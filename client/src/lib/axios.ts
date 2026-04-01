@@ -92,14 +92,78 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// Flag to prevent infinite retry loop
+let isRefreshing = false;
+let failedQueue: Array<{
+    resolve: (token: string) => void;
+    reject: (error: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown, token: string | null) => {
+    failedQueue.forEach((p) => {
+        if (error) {
+            p.reject(error);
+        } else {
+            p.resolve(token!);
+        }
+    });
+    failedQueue = [];
+};
+
 api.interceptors.response.use(
     (response) => {
         const data = response.data;
         if (shouldUnwrapEnvelope(response.config.headers) && isEnvelopeLike(data)) {
             return data.data;
         }
-
         return data;
     },
-    (error) => Promise.reject(error)
+    async (error) => {
+        const originalRequest = error.config;
+
+        // Only attempt refresh for 401 errors on non-refresh/non-login endpoints
+        const isAuthEndpoint =
+            originalRequest?.url?.includes('/auth/refresh') ||
+            originalRequest?.url?.includes('/auth/login') ||
+            originalRequest?.url?.includes('/auth/logout');
+
+        if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+            if (isRefreshing) {
+                // Queue request while refresh is in progress
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({ resolve, reject });
+                }).then((token) => {
+                    originalRequest.headers.Authorization = `Bearer ${token}`;
+                    return api(originalRequest);
+                });
+            }
+
+            originalRequest._retry = true;
+            isRefreshing = true;
+
+            try {
+                // POST /auth/refresh — sends refreshToken cookie automatically (withCredentials: true)
+                const refreshResponse = await api.post<{ data: { accessToken: string } }>('/auth/refresh');
+                const newAccessToken = (refreshResponse as unknown as { data: { accessToken: string } }).data.accessToken
+                    ?? (refreshResponse as unknown as { accessToken: string }).accessToken;
+
+                // Update store with new token
+                useAuthStore.setState((state) => ({ ...state, token: newAccessToken }));
+
+                processQueue(null, newAccessToken);
+                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+                return api(originalRequest);
+            } catch (refreshError) {
+                processQueue(refreshError, null);
+                // Refresh failed → force logout
+                useAuthStore.getState().logout();
+                window.location.href = '/auth/login';
+                return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
+            }
+        }
+
+        return Promise.reject(error);
+    }
 );

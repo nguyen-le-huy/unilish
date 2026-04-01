@@ -91,12 +91,22 @@ const moduleEssaySchema = z.object({
     promptSource: z.enum(['ai_generated', 'library']).default('ai_generated'),
 });
 
+const speakingTopicSchema = z
+    .union([
+        z.string().trim().min(1),
+        z.object({
+            text: z.string().trim().min(1),
+            audioKey: z.string().trim().min(1).optional(),
+        }),
+    ])
+    .transform((topic) => (typeof topic === 'string' ? { text: topic } : topic));
+
 const speakingPartsSchema = z.object({
     warmupMinutes: z.number().min(0).default(1),
     part1: z.object({
         minutes: z.number().min(1),
         questionsRange: z.tuple([z.number().int().min(1), z.number().int().min(1)]),
-        topics: z.array(z.string().trim()),
+        topics: z.array(speakingTopicSchema).default([]),
     }),
     part2: z.object({
         minutes: z.number().min(1),
@@ -105,13 +115,15 @@ const speakingPartsSchema = z.object({
             z.object({
                 level: z.enum(['low', 'mid', 'high']),
                 text: z.string().trim().min(1),
+                audioKey: z.string().trim().min(1).optional(),
+                shouldSay: z.array(z.string().trim().min(1)).default([]),
             }),
         ),
     }),
     part3: z.object({
         minutes: z.number().min(1),
         questionsRange: z.tuple([z.number().int().min(1), z.number().int().min(1)]),
-        topics: z.array(z.string().trim()).default([]),
+        topics: z.array(speakingTopicSchema).default([]),
     }),
 });
 

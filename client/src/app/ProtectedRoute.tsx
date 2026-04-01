@@ -18,6 +18,7 @@ const coalesceNonEmpty = (...values: Array<string | null | undefined>) => {
 
 export const ProtectedRoute = () => {
     const location = useLocation();
+    const hasHydrated = useAuthStore((state) => state.hasHydrated);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const token = useAuthStore((state) => state.token);
     const user = useAuthStore((state) => state.user);
@@ -30,14 +31,21 @@ export const ProtectedRoute = () => {
     useSyncAuthUser();
 
     useEffect(() => {
+        if (!hasHydrated) {
+            return;
+        }
+
         if (isAuthenticated && !hasAuthCredentials) {
             logout();
         }
-    }, [hasAuthCredentials, isAuthenticated, logout]);
+    }, [hasHydrated, hasAuthCredentials, isAuthenticated, logout]);
 
     const onboardingGuardUser = user
         ? {
             ...user,
+            // Support both backend fields (learningLanguageId/learningGoalId) and client draft
+            learningLanguageId: user.learningLanguageId,
+            learningGoalId: user.learningGoalId,
             nativeLanguage: coalesceNonEmpty(user.nativeLanguage, draftLanguageCode),
             learningGoal: coalesceNonEmpty(user.learningGoal, draftLearningGoal),
         }
@@ -49,10 +57,18 @@ export const ProtectedRoute = () => {
     const isPlacementTestPage = location.pathname.startsWith(PATHS.DASHBOARD.PLACEMENT_TEST.ROOT);
 
     useEffect(() => {
+        if (!hasHydrated) {
+            return;
+        }
+
         if (hasAuthCredentials && !requiredOnboardingPath && (draftLanguageCode || draftLearningGoal)) {
             clearOnboardingDraft();
         }
-    }, [clearOnboardingDraft, draftLanguageCode, draftLearningGoal, hasAuthCredentials, requiredOnboardingPath]);
+    }, [clearOnboardingDraft, draftLanguageCode, draftLearningGoal, hasHydrated, hasAuthCredentials, requiredOnboardingPath]);
+
+    if (!hasHydrated) {
+        return null;
+    }
 
     if (!hasAuthCredentials) {
         return <Navigate to={PATHS.AUTH.LOGIN} replace />;

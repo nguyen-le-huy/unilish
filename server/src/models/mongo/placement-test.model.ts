@@ -104,11 +104,20 @@ export interface IModuleEssay {
     promptSource: 'ai_generated' | 'library';
 }
 
+export interface ISpeakingQuestion {
+    text: string;
+    audioKey?: string;
+}
+
 export interface ISpeakingParts {
     warmupMinutes: number;
-    part1: { minutes: number; questionsRange: [number, number]; topics: string[] };
-    part2: { minutes: number; prepSeconds: number; cueCards: { level: 'low' | 'mid' | 'high'; text: string }[] };
-    part3: { minutes: number; questionsRange: [number, number]; topics: string[] };
+    part1: { minutes: number; questionsRange: [number, number]; topics: ISpeakingQuestion[] };
+    part2: {
+        minutes: number;
+        prepSeconds: number;
+        cueCards: { level: 'low' | 'mid' | 'high'; text: string; audioKey?: string; shouldSay?: string[] }[];
+    };
+    part3: { minutes: number; questionsRange: [number, number]; topics: ISpeakingQuestion[] };
 }
 
 export interface IModuleSpeaking {
@@ -266,7 +275,15 @@ const SpeakingPartsSchema = new mongoose.Schema(
         part1: {
             minutes: { type: Number, default: 5 },
             questionsRange: { type: [Number], default: [4, 6] },
-            topics: { type: [String], default: ['Work', 'Study', 'Hobbies', 'Family'] },
+            topics: {
+                type: [
+                    {
+                        text: { type: String, required: true },
+                        audioKey: { type: String, default: null },
+                    },
+                ],
+                default: [],
+            },
         },
         part2: {
             minutes: { type: Number, default: 4 },
@@ -276,6 +293,8 @@ const SpeakingPartsSchema = new mongoose.Schema(
                     {
                         level: { type: String, enum: ['low', 'mid', 'high'] },
                         text: { type: String },
+                        audioKey: { type: String, default: null },
+                        shouldSay: { type: [String], default: [] },
                     },
                 ],
                 default: [],
@@ -284,7 +303,15 @@ const SpeakingPartsSchema = new mongoose.Schema(
         part3: {
             minutes: { type: Number, default: 5 },
             questionsRange: { type: [Number], default: [2, 3] },
-            topics: { type: [String], default: [] },
+            topics: {
+                type: [
+                    {
+                        text: { type: String, required: true },
+                        audioKey: { type: String, default: null },
+                    },
+                ],
+                default: [],
+            },
         },
     },
     { _id: false },

@@ -9,7 +9,7 @@
     gap: 10px;
     cursor: pointer;
     transition: all 0.3s ease;
-    border: none;
+    border: 1px solid transparent;
     outline: none;
     padding: 15px 20px;
     position: relative;

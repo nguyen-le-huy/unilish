@@ -7,15 +7,20 @@ type ButtonSize = 'md' | 'full';
 type ButtonPadding = 'A' | 'B' | string;
 type ButtonIconWidth = number | string;
 type ButtonFontSize = number | string;
+type ButtonIconPosition = 'left' | 'right';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: ButtonVariant;
     size?: ButtonSize;
     leftIcon?: React.ReactNode | string;
     rightIcon?: React.ReactNode | string;
+    icon?: React.ReactNode | string;
+    iconPosition?: ButtonIconPosition;
     padding?: ButtonPadding;
     iconWidth?: ButtonIconWidth;
     fontSize?: ButtonFontSize;
+    borderColor?: string;
+    textColor?: string;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -24,9 +29,13 @@ export const Button: React.FC<ButtonProps> = ({
     size = 'md',
     leftIcon,
     rightIcon,
+    icon,
+    iconPosition = 'left',
     padding,
     iconWidth = 24,
     fontSize = 16,
+    borderColor,
+    textColor,
     className,
     style,
     ...props
@@ -36,21 +45,33 @@ export const Button: React.FC<ButtonProps> = ({
         return size === 'full' ? 'B' : 'A';
     }, [padding, size]);
 
+    const resolvedLeftIcon = useMemo(() => {
+        if (leftIcon) return leftIcon;
+        if (iconPosition === 'left') return icon;
+        return null;
+    }, [icon, iconPosition, leftIcon]);
+
+    const resolvedRightIcon = useMemo(() => {
+        if (rightIcon) return rightIcon;
+        if (iconPosition === 'right') return icon;
+        return null;
+    }, [icon, iconPosition, rightIcon]);
+
     const iconContent = useMemo(() => {
-        if (!leftIcon) return null;
-        if (typeof leftIcon === 'string') {
-            return <img src={leftIcon} alt="" className={styles.iconImg} />;
+        if (!resolvedLeftIcon) return null;
+        if (typeof resolvedLeftIcon === 'string') {
+            return <img src={resolvedLeftIcon} alt="" className={styles.iconImg} />;
         }
-        return leftIcon;
-    }, [leftIcon]);
+        return resolvedLeftIcon;
+    }, [resolvedLeftIcon]);
 
     const rightIconContent = useMemo(() => {
-        if (!rightIcon) return null;
-        if (typeof rightIcon === 'string') {
-            return <img src={rightIcon} alt="" className={styles.iconImg} />;
+        if (!resolvedRightIcon) return null;
+        if (typeof resolvedRightIcon === 'string') {
+            return <img src={resolvedRightIcon} alt="" className={styles.iconImg} />;
         }
-        return rightIcon;
-    }, [rightIcon]);
+        return resolvedRightIcon;
+    }, [resolvedRightIcon]);
 
     const buttonPadding = useMemo(() => {
         if (resolvedPadding === 'A') return '15px 20px';
@@ -78,10 +99,12 @@ export const Button: React.FC<ButtonProps> = ({
         () => ({
             ...style,
             padding: buttonPadding,
+            borderColor: borderColor ?? style?.borderColor,
+            color: textColor ?? style?.color,
             '--button-icon-width': buttonIconWidth,
             '--button-font-size': buttonFontSize,
         }) as React.CSSProperties,
-        [buttonFontSize, buttonIconWidth, buttonPadding, style],
+        [borderColor, buttonFontSize, buttonIconWidth, buttonPadding, style, textColor],
     );
 
     return (

@@ -75,6 +75,14 @@ export interface IModuleEssay {
 export interface ISpeakingCueCard {
     level: 'low' | 'mid' | 'high';
     text: string;
+    audioKey?: string;
+    shouldSay?: string[];
+}
+
+/** A speaking question stored with optional audio reference */
+export interface ISpeakingQuestion {
+    text: string;
+    audioKey?: string;
 }
 
 export interface IModuleSpeaking {
@@ -91,9 +99,9 @@ export interface IModuleSpeaking {
     criteria: string[];
     parts: {
         warmupMinutes: number;
-        part1: { minutes: number; questionsRange: [number, number]; topics: string[] };
+        part1: { minutes: number; questionsRange: [number, number]; topics: ISpeakingQuestion[] };
         part2: { minutes: number; prepSeconds: number; cueCards: ISpeakingCueCard[] };
-        part3: { minutes: number; questionsRange: [number, number]; topics: string[] };
+        part3: { minutes: number; questionsRange: [number, number]; topics: ISpeakingQuestion[] };
     };
 }
 

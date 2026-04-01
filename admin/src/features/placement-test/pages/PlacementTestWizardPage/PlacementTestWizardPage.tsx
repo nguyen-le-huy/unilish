@@ -39,6 +39,48 @@ const DEFAULT_CEFR_MAPPING: ICEFRMapping = {
     ],
 };
 
+const DEFAULT_ESSAY_CRITERIA = ['TR', 'CC', 'LR', 'GRA'];
+const DEFAULT_SPEAKING_CRITERIA = ['fluency', 'lexical', 'grammar', 'pronunciation'];
+
+const sanitizeStringArray = (items: string[] | undefined): string[] =>
+    (items ?? []).map((item) => item.trim()).filter(Boolean);
+
+const normalizeModulesForApi = (modules: IPlacementTestModule[]): IPlacementTestModule[] => {
+    return modules.map((module, index) => {
+        if (module.type === 'mcq') {
+            return {
+                ...module,
+                order: index + 1,
+                showCountdown: module.showCountdown ?? true,
+                allowBackNavigation: module.allowBackNavigation ?? false,
+                adaptive: module.adaptive ?? true,
+            };
+        }
+
+        if (module.type === 'essay') {
+            const criteria = sanitizeStringArray(module.criteria);
+            return {
+                ...module,
+                order: index + 1,
+                criteria: criteria.length > 0 ? criteria : DEFAULT_ESSAY_CRITERIA,
+                secureMode: {
+                    disablePaste: module.secureMode?.disablePaste ?? true,
+                    disableSpellcheck: module.secureMode?.disableSpellcheck ?? true,
+                },
+            };
+        }
+
+        const criteria = sanitizeStringArray(module.criteria);
+        return {
+            ...module,
+            order: index + 1,
+            totalMinutes: Math.max(1, module.totalMinutes ?? 15),
+            silenceThresholdSeconds: Math.min(30, Math.max(1, module.silenceThresholdSeconds ?? 5)),
+            criteria: criteria.length > 0 ? criteria : DEFAULT_SPEAKING_CRITERIA,
+        };
+    });
+};
+
 const DEFAULT_TEST_MODULES: IPlacementTestModule[] = [
     {
         order: 1,
@@ -68,7 +110,7 @@ const DEFAULT_TEST_MODULES: IPlacementTestModule[] = [
         criteria: ['TR', 'CC', 'LR', 'GRA'],
         wordLimits: { low: 150, mid: 250, high: 250 },
         topicsByLevel: { low: [], mid: [], high: [] },
-        secureMode: { disablePaste: true, disableSpellcheck: false },
+        secureMode: { disablePaste: true, disableSpellcheck: true },
         promptSource: 'ai_generated',
     },
     {
@@ -193,17 +235,18 @@ export default function PlacementTestWizardPage() {
     }, [step1Data.name, step1Data.settings]);
 
     const handleFinalSubmit = useCallback((modulePayload: IPlacementTestModule[]) => {
-        setModules(modulePayload);
+        const normalizedModules = normalizeModulesForApi(modulePayload);
+        setModules(normalizedModules);
 
         const payload: ICreatePlacementTestPayload = {
             ...(step1Data as ICreatePlacementTestPayload),
-            modules: modulePayload,
+            modules: normalizedModules,
             cefrMapping,
         };
 
         if (isEditMode && id) {
             updateTest(
-                { id, payload: { modules: modulePayload, cefrMapping, ...step1Data } },
+                { id, payload: { modules: normalizedModules, cefrMapping, ...step1Data } },
                 {
                     onSuccess: () => {
                         clearDraft();

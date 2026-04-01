@@ -16,6 +16,8 @@ const MarketingHomePage = React.lazy(() => import('@/features/marketing/pages/ho
 const OTPPage = React.lazy(() => import('@/features/auth/pages/OTPVerifyPage/OTPVerifyPage'));
 const ListeningReadingPage = React.lazy(() => import('@/features/dashboard/placement-test'));
 const AuthSuccessPage = React.lazy(() => import('@/features/auth/pages/AuthSuccessPage/AuthSuccessPage'));
+const WrittingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Writting/Writting'));
+const SpeakingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Speaking/Speaking'));
 
 export const router = createBrowserRouter([
     {
@@ -113,10 +115,27 @@ export const router = createBrowserRouter([
                             </Suspense>
                         ),
                     },
+                    {
+                        path: 'writting',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <WrittingPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'speaking',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <SpeakingPage />
+                            </Suspense>
+                        ),
+                    },
                 ],
             },
         ],
     },
+
     {
         path: '*',
         element: <div>404 Not Found (This page is being built...)</div>,

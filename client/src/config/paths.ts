@@ -13,6 +13,8 @@ export const PATHS = {
     DASHBOARD: {
         ROOT: '/dashboard',
         HOME: '/dashboard',
+        WRITTING: '/dashboard/writting',
+        SPEAKING: '/dashboard/speaking',
         LEARNING: '/dashboard/learning',
         GOAL_SELECTION: '/dashboard/goal-selection',
         LANGUAGE_SELECTION: '/dashboard/language-selection',

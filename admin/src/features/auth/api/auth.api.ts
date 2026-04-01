@@ -8,14 +8,17 @@ export interface AuthApiResponse {
     message: string;
     data: {
         user: User;
-        token: string;
+        accessToken: string;
+        refreshToken?: string;
+        // Backward compatibility for older API payloads.
+        token?: string;
     };
 }
 
 /**
  * Admin login API call
  * @param credentials - Email and password
- * @returns Auth response with user and token
+ * @returns Auth response with user and access token
  */
 export const loginApi = async (credentials: LoginFormData): Promise<AuthApiResponse> => {
     const response = await apiClient.post<AuthApiResponse>('/auth/login', credentials);

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import GoogleLogo from '@/assets/images/auth/google.svg';
@@ -12,6 +12,7 @@ import { useLogin } from '../../hooks/useLogin';
 import { LoginPayload, LoginSchema } from '../../types';
 import { Link } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
+import { toast } from 'sonner';
 
 const LoginForm = () => {
     const { register, handleSubmit, formState: { errors } } = useForm<LoginPayload>({
@@ -24,8 +25,31 @@ const LoginForm = () => {
         login(data);
     }, [login]);
 
+    useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        const errorCode = searchParams.get('error');
+
+        if (errorCode === 'cancelled') {
+            toast.error('Đăng nhập Google đã bị hủy');
+        } else if (errorCode === 'oauth_failed') {
+            toast.error('Đăng nhập Google thất bại. Vui lòng thử lại.');
+        }
+
+        if (!errorCode) {
+            return;
+        }
+
+        searchParams.delete('error');
+        const nextQuery = searchParams.toString();
+        const nextUrl = nextQuery
+            ? `${window.location.pathname}?${nextQuery}`
+            : window.location.pathname;
+
+        window.history.replaceState(null, '', nextUrl);
+    }, []);
+
     const signInWithGoogle = () => {
-        window.location.href = `${env.API_URL}/auth/google`;
+        window.location.href = `${env.API_URL}/v1/auth/google`;
     };
 
     return (

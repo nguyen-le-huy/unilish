@@ -19,8 +19,8 @@ export const useLogin = () => {
     return useMutation({
         mutationFn: (data: LoginPayload) => login(data),
         onSuccess: (data) => {
-            setAuth(data.user, data.token);
-            toast.success('Signed in successfully');
+            setAuth(data.user, data.accessToken, data.refreshToken);
+            toast.success('Đăng nhập thành công');
             navigate(getPostAuthRedirectPath(data.user));
         },
         onError: (error: AxiosError<ApiErrorResponse>, variables) => {
@@ -28,11 +28,11 @@ export const useLogin = () => {
 
             if (!message) {
                 if (!error.response) {
-                    message = 'Cannot connect to server. Please check backend/CORS and try again.';
+                    message = 'Không thể kết nối đến server. Vui lòng kiểm tra backend/CORS và thử lại.';
                 } else if (error.response.status === 401) {
                     message = 'Email hoặc mật khẩu không đúng';
                 } else {
-                    message = 'Failed to sign in';
+                    message = 'Đăng nhập thất bại';
                 }
             }
 

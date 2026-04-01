@@ -1,0 +1,44 @@
+.intro {
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+}
+
+.manual {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.manual>h1 {
+    font-weight: 500;
+    font-size: 24px;
+}
+
+.title {
+    font-weight: 500;
+    font-size: 18px;
+}
+
+.list>li {
+    font-size: 18px;
+}
+
+.list>li>span {
+    font-weight: 500;
+}

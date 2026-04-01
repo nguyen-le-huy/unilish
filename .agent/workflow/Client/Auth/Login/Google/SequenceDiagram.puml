@@ -1,0 +1,122 @@
+@startuml Google OAuth 2.0 — Đăng ký & Đăng nhập
+title Google OAuth 2.0 — Đăng ký & Đăng nhập
+skinparam sequenceArrowThickness 1.5
+skinparam sequenceGroupBorderThickness 1
+skinparam noteBorderThickness 1
+
+actor User as User
+boundary "Client App\n(Web/Mobile)" as Client
+boundary "Google\nConsent Screen" as Google
+control "Passport.js" as Passport
+control AuthService as AuthService
+control UserService as UserService
+database "MongoDB" as DB
+collections "Redis\n(Token Whitelist)" as Redis
+
+== BƯỚC 1: Khởi tạo OAuth Flow ==
+
+User -> Client: Nhấn "Tiếp tục với Google"
+Client -> Passport: GET /api/v1/auth/google
+Passport -> Google: HTTP 302 Redirect (OAuth URL)
+Google --> User: Hiển thị Google Consent Screen
+
+== BƯỚC 2: Phân nhánh sau Consent Screen ==
+
+alt User nhấn Cancel / Từ chối quyền
+    Google -> Passport: callback?error=access_denied
+    Passport -> Client: Redirect → /auth/login?error=cancelled
+    Client --> User: Hiển thị "Đăng nhập bị hủy"
+
+else User chấp thuận
+    Google -> Passport: callback?code=AUTHORIZATION_CODE
+    Passport -> Google: Đổi code → access_token
+    Passport -> Google: Lấy Google Profile
+
+    == BƯỚC 3: Kiểm tra email_verified ==
+
+    alt email_verified = false
+        Passport -> Client: Redirect → /auth/login?error=oauth_failed
+        Client --> User: Hiển thị lỗi
+    else email_verified = true
+        Passport -> AuthService: findOrCreateFromGoogle(profile)
+        activate AuthService
+
+        == BƯỚC 4: Upsert Strategy ==
+
+        AuthService -> UserService: findByGoogleIdOrEmail()
+        UserService -> DB: findOne()
+        DB --> AuthService: user / null
+
+        alt user = null → Người dùng MỚI
+            AuthService -> UserService: createUser()
+            UserService -> DB: insertOne()
+            DB --> AuthService: newUser
+            AuthService -> AuthService: isNewUser = true
+
+        else user.authProvider = 'google' → User cũ quay lại
+            note over AuthService: Cập nhật avatar, fullName, lastActiveAt
+            AuthService -> UserService: updateUser()
+            UserService -> DB: findOneAndUpdate()
+            DB --> AuthService: updatedUser
+            AuthService -> AuthService: isNewUser = false
+
+        else user.authProvider = 'local' → Liên kết tài khoản
+            note over AuthService: Thêm googleId, cập nhật avatar\nKHÔNG overwrite fullName
+            AuthService -> UserService: updateUser()
+            UserService -> DB: findOneAndUpdate()
+            DB --> AuthService: linkedUser
+            AuthService -> AuthService: isNewUser = false
+        end
+
+        == BƯỚC 5: Phát hành JWT Tokens ==
+
+        AuthService -> AuthService: signAccessToken() → 15 phút
+        AuthService -> AuthService: signRefreshToken() → 7 ngày
+        AuthService -> Redis: Whitelist refreshToken (TTL 7 ngày)
+        Redis --> AuthService: OK
+
+        AuthService --> Passport: { user, accessToken, refreshToken, isNewUser }
+        deactivate AuthService
+
+        == BƯỚC 6: Phản hồi về Client ==
+
+        Passport -> Client: HTTP 302 Redirect → /auth/success\n+ Set-Cookie: refreshToken (HttpOnly, 7 ngày)\n+ URL fragment: #accessToken=...&isNewUser=0|1
+
+        Client -> Client: Đọc accessToken từ fragment\nXóa fragment khỏi URL (chống leak)
+        Client -> Client: Lưu accessToken vào Zustand store\n(memory only, không persist)
+        Client -> Client: GET /users/me + Bearer token\n→ Lấy user profile đầy đủ
+
+        alt isNewUser = true
+            Client --> User: Redirect → /onboarding
+        else isNewUser = false
+            Client --> User: Redirect → /dashboard
+        end
+    end
+end
+
+== BƯỚC 7: App Bootstrap (Khi refresh trang) ==
+
+note over Client
+  accessToken bị mất khi refresh trang
+  (chỉ lưu trong memory)
+  refreshToken vẫn còn trong HttpOnly Cookie
+end note
+
+Client -> Client: useBootstrapAuth() phát hiện\nisAuthenticated=true nhưng token=null
+Client -> AuthService: POST /auth/refresh (gửi Cookie tự động)
+activate AuthService
+AuthService -> Redis: Kiểm tra whitelist
+Redis --> AuthService: valid
+AuthService -> AuthService: signAccessToken() mới
+AuthService --> Client: { accessToken }
+deactivate AuthService
+Client -> Client: Cập nhật store: token = newAccessToken
+Client --> User: App hoạt động bình thường
+
+note over Client
+  Axios 401 Interceptor (luôn hoạt động):
+  Request gặp 401 → tự gọi POST /auth/refresh
+  → retry request gốc
+  Nếu refresh thất bại → logout + redirect /auth/login
+end note
+@enduml

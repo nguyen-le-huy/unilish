@@ -12,8 +12,11 @@ const envSchema = z.object({
     MONGO_URI: z.string().min(1, 'MONGO_URI is required'),
     REDIS_URI: z.string().optional(),
     CLIENT_URL: z.string().default('http://localhost:5173'),
+    ADMIN_URL: z.string().default('http://localhost:5174'),
+    SERVER_URL: z.string().default('http://localhost:5432'),
     JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
     JWT_EXPIRES_IN: z.string().default('7d'),
+    JWT_REFRESH_SECRET: z.string().optional(), // Falls back to JWT_SECRET if not set
 
     // Cloudinary
     CLOUDINARY_CLOUD_NAME: z.string().optional(),

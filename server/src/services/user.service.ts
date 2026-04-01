@@ -4,7 +4,10 @@ import type { updateProfileSchema, getUsersSchema, updateSubscriptionSchema } fr
 import { AppError } from '../utils/app-error.js';
 import { HttpStatus } from '../constants/http-status.js';
 import { UserMongoRepository } from '../repositories/mongo/user.mongo.repository.js';
+import { LanguageMongoRepository } from '../repositories/mongo/language.mongo.repository.js';
+import { LearningGoalMongoRepository } from '../repositories/mongo/learning-goal.mongo.repository.js';
 import { logger } from '../utils/logger.js';
+import type { IUser } from '../models/mongo/user.model.js';
 
 type UpdateProfileInput = z.infer<typeof updateProfileSchema>['body'];
 type GetUsersQuery = z.infer<typeof getUsersSchema>['query'];
@@ -12,15 +15,73 @@ type UpdateSubscriptionInput = z.infer<typeof updateSubscriptionSchema>['body'];
 
 export class UserService {
     constructor(
-        private readonly userRepo: UserMongoRepository
+        private readonly userRepo: UserMongoRepository,
+        private readonly languageRepo: LanguageMongoRepository,
+        private readonly learningGoalRepo: LearningGoalMongoRepository
     ) { }
 
+    async checkEmailExists(email: string): Promise<boolean> {
+        const user = await this.userRepo.findByEmail(email);
+        return Boolean(user);
+    }
+
+    async createUser(data: Partial<IUser>): Promise<IUser> {
+        return this.userRepo.create(data);
+    }
+
+    async findByEmail(email: string): Promise<IUser | null> {
+        return this.userRepo.findByEmail(email);
+    }
+
+    async findByEmailWithPassword(email: string): Promise<IUser | null> {
+        return this.userRepo.findByEmailWithPassword(email);
+    }
+
+    async findByEmailWithOTP(email: string): Promise<IUser | null> {
+        return this.userRepo.findByEmailWithOTP(email);
+    }
+
+    async updateUser(userId: string, data: Partial<IUser>): Promise<IUser | null> {
+        return this.userRepo.update(userId, data);
+    }
+
+    async markVerified(userId: string): Promise<IUser | null> {
+        return this.userRepo.update(userId, {
+            isVerified: true,
+            otp: null,
+            otpExpires: null,
+        });
+    }
+
+    async findByGoogleIdOrEmail(googleId: string, email: string): Promise<IUser | null> {
+        return this.userRepo.findByGoogleIdOrEmail(googleId, email);
+    }
+
+    async findById(userId: string): Promise<IUser | null> {
+        return this.userRepo.findById(userId);
+    }
+
     async updateProfile(userId: string, data: UpdateProfileInput) {
-        // Use Model directly if specific options like runValidators are needed, 
-        // OR rely on Zod and use repo.update(). 
-        // Here we stick to repo.update for consistency, assuming Zod handles validation.
-        // If strictly need runValidators, we can use this.userRepo.model (as it is protected/public depending on implementation, usually protected so technically not accessible unless getter used? BaseMongoRepository defines protected model. So subclasses can access it. But UserService is not a subclass.
-        // BUT, we can just use the update method of the repo.
+        // Transform nativeLanguage (code) to learningLanguageId (ObjectId)
+        if (data.nativeLanguage) {
+            const language = await this.languageRepo.findOne({ code: data.nativeLanguage });
+            if (language) {
+                (data as any).learningLanguageId = language._id;
+            }
+            // Remove nativeLanguage from the update payload
+            delete (data as any).nativeLanguage;
+        }
+
+        // Transform learningGoal (slug) to learningGoalId (ObjectId)
+        if (data.learningGoal) {
+            const goal = await this.learningGoalRepo.findBySlug(data.learningGoal);
+            if (goal) {
+                (data as any).learningGoalId = goal._id;
+            }
+            // Remove learningGoal from the update payload
+            delete (data as any).learningGoal;
+        }
+
         const user = await this.userRepo.update(userId, data);
 
         if (!user) {
@@ -111,4 +172,8 @@ export class UserService {
     }
 }
 
-export const userService = new UserService(new UserMongoRepository());
+export const userService = new UserService(
+    new UserMongoRepository(),
+    new LanguageMongoRepository(),
+    new LearningGoalMongoRepository()
+);

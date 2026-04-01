@@ -13,13 +13,10 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import apiClient from '@/lib/axios';
 import type { ApiResponse } from '@/types/api';
-import { ESSAY_CRITERIA_OPTIONS } from '../../../constants';
 import type { IModuleEssay } from '../../../types';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
@@ -28,10 +25,7 @@ const essaySchema = z.object({
     name: z.string().min(1, 'Bắt buộc'),
     timeLimitMinutes: z.coerce.number().min(1),
     aiModel: z.string().min(1),
-    criteria: z.array(z.string()).min(1, 'Chọn ít nhất 1 tiêu chí'),
     wordLimit: z.coerce.number().min(1).default(250),
-    disablePaste: z.boolean().default(true),
-    disableSpellcheck: z.boolean().default(false),
     topicsText: z.string().default(''),
     promptImageUrl: z.union([z.string().trim().url('URL ảnh không hợp lệ'), z.literal('')]).default(''),
 });
@@ -79,10 +73,7 @@ export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Prop
             name: defaultValues?.name ?? 'Writing Task',
             timeLimitMinutes: defaultValues?.timeLimitMinutes ?? 60,
             aiModel: defaultValues?.aiModel ?? 'gpt-4o-mini',
-            criteria: defaultValues?.criteria ?? ['TR', 'CC', 'LR', 'GRA'],
             wordLimit: resolvedWordLimit,
-            disablePaste: defaultValues?.secureMode?.disablePaste ?? true,
-            disableSpellcheck: defaultValues?.secureMode?.disableSpellcheck ?? false,
             topicsText: toMultilineText(uniqueTopics),
             promptImageUrl: defaultValues?.promptImageUrl ?? '',
         },
@@ -115,6 +106,7 @@ export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Prop
             order,
             type: 'essay',
             promptSource: sharedTopics.length ? 'library' : 'ai_generated',
+            criteria: defaultValues?.criteria ?? ['TR', 'CC', 'LR', 'GRA'],
             topicsByLevel: {
                 low: sharedTopics,
                 mid: sharedTopics,
@@ -123,17 +115,16 @@ export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Prop
             name: values.name,
             timeLimitMinutes: values.timeLimitMinutes,
             aiModel: values.aiModel,
-            criteria: values.criteria,
             wordLimits: {
                 low: values.wordLimit,
                 mid: values.wordLimit,
                 high: values.wordLimit,
             },
-            ...(normalizedPromptImageUrl ? { promptImageUrl: normalizedPromptImageUrl } : {}),
-            secureMode: {
-                disablePaste: values.disablePaste,
-                disableSpellcheck: values.disableSpellcheck,
+            secureMode: defaultValues?.secureMode ?? {
+                disablePaste: true,
+                disableSpellcheck: true,
             },
+            ...(normalizedPromptImageUrl ? { promptImageUrl: normalizedPromptImageUrl } : {}),
         });
     }
 
@@ -159,40 +150,11 @@ export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Prop
 
                 </div>
 
-                {/* Criteria */}
-                <FormField control={form.control} name="criteria" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Tiêu chí chấm</FormLabel>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                            {ESSAY_CRITERIA_OPTIONS.map((opt) => {
-                                const selected = field.value.includes(opt.value);
-                                return (
-                                    <Badge
-                                        key={opt.value}
-                                        variant={selected ? 'default' : 'outline'}
-                                        className="cursor-pointer select-none"
-                                        onClick={() => {
-                                            field.onChange(
-                                                selected
-                                                    ? field.value.filter((v: string) => v !== opt.value)
-                                                    : [...field.value, opt.value],
-                                            );
-                                        }}
-                                    >
-                                        {opt.label}
-                                    </Badge>
-                                );
-                            })}
-                        </div>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-
                 <Separator />
 
                 <FormField control={form.control} name="wordLimit" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Giới hạn từ (one for all)</FormLabel>
+                        <FormLabel>Số từ tối thiểu (one for all)</FormLabel>
                         <FormControl><Input type="number" min={1} className="h-9 max-w-xs" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
@@ -271,24 +233,6 @@ export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Prop
                             <FormMessage />
                         </FormItem>
                     )} />
-                </div>
-
-                <Separator />
-
-                {/* Secure mode */}
-                <div className="flex gap-6">
-                    {(['disablePaste', 'disableSpellcheck'] as const).map((key) => (
-                        <FormField key={key} control={form.control} name={key} render={({ field }) => (
-                            <FormItem className="flex items-center gap-2">
-                                <FormControl>
-                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                </FormControl>
-                                <FormLabel className="!mt-0 text-xs">
-                                    {key === 'disablePaste' ? 'Tắt dán văn bản' : 'Tắt spellcheck'}
-                                </FormLabel>
-                            </FormItem>
-                        )} />
-                    ))}
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">

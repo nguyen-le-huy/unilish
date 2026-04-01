@@ -1,0 +1,1 @@
+export { SubmissionSuccessCard } from './SubmissionSuccessCard';

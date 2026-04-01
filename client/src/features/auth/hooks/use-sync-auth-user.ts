@@ -22,7 +22,9 @@ export const useSyncAuthUser = () => {
   const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
 
-  const hasAuthCredentials = isAuthenticated && (Boolean(token) || Boolean(user));
+  // Do not call /users/me when only persisted user exists but token has not
+  // been restored yet after reload. That case can cause a false 401 and logout.
+  const hasAuthCredentials = isAuthenticated && Boolean(token);
 
   const query = useQuery<User, AxiosError>({
     queryKey: ['auth', 'me'],
@@ -38,6 +40,10 @@ export const useSyncAuthUser = () => {
     if (query.isSuccess) {
       const mergedUser: User = {
         ...query.data,
+        // Preserve backend ObjectId fields
+        learningLanguageId: query.data.learningLanguageId,
+        learningGoalId: query.data.learningGoalId,
+        // Merge with client-side fields for backward compatibility
         nativeLanguage: pickNonEmpty(query.data.nativeLanguage, user?.nativeLanguage),
         learningGoal: pickNonEmpty(query.data.learningGoal, user?.learningGoal),
         currentLevel: query.data.currentLevel ?? user?.currentLevel,

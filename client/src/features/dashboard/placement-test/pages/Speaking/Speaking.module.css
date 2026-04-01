@@ -1,0 +1,117 @@
+.speaking {
+    padding: 20px;
+}
+
+.content {
+    background-color: var(--grey);
+    border-radius: 20px;
+    padding: 20px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+}
+
+.closeIcon {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    transition: all 0.3s ease;
+}
+
+.closeIcon:hover {
+    transform: rotate(90deg);
+}
+
+.header>h2 {
+    font-weight: 500;
+}
+
+.body {
+    background-color: white;
+    border-radius: 20px;
+    padding: 20px;
+    display: grid;
+    place-items: center;
+    padding: 100px 0;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.buttonList {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.partButton {
+    background-color: transparent;
+}
+
+.partButton>span {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.partTitle {
+    line-height: 1;
+}
+
+.partQuestionList {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.partQuestionNumber {
+    width: 25px;
+    height: 25px;
+    border: 1px solid var(--dark-grey);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 400;
+    line-height: 1;
+}
+
+@media (max-width: 1200px) {
+    .partTitle,
+    .partQuestionNumber {
+        font-size: 36px;
+    }
+
+    .partQuestionNumber {
+        width: 52px;
+        height: 52px;
+    }
+}
+
+@media (max-width: 768px) {
+    .partButton {
+        min-height: 64px;
+        padding: 0 18px;
+        border-width: 2px;
+        border-radius: 18px;
+        gap: 12px;
+    }
+
+
+
+    .partQuestionList {
+        gap: 10px;
+    }
+
+    .partQuestionNumber {
+        width: 36px;
+        height: 36px;
+        border-width: 2px;
+    }
+}

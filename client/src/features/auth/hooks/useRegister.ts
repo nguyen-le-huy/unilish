@@ -16,11 +16,11 @@ export const useRegister = () => {
     return useMutation({
         mutationFn: (data: RegisterPayload) => register(data),
         onSuccess: (response: RegisterResponse) => {
-            toast.success(response.message || 'Registered successfully. Please check your email for OTP.');
+            toast.success(response.message || 'Đăng ký thành công. Vui lòng kiểm tra email để lấy mã OTP.');
             navigate(PATHS.AUTH.OTP, { state: { email: response.email } });
         },
         onError: (error: AxiosError<ApiErrorResponse>) => {
-            const message = error.response?.data?.message || 'Failed to register';
+            const message = error.response?.data?.message || 'Đăng ký thất bại';
             toast.error(message);
         },
     });
