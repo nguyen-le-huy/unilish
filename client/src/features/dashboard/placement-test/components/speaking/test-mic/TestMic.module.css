@@ -1,0 +1,170 @@
+.testMic {
+	max-width: 1200px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 28px;
+	width: 100%;
+}
+
+.manual {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 28px;
+}
+
+.content {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	max-width: 760px;
+}
+
+.list {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.manual>h1 {
+	font-weight: 500;
+	font-size: 28px;
+}
+
+.title {
+	font-weight: 500;
+	font-size: 18px;
+}
+
+.list>li {
+	font-size: 18px;
+	line-height: 1.5;
+}
+
+.list>li>span {
+	font-weight: 500;
+}
+
+.actionButtons {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 16px;
+	min-height: 48px;
+}
+
+.reviewPanel {
+	width: 100%;
+	max-width: 900px;
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+}
+
+.reviewDivider {
+	height: 1px;
+	width: 100%;
+	background: #d9d9d9;
+}
+
+.defaultAudio {
+	width: 100%;
+	align-self: center;
+}
+
+.reviewActions {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+}
+
+.tryAgainBtn {
+	padding: 10px 20px;
+	border-radius: 10px;
+	border: 1px solid #848484;
+	background: #fff;
+	font-size: 18px;
+	font-weight: 500;
+}
+
+.timerButton {
+	box-shadow: 0 0 0 2px rgba(23, 101, 42, 0.25);
+}
+
+.timerAura {
+	position: relative;
+	display: inline-flex;
+	border-radius: 10px;
+	isolation: isolate;
+}
+
+.timerAura::before,
+.timerAura::after {
+	content: '';
+	position: absolute;
+	inset: -8px;
+	border-radius: 16px;
+	border: 2px solid rgba(23, 101, 42, 0.45);
+	animation: stopPulse 1.8s ease-out infinite;
+	z-index: -1;
+}
+
+.timerAura::after {
+	animation-delay: 0.9s;
+}
+
+@keyframes stopPulse {
+	0% {
+		opacity: 0.5;
+		transform: scale(1);
+	}
+	100% {
+		opacity: 0;
+		transform: scale(1.18);
+	}
+}
+
+.deniedHint,
+.grantedHint {
+	font-size: 16px;
+	font-weight: 500;
+	text-align: center;
+	max-width: 760px;
+}
+
+.deniedHint {
+	color: #cf1717;
+}
+
+.grantedHint {
+	color: var(--green);
+}
+
+@media (max-width: 768px) {
+	.manual>h1 {
+		font-size: 28px;
+	}
+
+	.list>li {
+		font-size: 22px;
+	}
+
+	.actionButtons {
+		flex-direction: column;
+	}
+
+	.actionButtons button {
+		width: 100%;
+	}
+
+	.reviewActions {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.reviewActions :global(button) {
+		width: 100%;
+	}
+}

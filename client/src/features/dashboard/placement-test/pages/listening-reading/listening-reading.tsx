@@ -18,11 +18,17 @@ import { useAnswerState } from '../../hooks/use-answer-state';
 import { useAutosave } from '../../hooks/use-autosave';
 import { useCreatePlacementAttemptMutation } from '../../hooks/use-create-placement-attempt-mutation';
 import { useSavePlacementAnswersMutation } from '../../hooks/use-save-placement-answers-mutation';
+import { useCreatePlacementSessionMutation } from '../../hooks/use-create-placement-session-mutation';
 import { useSubmitPlacementAttemptMutation } from '../../hooks/use-submit-placement-attempt-mutation';
 import { useTestTimer } from '../../hooks/use-test-timer';
 import { mapAttemptToParts } from '../../utils/question-mapper';
 import { formatCountdownLabel } from '../../utils/timer';
 import { SubmissionSuccessCard } from '@/components/core/SubmissionSuccessCard';
+import {
+    usePlacementTestStore,
+    type IModuleEssay,
+    type IModuleSpeaking,
+} from '@/stores/placement-test.store';
 
 const getErrorStatus = (error: unknown): number | undefined => {
     if (!isAxiosError<ApiErrorResponse>(error)) {
@@ -41,6 +47,88 @@ interface SubmissionSummary {
     submittedQuestions: number;
     totalQuestions: number;
 }
+
+interface RuntimeEssayModuleCandidate {
+    type: string;
+    timeLimitMinutes?: number;
+    promptImageUrl?: string;
+    aiModel?: string;
+    topicsByLevel?: {
+        low?: string[];
+        mid?: string[];
+        high?: string[];
+    };
+    wordLimits?: {
+        low?: number;
+        mid?: number;
+        high?: number;
+    };
+}
+
+interface RuntimeSpeakingModuleCandidate {
+    type: string;
+    config?: {
+        ttsModel?: string;
+        ttsVoice?: string;
+        gradingModel?: string;
+        silenceThreshold?: number;
+    };
+    parts?: {
+        part1?: {
+            questions?: string[];
+            questionsRange?: { min?: number; max?: number };
+        };
+        part2?: {
+            topics?: string[];
+            questionsRange?: { min?: number; max?: number };
+        };
+        part3?: {
+            questions?: string[];
+            questionsRange?: { min?: number; max?: number };
+        };
+    };
+}
+
+const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
+    return typeof value === 'object' && value !== null;
+};
+
+const toEssayModule = (value: unknown): IModuleEssay | null => {
+    if (!isObjectRecord(value)) {
+        return null;
+    }
+
+    const candidate = value as unknown as RuntimeEssayModuleCandidate;
+    if (candidate.type !== 'essay') {
+        return null;
+    }
+
+    return {
+        type: 'essay',
+        timeLimitMinutes: candidate.timeLimitMinutes,
+        promptImageUrl: candidate.promptImageUrl,
+        aiModel: candidate.aiModel,
+        topicsByLevel: candidate.topicsByLevel,
+        wordLimits: candidate.wordLimits,
+    };
+};
+
+const toSpeakingModule = (value: unknown): IModuleSpeaking | null => {
+    if (!isObjectRecord(value)) {
+        return null;
+    }
+
+    const candidate = value as unknown as RuntimeSpeakingModuleCandidate;
+    if (candidate.type !== 'speaking') {
+        return null;
+    }
+
+    return {
+        type: 'speaking',
+        config: candidate.config,
+        parts: candidate.parts,
+    };
+};
 
 const buildSubmissionSummary = (attemptData: {
     durationSeconds?: number | null;
@@ -74,6 +162,11 @@ const ListeningReading = () => {
     const [activePart, setActivePart] = useState<ToeicPart>(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submissionSummary, setSubmissionSummary] = useState<SubmissionSummary | null>(null);
+    const setTestConfig = usePlacementTestStore((state) => state.setTestConfig);
+    const setAttemptId = usePlacementTestStore((state) => state.setAttemptId);
+    const setSessionId = usePlacementTestStore((state) => state.setSessionId);
+    const setLrRawScore = usePlacementTestStore((state) => state.setLrRawScore);
+    const setCurrentModule = usePlacementTestStore((state) => state.setCurrentModule);
 
     const {
         data: activeTest,
@@ -88,6 +181,7 @@ const ListeningReading = () => {
     const attemptError = createAttemptMutation.error;
 
     const saveAnswersMutation = useSavePlacementAnswersMutation();
+    const createPlacementSessionMutation = useCreatePlacementSessionMutation();
     const submitAttemptMutation = useSubmitPlacementAttemptMutation();
     const { queueSave, flushPendingChanges, cancelScheduledSaves } = useAutosave({
         attemptId: attempt?.attemptId,
@@ -129,6 +223,25 @@ const ListeningReading = () => {
     }, [mapped.partInfos]);
 
     useEffect(() => {
+        const modules = Array.isArray(activeTest?.modules) ? activeTest.modules : [];
+        const essayModule = toEssayModule(activeTest?.essayModule)
+            ?? modules.map(toEssayModule).find((module): module is IModuleEssay => module !== null);
+        const speakingModule = toSpeakingModule(activeTest?.speakingModule)
+            ?? modules.map(toSpeakingModule).find((module): module is IModuleSpeaking => module !== null);
+
+        if (!activeTest?._id || !essayModule || !speakingModule) {
+            return;
+        }
+
+        setTestConfig({
+            placementTestId: activeTest.placementTestId ?? activeTest._id,
+            essayModule,
+            speakingModule,
+            cefrMapping: activeTest.cefrMapping,
+        });
+    }, [activeTest?.cefrMapping, activeTest?._id, activeTest?.essayModule, activeTest?.modules, activeTest?.placementTestId, activeTest?.speakingModule, setTestConfig]);
+
+    useEffect(() => {
         // 401 is handled by the render guard after logout updates auth state.
         const status = getErrorStatus(activeError) ?? getErrorStatus(attemptError);
 
@@ -167,6 +280,25 @@ const ListeningReading = () => {
             cancelScheduledSaves();
             await flushPendingChanges(false);
             const result = await submitAttemptMutation.mutateAsync(attempt.attemptId);
+            const lrRawScore = typeof result.attempt.scoring?.mcqScoreNormalized === 'number'
+                ? Math.round(result.attempt.scoring.mcqScoreNormalized * 100)
+                : result.profileUpdate.placementTestScore;
+
+            const sessionResult = await createPlacementSessionMutation.mutateAsync({
+                lrAttemptId: attempt.attemptId,
+                lrRawScore,
+            });
+
+            if (!sessionResult.sessionId) {
+                toast.error(PT_MESSAGES.submitError);
+                return;
+            }
+
+            setAttemptId(attempt.attemptId);
+            setLrRawScore(lrRawScore);
+            setSessionId(sessionResult.sessionId);
+
+            setCurrentModule('writing');
             setSubmissionSummary(buildSubmissionSummary(result.attempt));
         } catch {
             toast.error(PT_MESSAGES.submitError);
@@ -176,8 +308,13 @@ const ListeningReading = () => {
     }, [
         attempt?.attemptId,
         cancelScheduledSaves,
+        createPlacementSessionMutation,
         flushPendingChanges,
         isSubmitting,
+        setAttemptId,
+        setCurrentModule,
+        setLrRawScore,
+        setSessionId,
         submitAttemptMutation,
     ]);
 
@@ -255,7 +392,7 @@ const ListeningReading = () => {
                             { label: 'Thời gian hoàn thành', value: submissionSummary.completedMinutes ? `${submissionSummary.completedMinutes}p` : '--' },
                             { label: 'Số câu đã nộp', value: `${submissionSummary.submittedQuestions}/${submissionSummary.totalQuestions}` },
                         ]}
-                        onContinue={() => navigate(PATHS.DASHBOARD.HOME)}
+                        onContinue={() => navigate(PATHS.DASHBOARD.PLACEMENT_TEST.WRITING)}
                         description={"Bạn đã nộp thành công phần Listening và Reading.\nVui lòng chuẩn bị cho các phần tiếp theo."}
                         continueLabel="Tiếp tục phần Writing"
                     />

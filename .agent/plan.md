@@ -1,268 +1,515 @@
-# Plan: Fix Google OAuth — Align với SequenceDiagram.puml
+# Kế Hoạch Triển Khai: Smart Placement Test — UniLish
 
-> Phân tích gap giữa code hiện tại và SequenceDiagram, sau đó lên kế hoạch fix.
+> **Mục tiêu:** Triển khai đầy đủ luồng bài kiểm tra đầu vào (Listening & Reading → Writing → Speaking → Result) từ trạng thái hiện tại (một phần là UI mock, một phần có API thật) thành một hệ thống hoàn chỉnh, tích hợp Backend + AI scoring.
 
 ---
 
-## 1. Kết quả phân tích GAP (Code vs Diagram)
+## Tổng Quan Luồng Bài Thi
 
-### ✅ Đã đúng
+```
+[Intro Modal]
+    │
+    ▼
+[Phase 1 – Listening & Reading]  ─── 60 phút, MCQ, Auto-save, API thật (đã có)
+    │  submit → server score L&R
+    ▼
+[Phase 2 – Writing]              ─── 30 phút, Free-text, đề lấy từ DB, gpt-5.4-mini-2026-03-17 chấm
+    │  submit → AI score Writing
+    ▼
+[Phase 3 – Speaking]             ─── ~15 phút, Realtime AI Examiner
+    │  submit → Azure STT + gpt-5.4-mini-2026-03-17 score
+    ▼
+[Result Dashboard]               ─── Spider chart, CEFR, Skill breakdown, AI feedback
+```
 
-| Bước trong Diagram | Code hiện tại |
+---
+
+## Đánh Giá Hiện Trạng (Current State Assessment)
+
+| Module | Frontend | Backend/API |
+|---|---|---|
+| **Listening & Reading** | ✅ Hoàn chỉnh (autosave, timer, MCQ, submit) | ✅ API tồn tại (`/placement-tests/runtime/active`, `/attempts`) |
+| **Writing** | ⚠️ UI shell (hardcode đề, không timer thật, không submit API) | ❌ Chưa có |
+| **Speaking** | ⚠️ UI shell (hardcode câu hỏi, không STT/TTS, không score) | ❌ Chưa có |
+| **Result** | ⚠️ UI shell (hardcode data, không fetch API) | ❌ Chưa có |
+| **Navigation Flow** | ⚠️ Chưa có luồng liên kết L&R → Writing → Speaking → Result | ❌ Chưa có |
+| **Zustand Store** | ⚠️ `onboarding.store.ts` có nhưng chưa lưu attemptId/sessionId giữa các module | — |
+
+---
+
+## Phase 1: Foundation & Navigation Flow *(Ưu tiên cao nhất)*
+
+**Mục tiêu:** Kết nối luồng điều hướng giữa 3 module + tạo Placement Session Store.
+
+### 1.1 — [NEW] `placement-test.store.ts` (Zustand)
+
+**File:** `client/src/stores/placement-test.store.ts`
+
+```typescript
+interface PlacementTestSessionState {
+  // — IDs —
+  sessionId: string | null;            // PlacementSession ID (backend tạo sau LR submit)
+  attemptId: string | null;            // L&R PlacementAttempt ID
+  writingAttemptId: string | null;
+  speakingAttemptId: string | null;
+  currentModule: 'lr' | 'writing' | 'speaking' | 'result' | null;
+
+  // — Scores —
+  lrRawScore: number | null;           // % đúng L&R (adaptive writing level)
+
+  // — Test Config (cached từ Step 0, dùng lại ở Writing & Speaking) —
+  placementTestId: string | null;
+  essayModule: IModuleEssay | null;    // topicsByLevel, wordLimits, promptImageUrl
+  speakingModule: IModuleSpeaking | null; // parts.{part1,part2,part3}, config
+
+  // — Actions —
+  setTestConfig: (config: {
+    placementTestId: string;
+    essayModule: IModuleEssay;
+    speakingModule: IModuleSpeaking;
+  }) => void;
+  setSessionId: (id: string) => void;
+  setAttemptId: (id: string) => void;
+  setLrRawScore: (score: number) => void;
+  setCurrentModule: (module: 'lr' | 'writing' | 'speaking' | 'result') => void;
+  setWritingAttemptId: (id: string) => void;
+  setSpeakingAttemptId: (id: string) => void;
+  clear: () => void;
+}
+```
+
+**Storage:** `sessionStorage` (persist middleware). Đảm bảo không mất state khi refresh tab.
+
+---
+
+### 1.2 — [MODIFY] Router + Routes
+
+**File:** `client/src/app/router.tsx`
+
+Thêm/kiểm tra các routes:
+- `/dashboard/placement-test/lr` → `ListeningReadingPage`
+- `/dashboard/placement-test/writing` → `WritingPage`
+- `/dashboard/placement-test/speaking` → `SpeakingPage`
+- `/dashboard/placement-test/result` → `ResultPage`
+
+Bọc bằng `ProtectedRoute`.
+
+---
+
+### 1.3 — [MODIFY] ListeningReading Page — Navigation sau submit
+
+**File:** `client/src/features/dashboard/placement-test/pages/listening-reading/listening-reading.tsx`
+
+Sau khi submit thành công, `SubmissionSuccessCard` → `onContinue` phải:
+1. Lưu `lrScore + sessionId` vào `placement-test.store`
+2. Navigate tới `/dashboard/placement-test/writing`
+
+*(Hiện tại đang navigate về `PATHS.DASHBOARD.HOME` — sai)*
+
+---
+
+## Phase 2: Writing Module — Full Integration
+
+**Mục tiêu:** Hoàn thiện trang Writing với đề thật, timer, word count, submit lên API, AI chấm điểm.
+
+### 2.1 — [NEW] Writing API Endpoints (Backend — Server)
+
+**Responsibility:** Backend team / hoặc tạo mock trả về đúng shape.
+
+| Method | Path | Mô tả |
+|---|---|---|
+| `POST` | `/placement-sessions/:sessionId/writing/start` | Nhận `lrScore`, xác định level (low/mid/high), **pick random 1 topic từ `essayModule.topicsByLevel[level]`** (không query DB thêm), tạo WritingAttempt, trả về `{ writingAttemptId, prompt, promptImageUrl, timeLimitMinutes, wordLimit, level }` |
+| `POST` | `/placement-sessions/:sessionId/writing/submit` | Submit essay text, trigger BullMQ job chấm AI |
+| `GET` | `/placement-sessions/:sessionId/writing/result` | Poll kết quả chấm (status: `pending/done`) |
+
+**Adaptive Prompt Logic (Backend — no LLM, no extra DB query):**
+```
+// essayModule đã có sẵn trong PTStore từ Step 0 (GET active test)
+lrScore < 45%  → level: "low"  → random(essayModule.topicsByLevel.low)
+lrScore 45–75% → level: "mid"  → random(essayModule.topicsByLevel.mid)
+lrScore > 75%  → level: "high" → random(essayModule.topicsByLevel.high)
+// promptImageUrl lấy từ essayModule.promptImageUrl
+// wordLimit lấy từ essayModule.wordLimits[level]
+// aiModel (grading) lấy từ essayModule.aiModel
+```
+
+> ⚠️ **Đề bài được nhúng sẵn trong `PlacementTest.modules[essay].topicsByLevel`.** Server chỉ pick random + tạo `WritingAttempt`, không query collection nào khác, không gọi LLM.
+
+**AI Grading Payload (aiModel từ essayModule → server):**
+```json
+{
+  "criteria": ["TR", "CC", "LR", "GRA"],
+  "essay": "<user_text>",
+  "prompt": "<question_prompt>",
+  "returnFormat": "json"
+}
+```
+
+---
+
+### 2.2 — [NEW] Writing API Client
+
+**File:** `client/src/features/dashboard/placement-test/api/start-writing-attempt.ts`
+**File:** `client/src/features/dashboard/placement-test/api/submit-writing-attempt.ts`
+**File:** `client/src/features/dashboard/placement-test/api/get-writing-result.ts`
+
+---
+
+### 2.3 — [NEW] Writing Hooks
+
+**File:** `client/src/features/dashboard/placement-test/hooks/use-writing-session.ts`
+
+```typescript
+// Tự động fetch prompt khi trang Writing load
+// Expose: { prompt, timeLimitMinutes, isLoading }
+```
+
+**File:** `client/src/features/dashboard/placement-test/hooks/use-writing-timer.ts`
+- Đếm ngược từ `timeLimitMinutes * 60`
+- Trigger auto-submit khi về 0
+- Persist remaining time vào ref để tránh re-render
+
+**File:** `client/src/features/dashboard/placement-test/hooks/use-writing-submit.ts`
+- Submit essay
+- Poll `/writing/result` mỗi 5s cho đến `status === 'done'`
+- Lưu `writingAttemptId` vào store
+
+---
+
+### 2.4 — [MODIFY] WritingPage — Rewrite
+
+**File:** `client/src/features/dashboard/placement-test/pages/Writting/Writting.tsx`
+
+**Các thay đổi:**
+1. GET active test tại Step 0 → lưu `essayModule`, `speakingModule` vào PTStore
+2. Fetch prompt từ API `/writing/start` (thay hardcode), dùng `essayModule` từ PTStore
+3. Timer countdown thật (dùng `use-writing-timer`)
+4. Word count real-time (split by whitespace)
+5. Minimum `wordLimit` validation trước khi enable nút “Nộp bài”
+6. Submit flow: gọi API → show grading indicator → poll result → show `SubmissionSuccessCard`
+7. `onContinue` → navigate `/dashboard/placement-test/speaking`
+
+---
+
+## Phase 3: Speaking Module — AI Integration
+
+**Mục tiêu:** Kết nối luồng Speaking với AI Examiner (TTS) + Azure STT + scoring thật.
+
+### 3.1 — [NEW] Speaking API Endpoints (Backend)
+
+| Method | Path | Mô tả |
+|---|---|---|
+| `POST` | `/placement-sessions/:sessionId/speaking/start` | Đọc `speakingModule.parts` từ PlacementTest, **random select** questions trong `questionsRange`, tạo SpeakingAttempt với câu hỏi đã chọn + config (ttsModel, ttsVoice, gradingModel, silenceThreshold). **Không gọi LLM để sinh câu hỏi.** |
+| `GET` | `/speaking/examiner-voice` | Nhận `{ audioKey?, text }`. Nếu `audioKey` tồn tại → serve file từ R2 (pre-recorded). Nếu không → TTS synthesis on-the-fly rồi trả stream. |
+| `POST` | `/placement-sessions/:sessionId/speaking/audio-chunk` | Upload audio blob từng đoạn → Azure STT xử lý realtime |
+| `POST` | `/placement-sessions/:sessionId/speaking/submit` | Kết thúc phỏng vấn, trigger BullMQ job scoring bằng `gradingModel` |
+| `GET` | `/placement-sessions/:sessionId/speaking/result` | Poll kết quả (Fluency, Lexical, GRA, Pronunciation + transcript) |
+
+---
+
+### 3.2 — [NEW] Audio Recording Hook
+
+**File:** `client/src/features/dashboard/placement-test/hooks/use-audio-recorder.ts`
+
+```typescript
+// Dùng MediaStream API
+// - startRecording(): void
+// - stopRecording(): Blob
+// - uploadChunk(blob): void  // stream lên server mỗi N giây
+// - isRecording: boolean
+// - permissionState: 'granted' | 'denied' | 'prompt'
+```
+
+---
+
+### 3.3 — [NEW] AI Examiner TTS Hook
+
+**File:** `client/src/features/dashboard/placement-test/hooks/use-examiner-tts.ts`
+
+```typescript
+// Nhận text từ AI, fetch audio stream từ server TTS endpoint
+// Phát audio qua HTMLAudioElement
+// - speak(text: string): Promise<void>
+// - isSpeaking: boolean
+```
+
+---
+
+### 3.4 — [MODIFY] TestMain Component — Connect to API
+
+**File:** `client/src/features/dashboard/placement-test/components/speaking/test-main/TestMain.tsx`
+
+**Hiện tại:** Câu hỏi hardcode, không có audio, không ghi âm.
+
+**Cần thêm:**
+1. Nhận `questionData` từ props (fetch từ API) thay vì hardcode
+2. Tích hợp `use-audio-recorder` → ghi âm khi user đang nói
+3. Tích hợp `use-examiner-tts` → phát câu hỏi từ AI Examiner qua giọng nói
+4. Upload audio chunk sau mỗi câu trả lời
+5. Khi Part 3 kết thúc → gọi `submit speaking` API
+
+---
+
+### 3.5 — [MODIFY] TestMic Component
+
+**File:** `client/src/features/dashboard/placement-test/components/speaking/test-mic/TestMic.tsx`
+
+Thêm permission check thật:
+```typescript
+navigator.mediaDevices.getUserMedia({ audio: true })
+// Nếu denied → hiển thị hướng dẫn enable mic
+// Nếu granted → cho phép vào test
+```
+
+---
+
+### 3.6 — [MODIFY] SpeakingPage — Navigation
+
+**File:** `client/src/features/dashboard/placement-test/pages/Speaking/Speaking.tsx`
+
+`handleContinueAfterSubmit` → navigate `/dashboard/placement-test/result`. Lỳu ý: navigate trước khi speaking grading xong — Result page sẽ tự poll.
+
+---
+
+## Phase 4: Result Dashboard — Full Data Binding
+
+**Mục tiêu:** Thay toàn bộ hardcode bằng data thật từ API, vẽ Radar Chart, tính CEFR.
+
+### 4.1 — [NEW] Result API Endpoint (Backend)
+
+| Method | Path | Mô tả |
+|---|---|---|
+| `GET` | `/placement-sessions/:sessionId/result` | Trả về kết quả tổng hợp 4 kỹ năng + CEFR + AI feedback |
+
+**Response shape:**
+```json
+{
+  "sessionId": "...",
+  "cefr": "B2",
+  "cefrDescription": "Upper-Intermediate",
+  "scores": {
+    "listening": { "rawPercent": 72, "cefr": "B2" },
+    "reading":   { "rawPercent": 68, "cefr": "B1" },
+    "writing":   { "band": 5.5, "cefr": "B1", "criteria": { "TR": 5, "CC": 6, "LR": 5.5, "GRA": 5.5 } },
+    "speaking":  { "band": 6.0, "cefr": "B2", "criteria": { "fluency": 6, "lexical": 6, "grammar": 5.5, "pronunciation": 6.5 } }
+  },
+  "feedback": {
+    "writing": { "strengths": [...], "errors": [...], "tips": [...] },
+    "speaking": { "strengths": [...], "errors": [...], "tips": [...], "transcriptHighlights": [...] }
+  }
+}
+```
+
+---
+
+### 4.2 — [NEW] Result API Client + Hook
+
+**File:** `client/src/features/dashboard/placement-test/api/get-placement-result.ts`
+
+**File:** `client/src/features/dashboard/placement-test/hooks/use-placement-result-query.ts`
+- Poll mỗi 5s nếu `status !== 'ready'` (speaking/writing vẫn đang chấm)
+- Stop polling khi `status === 'ready'`
+
+---
+
+### 4.3 — [NEW] RadarChart Component
+
+**File:** `client/src/features/dashboard/placement-test/components/result/RadarChart/RadarChart.tsx`
+
+- Dùng Canvas API hoặc `recharts` (nếu đã có dependency)
+- 4 trục: Listening, Reading, Writing, Speaking
+- Scale theo CEFR level (A1=1 ... C2=6)
+
+---
+
+### 4.4 — [MODIFY] ResultPage — Full Rewrite
+
+**File:** `client/src/features/dashboard/placement-test/pages/Result/Result.tsx`
+
+**Các thay đổi:**
+1. Fetch `sessionId` từ `placement-test.store`
+2. Poll `use-placement-result-query` cho đến khi sẵn sàng
+3. Loading state: hiển thị skeleton/spinner với message "AI đang chấm điểm..."
+4. Render `RadarChart` với data thật
+5. Render CEFR Level Card
+6. Render Skill Breakdown (4 kỹ năng, bar chart)
+7. Render AI Detailed Feedback (Writing + Speaking)
+8. Nút "Bắt đầu lộ trình học" → navigate Dashboard/Roadmap
+
+---
+
+## Phase 5: Backend Infrastructure — Placement Session API
+
+**Mục tiêu:** Tạo khái niệm `PlacementSession` gom cả 3 module lại.
+
+### 5.1 — [NEW] PlacementSession Model (MongoDB)
+
+**File:** `server/src/models/mongo/placement-session.model.ts`
+
+```typescript
+interface IPlacementSession {
+  _id: ObjectId;
+  userId: ObjectId;
+  language: string;
+  status: 'in_progress' | 'completed';
+  currentModule: 'lr' | 'writing' | 'speaking' | 'result';
+  lrAttemptId: ObjectId;           // ref → PlacementAttempt (L&R)
+  writingAttemptId?: ObjectId;
+  speakingAttemptId?: ObjectId;
+  lrRawScore?: number;             // % đúng L&R (dùng để adaptive writing)
+  writingBand?: number;
+  speakingBand?: number;
+  cefrFinal?: string;
+  createdAt: Date;
+  completedAt?: Date;
+}
+```
+
+---
+
+### 5.2 — [NEW] PlacementSession Service + Repository
+
+**Files:**
+- `server/src/repositories/mongo/placement-session.mongo.repo.ts`
+- `server/src/services/placement-session.service.ts`
+
+**Service methods:**
+- `createSession(userId, lrAttemptId, lrRawScore)` → gọi ngay sau LR submit, lưu `lrRawScore` cho bước sau
+- `startWriting(sessionId)` → đọc `lrRawScore` từ session, pick random topic từ `essayModule.topicsByLevel[level]`, tạo WritingAttempt
+- `submitWriting(sessionId, essay)` → enqueue writing-grading-job
+- `startSpeaking(sessionId)` → random select questions từ `speakingModule.parts` theo `questionsRange`, tạo SpeakingAttempt
+- `submitSpeaking(sessionId)` → enqueue speaking-grading-job
+- `computeFinalResult(sessionId)` → áp dụng `cefrMapping.weights` + `cefrMapping.thresholds` từ PlacementTest document → cập nhật `cefrFinal + status:'completed'`
+
+---
+
+### 5.3 — [NEW] BullMQ Jobs
+
+**Files:**
+- `server/src/jobs/queues/writing-grading.queue.ts`
+- `server/src/jobs/workers/writing-grading.worker.ts` → gọi gpt-5.4-mini (chấm điểm, **không sinh đề**)
+- `server/src/jobs/queues/speaking-grading.queue.ts`
+- `server/src/jobs/workers/speaking-grading.worker.ts` → gọi gpt-5.4-mini + Azure
+
+---
+
+### 5.4 — [NEW] Routes
+
+**File:** `server/src/routes/placement-session.routes.ts`
+
+Đăng kí vào `app.ts` dưới prefix `/api/placement-sessions`.
+
+---
+
+## Phase 6: Polish, Testing & Edge Cases
+
+### 6.1 — Error Handling & Recovery
+
+- **Mất mạng giữa chừng:** Session state lưu trong `sessionStorage` → user F5 vẫn biết đang ở module nào.
+- **AI Timeout:** Worker có retry 3 lần. Frontend poll tối đa 5 phút rồi hiển thị lỗi "Hệ thống đang bận, vui lòng thử lại."
+- **Mic bị từ chối:** TestMic hiển thị banner hướng dẫn, không cho vào Speaking.
+- **Timer hết giờ:** Auto-submit silent (không alert), navigate sang module tiếp theo.
+
+### 6.2 — Unit Tests (Vitest)
+
+| File | Thử nghiệm |
 |---|---|
-| Bước 1: `Client → GET /auth/google` | `window.location.href = env.API_URL/auth/google` → Passport redirect Google |
-| Bước 3: Passport đổi code → Google profile | `passport-google-oauth20` GoogleStrategy handle |
-| Bước 5: `findOne({ $or: [googleId, email] })` | `userService.findByGoogleIdOrEmail(googleId, email)` |
-| Bước 5a: Tạo user mới với `isVerified: true`, `authProvider: google` | `userService.createUser({ isVerified: true, authProvider: GOOGLE })` |
-| Bước 6: `generateAccessToken` (15m) + `generateRefreshToken` (7d) | `signAccessToken()` + `signRefreshToken()` |
-| Bước 7: Redirect về `/auth/success` | `res.redirect(CLIENT_URL/auth/success)` |
-| Bước 8: Client điều hướng theo user state | `navigate(getPostAuthRedirectPath(data))` |
+| `use-writing-timer.test.ts` | Countdown, auto-submit at 0 |
+| `use-audio-recorder.test.ts` | Permission states, blob output |
+| `use-placement-result-query.test.ts` | Poll logic, stop condition |
+| `placement-session.service.test.ts` | CEFR calculation formula |
 
----
+### 6.3 — CEFR Calculation Logic
 
-### ❌ Lỗi / Gap cần fix
+```typescript
+// server/src/utils/cefr.ts
+// Đầu vào: scores của từng module (normalized 0–1)
+// cefrMapping lấy từ PlacementTest.cefrMapping (weights + thresholds)
+function computeFinalCEFR(
+  lrPercent: number,     // 0–1
+  writingBand: number,   // 0–1 (normalized)
+  speakingBand: number,  // 0–1 (normalized)
+  cefrMapping: ICEFRMapping,
+): string {
+  const { weights, thresholds } = cefrMapping;
+  const weighted =
+    lrPercent    * weights.mcq     +
+    writingBand  * weights.writing  +
+    speakingBand * weights.speaking;
 
-#### GAP 1 — `googleCallback` đọc `token` thay vì `accessToken` + `refreshToken`
-
-**File:** `server/src/controllers/auth.controller.ts` — line 26
-
-```ts
-// ❌ Hiện tại — dùng { token } (cũ, không tồn tại)
-const { user, token } = req.user as any;
-req.session.token = token;       // → token = undefined
-```
-
-`findOrCreateFromGoogle()` trả về `{ user, accessToken, refreshToken }` nhưng controller đang destructure `token` → **accessToken không bao giờ được gửi về client**.
-
----
-
-#### GAP 2 — Diagram yêu cầu `refreshToken` trong `HttpOnly Cookie` + `accessToken` trong URL/session
-
-**Diagram (Bước 7):**
-```
-PassportCB → Client: HTTP 302 Redirect → /auth/success
-  + Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Strict; Max-Age=604800
-  + accessToken trong URL fragment (MVP) hoặc session
-```
-
-**Code hiện tại:**
-- Không set `HttpOnly Cookie` cho `refreshToken`
-- Không truyền `accessToken` về client theo bất kỳ cách nào
-- Client dùng `getCurrentUser()` call `/users/me` bằng session cookie → lấy được user, nhưng **không có `accessToken`**
-- `setAuth(data, null)` → `accessToken = null` trong store
-
----
-
-#### GAP 3 — `useGoogleCallback` không nhận `accessToken` → store thiếu token
-
-**File:** `client/src/features/auth/hooks/useGoogleCallback.ts` — line 32
-
-```ts
-// ❌ accessToken luôn là null
-setAuth(data, null);
-```
-
-Diagram yêu cầu client đọc `accessToken` và lưu vào Zustand. Hiện tại client chỉ lấy được `user` từ `/users/me`, không có token.
-
----
-
-#### GAP 4 — Diagram yêu cầu `isNewUser` flag để phân nhánh routing
-
-**Diagram (Bước 8):**
-```
-alt isNewUser = true → /onboarding
-else isNewUser = false → /dashboard
-```
-
-**Code hiện tại:** `getPostAuthRedirectPath(user)` dùng logic kiểm tra onboarding từ profile user (learningGoalId null → onboarding). Điều này **gần đúng** về kết quả nhưng không có `isNewUser` flag tường minh từ backend.
-
----
-
-#### GAP 5 — Diagram yêu cầu `Redis whitelist` cho refreshToken
-
-**Diagram (Bước 6):**
-```
-AuthService → Redis: SET refreshToken:{userId} = refreshToken (TTL: 7d)
-```
-
-**Code hiện tại:** `findOrCreateFromGoogle()` không lưu refreshToken vào Redis.
-
----
-
-#### GAP 6 — Diagram yêu cầu check `email_verified` từ Google profile
-
-**Diagram (Bước 4):**
-```
-alt email_verified = false → 400 Bad Request
-```
-
-**Code hiện tại:** `passport.ts` không kiểm tra `profile._json.email_verified` trước khi gọi `findOrCreateFromGoogle()`.
-
----
-
-#### GAP 7 — Diagram yêu cầu Scenario 3: Cancel → redirect `/login?error=cancelled`
-
-**Diagram (Bước 2):**
-```
-Google → /auth/google/callback?error=access_denied
-PassportCB → Client: Redirect → /login?error=cancelled
-Client → User: "Đăng nhập bị hủy"
-```
-
-**Code hiện tại:** Route callback dùng `failureRedirect: '/login'` — không có `?error=cancelled` param, client không hiển thị thông báo cụ thể.
-
----
-
-#### GAP 8 — Diagram yêu cầu phân biệt Scenario 2 (google user cũ) vs Scenario 3 (local → link)
-
-**Diagram:**
-- Scenario 2 (existing google user): update `googleId, avatarUrl, fullName, lastActiveAt`
-- Scenario 3 (local user): chỉ update `googleId, avatarUrl, lastActiveAt` (KHÔNG update `fullName`)
-
-**Code hiện tại:** Cả hai case đều đi vào cùng 1 `if (user)` block, không phân biệt — update logic giống nhau.
-
----
-
-## 2. Kế hoạch Fix (Theo thứ tự ưu tiên)
-
-### 🔴 Priority 1 — Critical (Làm ngay, luồng đang broken)
-
-#### Fix 1.1 — `auth.controller.ts`: Destructure đúng `accessToken` + `refreshToken`
-
-**File:** `server/src/controllers/auth.controller.ts`
-
-```ts
-// Thay:
-const { user, token } = req.user as any;
-req.session.token = token;
-
-// Thành:
-const { user, accessToken, refreshToken } = req.user as any;
-
-// Set refreshToken vào HttpOnly Cookie (TTL 7 ngày)
-res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 ngày
-});
-
-// Lưu accessToken vào session để /auth/success page đọc
-if (req.session) {
-    req.session.accessToken = accessToken;
-}
-
-res.redirect(`${env.CLIENT_URL}/auth/success`);
-```
-
----
-
-#### Fix 1.2 — `useGoogleCallback.ts`: Đọc `accessToken` từ session + lưu vào store
-
-**File:** `client/src/features/auth/hooks/useGoogleCallback.ts`
-
-Thêm API call để lấy `accessToken` từ session sau redirect. Cách MVP: server đặt `accessToken` vào session, client gọi `GET /auth/session-token` để lấy về.
-
-Hoặc đơn giản hơn: **server truyền accessToken qua URL fragment** (ít secure hơn nhưng MVP):
-```
-res.redirect(`${CLIENT_URL}/auth/success#token=${accessToken}`)
-```
-Client đọc `window.location.hash` tại `/auth/success`.
-
-**Chọn giải pháp:** Set `accessToken` vào **session** trên server + thêm endpoint `GET /auth/token` để client fetch sau redirect — bảo mật hơn.
-
----
-
-### 🟡 Priority 2 — Important (Diagram yêu cầu, nhưng không block luồng chính)
-
-#### Fix 2.1 — `passport.ts`: Kiểm tra `email_verified`
-
-```ts
-// Thêm vào GoogleStrategy callback:
-if (!profile._json.email_verified) {
-    return done(new AppError('Email Google chưa được xác minh', 400), undefined);
+  // Tìm CEFR level khớp với weighted score
+  const match = thresholds.find(
+    (t) => weighted >= t.mcqMin && weighted < t.mcqMax
+  );
+  return match?.level ?? 'A1';
 }
 ```
 
-#### Fix 2.2 — `auth.route.ts`: Truyền `?error=cancelled` khi user cancel
+---
 
-```ts
-// Thay:
-failureRedirect: '/login'
-// Thành:
-failureRedirect: `${env.CLIENT_URL}/login?error=cancelled`
-```
+## Tóm Tắt Phase Timeline
 
-**Client `LoginForm.tsx`:** Đọc `?error=cancelled` từ URL và hiển thị toast.
-
-#### Fix 2.3 — `auth.service.ts`: Phân biệt update logic Scenario 2 vs Scenario 3
-
-```ts
-if (user) {
-    const isGoogleUser = user.authProvider === EAuthProvider.GOOGLE;
-    const updateObj: any = { googleId, lastActiveAt: new Date() };
-
-    // Chỉ update avatar nếu chưa có hoặc là default
-    if (!user.avatarUrl || user.avatarUrl.includes('default_avatar')) {
-        updateObj.avatarUrl = avatarUrl;
-    }
-
-    // Chỉ update fullName nếu là Google user (không overwrite local fullName)
-    if (isGoogleUser) {
-        updateObj.fullName = fullName;
-    }
-
-    // isNewUser flag
-    const isNewUser = false;
-    // ...
-}
-```
-
-#### Fix 2.4 — `auth.service.ts`: Thêm `isNewUser` flag vào response
-
-```ts
-return {
-    user: { ... },
-    accessToken,
-    refreshToken,
-    isNewUser,  // ← thêm field này
-};
-```
+| Phase | Tên | Độ phức tạp | Phụ thuộc |
+|---|---|---|---|
+| **Phase 1** | Foundation & Navigation Flow | 🟡 Medium | Độc lập |
+| **Phase 2** | Writing Module Integration | 🔴 High | Phase 1 |
+| **Phase 3** | Speaking Module AI Integration | 🔴🔴 Very High | Phase 1, Azure API key |
+| **Phase 4** | Result Dashboard | 🟡 Medium | Phase 2 + Phase 3 |
+| **Phase 5** | Backend Placement Session API | 🔴 High | Phase 1 (tạo session khi L&R submit) |
+| **Phase 6** | Polish, Tests, Edge Cases | 🟡 Medium | All phases |
 
 ---
 
-### 🟢 Priority 3 — Enhancement (Diagram đề cập, nên implement sau)
+## Danh Sách File Cần Tạo Mới / Sửa Đổi
 
-#### Fix 3.1 — Redis whitelist cho refreshToken
+### CLIENT
 
-```ts
-// Trong findOrCreateFromGoogle(), sau khi generate tokens:
-await redisClient.setEx(
-    `auth:refresh:${userId}`,
-    7 * 24 * 60 * 60,  // 7 ngày
-    refreshToken
-);
-```
+#### [NEW]
+- `client/src/stores/placement-test.store.ts`
+- `client/src/features/dashboard/placement-test/api/start-writing-attempt.ts`
+- `client/src/features/dashboard/placement-test/api/submit-writing-attempt.ts`
+- `client/src/features/dashboard/placement-test/api/get-writing-result.ts`
+- `client/src/features/dashboard/placement-test/api/start-speaking-attempt.ts`
+- `client/src/features/dashboard/placement-test/api/submit-speaking-attempt.ts`
+- `client/src/features/dashboard/placement-test/api/upload-audio-chunk.ts`
+- `client/src/features/dashboard/placement-test/api/get-placement-result.ts`
+- `client/src/features/dashboard/placement-test/hooks/use-writing-session.ts`
+- `client/src/features/dashboard/placement-test/hooks/use-writing-timer.ts`
+- `client/src/features/dashboard/placement-test/hooks/use-writing-submit.ts`
+- `client/src/features/dashboard/placement-test/hooks/use-audio-recorder.ts`
+- `client/src/features/dashboard/placement-test/hooks/use-examiner-tts.ts`
+- `client/src/features/dashboard/placement-test/hooks/use-placement-result-query.ts`
+- `client/src/features/dashboard/placement-test/components/result/RadarChart/RadarChart.tsx`
+- `client/src/features/dashboard/placement-test/components/result/RadarChart/RadarChart.module.css`
+- `client/src/features/dashboard/placement-test/components/result/CEFRCard/CEFRCard.tsx`
+- `client/src/features/dashboard/placement-test/components/result/FeedbackAccordion/FeedbackAccordion.tsx`
+- `client/src/features/dashboard/placement-test/types/writing.types.ts`
+- `client/src/features/dashboard/placement-test/types/speaking.types.ts`
+- `client/src/features/dashboard/placement-test/types/result.types.ts`
 
----
+#### [MODIFY]
+- `client/src/stores/placement-test.store.ts` *(tạo mới)*
+- `client/src/app/router.tsx` *(thêm routes)*
+- `client/src/config/paths.ts` *(thêm PLACEMENT_TEST paths)*
+- `client/src/features/dashboard/placement-test/pages/listening-reading/listening-reading.tsx` *(fix navigate)*
+- `client/src/features/dashboard/placement-test/pages/Writing/Writing.tsx` *(rewrite)*
+- `client/src/features/dashboard/placement-test/pages/Speaking/Speaking.tsx` *(rewrite)*
+- `client/src/features/dashboard/placement-test/pages/Result/Result.tsx` *(rewrite)*
+- `client/src/features/dashboard/placement-test/components/speaking/test-main/TestMain.tsx` *(add TTS + recorder)*
+- `client/src/features/dashboard/placement-test/components/speaking/test-mic/TestMic.tsx` *(real permission check)*
+- `client/src/features/dashboard/placement-test/index.ts` *(export new pages)*
 
-## 3. Files cần sửa (tổng hợp)
+### SERVER
 
-| File | Thay đổi |
-|---|---|
-| `server/src/controllers/auth.controller.ts` | Fix destructure, set Cookie + session |
-| `server/src/routes/auth.route.ts` | `failureRedirect` với `?error=cancelled` |
-| `server/src/config/passport.ts` | Check `email_verified` |
-| `server/src/services/auth.service.ts` | Phân biệt Scenario 2/3, thêm `isNewUser`, Redis whitelist |
-| `client/src/features/auth/hooks/useGoogleCallback.ts` | Đọc accessToken, `setAuth(data, accessToken, refreshToken)` |
-| `client/src/features/auth/components/form/LoginForm.tsx` | Hiển thị toast khi `?error=cancelled` trong URL |
-
----
-
-## 4. Thứ tự thực hiện
-
-```
-Fix 1.1 → Fix 1.2 → Fix 2.1 → Fix 2.2 → Fix 2.3 → Fix 2.4 → Fix 3.1
-```
-
-*Priority 1 phải xong trước vì luồng hiện tại bị broken (accessToken không bao giờ về client).*
+#### [NEW]
+- `server/src/models/mongo/placement-session.model.ts`
+- `server/src/repositories/mongo/placement-session.mongo.repo.ts`
+- `server/src/services/placement-session.service.ts`
+- `server/src/controllers/placement-session.controller.ts`
+- `server/src/routes/placement-session.routes.ts`
+- `server/src/jobs/queues/writing-grading.queue.ts`
+- `server/src/jobs/workers/writing-grading.worker.ts`
+- `server/src/jobs/queues/speaking-grading.queue.ts`
+- `server/src/jobs/workers/speaking-grading.worker.ts`
+- `server/src/utils/cefr.ts`
+- `server/src/validations/placement-session.validation.ts`

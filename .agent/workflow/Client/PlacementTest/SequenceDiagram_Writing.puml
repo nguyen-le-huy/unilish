@@ -1,0 +1,114 @@
+@startuml SmartPlacementTest_Writing
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam ParticipantPadding 20
+skinparam BoxPadding 12
+
+title UniLish — Smart Placement Test (Step 2): Writing
+
+actor User
+
+participant "Writing\nPage (Client)" as Writing
+
+box "Client Store (Zustand + sessionStorage)" #EEF2FF
+    participant "placement-test.store" as PTStore
+end box
+
+box "Server — Express API" #F0FFF4
+    participant "PlacementSession\nController" as SessionCtrl
+end box
+
+box "Data Layer" #FFF8E1
+    database "MongoDB" as Mongo
+    database "Redis/BullMQ" as Redis
+end box
+
+box "AI Services (Grading Only)" #FFF0F0
+    participant "GPT Grader\n(gpt-5.4-mini)" as GPT
+end box
+
+' ══════════════════════════════════════════════════
+' STEP 2 — WRITING SESSION START
+' ══════════════════════════════════════════════════
+== STEP 2a — Writing Session Start ==
+
+Writing -> PTStore : read { sessionId, lrScore }
+Writing -> SessionCtrl : POST /placement-sessions/:sessionId/writing/start\n{ lrScore }
+
+note right of SessionCtrl
+  Adaptive Level (no LLM, no extra DB query):
+  lrScore < 45%  → level: "low"
+  lrScore 45–75% → level: "mid"
+  lrScore > 75%  → level: "high"
+
+  Prompt lấy từ essayModule.topicsByLevel[level]
+  đã được lưu trong PlacementSession khi tạo.
+  Server pick RANDOM 1 topic từ array.
+end note
+
+SessionCtrl -> Mongo : create WritingAttempt {\n  sessionId, level, promptText,\n  promptImageUrl, wordLimit, expiresAt\n}
+Mongo --> SessionCtrl : { writingAttemptId }
+SessionCtrl --> Writing : 201 {\n  writingAttemptId, level,\n  prompt: promptText,\n  promptImageUrl,\n  timeLimitMinutes,\n  wordLimit\n}
+
+Writing -> PTStore : setWritingAttemptId(writingAttemptId)
+Writing -> Writing : start countdown timer (timeLimitMinutes × 60s)
+Writing -> Writing : render prompt + promptImageUrl + textarea
+
+' ══════════════════════════════════════════════════
+' STEP 2 — USER WRITING
+' ══════════════════════════════════════════════════
+== STEP 2b — User Writing ==
+
+loop User edits essay
+    User -> Writing : type essay text
+    Writing -> Writing : updateWordCount() real-time
+end
+
+' ══════════════════════════════════════════════════
+' STEP 2 — SUBMIT & ASYNC GRADING
+' ══════════════════════════════════════════════════
+== STEP 2c — Submit & Async Grading ==
+
+User -> Writing : click "Nộp bài" (or timer auto-submit)
+Writing -> Writing : validate wordCount >= wordLimit
+Writing -> SessionCtrl : POST /placement-sessions/:sessionId/writing/submit\n{ writingAttemptId, essay, wordCount, durationSeconds }
+SessionCtrl -> Mongo : update WritingAttempt { essay, status:'submitted', durationSeconds }
+SessionCtrl -> Redis : enqueue writing-grading-job\n{ writingAttemptId, essay, promptText, criteria:['TR','CC','LR','GRA'] }
+Redis --> SessionCtrl : { jobId }
+SessionCtrl --> Writing : 202 { jobId, status:'grading' }
+
+Writing -> Writing : show grading indicator
+
+note over Redis, GPT
+  BullMQ Worker — writing-grading.worker.ts:
+  1. Dequeue job
+  2. Call GPT with { essay, prompt, criteria }
+  3. Receive { TR, CC, LR, GRA, feedback }
+  4. Compute writingBand = avg(TR, CC, LR, GRA)
+  5. Persist to WritingAttempt { bands, feedback, status:'done' }
+  6. Update PlacementSession.writingBand
+end note
+
+Redis -> GPT : grade essay { essay, prompt, criteria: ['TR','CC','LR','GRA'] }
+GPT --> Redis : { TR, CC, LR, GRA, overall, feedback }
+Redis -> Mongo : persist WritingAttempt { bands, feedback, status:'done' }
+Redis -> Mongo : update PlacementSession { writingBand, currentModule:'speaking' }
+
+loop Poll every 5s (max 5 min)
+    Writing -> SessionCtrl : GET /placement-sessions/:sessionId/writing/result
+    SessionCtrl -> Mongo : read WritingAttempt.status
+    alt status = 'grading'
+        SessionCtrl --> Writing : 200 { status:'grading' }
+    else status = 'done'
+        SessionCtrl --> Writing : 200 { status:'done', band, feedback }
+        Writing -> Writing : stop polling
+    end
+end
+
+Writing --> User : SubmissionSuccessCard
+User -> Writing : click "Tiếp tục phần Speaking"
+Writing -> PTStore : setCurrentModule('speaking')
+Writing --> User : navigate('/dashboard/placement-test/speaking')
+
+@enduml

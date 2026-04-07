@@ -105,8 +105,6 @@ export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Prop
         onSave({
             order,
             type: 'essay',
-            promptSource: sharedTopics.length ? 'library' : 'ai_generated',
-            criteria: defaultValues?.criteria ?? ['TR', 'CC', 'LR', 'GRA'],
             topicsByLevel: {
                 low: sharedTopics,
                 mid: sharedTopics,
@@ -114,15 +112,10 @@ export function EssayModuleForm({ defaultValues, order, onSave, onCancel }: Prop
             },
             name: values.name,
             timeLimitMinutes: values.timeLimitMinutes,
-            aiModel: values.aiModel,
             wordLimits: {
                 low: values.wordLimit,
                 mid: values.wordLimit,
                 high: values.wordLimit,
-            },
-            secureMode: defaultValues?.secureMode ?? {
-                disablePaste: true,
-                disableSpellcheck: true,
             },
             ...(normalizedPromptImageUrl ? { promptImageUrl: normalizedPromptImageUrl } : {}),
         });

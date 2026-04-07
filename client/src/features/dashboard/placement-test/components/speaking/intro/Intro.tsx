@@ -1,7 +1,11 @@
 import { Button } from '@/components/core/Button';
 import styles from './Intro.module.css';
 
-const Intro = () => {
+interface Props {
+  onStart: () => void;
+}
+
+const Intro = ({ onStart }: Props) => {
   return (
     <div className={styles.intro}>
         <div className={styles.manual}>
@@ -15,7 +19,7 @@ const Intro = () => {
                 </ul>
             </div>
         </div>
-        <Button>Bắt đầu làm bài</Button>
+        <Button type="button" onClick={onStart}>Bắt đầu làm bài</Button>
     </div>
   );
 }

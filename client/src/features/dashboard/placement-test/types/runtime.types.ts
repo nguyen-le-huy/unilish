@@ -46,6 +46,14 @@ export interface RuntimeAttempt {
     expiresAt: string;
     submittedAt?: string | null;
     durationSeconds?: number | null;
+    scoring?: {
+        listeningCorrect: number;
+        listeningTotal: number;
+        readingCorrect: number;
+        readingTotal: number;
+        mcqScoreNormalized: number;
+        provisionalCefr: string;
+    } | null;
     totalQuestions: number;
     modules: RuntimeModule[];
     answerSheet: RuntimeAnswerSheetItem[];
@@ -53,11 +61,31 @@ export interface RuntimeAttempt {
 
 export interface ActivePlacementTest {
     _id: string;
+    placementTestId?: string;
     language: string;
     name: string;
     version: number;
     status: string;
-    modules?: RuntimeModule[];
+    mcqModule?: RuntimeModule | null;
+    essayModule?: Record<string, unknown> | null;
+    speakingModule?: Record<string, unknown> | null;
+    cefrMapping?: {
+        weights?: {
+            mcq?: number;
+            writing?: number;
+            speaking?: number;
+        };
+        thresholds?: Array<{
+            level?: string;
+            mcqMin?: number;
+            mcqMax?: number;
+            writingMin?: number;
+            writingMax?: number;
+            speakingMin?: number;
+            speakingMax?: number;
+        }>;
+    };
+    modules?: Array<Record<string, unknown>>;
 }
 
 export interface LocalAnswerState {

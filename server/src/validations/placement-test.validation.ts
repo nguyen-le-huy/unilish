@@ -15,9 +15,9 @@ const partConfigSchema = z.object({
     name: z.string().trim().min(1).max(100),
     questionsCount: z.number().int().min(1),
     poolTag: z.string().trim().min(1).max(100),
-    difficultyDistribution: z.record(z.string(), z.number().int().min(0)).default({}),
-    excludeRecentDays: z.number().int().min(0).default(30),
-    topicFilter: z.array(z.string().trim()).default([]),
+    difficultyDistribution: z.record(z.string(), z.number().int().min(0)).optional(),
+    excludeRecentDays: z.number().int().min(0).optional(),
+    topicFilter: z.array(z.string().trim()).optional(),
     manualContent: z
         .object({
             passageText: z.string().trim().max(5000).optional(),
@@ -59,10 +59,10 @@ const moduleMCQSchema = z.object({
     type: z.literal('mcq'),
     name: z.string().trim().min(1).max(200),
     timeLimitMinutes: z.number().int().min(1),
-    showCountdown: z.boolean().default(true),
-    allowBackNavigation: z.boolean().default(false),
-    adaptive: z.boolean().default(true),
-    samplingMode: z.enum(['random', 'fixed']).default('random'),
+    showCountdown: z.boolean().optional(),
+    allowBackNavigation: z.boolean().optional(),
+    adaptive: z.boolean().optional(),
+    samplingMode: z.enum(['random', 'fixed']).optional(),
     parts: z.array(partConfigSchema).min(1),
 });
 
@@ -71,8 +71,8 @@ const moduleEssaySchema = z.object({
     type: z.literal('essay'),
     name: z.string().trim().min(1).max(200),
     timeLimitMinutes: z.number().int().min(1),
-    aiModel: z.string().trim().min(1).default('gpt-4o-mini'),
-    criteria: z.array(z.string().trim()).min(1),
+    aiModel: z.string().trim().min(1).optional(),
+    criteria: z.array(z.string().trim()).min(1).optional(),
     wordLimits: z.object({
         low: z.number().int().min(50),
         mid: z.number().int().min(50),
@@ -85,10 +85,10 @@ const moduleEssaySchema = z.object({
     }),
     promptImageUrl: z.string().trim().url().optional(),
     secureMode: z.object({
-        disablePaste: z.boolean().default(true),
-        disableSpellcheck: z.boolean().default(true),
-    }),
-    promptSource: z.enum(['ai_generated', 'library']).default('ai_generated'),
+        disablePaste: z.boolean().optional(),
+        disableSpellcheck: z.boolean().optional(),
+    }).optional(),
+    promptSource: z.enum(['ai_generated', 'library']).optional(),
 });
 
 const speakingTopicSchema = z
@@ -102,15 +102,15 @@ const speakingTopicSchema = z
     .transform((topic) => (typeof topic === 'string' ? { text: topic } : topic));
 
 const speakingPartsSchema = z.object({
-    warmupMinutes: z.number().min(0).default(1),
+    warmupMinutes: z.number().min(0).optional(),
     part1: z.object({
-        minutes: z.number().min(1),
-        questionsRange: z.tuple([z.number().int().min(1), z.number().int().min(1)]),
+        minutes: z.number().min(1).optional(),
+        questionsRange: z.tuple([z.number().int().min(1), z.number().int().min(1)]).optional(),
         topics: z.array(speakingTopicSchema).default([]),
     }),
     part2: z.object({
-        minutes: z.number().min(1),
-        prepSeconds: z.number().int().min(0),
+        minutes: z.number().min(1).optional(),
+        prepSeconds: z.number().int().min(0).optional(),
         cueCards: z.array(
             z.object({
                 level: z.enum(['low', 'mid', 'high']),
@@ -121,8 +121,8 @@ const speakingPartsSchema = z.object({
         ),
     }),
     part3: z.object({
-        minutes: z.number().min(1),
-        questionsRange: z.tuple([z.number().int().min(1), z.number().int().min(1)]),
+        minutes: z.number().min(1).optional(),
+        questionsRange: z.tuple([z.number().int().min(1), z.number().int().min(1)]).optional(),
         topics: z.array(speakingTopicSchema).default([]),
     }),
 });
@@ -131,14 +131,14 @@ const moduleSpeakingSchema = z.object({
     order: z.number().int().min(1),
     type: z.literal('speaking'),
     name: z.string().trim().min(1).max(200),
-    totalMinutes: z.number().int().min(1),
-    conversationModel: z.string().trim().min(1).default('gpt-4o-mini'),
-    ttsModel: z.string().trim().min(1).default('tts-1'),
-    ttsVoice: z.string().trim().min(1).default('alloy'),
-    gradingModel: z.string().trim().min(1).default('gpt-4o-mini'),
-    speechAnalytics: z.string().trim().min(1).default('azure-ai-speech'),
-    silenceThresholdSeconds: z.number().int().min(1).max(30).default(5),
-    criteria: z.array(z.string().trim()).min(1),
+    totalMinutes: z.number().int().min(1).optional(),
+    conversationModel: z.string().trim().min(1).optional(),
+    ttsModel: z.string().trim().min(1).optional(),
+    ttsVoice: z.string().trim().min(1).optional(),
+    gradingModel: z.string().trim().min(1).optional(),
+    speechAnalytics: z.string().trim().min(1).optional(),
+    silenceThresholdSeconds: z.number().int().min(1).max(30).optional(),
+    criteria: z.array(z.string().trim()).min(1).optional(),
     parts: speakingPartsSchema,
 });
 

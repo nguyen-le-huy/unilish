@@ -39,9 +39,6 @@ const DEFAULT_CEFR_MAPPING: ICEFRMapping = {
     ],
 };
 
-const DEFAULT_ESSAY_CRITERIA = ['TR', 'CC', 'LR', 'GRA'];
-const DEFAULT_SPEAKING_CRITERIA = ['fluency', 'lexical', 'grammar', 'pronunciation'];
-
 const sanitizeStringArray = (items: string[] | undefined): string[] =>
     (items ?? []).map((item) => item.trim()).filter(Boolean);
 
@@ -51,32 +48,35 @@ const normalizeModulesForApi = (modules: IPlacementTestModule[]): IPlacementTest
             return {
                 ...module,
                 order: index + 1,
-                showCountdown: module.showCountdown ?? true,
-                allowBackNavigation: module.allowBackNavigation ?? false,
-                adaptive: module.adaptive ?? true,
             };
         }
 
         if (module.type === 'essay') {
-            const criteria = sanitizeStringArray(module.criteria);
             return {
                 ...module,
                 order: index + 1,
-                criteria: criteria.length > 0 ? criteria : DEFAULT_ESSAY_CRITERIA,
-                secureMode: {
-                    disablePaste: module.secureMode?.disablePaste ?? true,
-                    disableSpellcheck: module.secureMode?.disableSpellcheck ?? true,
-                },
             };
         }
 
-        const criteria = sanitizeStringArray(module.criteria);
+        const normalizedCueCards = module.parts?.part2?.cueCards?.map((cueCard) => ({
+            ...cueCard,
+            shouldSay: sanitizeStringArray(cueCard.shouldSay),
+        }));
+
         return {
             ...module,
             order: index + 1,
-            totalMinutes: Math.max(1, module.totalMinutes ?? 15),
-            silenceThresholdSeconds: Math.min(30, Math.max(1, module.silenceThresholdSeconds ?? 5)),
-            criteria: criteria.length > 0 ? criteria : DEFAULT_SPEAKING_CRITERIA,
+            parts: module.parts
+                ? {
+                    ...module.parts,
+                    part2: module.parts.part2
+                        ? {
+                            ...module.parts.part2,
+                            cueCards: normalizedCueCards ?? [],
+                        }
+                        : module.parts.part2,
+                }
+                : module.parts,
         };
     });
 };

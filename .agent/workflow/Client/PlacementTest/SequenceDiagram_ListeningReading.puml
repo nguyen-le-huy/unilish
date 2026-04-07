@@ -1,0 +1,137 @@
+@startuml SmartPlacementTest_ListeningReading
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam ParticipantPadding 20
+skinparam BoxPadding 12
+
+title UniLish — Smart Placement Test (Step 0–1): Intro & Listening/Reading
+
+actor User
+
+participant "PlacementTestIntroModal\n(Client)" as Modal
+participant "ListeningReading\nPage (Client)" as LR
+
+box "Client Store (Zustand + sessionStorage)" #EEF2FF
+    participant "usePlacementTestStore" as PTStore
+end box
+
+box "Server — Express API" #F0FFF4
+    participant "PlacementTestRuntimeController" as RuntimeCtrl
+    participant "PlacementSessionController" as SessionCtrl
+end box
+
+box "Services & Repositories" #E8F5E9
+    participant "placementTestRuntimeService" as RuntimeSvc
+    participant "placementSessionService" as SessionSvc
+end box
+
+box "Data Layer" #FFF8E1
+    database "MongoDB" as Mongo
+end box
+
+' ══════════════════════════════════════════════════
+' STEP 0 — INTRO & BOOTSTRAPPING
+' ══════════════════════════════════════════════════
+== STEP 0 — Intro & Bootstrapping ==
+
+User -> Modal : Open placement test intro page
+User -> Modal : Click "Tôi đã sẵn sàng"
+Modal --> LR : navigate('/dashboard/placement-test/lr')
+
+' ══════════════════════════════════════════════════
+' STEP 1 — LISTENING/READING RUNTIME
+' ══════════════════════════════════════════════════
+== STEP 1 — Listening & Reading Runtime ==
+
+LR -> LR : useActivePlacementTestQuery(language, isAuthenticated)
+LR -> RuntimeCtrl : GET /placement-tests/runtime/active?language=en\n(with fallback chain: en → en-US → english)
+RuntimeCtrl -> RuntimeSvc : getActive(language)
+RuntimeSvc -> Mongo : findOne({ language, status: 'active' })
+Mongo --> RuntimeSvc : PlacementTest { _id, modules[], cefrMapping }
+note right of RuntimeSvc
+  **ActivePlacementTest structure:**
+  - placementTestId / _id
+  - mcqModule → parts[].manualContent.questionItems
+  - essayModule → topicsByLevel, promptImageUrl, wordLimits
+  - speakingModule → config, parts.{part1, part2, part3}
+  - cefrMapping → weights, thresholds
+end note
+RuntimeSvc --> RuntimeCtrl : ActivePlacementTest
+RuntimeCtrl --> LR : 200 { _id, placementTestId, mcqModule, essayModule, speakingModule, cefrMapping }
+
+LR -> LR : **useEffect**: extract essayModule & speakingModule
+LR -> PTStore : setTestConfig({\n  placementTestId,\n  essayModule,\n  speakingModule,\n  cefrMapping\n})
+
+LR -> LR : useCreatePlacementAttemptMutation(activeTest._id)
+LR -> RuntimeCtrl : POST /placement-tests/runtime/attempts\n{ placementTestId }
+RuntimeCtrl -> RuntimeSvc : createAttempt(userId, { placementTestId })
+RuntimeSvc -> Mongo : create PlacementAttempt {\n  userId, placementTestId,\n  status: 'in_progress',\n  expiresAt: now + 90min\n}
+Mongo --> RuntimeSvc : RuntimeAttempt { attemptId, answerSheet[], expiresAt, totalQuestions }
+RuntimeSvc --> RuntimeCtrl : RuntimeAttempt
+RuntimeCtrl --> LR : 201 { attemptId, answerSheet, expiresAt, totalQuestions }
+
+LR -> PTStore : setAttemptId(attemptId)
+LR -> LR : mapAttemptToParts(attempt)\n→ hydrate parts, questions, groups, audio
+
+loop **Autosave** (debounce 800ms, max retry 3)
+    User -> LR : select option / flag question
+    LR -> LR : useAnswerState.handleAnswer/handleFlag
+    LR -> LR : useAutosave.queueSave(questionId, { selectedOption, flagged })
+    note right of LR
+      **Debounce 800ms:**
+      - Clear previous timeout
+      - Set new timeout
+      - On timeout → flushPendingChanges()
+    end note
+    LR -> RuntimeCtrl : PATCH /placement-tests/runtime/attempts/:attemptId/answers\n{ answers: [{ questionId, selectedOption, flagged }] }
+    RuntimeCtrl -> RuntimeSvc : saveAnswers(userId, attemptId, { answers })
+    RuntimeSvc -> Mongo : bulkWrite answerSheet (update selectedOption, flagged)
+    Mongo --> RuntimeSvc : OK
+    RuntimeSvc --> RuntimeCtrl : { attemptId, status, answerSheet, progress }
+    RuntimeCtrl --> LR : 200 { attemptId, status, answerSheet, progress: { answered, total, flagged } }
+end
+
+User -> LR : click "Nộp bài" (or timer expires → auto-submit)
+LR -> LR : setIsSubmitting(true)
+LR -> LR : cancelScheduledSaves()
+LR -> LR : await flushPendingChanges(allowRetry: false)
+LR -> LR : useSubmitPlacementAttemptMutation.mutateAsync(attemptId)
+LR -> RuntimeCtrl : POST /placement-tests/runtime/attempts/:attemptId/submit
+RuntimeCtrl -> RuntimeSvc : submitAttempt(userId, attemptId)
+RuntimeSvc -> Mongo : **Score LR** + mark status='submitted' + log durationSeconds
+Mongo --> RuntimeSvc : SubmitPlacementAttemptResult
+note right of RuntimeSvc
+  **SubmitPlacementAttemptResult:**
+  - attempt: { scoring.mcqScoreNormalized, durationSeconds, answerSheet, totalQuestions }
+  - profileUpdate: { placementTestScore, currentLevel, weakSkills }
+  - sessionId (optional, if auto-created)
+  - placementSession (optional)
+end note
+RuntimeSvc --> RuntimeCtrl : SubmitPlacementAttemptResult
+RuntimeCtrl --> LR : 200 { attempt, profileUpdate, sessionId?, placementSession? }
+
+LR -> LR : **Calculate lrRawScore:**\nMath.round(attempt.scoring.mcqScoreNormalized × 100)\nOR profileUpdate.placementTestScore
+
+LR -> LR : useCreatePlacementSessionMutation.mutateAsync
+LR -> SessionCtrl : POST /placement-sessions\n{ lrAttemptId: attemptId, lrRawScore }
+SessionCtrl -> SessionSvc : createSession(userId, { lrAttemptId, lrRawScore })
+SessionSvc -> Mongo : create PlacementSession {\n  userId,\n  lrAttemptId,\n  lrRawScore,\n  currentModule: 'writing',\n  status: 'in_progress'\n}
+Mongo --> SessionSvc : { sessionId }
+SessionSvc --> SessionCtrl : { sessionId }
+SessionCtrl --> LR : 201 { sessionId }
+
+LR -> PTStore : setAttemptId(attemptId)
+LR -> PTStore : setLrRawScore(lrRawScore)
+LR -> PTStore : setSessionId(sessionId)
+LR -> PTStore : setCurrentModule('writing')
+
+LR -> LR : buildSubmissionSummary(result.attempt)\n→ { completedMinutes, submittedQuestions, totalQuestions }
+LR -> LR : setSubmissionSummary(summary)
+LR -> LR : setIsSubmitting(false)
+
+LR --> User : **SubmissionSuccessCard** (overlay)\nShow: completedMinutes, submittedQuestions/totalQuestions
+User -> LR : click "Tiếp tục phần Writing"
+LR --> User : navigate('/dashboard/placement-test/writing')
+
+@enduml

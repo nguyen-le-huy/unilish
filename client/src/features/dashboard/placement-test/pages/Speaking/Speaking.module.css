@@ -1,5 +1,30 @@
 .speaking {
     padding: 20px;
+    max-width: 80%;
+    margin-inline: auto;
+}
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 .content {
@@ -50,8 +75,40 @@
     flex-wrap: wrap;
 }
 
+.progressButton {
+    pointer-events: none;
+    border-width: 2px;
+}
+
+.introDoneButton {
+    background-color: var(--green);
+    border-color: var(--green);
+    color: #fff;
+}
+
+.introDoneButton:hover {
+    opacity: 0.95;
+}
+
 .partButton {
     background-color: transparent;
+}
+
+.partButtonCompleted {
+    background-color: var(--green);
+    border-color: var(--green);
+}
+
+.partButtonCompleted .partTitle {
+    color: #fff;
+}
+
+.partButtonActive .partTitle {
+    color: var(--green);
+}
+
+.partButtonCompleted.partButtonActive .partTitle {
+    color: #fff;
 }
 
 .partButton>span {
@@ -80,6 +137,39 @@
     justify-content: center;
     font-weight: 400;
     line-height: 1;
+}
+
+.partQuestionNumberActive {
+    color: var(--green);
+    border-color: var(--green);
+}
+
+.partQuestionNumberCompleted {
+    color: transparent;
+    border-color: var(--green);
+    background-color: var(--green);
+}
+
+.partDoneIcon {
+    width: 25px;
+    height: 25px;
+    flex-shrink: 0;
+}
+
+.errorState {
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+}
+
+.errorState > p {
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
 }
 
 @media (max-width: 1200px) {

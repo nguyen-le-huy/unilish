@@ -8,6 +8,10 @@ export interface SubmitPlacementAttemptResult {
         currentLevel: string;
         weakSkills: string[];
     };
+    sessionId?: string;
+    placementSession?: {
+        sessionId?: string;
+    };
 }
 
 export const submitPlacementAttempt = async (attemptId: string): Promise<SubmitPlacementAttemptResult> => {

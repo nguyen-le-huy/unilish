@@ -9,6 +9,8 @@ import { logger } from './utils/logger.js';
 import { ttsWorker } from './jobs/workers/tts.worker.js';
 import { readingTtsWorker } from './jobs/workers/reading-tts.worker.js';
 import { listeningMixSyncWorker } from './jobs/workers/listening-mix-sync.worker.js';
+import { writingGradingWorker } from './jobs/workers/writing-grading.worker.js';
+import { speakingGradingWorker } from './jobs/workers/speaking-grading.worker.js';
 
 const startServer = async () => {
     // Connect to Databases
@@ -59,6 +61,12 @@ const startServer = async () => {
 
                 await listeningMixSyncWorker.close();
                 logger.info('Listening Mix & Sync worker closed.');
+
+                await writingGradingWorker.close();
+                logger.info('Writing grading worker closed.');
+
+                await speakingGradingWorker.close();
+                logger.info('Speaking grading worker closed.');
 
                 process.exit(0);
             } catch (err) {

@@ -51,10 +51,10 @@ export interface IModuleMCQ {
     type: 'mcq';
     name: string;
     timeLimitMinutes: number;
-    showCountdown: boolean;
-    allowBackNavigation: boolean;
-    adaptive: boolean;
-    samplingMode: SamplingMode;
+    showCountdown?: boolean;
+    allowBackNavigation?: boolean;
+    adaptive?: boolean;
+    samplingMode?: SamplingMode;
     parts: IPartConfig[];
 }
 
@@ -63,13 +63,13 @@ export interface IModuleEssay {
     type: 'essay';
     name: string;
     timeLimitMinutes: number;
-    aiModel: string;
-    criteria: string[];
+    aiModel?: string;
+    criteria?: string[];
     wordLimits: { low: number; mid: number; high: number };
     topicsByLevel: { low: string[]; mid: string[]; high: string[] };
     promptImageUrl?: string;
-    secureMode: { disablePaste: boolean; disableSpellcheck: boolean };
-    promptSource: PromptSource;
+    secureMode?: { disablePaste: boolean; disableSpellcheck: boolean };
+    promptSource?: PromptSource;
 }
 
 export interface ISpeakingCueCard {
@@ -89,19 +89,19 @@ export interface IModuleSpeaking {
     order: number;
     type: 'speaking';
     name: string;
-    totalMinutes: number;
-    conversationModel: string;
-    ttsModel: string;
-    ttsVoice: string;
-    gradingModel: string;
-    speechAnalytics: string;
-    silenceThresholdSeconds: number;
-    criteria: string[];
+    totalMinutes?: number;
+    conversationModel?: string;
+    ttsModel?: string;
+    ttsVoice?: string;
+    gradingModel?: string;
+    speechAnalytics?: string;
+    silenceThresholdSeconds?: number;
+    criteria?: string[];
     parts: {
-        warmupMinutes: number;
-        part1: { minutes: number; questionsRange: [number, number]; topics: ISpeakingQuestion[] };
-        part2: { minutes: number; prepSeconds: number; cueCards: ISpeakingCueCard[] };
-        part3: { minutes: number; questionsRange: [number, number]; topics: ISpeakingQuestion[] };
+        warmupMinutes?: number;
+        part1: { minutes?: number; questionsRange?: [number, number]; topics: ISpeakingQuestion[] };
+        part2: { minutes?: number; prepSeconds?: number; cueCards: ISpeakingCueCard[] };
+        part3: { minutes?: number; questionsRange?: [number, number]; topics: ISpeakingQuestion[] };
     };
 }
 

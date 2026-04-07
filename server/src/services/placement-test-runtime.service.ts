@@ -3,7 +3,13 @@ import { HttpStatus } from '../constants/http-status.js';
 import { placementTestMongoRepository } from '../repositories/mongo/placement-test.mongo.repository.js';
 import { placementTestAttemptMongoRepository } from '../repositories/mongo/placement-test-attempt.mongo.repository.js';
 import { UserMongoRepository } from '../repositories/mongo/user.mongo.repository.js';
-import { EPlacementTestStatus, type IModuleMCQ, type IPlacementTest } from '../models/mongo/placement-test.model.js';
+import {
+    EPlacementTestStatus,
+    type IModuleEssay,
+    type IModuleMCQ,
+    type IModuleSpeaking,
+    type IPlacementTest,
+} from '../models/mongo/placement-test.model.js';
 import { EPlacementAttemptStatus, type IAttemptModuleSnapshot, type IAttemptPartSnapshot, type IAttemptQuestionSnapshot, type IPlacementTestAttempt } from '../models/mongo/placement-test-attempt.model.js';
 import { ESkill } from '../models/mongo/user.model.js';
 import { Question } from '../models/mongo/question.model.js';
@@ -67,6 +73,20 @@ interface SubmitResult {
         currentLevel: string;
         weakSkills: string[];
     };
+}
+
+interface ActiveRuntimeView {
+    _id: IPlacementTest['_id'];
+    placementTestId: string;
+    language: string;
+    name: string;
+    version: number;
+    status: IPlacementTest['status'];
+    mcqModule: IModuleMCQ | null;
+    essayModule: IModuleEssay | null;
+    speakingModule: IModuleSpeaking | null;
+    cefrMapping: IPlacementTest['cefrMapping'];
+    modules: IPlacementTest['modules'];
 }
 
 interface PoolQuestionOption {
@@ -212,20 +232,29 @@ export class PlacementTestRuntimeService {
         throw new AppError('Placement attempt has expired', HttpStatus.CONFLICT);
     }
 
-    async getActive(language: string): Promise<Pick<IPlacementTest, '_id' | 'language' | 'name' | 'version' | 'status' | 'modules'>> {
+    async getActive(language: string): Promise<ActiveRuntimeView> {
         const test = await placementTestMongoRepository.findActiveByLanguage(language);
 
         if (!test || test.status !== EPlacementTestStatus.ACTIVE) {
             throw new AppError('No active placement test found for language', HttpStatus.NOT_FOUND);
         }
 
+        const mcqModule = test.modules.find((module): module is IModuleMCQ => module.type === 'mcq') ?? null;
+        const essayModule = test.modules.find((module): module is IModuleEssay => module.type === 'essay') ?? null;
+        const speakingModule = test.modules.find((module): module is IModuleSpeaking => module.type === 'speaking') ?? null;
+
         return {
             _id: test._id,
+            placementTestId: String(test._id),
             language: test.language,
             name: test.name,
             version: test.version,
             status: test.status,
-            modules: test.modules.filter((module) => module.type === 'essay'),
+            mcqModule,
+            essayModule,
+            speakingModule,
+            cefrMapping: test.cefrMapping,
+            modules: test.modules,
         };
     }
 

@@ -96,7 +96,7 @@ export const LeftPanel = ({
             </div>
             {audioSrc && (
                 <div className={styles.audioSection} aria-label="Audio player">
-                    <AudioPlayer src={audioSrc} />
+                    <AudioPlayer src={audioSrc} autoPlayOnChange playTrigger={activePart} />
                 </div>
             )}
             <div className={styles.questionSection} aria-label="Questions">

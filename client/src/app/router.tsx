@@ -18,6 +18,7 @@ const ListeningReadingPage = React.lazy(() => import('@/features/dashboard/place
 const AuthSuccessPage = React.lazy(() => import('@/features/auth/pages/AuthSuccessPage/AuthSuccessPage'));
 const WrittingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Writting/Writting'));
 const SpeakingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Speaking/Speaking'));
+const ResultPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Result/Result'));
 
 export const router = createBrowserRouter([
     {
@@ -92,6 +93,14 @@ export const router = createBrowserRouter([
                         ),
                     },
                     {
+                        path: 'roadmap',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <DashboardHomePage />
+                            </Suspense>
+                        ),
+                    },
+                    {
                         path: 'goal-selection',
                         element: (
                             <Suspense fallback={<Loading />}>
@@ -116,7 +125,7 @@ export const router = createBrowserRouter([
                         ),
                     },
                     {
-                        path: 'writting',
+                        path: 'placement-test/writing',
                         element: (
                             <Suspense fallback={<Loading />}>
                                 <WrittingPage />
@@ -124,10 +133,18 @@ export const router = createBrowserRouter([
                         ),
                     },
                     {
-                        path: 'speaking',
+                        path: 'placement-test/speaking',
                         element: (
                             <Suspense fallback={<Loading />}>
                                 <SpeakingPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'placement-test/result',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <ResultPage />
                             </Suspense>
                         ),
                     },

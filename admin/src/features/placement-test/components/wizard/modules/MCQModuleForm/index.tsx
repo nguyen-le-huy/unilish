@@ -299,11 +299,6 @@ export function MCQModuleForm({ defaultValues, order, onSave, onCancel, draftKey
         onSave({
             order,
             type: 'mcq',
-            showCountdown: defaultValues?.showCountdown ?? true,
-            allowBackNavigation: defaultValues?.allowBackNavigation ?? false,
-            adaptive: defaultValues?.adaptive ?? true,
-            samplingMode: 'random',
-            difficultyDistribution: {},
             ...values,
             parts: enabledParts.map((part) => {
                 const partIndex = values.parts.findIndex((candidate) => candidate.part === part.part);
@@ -343,9 +338,6 @@ export function MCQModuleForm({ defaultValues, order, onSave, onCancel, draftKey
                     name: part.name,
                     questionsCount: Math.max(1, normalizedQuestionItems.length),
                     poolTag: part.poolTag,
-                    excludeRecentDays: 30,
-                    difficultyDistribution: {},
-                    topicFilter: [],
                     manualContent: {
                         groupPattern: flags.isPart7
                             ? part7Groups

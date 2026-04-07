@@ -38,6 +38,8 @@ const envSchema = z.object({
     // OpenAI
     OPENAI_API_KEY: z.string().min(1, 'OpenAI API Key is required for embeddings'),
     OPENAI_MODEL: z.string().default('gpt-5.1-2025-11-13'),
+    OPENAI_GRADING_MODEL: z.string().default('gpt-5.4-mini'),
+    OPENAI_GRADING_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
 
     // OpenAI Realtime API — V1 Conversational Core
     // ALL realtime config is server-controlled. Client/Admin MUST NOT override at runtime.

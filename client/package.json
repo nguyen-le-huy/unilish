@@ -17,6 +17,7 @@
     "classnames": "^2.5.1",
     "clsx": "^2.1.1",
     "gsap": "^3.14.2",
+    "microsoft-cognitiveservices-speech-sdk": "^1.49.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.71.1",

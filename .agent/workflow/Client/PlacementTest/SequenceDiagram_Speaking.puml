@@ -1,0 +1,167 @@
+@startuml SmartPlacementTest_Speaking
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam ParticipantPadding 20
+skinparam BoxPadding 12
+
+title UniLish — Smart Placement Test (Step 3–4): Speaking & Result
+
+actor User
+
+participant "Speaking\nPage (Client)" as Speaking
+participant "Result\nPage (Client)" as Result
+
+box "Client Store (Zustand + sessionStorage)" #EEF2FF
+    participant "placement-test.store" as PTStore
+end box
+
+box "Server — Express API" #F0FFF4
+    participant "PlacementSession\nController" as SessionCtrl
+    participant "Speaking\nController" as SpkCtrl
+end box
+
+box "Data Layer" #FFF8E1
+    database "MongoDB" as Mongo
+    database "Redis/BullMQ" as Redis
+end box
+
+box "AI Services" #FFF0F0
+    participant "OpenAI TTS\n(ttsModel)" as TTS
+    participant "Azure AI Speech\n(STT + Pronunciation)" as Azure
+    participant "GPT Grader\n(gradingModel)" as GPT
+end box
+
+' ══════════════════════════════════════════════════
+' STEP 3 — SPEAKING START
+' ══════════════════════════════════════════════════
+== STEP 3a — Speaking Session Start ==
+
+Speaking -> PTStore : read { sessionId }
+Speaking -> SpkCtrl : POST /placement-sessions/:sessionId/speaking/start
+
+SpkCtrl -> Mongo : load active PlacementTest\n→ extract speakingModule.parts + config
+note right of SpkCtrl
+  No LLM call. Questions already embedded in PlacementTest doc:
+  part1: random select N from topics[] (N in questionsRange)
+  part2: pick cueCard (level-matched or random)
+  part3: random select M from topics[] (M in questionsRange)
+  config: { ttsVoice, gradingModel, silenceThresholdSeconds }
+end note
+SpkCtrl -> Mongo : create SpeakingAttempt {\n  sessionId,\n  part1Qs: [{ text, audioKey? }],\n  cueCard: { text, audioKey?, shouldSay[] },\n  part3Qs: [{ text, audioKey? }],\n  config\n}
+Mongo --> SpkCtrl : { speakingAttemptId }
+SpkCtrl --> Speaking : 201 {\n  speakingAttemptId,\n  part1Qs, cueCard, part3Qs,\n  config: { ttsVoice, silenceThresholdSeconds }\n}
+
+Speaking -> PTStore : setSpeakingAttemptId(speakingAttemptId)
+
+' ══════════════════════════════════════════════════
+' STEP 3 — MIC TEST
+' ══════════════════════════════════════════════════
+== STEP 3b — Mic Permission Check ==
+
+User -> Speaking : intro screen → click "Kiểm tra mic"
+Speaking -> Speaking : navigator.mediaDevices.getUserMedia({ audio: true })
+alt permission denied
+    Speaking --> User : show mic-denied guide (cannot proceed)
+else permission granted
+    Speaking --> User : mic OK → proceed to test
+end
+
+' ══════════════════════════════════════════════════
+' STEP 3 — EXAMINER + USER INTERACTION LOOP
+' ══════════════════════════════════════════════════
+== STEP 3c — AI Examiner Interaction ==
+
+note over Speaking, SpkCtrl
+  For each question in [Part 1 → Part 2 → Part 3]:
+  Examiner speaks → User answers → Audio streamed to Azure → Chunk saved
+end note
+
+loop each question (Part 1 × N + Part 2 cueCard + Part 3 × M)
+    Speaking -> SpkCtrl : GET /speaking/examiner-voice\n{ text, audioKey? }
+    alt has audioKey (pre-recorded)
+        SpkCtrl --> Speaking : stream audio from R2
+    else no audioKey
+        SpkCtrl -> TTS : synthesize(text, voice=ttsVoice)
+        TTS --> SpkCtrl : audio stream
+        SpkCtrl --> Speaking : synthesized audio stream
+    end
+
+    alt Part 2 cueCard
+        Speaking --> User : render shouldSay[] bullet points\n+ thinking countdown (prepSeconds)
+    end
+
+    Speaking --> User : play examiner audio
+    User -> Speaking : answer by voice
+    Speaking -> Azure : stream audio chunks (realtime)
+    Azure --> Speaking : transcript + PronunciationScore (realtime)
+    Speaking --> User : show live transcript
+
+    Speaking -> SpkCtrl : POST /placement-sessions/:sessionId/speaking/audio-chunk\n{ speakingAttemptId, part, questionIdx, transcript, pronunciationData }
+    SpkCtrl -> Mongo : append { transcript, pronunciationData } to SpeakingAttempt
+end
+
+' ══════════════════════════════════════════════════
+' STEP 3 — SUBMIT & ASYNC GRADING
+' ══════════════════════════════════════════════════
+== STEP 3d — Submit & Async Grading ==
+
+User -> Speaking : click "Kết thúc phỏng vấn"
+Speaking -> SpkCtrl : POST /placement-sessions/:sessionId/speaking/submit\n{ speakingAttemptId }
+SpkCtrl -> Mongo : update SpeakingAttempt { status:'submitted' }
+SpkCtrl -> Redis : enqueue speaking-grading-job\n{ speakingAttemptId, transcripts[], pronunciationData[] }
+Redis --> SpkCtrl : { jobId }
+SpkCtrl --> Speaking : 202 { jobId, status:'grading' }
+
+note over Redis, GPT
+  BullMQ Worker — speaking-grading.worker.ts:
+  1. Aggregate Azure PronunciationScore → pronunciation band
+  2. Call GPT (gradingModel) with full transcript
+     → { fluency, lexical, grammar } bands
+  3. Compute speakingBand = avg(fluency, lexical, grammar, pronunciation)
+  4. Persist SpeakingAttempt { bands, feedback, status:'done' }
+  5. Update PlacementSession.speakingBand
+  6. Trigger computeFinalResult():
+     → Apply cefrMapping.weights { mcq:0.4, writing:0.3, speaking:0.3 }
+     → Map weighted score to CEFR using cefrMapping.thresholds[]
+     → Update PlacementSession { cefrFinal, status:'completed' }
+end note
+
+Redis -> Azure : aggregate pronunciation scores
+Azure --> Redis : { accuracyScore, fluencyScore, wpm }
+Redis -> GPT : grade transcripts { fluency, lexical, grammar }
+GPT --> Redis : { fluency, lexical, grammar, feedback }
+Redis -> Mongo : persist SpeakingAttempt { bands, feedback, status:'done' }
+Redis -> Mongo : computeFinalResult()\n→ update PlacementSession { cefrFinal, status:'completed' }
+
+Speaking --> User : SubmissionSuccessCard
+User -> Speaking : click "Xem kết quả"
+Speaking -> PTStore : setCurrentModule('result')
+Speaking --> Result : navigate('/dashboard/placement-test/result')
+
+' ══════════════════════════════════════════════════
+' STEP 4 — RESULT DASHBOARD
+' ══════════════════════════════════════════════════
+== STEP 4 — Result Dashboard ==
+
+Result -> PTStore : read { sessionId }
+
+loop Poll every 5s (max 5 min)
+    Result -> SessionCtrl : GET /placement-sessions/:sessionId/result
+    SessionCtrl -> Mongo : findOne PlacementSession { _id: sessionId }
+    alt status != 'completed'
+        SessionCtrl --> Result : 202 { status:'computing' }
+        Result --> User : "AI đang tổng hợp kết quả..."
+    else status = 'completed'
+        SessionCtrl --> Result : 200 {\n  cefr, cefrDescription,\n  scores: { listening, reading, writing, speaking },\n  feedback: { writing, speaking }\n}
+        Result -> Result : stop polling
+    end
+end
+
+Result --> User : render Result Dashboard:\n  Radar Chart (4 skills)\n  CEFR Level Card\n  Skill Breakdown bars\n  AI Feedback Accordion (Writing + Speaking)
+
+User -> Result : click "Bắt đầu lộ trình học"
+Result -> PTStore : clear()
+Result --> User : navigate('/dashboard/roadmap')
+
+@enduml

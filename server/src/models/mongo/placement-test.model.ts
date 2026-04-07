@@ -47,8 +47,8 @@ export interface IPartConfig {
     name: string;
     questionsCount: number;
     poolTag: string;
-    difficultyDistribution: Partial<Record<keyof typeof ECEFRLevel, number>>;
-    excludeRecentDays: number;
+    difficultyDistribution?: Partial<Record<keyof typeof ECEFRLevel, number>>;
+    excludeRecentDays?: number;
     topicFilter?: string[];
     manualContent?: {
         passageText?: string;
@@ -83,10 +83,6 @@ export interface IModuleMCQ {
     type: 'mcq';
     name: string;
     timeLimitMinutes: number;
-    showCountdown: boolean;
-    allowBackNavigation: boolean;
-    adaptive: boolean;
-    samplingMode: 'random' | 'fixed';
     parts: IPartConfig[];
 }
 
@@ -95,13 +91,9 @@ export interface IModuleEssay {
     type: 'essay';
     name: string;
     timeLimitMinutes: number;
-    aiModel: string;
-    criteria: string[];
     wordLimits: { low: number; mid: number; high: number };
     topicsByLevel: { low: string[]; mid: string[]; high: string[] };
     promptImageUrl?: string;
-    secureMode: { disablePaste: boolean; disableSpellcheck: boolean };
-    promptSource: 'ai_generated' | 'library';
 }
 
 export interface ISpeakingQuestion {
@@ -110,28 +102,28 @@ export interface ISpeakingQuestion {
 }
 
 export interface ISpeakingParts {
-    warmupMinutes: number;
-    part1: { minutes: number; questionsRange: [number, number]; topics: ISpeakingQuestion[] };
+    warmupMinutes?: number;
+    part1: { minutes?: number; questionsRange?: [number, number]; topics: ISpeakingQuestion[] };
     part2: {
-        minutes: number;
-        prepSeconds: number;
+        minutes?: number;
+        prepSeconds?: number;
         cueCards: { level: 'low' | 'mid' | 'high'; text: string; audioKey?: string; shouldSay?: string[] }[];
     };
-    part3: { minutes: number; questionsRange: [number, number]; topics: ISpeakingQuestion[] };
+    part3: { minutes?: number; questionsRange?: [number, number]; topics: ISpeakingQuestion[] };
 }
 
 export interface IModuleSpeaking {
     order: number;
     type: 'speaking';
     name: string;
-    totalMinutes: number;
-    conversationModel: string;
-    ttsModel: string;
-    ttsVoice: string;
-    gradingModel: string;
-    speechAnalytics: string;
-    silenceThresholdSeconds: number;
-    criteria: string[];
+    totalMinutes?: number;
+    conversationModel?: string;
+    ttsModel?: string;
+    ttsVoice?: string;
+    gradingModel?: string;
+    speechAnalytics?: string;
+    silenceThresholdSeconds?: number;
+    criteria?: string[];
     parts: ISpeakingParts;
 }
 
@@ -232,10 +224,6 @@ const ModuleMCQSchema = new mongoose.Schema<IModuleMCQ>(
         type: { type: String, enum: ['mcq'], required: true },
         name: { type: String, required: true, trim: true },
         timeLimitMinutes: { type: Number, required: true, min: 1 },
-        showCountdown: { type: Boolean, default: true },
-        allowBackNavigation: { type: Boolean, default: false },
-        adaptive: { type: Boolean, default: true },
-        samplingMode: { type: String, enum: Object.values(ESamplingMode), default: ESamplingMode.RANDOM },
         parts: { type: [PartConfigSchema], default: [] },
     },
     { _id: false },
@@ -247,8 +235,6 @@ const ModuleEssaySchema = new mongoose.Schema<IModuleEssay>(
         type: { type: String, enum: ['essay'], required: true },
         name: { type: String, required: true, trim: true },
         timeLimitMinutes: { type: Number, required: true, min: 1 },
-        aiModel: { type: String, required: true, default: 'gpt-4o-mini' },
-        criteria: { type: [String], default: ['TR', 'CC', 'LR', 'GRA'] },
         wordLimits: {
             low: { type: Number, default: 150 },
             mid: { type: Number, default: 200 },
@@ -260,21 +246,13 @@ const ModuleEssaySchema = new mongoose.Schema<IModuleEssay>(
             high: { type: [String], default: [] },
         },
         promptImageUrl: { type: String, default: null },
-        secureMode: {
-            disablePaste: { type: Boolean, default: true },
-            disableSpellcheck: { type: Boolean, default: true },
-        },
-        promptSource: { type: String, enum: Object.values(EPromptSource), default: EPromptSource.AI_GENERATED },
     },
     { _id: false },
 );
 
 const SpeakingPartsSchema = new mongoose.Schema(
     {
-        warmupMinutes: { type: Number, default: 1 },
         part1: {
-            minutes: { type: Number, default: 5 },
-            questionsRange: { type: [Number], default: [4, 6] },
             topics: {
                 type: [
                     {
@@ -286,8 +264,6 @@ const SpeakingPartsSchema = new mongoose.Schema(
             },
         },
         part2: {
-            minutes: { type: Number, default: 4 },
-            prepSeconds: { type: Number, default: 60 },
             cueCards: {
                 type: [
                     {
@@ -301,8 +277,6 @@ const SpeakingPartsSchema = new mongoose.Schema(
             },
         },
         part3: {
-            minutes: { type: Number, default: 5 },
-            questionsRange: { type: [Number], default: [2, 3] },
             topics: {
                 type: [
                     {
@@ -322,14 +296,6 @@ const ModuleSpeakingSchema = new mongoose.Schema<IModuleSpeaking>(
         order: { type: Number, required: true },
         type: { type: String, enum: ['speaking'], required: true },
         name: { type: String, required: true, trim: true },
-        totalMinutes: { type: Number, required: true, min: 1 },
-        conversationModel: { type: String, default: 'gpt-4o-mini' },
-        ttsModel: { type: String, default: 'tts-1' },
-        ttsVoice: { type: String, default: 'alloy' },
-        gradingModel: { type: String, default: 'gpt-4o-mini' },
-        speechAnalytics: { type: String, default: 'azure-ai-speech' },
-        silenceThresholdSeconds: { type: Number, default: 5 },
-        criteria: { type: [String], default: ['fluency', 'lexical', 'grammar', 'pronunciation'] },
         parts: { type: SpeakingPartsSchema, default: () => ({}) },
     },
     { _id: false },
@@ -347,6 +313,285 @@ const CEFRThresholdSchema = new mongoose.Schema(
     },
     { _id: false },
 );
+
+const PlacementModuleSchema = new mongoose.Schema<Record<string, unknown>>(
+    {},
+    {
+        _id: false,
+        strict: false,
+    },
+);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+    !!value && typeof value === 'object' && !Array.isArray(value);
+
+const trimString = (value: unknown): string =>
+    typeof value === 'string' ? value.trim() : '';
+
+const toFiniteNumber = (value: unknown): number | undefined => {
+    const n = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(n) ? n : undefined;
+};
+
+const normalizeStringArray = (value: unknown): string[] =>
+    Array.isArray(value)
+        ? value.map((item) => trimString(item)).filter((item) => item.length > 0)
+        : [];
+
+const sanitizeModulesForStorage = (modules: unknown): unknown[] => {
+    if (!Array.isArray(modules)) {
+        return [];
+    }
+
+    return modules
+        .map((module) => {
+            if (!isRecord(module)) return null;
+
+            const type = trimString(module.type);
+            const order = toFiniteNumber(module.order);
+            const name = trimString(module.name);
+
+            if (!type || order === undefined || !name) return null;
+
+            if (type === EModuleType.MCQ) {
+                const timeLimitMinutes = toFiniteNumber(module.timeLimitMinutes);
+                if (timeLimitMinutes === undefined) return null;
+
+                const partsRaw = Array.isArray(module.parts) ? module.parts : [];
+                const parts = partsRaw
+                    .map((part) => {
+                        if (!isRecord(part)) return null;
+
+                        const partNumber = toFiniteNumber(part.part);
+                        const partName = trimString(part.name);
+                        const questionsCount = toFiniteNumber(part.questionsCount);
+                        const poolTag = trimString(part.poolTag);
+                        if (partNumber === undefined || !partName || questionsCount === undefined || !poolTag) {
+                            return null;
+                        }
+
+                        const manualContentRaw = isRecord(part.manualContent) ? part.manualContent : undefined;
+                        const questions = normalizeStringArray(manualContentRaw?.questions);
+                        const groupPattern = Array.isArray(manualContentRaw?.groupPattern)
+                            ? (manualContentRaw?.groupPattern as unknown[])
+                                .map((item) => toFiniteNumber(item))
+                                .filter((item): item is number => item !== undefined)
+                            : [];
+
+                        const questionItemsRaw = Array.isArray(manualContentRaw?.questionItems)
+                            ? manualContentRaw?.questionItems
+                            : [];
+                        const questionItems = questionItemsRaw
+                            .map((questionItem) => {
+                                if (!isRecord(questionItem)) return null;
+                                const question = trimString(questionItem.question);
+                                const optionsRaw = isRecord(questionItem.options) ? questionItem.options : null;
+                                if (!question || !optionsRaw) return null;
+
+                                const optionA = trimString(optionsRaw.A);
+                                const optionB = trimString(optionsRaw.B);
+                                const optionC = trimString(optionsRaw.C);
+                                const optionD = trimString(optionsRaw.D);
+                                const correctOption = trimString(questionItem.correctOption);
+
+                                if (!optionA || !optionB || !optionC || !optionD) return null;
+                                if (!['A', 'B', 'C', 'D'].includes(correctOption)) return null;
+
+                                const explanation = trimString(questionItem.explanation);
+                                const transcript = trimString(questionItem.transcript);
+                                const mediaUrl = trimString(questionItem.mediaUrl);
+                                const imageUrl = trimString(questionItem.imageUrl);
+                                const imageUrls = normalizeStringArray(questionItem.imageUrls);
+                                const audioUrl = trimString(questionItem.audioUrl);
+
+                                return {
+                                    question,
+                                    options: {
+                                        A: optionA,
+                                        B: optionB,
+                                        C: optionC,
+                                        D: optionD,
+                                    },
+                                    correctOption: correctOption as 'A' | 'B' | 'C' | 'D',
+                                    ...(explanation ? { explanation } : {}),
+                                    ...(transcript ? { transcript } : {}),
+                                    ...(mediaUrl ? { mediaUrl } : {}),
+                                    ...(imageUrl ? { imageUrl } : {}),
+                                    ...(imageUrls.length > 0 ? { imageUrls } : {}),
+                                    ...(audioUrl ? { audioUrl } : {}),
+                                };
+                            })
+                            .filter((item): item is NonNullable<typeof item> => item !== null);
+
+                        const mediaRaw = isRecord(manualContentRaw?.media) ? manualContentRaw?.media : undefined;
+                        const sharedAudioUrl = trimString(mediaRaw?.audioUrl);
+
+                        const manualContent =
+                            questions.length > 0 || groupPattern.length > 0 || questionItems.length > 0 || !!sharedAudioUrl
+                                ? {
+                                    ...(groupPattern.length > 0 ? { groupPattern } : {}),
+                                    ...(questions.length > 0 ? { questions } : {}),
+                                    ...(questionItems.length > 0 ? { questionItems } : {}),
+                                    ...(sharedAudioUrl ? { media: { audioUrl: sharedAudioUrl } } : {}),
+                                }
+                                : undefined;
+
+                        return {
+                            part: partNumber,
+                            name: partName,
+                            questionsCount,
+                            poolTag,
+                            ...(manualContent ? { manualContent } : {}),
+                        };
+                    })
+                    .filter((part): part is NonNullable<typeof part> => part !== null);
+
+                return {
+                    order,
+                    type: EModuleType.MCQ,
+                    name,
+                    timeLimitMinutes,
+                    parts,
+                };
+            }
+
+            if (type === EModuleType.ESSAY) {
+                const timeLimitMinutes = toFiniteNumber(module.timeLimitMinutes);
+                const wordLimitsRaw = isRecord(module.wordLimits) ? module.wordLimits : null;
+                const topicsByLevelRaw = isRecord(module.topicsByLevel) ? module.topicsByLevel : null;
+                if (timeLimitMinutes === undefined || !wordLimitsRaw || !topicsByLevelRaw) return null;
+
+                const low = toFiniteNumber(wordLimitsRaw.low);
+                const mid = toFiniteNumber(wordLimitsRaw.mid);
+                const high = toFiniteNumber(wordLimitsRaw.high);
+                if (low === undefined || mid === undefined || high === undefined) return null;
+
+                const promptImageUrl = trimString(module.promptImageUrl);
+
+                return {
+                    order,
+                    type: EModuleType.ESSAY,
+                    name,
+                    timeLimitMinutes,
+                    wordLimits: { low, mid, high },
+                    topicsByLevel: {
+                        low: normalizeStringArray(topicsByLevelRaw.low),
+                        mid: normalizeStringArray(topicsByLevelRaw.mid),
+                        high: normalizeStringArray(topicsByLevelRaw.high),
+                    },
+                    ...(promptImageUrl ? { promptImageUrl } : {}),
+                };
+            }
+
+            if (type === EModuleType.SPEAKING) {
+                const partsRaw = isRecord(module.parts) ? module.parts : null;
+                if (!partsRaw) return null;
+
+                const totalMinutes = toFiniteNumber(module.totalMinutes);
+                const conversationModel = trimString(module.conversationModel);
+                const ttsModel = trimString(module.ttsModel);
+                const ttsVoice = trimString(module.ttsVoice);
+                const gradingModel = trimString(module.gradingModel);
+                const speechAnalytics = trimString(module.speechAnalytics);
+                const silenceThresholdSeconds = toFiniteNumber(module.silenceThresholdSeconds);
+                const criteria = normalizeStringArray(module.criteria);
+
+                const part1Raw = isRecord(partsRaw.part1) ? partsRaw.part1 : null;
+                const part2Raw = isRecord(partsRaw.part2) ? partsRaw.part2 : null;
+                const part3Raw = isRecord(partsRaw.part3) ? partsRaw.part3 : null;
+                if (!part1Raw || !part2Raw || !part3Raw) return null;
+
+                const normalizeTopic = (topic: unknown): ISpeakingQuestion | null => {
+                    if (!isRecord(topic)) return null;
+                    const text = trimString(topic.text);
+                    if (!text) return null;
+                    const audioKey = trimString(topic.audioKey);
+                    return { text, ...(audioKey ? { audioKey } : {}) };
+                };
+
+                const part1Topics = (Array.isArray(part1Raw.topics) ? part1Raw.topics : [])
+                    .map(normalizeTopic)
+                    .filter((topic): topic is ISpeakingQuestion => topic !== null);
+
+                const part1Minutes = toFiniteNumber(part1Raw.minutes);
+                const part1QuestionsRange = Array.isArray(part1Raw.questionsRange)
+                    ? (part1Raw.questionsRange as unknown[])
+                        .map((item) => toFiniteNumber(item))
+                        .filter((item): item is number => item !== undefined)
+                    : [];
+
+                const part3Topics = (Array.isArray(part3Raw.topics) ? part3Raw.topics : [])
+                    .map(normalizeTopic)
+                    .filter((topic): topic is ISpeakingQuestion => topic !== null);
+
+                const part3Minutes = toFiniteNumber(part3Raw.minutes);
+                const part3QuestionsRange = Array.isArray(part3Raw.questionsRange)
+                    ? (part3Raw.questionsRange as unknown[])
+                        .map((item) => toFiniteNumber(item))
+                        .filter((item): item is number => item !== undefined)
+                    : [];
+
+                const part2Minutes = toFiniteNumber(part2Raw.minutes);
+                const part2PrepSeconds = toFiniteNumber(part2Raw.prepSeconds);
+
+                const cueCards = (Array.isArray(part2Raw.cueCards) ? part2Raw.cueCards : [])
+                    .map((cueCard) => {
+                        if (!isRecord(cueCard)) return null;
+                        const level = trimString(cueCard.level);
+                        const text = trimString(cueCard.text);
+                        if (!['low', 'mid', 'high'].includes(level) || !text) return null;
+                        const audioKey = trimString(cueCard.audioKey);
+                        const shouldSay = normalizeStringArray(cueCard.shouldSay);
+
+                        return {
+                            level: level as 'low' | 'mid' | 'high',
+                            text,
+                            ...(audioKey ? { audioKey } : {}),
+                            ...(shouldSay.length > 0 ? { shouldSay } : {}),
+                        };
+                    })
+                    .filter((cueCard): cueCard is NonNullable<typeof cueCard> => cueCard !== null);
+
+                return {
+                    order,
+                    type: EModuleType.SPEAKING,
+                    name,
+                    ...(totalMinutes !== undefined ? { totalMinutes } : {}),
+                    ...(conversationModel ? { conversationModel } : {}),
+                    ...(ttsModel ? { ttsModel } : {}),
+                    ...(ttsVoice ? { ttsVoice } : {}),
+                    ...(gradingModel ? { gradingModel } : {}),
+                    ...(speechAnalytics ? { speechAnalytics } : {}),
+                    ...(silenceThresholdSeconds !== undefined ? { silenceThresholdSeconds } : {}),
+                    ...(criteria.length > 0 ? { criteria } : {}),
+                    parts: {
+                        part1: {
+                            ...(part1Minutes !== undefined ? { minutes: part1Minutes } : {}),
+                            ...(part1QuestionsRange.length === 2
+                                ? { questionsRange: [part1QuestionsRange[0], part1QuestionsRange[1]] }
+                                : {}),
+                            topics: part1Topics,
+                        },
+                        part2: {
+                            ...(part2Minutes !== undefined ? { minutes: part2Minutes } : {}),
+                            ...(part2PrepSeconds !== undefined ? { prepSeconds: part2PrepSeconds } : {}),
+                            cueCards,
+                        },
+                        part3: {
+                            ...(part3Minutes !== undefined ? { minutes: part3Minutes } : {}),
+                            ...(part3QuestionsRange.length === 2
+                                ? { questionsRange: [part3QuestionsRange[0], part3QuestionsRange[1]] }
+                                : {}),
+                            topics: part3Topics,
+                        },
+                    },
+                };
+            }
+
+            return null;
+        })
+        .filter((module): module is NonNullable<typeof module> => module !== null);
+};
 
 // ─── Main Schema ──────────────────────────────────────────────────────────────
 
@@ -407,9 +652,12 @@ const PlacementTestSchema = new mongoose.Schema<IPlacementTest>(
             retakeCooldownDays: { type: Number, default: 30, min: 0 },
         },
 
-        // ─── Modules (polymorphic) ─────────────────────────────────────────────
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        modules: { type: [], default: [] } as any,
+        // ─── Modules (polymorphic, sanitized at model layer) ───────────────────
+        modules: {
+            type: [PlacementModuleSchema],
+            default: [],
+            set: sanitizeModulesForStorage,
+        },
 
         // ─── CEFR Mapping ──────────────────────────────────────────────────────
         cefrMapping: {
@@ -442,6 +690,25 @@ PlacementTestSchema.index({ languageId: 1, status: 1 });
 PlacementTestSchema.index({ language: 1, status: 1 });
 PlacementTestSchema.index({ version: -1 });
 PlacementTestSchema.index({ language: 1, name: 1 });
+
+PlacementTestSchema.pre('findOneAndUpdate', function () {
+    const update = this.getUpdate();
+    if (!update || typeof update !== 'object') {
+        return;
+    }
+
+    const updateRecord = update as Record<string, unknown>;
+
+    if (Array.isArray(updateRecord.modules)) {
+        updateRecord.modules = sanitizeModulesForStorage(updateRecord.modules);
+    }
+
+    if (isRecord(updateRecord.$set) && Array.isArray(updateRecord.$set.modules)) {
+        updateRecord.$set.modules = sanitizeModulesForStorage(updateRecord.$set.modules);
+    }
+
+    this.setUpdate(updateRecord);
+});
 
 // ─── Export ───────────────────────────────────────────────────────────────────
 

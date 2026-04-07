@@ -802,25 +802,12 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
             order,
             type: 'speaking',
             name: values.name,
-            totalMinutes: defaultValues?.totalMinutes ?? 15,
-            conversationModel: defaultValues?.conversationModel ?? 'gpt-4.1-mini',
-            ttsModel: defaultValues?.ttsModel ?? 'tts-1',
-            ttsVoice: defaultValues?.ttsVoice ?? 'alloy',
-            gradingModel: defaultValues?.gradingModel ?? 'gpt-5-mini',
-            speechAnalytics: defaultValues?.speechAnalytics ?? 'azure-ai-speech',
-            silenceThresholdSeconds: defaultValues?.silenceThresholdSeconds ?? 5,
-            criteria: defaultValues?.criteria ?? ['fluency', 'lexical', 'grammar', 'pronunciation'],
             parts: {
-                warmupMinutes: defaultValues?.parts?.warmupMinutes ?? 2,
                 part1: {
-                    minutes: defaultValues?.parts?.part1?.minutes ?? 4,
-                    questionsRange: defaultValues?.parts?.part1?.questionsRange ?? [4, 6],
                     // Persist text + audioKey so that re-opening the form restores audio
                     topics: part1Questions.map((q) => ({ text: q.text, audioKey: q.audioKey })),
                 },
                 part2: {
-                    minutes: defaultValues?.parts?.part2?.minutes ?? 4,
-                    prepSeconds: defaultValues?.parts?.part2?.prepSeconds ?? 60,
                     cueCards: part2Questions.map((q) => ({
                         level: 'mid' as const,
                         text: q.text,
@@ -829,8 +816,6 @@ export function SpeakingModuleForm({ defaultValues, order, onSave, onCancel }: P
                     })),
                 },
                 part3: {
-                    minutes: defaultValues?.parts?.part3?.minutes ?? 5,
-                    questionsRange: defaultValues?.parts?.part3?.questionsRange ?? [2, 3],
                     topics: part3Questions.map((q) => ({ text: q.text, audioKey: q.audioKey })),
                 },
             },

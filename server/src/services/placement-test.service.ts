@@ -74,6 +74,7 @@ const aiParseResponseSchema = z.object({
 });
 
 type AiParsedQuestion = z.infer<typeof aiParsedQuestionSchema>;
+type PlacementModuleInput = NonNullable<CreatePlacementTestBody['modules']>[number];
 
 // ─── Default CEFR Thresholds ──────────────────────────────────────────────────
 
@@ -85,6 +86,163 @@ const DEFAULT_CEFR_THRESHOLDS = [
     { level: 'C1' as const, mcqMin: 0.75, mcqMax: 0.90, writingMin: 0.75, writingMax: 0.90, speakingMin: 0.75, speakingMax: 0.90 },
     { level: 'C2' as const, mcqMin: 0.90, mcqMax: 1, writingMin: 0.90, writingMax: 1, speakingMin: 0.90, speakingMax: 1 },
 ];
+
+const normalizeStringArray = (items: string[] | undefined): string[] =>
+    (items ?? []).map((item) => item.trim()).filter((item) => item.length > 0);
+
+const sanitizeModulesForFormStorage = (modules: PlacementModuleInput[]): unknown[] => {
+    return modules.map((module, moduleIndex) => {
+        if (module.type === 'mcq') {
+            const normalizedParts = (module.parts ?? []).map((part) => {
+                const normalizedQuestionItems = (part.manualContent?.questionItems ?? [])
+                    .map((questionItem) => ({
+                        question: questionItem.question.trim(),
+                        options: {
+                            A: questionItem.options.A.trim(),
+                            B: questionItem.options.B.trim(),
+                            C: questionItem.options.C.trim(),
+                            D: questionItem.options.D.trim(),
+                        },
+                        correctOption: questionItem.correctOption,
+                        ...(questionItem.explanation?.trim()
+                            ? { explanation: questionItem.explanation.trim() }
+                            : {}),
+                        ...(questionItem.transcript?.trim()
+                            ? { transcript: questionItem.transcript.trim() }
+                            : {}),
+                        ...(questionItem.mediaUrl?.trim()
+                            ? { mediaUrl: questionItem.mediaUrl.trim() }
+                            : {}),
+                        ...(questionItem.imageUrl?.trim()
+                            ? { imageUrl: questionItem.imageUrl.trim() }
+                            : {}),
+                        ...(normalizeStringArray(questionItem.imageUrls).length > 0
+                            ? { imageUrls: normalizeStringArray(questionItem.imageUrls) }
+                            : {}),
+                        ...(questionItem.audioUrl?.trim()
+                            ? { audioUrl: questionItem.audioUrl.trim() }
+                            : {}),
+                    }))
+                    .filter((questionItem) => questionItem.question.length > 0);
+
+                const normalizedQuestions = normalizeStringArray(part.manualContent?.questions);
+                const normalizedGroupPattern = (part.manualContent?.groupPattern ?? [])
+                    .map((value) => Number(value))
+                    .filter((value) => Number.isFinite(value));
+                const normalizedSharedAudioUrl = part.manualContent?.media?.audioUrl?.trim();
+
+                const manualContent =
+                    normalizedQuestionItems.length > 0
+                    || normalizedQuestions.length > 0
+                    || normalizedGroupPattern.length > 0
+                    || !!normalizedSharedAudioUrl
+                        ? {
+                            ...(normalizedGroupPattern.length > 0
+                                ? { groupPattern: normalizedGroupPattern }
+                                : {}),
+                            ...(normalizedQuestions.length > 0
+                                ? { questions: normalizedQuestions }
+                                : {}),
+                            ...(normalizedQuestionItems.length > 0
+                                ? { questionItems: normalizedQuestionItems }
+                                : {}),
+                            ...(normalizedSharedAudioUrl
+                                ? { media: { audioUrl: normalizedSharedAudioUrl } }
+                                : {}),
+                        }
+                        : undefined;
+
+                return {
+                    part: Number(part.part),
+                    name: part.name.trim(),
+                    questionsCount: Number(part.questionsCount),
+                    poolTag: part.poolTag.trim(),
+                    ...(manualContent ? { manualContent } : {}),
+                };
+            });
+
+            return {
+                order: module.order ?? moduleIndex + 1,
+                type: 'mcq' as const,
+                name: module.name.trim(),
+                timeLimitMinutes: Number(module.timeLimitMinutes),
+                parts: normalizedParts,
+            };
+        }
+
+        if (module.type === 'essay') {
+            const normalizedPromptImageUrl = module.promptImageUrl?.trim();
+            const normalizedTopics = {
+                low: normalizeStringArray(module.topicsByLevel.low),
+                mid: normalizeStringArray(module.topicsByLevel.mid),
+                high: normalizeStringArray(module.topicsByLevel.high),
+            };
+
+            return {
+                order: module.order ?? moduleIndex + 1,
+                type: 'essay' as const,
+                name: module.name.trim(),
+                timeLimitMinutes: Number(module.timeLimitMinutes),
+                wordLimits: {
+                    low: Number(module.wordLimits.low),
+                    mid: Number(module.wordLimits.mid),
+                    high: Number(module.wordLimits.high),
+                },
+                topicsByLevel: normalizedTopics,
+                ...(normalizedPromptImageUrl ? { promptImageUrl: normalizedPromptImageUrl } : {}),
+            };
+        }
+
+        const toSpeakingTopic = (
+            topic: { text: string; audioKey?: string | undefined } | string,
+        ): { text: string; audioKey?: string | undefined } => {
+            if (typeof topic === 'string') {
+                return { text: topic.trim() };
+            }
+
+            const text = topic.text.trim();
+            const audioKey = topic.audioKey?.trim();
+
+            return {
+                text,
+                ...(audioKey ? { audioKey } : {}),
+            };
+        };
+
+        const part1Topics = (module.parts.part1.topics ?? [])
+            .map(toSpeakingTopic)
+            .filter((topic) => topic.text.length > 0);
+        const part3Topics = (module.parts.part3.topics ?? [])
+            .map(toSpeakingTopic)
+            .filter((topic) => topic.text.length > 0);
+
+        const cueCards = (module.parts.part2.cueCards ?? [])
+            .map((cueCard) => {
+                const text = cueCard.text.trim();
+                const audioKey = cueCard.audioKey?.trim();
+                return {
+                    level: cueCard.level,
+                    text,
+                    ...(audioKey ? { audioKey } : {}),
+                    ...(normalizeStringArray(cueCard.shouldSay).length > 0
+                        ? { shouldSay: normalizeStringArray(cueCard.shouldSay) }
+                        : {}),
+                };
+            })
+            .filter((cueCard) => cueCard.text.length > 0);
+
+        return {
+            order: module.order ?? moduleIndex + 1,
+            type: 'speaking' as const,
+            name: module.name.trim(),
+            parts: {
+                part1: { topics: part1Topics },
+                part2: { cueCards },
+                part3: { topics: part3Topics },
+            },
+        };
+    });
+};
 
 // ─── Service ──────────────────────────────────────────────────────────────────
 
@@ -299,11 +457,14 @@ class PlacementTestService {
     // ─── CREATE ───────────────────────────────────────────────────────────────
 
     async create(data: CreatePlacementTestBody, adminId: string): Promise<IPlacementTest> {
+        const normalizedModules = sanitizeModulesForFormStorage(data.modules ?? []) as PlacementModuleInput[];
+
         const test = await placementTestMongoRepository.create({
             ...data,
             languageId: new mongoose.Types.ObjectId(data.languageId),
             status: EPlacementTestStatus.DRAFT,
             version: 1,
+            modules: normalizedModules,
             cefrMapping: data.cefrMapping ?? {
                 weights: { mcq: 0.4, writing: 0.3, speaking: 0.3 },
                 thresholds: DEFAULT_CEFR_THRESHOLDS,
@@ -328,9 +489,13 @@ class PlacementTestService {
      */
     async update(id: string, data: UpdatePlacementTestBody, adminId: string): Promise<IPlacementTest> {
         const existing = await this.getById(id);
+        const normalizedModules = data.modules === undefined
+            ? undefined
+            : (sanitizeModulesForFormStorage(data.modules) as PlacementModuleInput[]);
 
         const updated = await placementTestMongoRepository.updateById(id, {
             ...data,
+            ...(normalizedModules !== undefined ? { modules: normalizedModules } : {}),
             updatedBy: new mongoose.Types.ObjectId(adminId),
         } as unknown as Partial<IPlacementTest>);
 

@@ -26,8 +26,8 @@ const MODULES: ModuleRow[] = [
 	{
 		number: 1,
 		name: 'TOEIC Thu Gọn',
-		content: 'Nghe & Đọc hiểu (101 câu trắc nghiệm)',
-		duration: '~45 phút',
+		content: 'Nghe & Đọc hiểu (77 câu trắc nghiệm)',
+		duration: '60 phút',
 	},
 	{
 		number: 2,
@@ -47,7 +47,7 @@ const CHECKLIST: ChecklistItem[] = [
 	{ label: 'Tai nghe', detail: 'để nghe rõ audio phần Listening' },
 	{ label: 'Internet ổn định', detail: 'tránh mất kết nối giữa chừng' },
 	{ label: 'Nơi yên tĩnh', detail: 'giúp tập trung làm bài hiệu quả hơn' },
-	{ label: '~45 phút liên tục', detail: 'không thể tạm dừng giữa chừng' },
+	{ label: '~0 phút liên tục', detail: 'không thể tạm dừng giữa chừng' },
 ];
 
 const PlacementTestIntroModal = ({ onClose }: Props) => {

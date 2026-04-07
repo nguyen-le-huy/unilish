@@ -3,6 +3,8 @@ import styles from './audio-player.module.css';
 
 interface Props {
     src?: string;
+    autoPlayOnChange?: boolean;
+    playTrigger?: string | number;
 }
 
 const formatTime = (seconds: number): string => {
@@ -11,7 +13,7 @@ const formatTime = (seconds: number): string => {
     return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-export const AudioPlayer = ({ src }: Props) => {
+export const AudioPlayer = ({ src, autoPlayOnChange = false, playTrigger }: Props) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const progressRef = useRef<HTMLDivElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -100,6 +102,39 @@ export const AudioPlayer = ({ src }: Props) => {
     }, [src]);
 
     useEffect(() => {
+        if (!autoPlayOnChange || !src || audioError) {
+            return;
+        }
+
+        const audio = audioRef.current;
+        if (!audio) {
+            return;
+        }
+
+        const playAudio = () => {
+            audio.currentTime = 0;
+            const playPromise = audio.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+                playPromise.catch(() => {
+                    setIsPlaying(false);
+                });
+            }
+        };
+
+        if (audio.readyState >= 2) {
+            playAudio();
+            return;
+        }
+
+        audio.addEventListener('canplay', playAudio, { once: true });
+        audio.load();
+
+        return () => {
+            audio.removeEventListener('canplay', playAudio);
+        };
+    }, [audioError, autoPlayOnChange, playTrigger, src]);
+
+    useEffect(() => {
         if (!isDragging) return;
         const handleMouseMove = (e: MouseEvent) => seek(e.clientX);
         const handleMouseUp = (e: MouseEvent) => {
@@ -129,7 +164,7 @@ export const AudioPlayer = ({ src }: Props) => {
                 <audio
                     ref={audioRef}
                     src={src}
-                    preload="none"
+                    preload="auto"
                     onTimeUpdate={handleTimeUpdate}
                     onLoadedMetadata={handleLoadedMetadata}
                     onEnded={handleEnded}
