@@ -56,13 +56,16 @@ export class CourseService {
             throw new AppError('Course Series không tồn tại', HttpStatus.NOT_FOUND);
         }
 
-        const duplicatedLevel = await this.courseRepo.existsBySeriesAndLevel(body.seriesId, body.level);
-        if (duplicatedLevel) {
-            throw new AppError(
-                `Series đã có course cho level ${body.level}. Vui lòng chọn level khác.`,
-                HttpStatus.BAD_REQUEST,
-            );
-        }
+        // ✅ REMOVED: Duplicate level validation
+        // Bây giờ cho phép nhiều courses cùng level trong 1 series
+        // Ví dụ: Series "Du lịch" có thể có 3 courses A1 khác nhau
+        // const duplicatedLevel = await this.courseRepo.existsBySeriesAndLevel(body.seriesId, body.level);
+        // if (duplicatedLevel) {
+        //     throw new AppError(
+        //         `Series đã có course cho level ${body.level}. Vui lòng chọn level khác.`,
+        //         HttpStatus.BAD_REQUEST,
+        //     );
+        // }
 
         const created = await this.courseRepo.createCourse(body as unknown as Partial<ICourse>);
 

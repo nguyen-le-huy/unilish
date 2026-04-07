@@ -3,9 +3,18 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import { env } from '../../config/env.js';
 import { placementSessionMongoRepository } from '../../repositories/mongo/placement-session.mongo.repository.js';
-import { EPlacementSessionStatus, EPlacementSubmoduleStatus, type ISpeakingCriteria, type ISpeakingFeedback } from '../../models/mongo/placement-session.model.js';
+import {
+    EPlacementSessionStatus,
+    EPlacementSubmoduleStatus,
+    type ISpeakingCriteria,
+    type ISpeakingFeedback,
+} from '../../models/mongo/placement-session.model.js';
 import { logger } from '../../utils/logger.js';
 import type { SpeakingGradingJobPayload } from '../queues/speaking-grading.queue.js';
+
+// ══════════════════════════════════════════════════
+// CONSTANTS & CONFIGURATION
+// ══════════════════════════════════════════════════
 
 const openaiClient = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
@@ -14,13 +23,20 @@ const speakingGradeSchema = z.object({
     lexical: z.number().min(0).max(9),
     grammar: z.number().min(0).max(9),
     feedback: z.object({
-        strengths: z.array(z.string()).default([]),
-        errors: z.array(z.string()).default([]),
-        tips: z.array(z.string()).default([]),
-        transcriptHighlights: z.array(z.string()).default([]),
+        strengths: z.array(z.string()).min(1).max(3),
+        errors: z.array(z.string()).min(1).max(3),
+        tips: z.array(z.string()).min(1).max(3),
+        transcriptHighlights: z.array(z.string()).min(1).max(3),
     }),
 });
 
+// ══════════════════════════════════════════════════
+// UTILITY FUNCTIONS
+// ══════════════════════════════════════════════════
+
+/**
+ * Clamp and round band score to nearest 0.5 within IELTS range [0.0 - 9.0]
+ */
 const clampBand = (value: number): number => {
     if (!Number.isFinite(value)) {
         return 0;
@@ -30,62 +46,66 @@ const clampBand = (value: number): number => {
     return Math.max(0, Math.min(9, rounded));
 };
 
-const buildSpeakingFeedback = (chunkCount: number): ISpeakingFeedback => {
-    if (chunkCount >= 3) {
-        return {
-            strengths: [
-                'Cau tra loi co do luu loat on dinh trong nhieu phan.',
-                'Von tu vung kha linh hoat o chu de quen thuoc.',
-            ],
-            errors: ['Van con nhung khoang dung ngan khi mo rong y.'],
-            tips: [
-                'Tang toc do phan hoi o cau hoi tru tuong trong Part 3.',
-                'Uu tien dung cau phuc co menh de bo nghia de nang diem grammar.',
-            ],
-            transcriptHighlights: ['Mau cau tra loi da bao phu day du part1, part2, part3.'],
-        };
-    }
-
-    return {
-        strengths: ['Da hoan thanh duoc cac phan tra loi co ban.'],
-        errors: ['So luong du lieu am thanh it, can tra loi day du hon moi cau hoi.'],
-        tips: [
-            'Tra loi toi thieu 2-3 cau cho moi cau hoi Part 1 va Part 3.',
-            'Part 2 can neu ro mo ta, ly do va cam nhan ca nhan.',
-        ],
-        transcriptHighlights: ['Can thu am day du tung cau hoi de AI phan tich chinh xac hon.'],
-    };
-};
-
+/**
+ * Extract numeric value from unknown object field
+ */
 const extractNumber = (source: Record<string, unknown>, key: string): number | null => {
     const value = source[key];
+    
     if (typeof value === 'number' && Number.isFinite(value)) {
         return value;
     }
+    
     if (typeof value === 'string') {
         const parsed = Number(value);
         if (Number.isFinite(parsed)) {
             return parsed;
         }
     }
+    
     return null;
 };
 
+/**
+ * Normalize Azure pronunciation scores to IELTS band scale
+ * Handles different score ranges: [0-1], [0-9], [0-100]
+ */
 const normalizeScoreToBand = (raw: number): number => {
     if (!Number.isFinite(raw)) {
         return 0;
     }
 
+    // Percentage scale [0-1]
     if (raw <= 1) {
         return clampBand(raw * 9);
     }
 
+    // Band scale [0-9]
     if (raw <= 9) {
         return clampBand(raw);
     }
 
+    // Percentage scale [0-100]
     return clampBand((raw / 100) * 9);
 };
+
+/**
+ * Calculate overall speaking band from four criteria
+ */
+const calculateOverallBand = (criteria: ISpeakingCriteria): number => {
+    const values = [criteria.fluency, criteria.lexical, criteria.grammar, criteria.pronunciation]
+        .filter((item): item is number => typeof item === 'number' && Number.isFinite(item));
+
+    if (values.length === 0) {
+        return 0;
+    }
+
+    return clampBand(values.reduce((sum, value) => sum + value, 0) / values.length);
+};
+
+// ══════════════════════════════════════════════════
+// AZURE PRONUNCIATION ASSESSMENT
+// ══════════════════════════════════════════════════
 
 const AZURE_METRIC_KEYS = [
     'pronunciationScore',
@@ -97,9 +117,12 @@ const AZURE_METRIC_KEYS = [
 
 type AzureMetricKey = typeof AZURE_METRIC_KEYS[number];
 
+/**
+ * Summarize Azure pronunciation metrics for GPT context
+ */
 const summarizeAzurePronunciationMetrics = (pronunciationData: Array<Record<string, unknown>>): string => {
     if (pronunciationData.length === 0) {
-        return 'Khong co du lieu diem Azure Pronunciation Assessment.';
+        return 'Không có dữ liệu đánh giá phát âm từ Azure Speech.';
     }
 
     const summaryLines: string[] = [];
@@ -120,13 +143,16 @@ const summarizeAzurePronunciationMetrics = (pronunciationData: Array<Record<stri
     });
 
     if (summaryLines.length === 0) {
-        return 'Khong co du lieu diem Azure Pronunciation Assessment hop le.';
+        return 'Không có dữ liệu đánh giá phát âm hợp lệ từ Azure Speech.';
     }
 
     return summaryLines.join('\n');
 };
 
-const aggregatePronunciationBand = (pronunciationData: Array<Record<string, unknown>>): number | null => {
+/**
+ * Aggregate Azure pronunciation metrics into single IELTS band score
+ */
+const aggregatePronunciationBand = (pronunciationData: Array<Record<string, unknown>>): number => {
     const candidates: number[] = [];
 
     pronunciationData.forEach((item) => {
@@ -139,75 +165,107 @@ const aggregatePronunciationBand = (pronunciationData: Array<Record<string, unkn
     });
 
     if (candidates.length === 0) {
-        return null;
+        return 0;
     }
 
     return clampBand(candidates.reduce((sum, value) => sum + value, 0) / candidates.length);
 };
 
+// ══════════════════════════════════════════════════
+// GPT GRADING SERVICE
+// ══════════════════════════════════════════════════
+
+/**
+ * Grade speaking transcript using GPT with IELTS criteria
+ * @throws Error if grading fails
+ */
 const gradeSpeakingWithGpt = async (
     transcripts: string[],
-    gradingModel: string,
     azureMetricsSummary: string,
 ): Promise<{
     criteria: { fluency: number; lexical: number; grammar: number };
     feedback: ISpeakingFeedback;
-} | null> => {
-    const prompt = `You are a strict IELTS speaking examiner.
-Score the transcript for three criteria: fluency, lexical, grammar.
+}> => {
+    const systemPrompt = `Bạn là giám khảo phỏng vấn IELTS Speaking với tiêu chuẩn nghiêm ngặt.
+Nhiệm vụ: Chấm điểm bài nói theo 3 tiêu chí IELTS và đưa ra phản hồi xây dựng.
 
-Return ONLY valid JSON in this format:
+OUTPUT: Trả về JSON hợp lệ với cấu trúc sau (KHÔNG thêm markdown hay text khác):
 {
   "fluency": number,
   "lexical": number,
   "grammar": number,
   "feedback": {
-    "strengths": [string],
-    "errors": [string],
-    "tips": [string],
-    "transcriptHighlights": [string]
+    "strengths": [string, string, string],
+    "errors": [string, string, string],
+    "tips": [string, string, string],
+    "transcriptHighlights": [string, string, string]
   }
 }
 
-Rules:
-- Bands 0.0 to 9.0, preferably 0.5 increments
-- Keep feedback concise, 1 to 3 items per list
-- All feedback text must be in Vietnamese only
-- Feedback phai tham chieu cu the toi so lieu Azure neu co
-- Output JSON only, no markdown
+QUY TẮC CHẤM ĐIỂM:
+- Thang điểm: 0.0 đến 9.0 (bội số 0.5)
+- Mỗi mảng feedback có 1-3 câu ngắn gọn, cụ thể
+- TẤT CẢ feedback PHẢI viết bằng Tiếng Việt có dấu
+- Feedback phải tham chiếu cụ thể tới số liệu Azure Speech nếu có
+- Không dùng markdown, không thêm key ngoài schema`;
 
-Transcript:
-${transcripts.length > 0 ? transcripts.join('\n---\n') : 'No transcript captured. Grade conservatively based on available data.'}
+    const userPrompt = `🎤 TRANSCRIPT BÀI NÓI CỦA HỌC VIÊN:
+${transcripts.length > 0 ? transcripts.join('\n---\n') : 'Không có transcript. Chấm điểm thận trọng dựa trên dữ liệu có sẵn.'}
 
-Azure pronunciation metrics:
-${azureMetricsSummary}`;
+📊 SỐ LIỆU PHÁT ÂM TỪ AZURE SPEECH:
+${azureMetricsSummary}
+
+📋 YÊU CẦU CHẤM ĐIỂM:
+
+1. **Fluency (Độ trôi chảy)**
+   - Nói liên tục không ngắt quãng nhiều?
+   - Tốc độ nói tự nhiên, không quá chậm?
+   - Ít lặp lại từ, tự sửa câu?
+   - Sử dụng fillers (um, ah) hợp lý?
+
+2. **Lexical Resource (Vốn từ vựng)**
+   - Dùng từ vựng phong phú, chính xác?
+   - Có paraphrasing linh hoạt?
+   - Dùng idioms, collocations tự nhiên?
+   - Ít lỗi dùng từ?
+
+3. **Grammar (Ngữ pháp)**
+   - Đa dạng cấu trúc câu (đơn, ghép, phức)?
+   - Độ chính xác ngữ pháp cao?
+   - Dùng đúng thì, giọng, số?
+   - Ít lỗi cơ bản?
+
+💡 **LƯU Ý:**
+- Pronunciation KHÔNG chấm ở đây (đã có điểm riêng từ Azure)
+- Tham khảo số liệu Azure để đánh giá độ rõ ràng khi phát âm ảnh hưởng tới comprehension
+- Chấm điểm công bằng, khách quan theo tiêu chuẩn IELTS thực tế`;
 
     try {
         const completion = await openaiClient.chat.completions.create({
-            model: gradingModel,
+            model: env.OPENAI_GRADING_MODEL,
             reasoning_effort: env.OPENAI_GRADING_REASONING_EFFORT,
             response_format: { type: 'json_object' },
+            temperature: 0.3,
             messages: [
-                {
-                    role: 'system',
-                    content: 'You score speaking transcripts and output strict JSON only. Feedback text must be Vietnamese only.',
-                },
-                {
-                    role: 'user',
-                    content: prompt,
-                },
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
             ],
         });
 
-        const raw = completion.choices[0]?.message?.content ?? '{}';
-        const parsed = JSON.parse(raw) as unknown;
+        const rawContent = completion.choices[0]?.message?.content;
+        if (!rawContent) {
+            throw new Error('Empty response from OpenAI');
+        }
+
+        const parsed = JSON.parse(rawContent) as unknown;
         const validated = speakingGradeSchema.safeParse(parsed);
 
         if (!validated.success) {
-            logger.warn('[Speaking Grading Worker] Invalid GPT grading payload', {
+            logger.error('[Speaking Grading Worker] Invalid GPT response schema', {
                 issues: validated.error.issues,
+                rawContent: rawContent.substring(0, 500),
             });
-            return null;
+            throw new Error('Invalid grading response schema');
         }
 
         return {
@@ -216,58 +274,73 @@ ${azureMetricsSummary}`;
                 lexical: clampBand(validated.data.lexical),
                 grammar: clampBand(validated.data.grammar),
             },
-            feedback: {
-                strengths: validated.data.feedback.strengths,
-                errors: validated.data.feedback.errors,
-                tips: validated.data.feedback.tips,
-                transcriptHighlights: validated.data.feedback.transcriptHighlights,
-            },
+            feedback: validated.data.feedback,
         };
     } catch (error) {
-        logger.warn('[Speaking Grading Worker] GPT grading failed, fallback to heuristic', { error });
-        return null;
+        logger.error('[Speaking Grading Worker] GPT grading failed', {
+            error: error instanceof Error ? error.message : String(error),
+            transcriptCount: transcripts.length,
+            transcriptLength: transcripts.join('').length,
+        });
+        throw error;
     }
 };
 
+// ══════════════════════════════════════════════════
+// JOB PROCESSOR
+// ══════════════════════════════════════════════════
+
+/**
+ * Process speaking grading job from BullMQ queue
+ * 1. Validate session and attempt
+ * 2. Aggregate Azure pronunciation metrics
+ * 3. Call GPT for fluency/lexical/grammar grading
+ * 4. Combine all criteria and persist results
+ * 5. Mark placement test as completed
+ */
 const processSpeakingGradingJob = async (job: Job<SpeakingGradingJobPayload>): Promise<void> => {
-    const {
+    const { sessionId, speakingAttemptId, transcripts, pronunciationData } = job.data;
+
+    logger.info('[Speaking Grading Worker] Job started', {
+        jobId: job.id,
         sessionId,
         speakingAttemptId,
-        transcripts,
-        pronunciationData,
-    } = job.data;
+        transcriptCount: transcripts.length,
+        pronunciationDataCount: pronunciationData.length,
+    });
 
+    // ─────────────────────────────────────────────────
+    // Step 1: Validate session
+    // ─────────────────────────────────────────────────
     const session = await placementSessionMongoRepository.findById(sessionId);
     if (!session) {
-        logger.warn('[Speaking Grading Worker] Session not found', { sessionId, jobId: job.id });
-        return;
+        throw new Error(`Session not found: ${sessionId}`);
     }
 
     if (!session.speaking?.attemptId) {
-        logger.warn('[Speaking Grading Worker] Speaking attempt missing', { sessionId, jobId: job.id });
-        return;
+        throw new Error(`Speaking attempt missing in session: ${sessionId}`);
     }
 
     if (session.speaking.attemptId !== speakingAttemptId) {
-        logger.warn('[Speaking Grading Worker] Speaking attempt mismatch', {
-            sessionId,
-            jobId: job.id,
-            speakingAttemptId,
-            sessionSpeakingAttemptId: session.speaking.attemptId,
-        });
-        return;
+        throw new Error(
+            `Speaking attempt mismatch. Expected: ${speakingAttemptId}, Got: ${session.speaking.attemptId}`,
+        );
     }
 
-    const chunkCount = session.speaking.audioChunks.length;
-    const pronunciationBand = aggregatePronunciationBand(pronunciationData) ?? 0;
+    // ─────────────────────────────────────────────────
+    // Step 2: Process Azure pronunciation metrics
+    // ─────────────────────────────────────────────────
+    const pronunciationBand = aggregatePronunciationBand(pronunciationData);
     const azureMetricsSummary = summarizeAzurePronunciationMetrics(pronunciationData);
-    const speakingModel = env.OPENAI_GRADING_MODEL;
 
-    const gptGrading = await gradeSpeakingWithGpt(transcripts, speakingModel, azureMetricsSummary);
-    if (!gptGrading) {
-        throw new Error('Speaking grading from GPT failed');
-    }
+    // ─────────────────────────────────────────────────
+    // Step 3: Grade with GPT (fluency, lexical, grammar)
+    // ─────────────────────────────────────────────────
+    const gptGrading = await gradeSpeakingWithGpt(transcripts, azureMetricsSummary);
 
+    // ─────────────────────────────────────────────────
+    // Step 4: Combine all criteria
+    // ─────────────────────────────────────────────────
     const criteria: ISpeakingCriteria = {
         fluency: gptGrading.criteria.fluency,
         lexical: gptGrading.criteria.lexical,
@@ -275,34 +348,35 @@ const processSpeakingGradingJob = async (job: Job<SpeakingGradingJobPayload>): P
         pronunciation: pronunciationBand,
     };
 
-    const speakingCriteriaValues = [criteria.fluency, criteria.lexical, criteria.grammar, criteria.pronunciation]
-        .filter((item): item is number => typeof item === 'number' && Number.isFinite(item));
-    const band = speakingCriteriaValues.length > 0
-        ? clampBand(speakingCriteriaValues.reduce((sum, value) => sum + value, 0) / speakingCriteriaValues.length)
-        : 0;
-
+    const overallBand = calculateOverallBand(criteria);
     const feedback = gptGrading.feedback;
 
+    // ─────────────────────────────────────────────────
+    // Step 5: Persist results & mark test as completed
+    // ─────────────────────────────────────────────────
     await placementSessionMongoRepository.patchById(sessionId, {
         $set: {
             status: EPlacementSessionStatus.COMPLETED,
             'speaking.status': EPlacementSubmoduleStatus.DONE,
-            'speaking.band': band,
+            'speaking.band': overallBand,
             'speaking.criteria': criteria,
             'speaking.feedback': feedback,
         },
     });
 
-    logger.info('[Speaking Grading Worker] Job completed', {
-        sessionId,
+    logger.info('[Speaking Grading Worker] Job completed successfully', {
         jobId: job.id,
+        sessionId,
         speakingAttemptId,
-        transcriptCount: transcripts.length,
-        band,
-        model: speakingModel,
-        source: 'gpt-plus-pronunciation',
+        band: overallBand,
+        criteria,
+        model: env.OPENAI_GRADING_MODEL,
     });
 };
+
+// ══════════════════════════════════════════════════
+// WORKER INITIALIZATION & EVENT HANDLERS
+// ══════════════════════════════════════════════════
 
 export const speakingGradingWorker = new Worker<SpeakingGradingJobPayload>(
     'speaking-grading',
@@ -316,9 +390,20 @@ export const speakingGradingWorker = new Worker<SpeakingGradingJobPayload>(
 );
 
 speakingGradingWorker.on('completed', (job) => {
-    logger.info('[Speaking Grading Worker] Job completed', { jobId: job.id });
+    logger.info('[Speaking Grading Worker] ✅ Job completed', { jobId: job.id });
 });
 
-speakingGradingWorker.on('failed', (job, err) => {
-    logger.error('[Speaking Grading Worker] Job failed', { jobId: job?.id, error: err.message });
+speakingGradingWorker.on('failed', (job, error) => {
+    logger.error('[Speaking Grading Worker] ❌ Job failed', {
+        jobId: job?.id,
+        error: error.message,
+        stack: error.stack,
+    });
+});
+
+speakingGradingWorker.on('error', (error) => {
+    logger.error('[Speaking Grading Worker] ⚠️ Worker error', {
+        error: error.message,
+        stack: error.stack,
+    });
 });

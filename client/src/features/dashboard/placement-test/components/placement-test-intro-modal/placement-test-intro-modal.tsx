@@ -32,7 +32,7 @@ const MODULES: ModuleRow[] = [
 	{
 		number: 2,
 		name: 'IELTS Writing',
-		content: 'Bài luận tiếng Anh (≥150–250 từ)',
+		content: 'Bài luận tiếng Anh (≥150 từ)',
 		duration: '30 phút',
 	},
 	{

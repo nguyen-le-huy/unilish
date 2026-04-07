@@ -29,14 +29,14 @@ const NOISE_VOLUME: Record<string, number> = {
     high: 0.2,
 };
 
-// ─── Speaker → Default ElevenLabs voice (neutral English) ────────────────────
-// These are stable ElevenLabs public voice IDs.
-const DEFAULT_VOICES = [
-    env.ELEVENLABS_DEFAULT_VOICE_ID,   // male/neutral — "Adam"
-    'MF3mGyEYCl7XYWbV9V6O',            // female — "Elli"
-    'TxGEqnHWrfWFTfGW9XjX',            // male — "Josh"
-    'AZnzlk1XvdvUeBnXmlld',            // female — "Domi"
-];
+// ─── Speaker → Default ElevenLabs voices (free-plan safe) ────────────────────
+// NOTE:
+// - Several ElevenLabs library voices require a paid plan when called via API.
+// - Keep fallback voices restricted to free-plan-safe IDs to avoid 402.
+const FALLBACK_FREE_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL'; // "Sarah"
+const configuredDefaultVoiceId = env.ELEVENLABS_DEFAULT_VOICE_ID?.trim();
+const DEFAULT_VOICES = [configuredDefaultVoiceId, FALLBACK_FREE_VOICE_ID]
+    .filter((voiceId): voiceId is string => Boolean(voiceId));
 
 const TTS_CONCURRENCY = 2;
 const DEEPGRAM_MAX_RETRIES = 2;
@@ -62,6 +62,12 @@ function isRateLimitError(error: unknown): boolean {
     return message.includes('status code: 429') || message.includes('rate limit');
 }
 
+function isPaymentRequiredError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const message = error.message.toLowerCase();
+    return message.includes('status code: 402') || message.includes('payment required');
+}
+
 /**
  * Synthesise one transcript line via ElevenLabs.
  * Returns the path to the temp MP3 file.
@@ -73,10 +79,12 @@ async function synthesiseLine(
     outPath: string,
 ): Promise<void> {
     let lastError: Error | null = null;
+    let candidateVoiceId = voiceId;
+    let switchedToFallbackVoice = false;
 
     for (let attempt = 1; attempt <= ELEVENLABS_MAX_RETRIES; attempt += 1) {
         try {
-            const audioStream = await client.textToSpeech.convert(voiceId, {
+            const audioStream = await client.textToSpeech.convert(candidateVoiceId, {
                 text,
                 model_id: 'eleven_multilingual_v2',
                 output_format: 'mp3_44100_128',
@@ -90,6 +98,26 @@ async function synthesiseLine(
             return;
         } catch (error) {
             lastError = error instanceof Error ? error : new Error('Unknown ElevenLabs error');
+
+            // Check if it's a payment/billing error (402)
+            if (isPaymentRequiredError(lastError)) {
+                if (!switchedToFallbackVoice && candidateVoiceId !== FALLBACK_FREE_VOICE_ID) {
+                    switchedToFallbackVoice = true;
+                    candidateVoiceId = FALLBACK_FREE_VOICE_ID;
+                    logger.warn('[ListeningMixSyncWorker] Voice requires paid plan, switching to fallback free voice', {
+                        originalVoiceId: voiceId,
+                        fallbackVoiceId: FALLBACK_FREE_VOICE_ID,
+                    });
+                    continue;
+                }
+
+                throw new Error(
+                    'ElevenLabs API trả về 402 (Payment Required). ' +
+                    'Nguyên nhân thường gặp: voice hiện tại yêu cầu gói trả phí khi gọi qua API, hoặc tài khoản/key không đúng plan. ' +
+                    'Hãy kiểm tra voiceId đang dùng và plan/subscription tại https://elevenlabs.io/subscription. ' +
+                    `Original error: ${lastError.message}`
+                );
+            }
 
             if (!isRateLimitError(lastError)) {
                 throw lastError;
@@ -504,12 +532,12 @@ async function processMixSyncJob(job: Job<ListeningMixSyncJobPayload>): Promise<
         speakers.forEach((spk, idx) => {
             voiceMap[spk] = speakerVoiceMap[spk]
                 ?? DEFAULT_VOICES[idx % DEFAULT_VOICES.length]
-                ?? env.ELEVENLABS_DEFAULT_VOICE_ID;
+                ?? FALLBACK_FREE_VOICE_ID;
         });
 
         const linePaths: string[] = [];
         const ttsTasks = transcript.map((line, index) => async () => {
-            const voiceId = voiceMap[line.speaker] ?? env.ELEVENLABS_DEFAULT_VOICE_ID;
+            const voiceId = voiceMap[line.speaker] ?? FALLBACK_FREE_VOICE_ID;
             const linePath = path.join(tmpDir, `line-${index}.mp3`);
             await synthesiseLine(elevenLabsClient, line.text, voiceId, linePath);
             return { index, linePath };

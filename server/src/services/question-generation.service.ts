@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { Question, EQuestionType } from '../models/mongo/question.model.js';
+import { Question, EQuestionType, EQuestionSkill } from '../models/mongo/question.model.js';
 import { Lesson } from '../models/mongo/lesson.model.js';
 import { Unit } from '../models/mongo/unit.model.js';
 import { Course } from '../models/mongo/course.model.js';
@@ -223,6 +223,7 @@ export class QuestionGenerationService {
                 const q = await Question.create({
                     languageId: langObjectId,
                     testedConcept: new Types.ObjectId(item.conceptId!),
+                    skill: EQuestionSkill.VOCABULARY,
                     type: EQuestionType.MULTIPLE_CHOICE,
                     difficultyLevel: 1,
                     stem: {
@@ -251,6 +252,7 @@ export class QuestionGenerationService {
             const q = await Question.create({
                 languageId: langObjectId,
                 testedConcept: new Types.ObjectId(item.conceptId!),
+                skill: EQuestionSkill.VOCABULARY,
                 type: EQuestionType.FILL_IN_BLANK,
                 difficultyLevel: 2,
                 stem: { text: blankSentence },
@@ -285,6 +287,7 @@ export class QuestionGenerationService {
             const q = await Question.create({
                 languageId: langObjectId,
                 testedConcept: new Types.ObjectId(anchor.conceptId!),
+                skill: EQuestionSkill.VOCABULARY,
                 type: EQuestionType.MATCHING,
                 difficultyLevel: 3,
                 stem: { text: 'Nối mỗi từ với định nghĩa đúng của nó:' },

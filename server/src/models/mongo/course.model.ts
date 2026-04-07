@@ -141,8 +141,13 @@ const CourseSchema = new mongoose.Schema<ICourse>(
 );
 
 // --- INDEXES ---
-CourseSchema.index({ seriesId: 1, orderInSeries: 1 });
-CourseSchema.index({ seriesId: 1, level: 1 }, { unique: true });
+// Unique: Một series chỉ có 1 course ở mỗi vị trí (orderInSeries)
+CourseSchema.index({ seriesId: 1, orderInSeries: 1 }, { unique: true });
+
+// Non-unique: Cho phép nhiều courses cùng level trong 1 series
+// Ví dụ: Series Du lịch có thể có 3 courses A1 khác nhau
+CourseSchema.index({ seriesId: 1, level: 1 });
+
 CourseSchema.index({ isActive: 1 });
 
 // --- VIRTUALS ---

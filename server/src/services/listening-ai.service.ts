@@ -79,14 +79,29 @@ Return a JSON array with this exact schema — no extra fields:
     "speaker": "<FirstName>",
     "role": "<Role/Occupation>",
     "text": "<dialogue line>",
-        "translation": "<Vietnamese translation of this line>",
+    "translation": "<Vietnamese translation of this line>",
+    "startTime": 0,
+    "endTime": 0,
+    "words": []
+  },
+  {
+    "id": "<uuid-v4>",
+    "speaker": "<FirstName>",
+    "role": "<Role/Occupation>",
+    "text": "<dialogue line>",
+    "translation": "<Vietnamese translation of this line>",
     "startTime": 0,
     "endTime": 0,
     "words": []
   }
+  // ... continue until exactly ${lineCount} objects
 ]
 
-Important: ids must be unique UUID v4 strings. Keep each line under 150 characters.`;
+Important:
+- ids must be unique UUID v4 strings
+- Keep each line under 150 characters
+- Output must be valid JSON only (no markdown, no explanation)
+- Never return {"error": "..."} — always return the dialogue array.`;
 
     logger.info('[ListeningAiService] generateScript → calling OpenAI', {
         lessonId,
@@ -101,15 +116,19 @@ Important: ids must be unique UUID v4 strings. Keep each line under 150 characte
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ],
-            response_format: { type: 'json_object' },
         });
 
         const raw = completion.choices[0]?.message?.content ?? '';
+        const cleanRaw = raw
+            .replace(/^```json\s*/i, '')
+            .replace(/^```\s*/i, '')
+            .replace(/\s*```$/, '')
+            .trim();
 
         let transcript: TranscriptLine[];
         try {
             // GPT may wrap in { "dialogue": [...] } or return array directly
-            const parsed = JSON.parse(raw);
+            const parsed = JSON.parse(cleanRaw);
             transcript = Array.isArray(parsed)
                 ? parsed
                 : (parsed.dialogue ?? parsed.transcript ?? parsed.lines ?? Object.values(parsed)[0]);
@@ -118,7 +137,7 @@ Important: ids must be unique UUID v4 strings. Keep each line under 150 characte
                 throw new Error('Parsed value is not an array');
             }
         } catch (err) {
-            logger.error('[ListeningAiService] Failed to parse OpenAI JSON response', { raw, err });
+            logger.error('[ListeningAiService] Failed to parse OpenAI JSON response', { raw: cleanRaw, err });
             throw new AppError('AI trả về dữ liệu không hợp lệ. Vui lòng thử lại.', HttpStatus.BAD_GATEWAY);
         }
 

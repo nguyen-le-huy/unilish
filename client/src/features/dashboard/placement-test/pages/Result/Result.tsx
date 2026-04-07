@@ -148,7 +148,7 @@ export const Result = () => {
         return (
             <div className={styles.loadingState} role="status" aria-live="polite">
                 <Loading />
-                <p>AI đang chấm điểm...</p>
+                <p>Giám khảo AI đang chấm điểm...</p>
             </div>
         );
     }
@@ -196,7 +196,7 @@ export const Result = () => {
                     navigate(PATHS.DASHBOARD.ROADMAP);
                 }}
             >
-                Bắt đầu lộ trình học
+                Tìm khoá học phù hợp
             </Button>
         </div>
     );

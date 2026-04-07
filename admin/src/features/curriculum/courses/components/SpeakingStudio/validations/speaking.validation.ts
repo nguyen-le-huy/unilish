@@ -23,6 +23,7 @@ export const GradingConfigSchema = z.object({
 export const SpeakingHintSchema = z.object({
     vi: z.string().optional(),
     en: z.string().optional(),
+    structure: z.string().optional(),
 });
 
 export const SpeakingLessonFormSchema = z.object({

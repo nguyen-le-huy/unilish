@@ -12,6 +12,10 @@ import {
 import { logger } from '../../utils/logger.js';
 import type { WritingGradingJobPayload } from '../queues/writing-grading.queue.js';
 
+// ══════════════════════════════════════════════════
+// CONSTANTS & CONFIGURATION
+// ══════════════════════════════════════════════════
+
 const openaiClient = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 const writingGradeSchema = z.object({
@@ -20,12 +24,19 @@ const writingGradeSchema = z.object({
     LR: z.number().min(0).max(9),
     GRA: z.number().min(0).max(9),
     feedback: z.object({
-        strengths: z.array(z.string()).default([]),
-        errors: z.array(z.string()).default([]),
-        tips: z.array(z.string()).default([]),
+        strengths: z.array(z.string()).min(1).max(3),
+        errors: z.array(z.string()).min(1).max(3),
+        tips: z.array(z.string()).min(1).max(3),
     }),
 });
 
+// ══════════════════════════════════════════════════
+// UTILITY FUNCTIONS
+// ══════════════════════════════════════════════════
+
+/**
+ * Clamp and round band score to nearest 0.5 within IELTS range [0.0 - 9.0]
+ */
 const clampBand = (value: number): number => {
     if (!Number.isFinite(value)) {
         return 0;
@@ -35,35 +46,10 @@ const clampBand = (value: number): number => {
     return Math.max(0, Math.min(9, rounded));
 };
 
-const buildWritingFeedback = (ratio: number): IWritingFeedback => {
-    if (ratio >= 1) {
-        return {
-            strengths: [
-                'Bai viet dap ung dung yeu cau de bai.',
-                'Y tuong duoc trien khai ro rang va de theo doi.',
-            ],
-            errors: ['Can tiep tuc mo rong collocation de tang tinh tu nhien.'],
-            tips: [
-                'Them vi du cu the cho tung luan diem quan trong.',
-                'Ra soat cau phuc de toi uu do chinh xac ngu phap.',
-            ],
-        };
-    }
-
-    return {
-        strengths: ['Bai viet co huong trinh bay ro rang.'],
-        errors: [
-            'Do dai bai viet chua dat muc khuyen nghi nen y tuong chua du sau.',
-            'Lien ket giua cac doan van chua that su mach lac.',
-        ],
-        tips: [
-            'Hoan thien so tu toi thieu truoc khi nop bai.',
-            'Su dung them tu noi de lam ro quan he logic.',
-        ],
-    };
-};
-
-const averageCriteriaBand = (criteria: IWritingCriteria): number => {
+/**
+ * Calculate average band score from all four writing criteria
+ */
+const calculateOverallBand = (criteria: IWritingCriteria): number => {
     const values = [criteria.TR, criteria.CC, criteria.LR, criteria.GRA]
         .filter((item): item is number => typeof item === 'number' && Number.isFinite(item));
 
@@ -74,65 +60,96 @@ const averageCriteriaBand = (criteria: IWritingCriteria): number => {
     return clampBand(values.reduce((sum, value) => sum + value, 0) / values.length);
 };
 
+// ══════════════════════════════════════════════════
+// GPT GRADING SERVICE
+// ══════════════════════════════════════════════════
+
+/**
+ * Grade writing essay using GPT with IELTS criteria
+ * @throws Error if grading fails after retry
+ */
 const gradeWritingWithGpt = async (
     essay: string,
     promptText: string,
-): Promise<{ criteria: IWritingCriteria; feedback: IWritingFeedback } | null> => {
-    const prompt = `You are a strict IELTS writing examiner.
-Evaluate the essay using four criteria: TR, CC, LR, GRA.
+): Promise<{ criteria: IWritingCriteria; feedback: IWritingFeedback }> => {
+    const systemPrompt = `Bạn là giám khảo chấm bài viết IELTS Writing Task 2 với tiêu chuẩn nghiêm ngặt.
+Nhiệm vụ: Chấm điểm bài luận theo 4 tiêu chí IELTS và đưa ra phản hồi xây dựng.
 
-Return ONLY valid JSON in this format:
+OUTPUT: Trả về JSON hợp lệ với cấu trúc sau (KHÔNG thêm markdown hay text khác):
 {
   "TR": number,
   "CC": number,
   "LR": number,
   "GRA": number,
   "feedback": {
-    "strengths": [string],
-    "errors": [string],
-    "tips": [string]
+    "strengths": [string, string, string],
+    "errors": [string, string, string],
+    "tips": [string, string, string]
   }
 }
 
-Rules:
-- Band range for each criterion: 0.0 to 9.0
-- Use increments of 0.5 where reasonable
-- Keep each feedback array between 1 and 3 concise items
-- All feedback text must be in Vietnamese only
-- Do not include markdown or extra keys
+QUY TẮC CHẤM ĐIỂM:
+- Thang điểm: 0.0 đến 9.0 (bội số 0.5)
+- Mỗi mảng feedback có 1-3 câu ngắn gọn, cụ thể
+- TẤT CẢ feedback PHẢI viết bằng Tiếng Việt có dấu
+- Không dùng markdown, không thêm key ngoài schema`;
 
-Prompt:
+    const userPrompt = `📝 ĐỀ BÀI:
 ${promptText}
 
-Essay:
-${essay}`;
+✍️ BÀI LUẬN CỦA HỌC VIÊN:
+${essay}
+
+📊 YÊU CẦU CHẤM ĐIỂM:
+
+1. **TR (Task Response)** - Phản hồi yêu cầu đề bài
+   - Trả lời đầy đủ tất cả phần của đề bài?
+   - Lập luận rõ ràng và nhất quán?
+   - Ý tưởng được phát triển đầy đủ với ví dụ cụ thể?
+
+2. **CC (Coherence & Cohesion)** - Mạch lạc & liên kết
+   - Cấu trúc bài rõ ràng (mở - thân - kết)?
+   - Sử dụng từ nối (cohesive devices) tự nhiên?
+   - Mỗi đoạn có ý chính rõ ràng?
+
+3. **LR (Lexical Resource)** - Vốn từ vựng
+   - Dùng từ vựng phong phú, chính xác?
+   - Có collocations tự nhiên?
+   - Ít lỗi chính tả, dùng từ?
+
+4. **GRA (Grammatical Range & Accuracy)** - Ngữ pháp
+   - Đa dạng cấu trúc câu (đơn, ghép, phức)?
+   - Độ chính xác ngữ pháp cao?
+   - Ít lỗi cơ bản?
+
+Hãy chấm điểm công bằng, khách quan theo tiêu chuẩn IELTS thực tế.`;
 
     try {
         const completion = await openaiClient.chat.completions.create({
             model: env.OPENAI_GRADING_MODEL,
             reasoning_effort: env.OPENAI_GRADING_REASONING_EFFORT,
             response_format: { type: 'json_object' },
+            temperature: 0.3,
             messages: [
-                {
-                    role: 'system',
-                    content: 'You score writing responses and output strict JSON only. Feedback text must be Vietnamese only.',
-                },
-                {
-                    role: 'user',
-                    content: prompt,
-                },
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
             ],
         });
 
-        const raw = completion.choices[0]?.message?.content ?? '{}';
-        const parsed = JSON.parse(raw) as unknown;
+        const rawContent = completion.choices[0]?.message?.content;
+        if (!rawContent) {
+            throw new Error('Empty response from OpenAI');
+        }
+
+        const parsed = JSON.parse(rawContent) as unknown;
         const validated = writingGradeSchema.safeParse(parsed);
 
         if (!validated.success) {
-            logger.warn('[Writing Grading Worker] Invalid GPT grading payload', {
+            logger.error('[Writing Grading Worker] Invalid GPT response schema', {
                 issues: validated.error.issues,
+                rawContent: rawContent.substring(0, 500),
             });
-            return null;
+            throw new Error('Invalid grading response schema');
         }
 
         return {
@@ -142,82 +159,89 @@ ${essay}`;
                 LR: clampBand(validated.data.LR),
                 GRA: clampBand(validated.data.GRA),
             },
-            feedback: {
-                strengths: validated.data.feedback.strengths,
-                errors: validated.data.feedback.errors,
-                tips: validated.data.feedback.tips,
-            },
+            feedback: validated.data.feedback,
         };
     } catch (error) {
-        logger.warn('[Writing Grading Worker] GPT grading failed, fallback to heuristic', { error });
-        return null;
+        logger.error('[Writing Grading Worker] GPT grading failed', {
+            error: error instanceof Error ? error.message : String(error),
+            essayLength: essay.length,
+            promptLength: promptText.length,
+        });
+        throw error;
     }
 };
 
+// ══════════════════════════════════════════════════
+// JOB PROCESSOR
+// ══════════════════════════════════════════════════
+
+/**
+ * Process writing grading job from BullMQ queue
+ * 1. Validate session and attempt
+ * 2. Call GPT for grading
+ * 3. Persist results to MongoDB
+ * 4. Advance session to speaking module
+ */
 const processWritingGradingJob = async (job: Job<WritingGradingJobPayload>): Promise<void> => {
-    const {
+    const { sessionId, writingAttemptId, essay, promptText } = job.data;
+
+    logger.info('[Writing Grading Worker] Job started', {
+        jobId: job.id,
         sessionId,
         writingAttemptId,
-        essay,
-        promptText,
-        criteria: gradingCriteria,
-    } = job.data;
+        essayLength: essay.length,
+    });
 
+    // ─────────────────────────────────────────────────
+    // Step 1: Validate session
+    // ─────────────────────────────────────────────────
     const session = await placementSessionMongoRepository.findById(sessionId);
     if (!session) {
-        logger.warn('[Writing Grading Worker] Session not found', { sessionId, jobId: job.id });
-        return;
+        throw new Error(`Session not found: ${sessionId}`);
     }
 
     if (!session.writing?.attemptId) {
-        logger.warn('[Writing Grading Worker] Writing attempt missing', { sessionId, jobId: job.id });
-        return;
+        throw new Error(`Writing attempt missing in session: ${sessionId}`);
     }
 
     if (session.writing.attemptId !== writingAttemptId) {
-        logger.warn('[Writing Grading Worker] Writing attempt mismatch', {
-            sessionId,
-            jobId: job.id,
-            writingAttemptId,
-            sessionWritingAttemptId: session.writing.attemptId,
-        });
-        return;
+        throw new Error(
+            `Writing attempt mismatch. Expected: ${writingAttemptId}, Got: ${session.writing.attemptId}`,
+        );
     }
 
-    const wordLimit = Math.max(1, session.writing.wordLimit ?? 1);
-    const wordCount = Math.max(0, session.writing.wordCount ?? 0);
-    const completionRatio = wordCount / wordLimit;
-    const gptGrading = await gradeWritingWithGpt(essay, promptText);
-    if (!gptGrading) {
-        throw new Error('Writing grading from GPT failed');
-    }
+    // ─────────────────────────────────────────────────
+    // Step 2: Grade with GPT
+    // ─────────────────────────────────────────────────
+    const { criteria, feedback } = await gradeWritingWithGpt(essay, promptText);
+    const overallBand = calculateOverallBand(criteria);
 
-    const criteria = gptGrading.criteria;
-    const feedback = gptGrading.feedback;
-    const band = averageCriteriaBand(criteria);
-
+    // ─────────────────────────────────────────────────
+    // Step 3: Persist results & advance to Speaking
+    // ─────────────────────────────────────────────────
     await placementSessionMongoRepository.patchById(sessionId, {
         $set: {
             currentModule: EPlacementSessionModule.SPEAKING,
             'writing.status': EPlacementSubmoduleStatus.DONE,
-            'writing.band': band,
+            'writing.band': overallBand,
             'writing.criteria': criteria,
             'writing.feedback': feedback,
         },
     });
 
-    logger.info('[Writing Grading Worker] Job completed', {
-        sessionId,
+    logger.info('[Writing Grading Worker] Job completed successfully', {
         jobId: job.id,
+        sessionId,
         writingAttemptId,
-        criteria: gradingCriteria,
-        promptLength: promptText.length,
-        essayLength: essay.length,
-        band,
+        band: overallBand,
+        criteria,
         model: env.OPENAI_GRADING_MODEL,
-        source: 'gpt',
     });
 };
+
+// ══════════════════════════════════════════════════
+// WORKER INITIALIZATION & EVENT HANDLERS
+// ══════════════════════════════════════════════════
 
 export const writingGradingWorker = new Worker<WritingGradingJobPayload>(
     'writing-grading',
@@ -231,9 +255,20 @@ export const writingGradingWorker = new Worker<WritingGradingJobPayload>(
 );
 
 writingGradingWorker.on('completed', (job) => {
-    logger.info('[Writing Grading Worker] Job completed', { jobId: job.id });
+    logger.info('[Writing Grading Worker] ✅ Job completed', { jobId: job.id });
 });
 
-writingGradingWorker.on('failed', (job, err) => {
-    logger.error('[Writing Grading Worker] Job failed', { jobId: job?.id, error: err.message });
+writingGradingWorker.on('failed', (job, error) => {
+    logger.error('[Writing Grading Worker] ❌ Job failed', {
+        jobId: job?.id,
+        error: error.message,
+        stack: error.stack,
+    });
+});
+
+writingGradingWorker.on('error', (error) => {
+    logger.error('[Writing Grading Worker] ⚠️ Worker error', {
+        error: error.message,
+        stack: error.stack,
+    });
 });

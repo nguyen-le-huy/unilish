@@ -10,7 +10,7 @@ import { Unit } from '../models/mongo/unit.model.js';
 import { Course } from '../models/mongo/course.model.js';
 import { CourseSeries } from '../models/mongo/course-series.model.js';
 import { Concept } from '../models/mongo/concept.model.js';
-import { Question, EQuestionType } from '../models/mongo/question.model.js';
+import { Question, EQuestionType, EQuestionSkill } from '../models/mongo/question.model.js';
 import { QuestionGenerationService } from './question-generation.service.js';
 import { ContextAlignmentService } from './context-alignment.service.js';
 import type { ListeningContent } from '../types/lesson-content.types.js';
@@ -225,6 +225,7 @@ export class ListeningService {
             questions.map((q) => ({
                 languageId: langObjectId,
                 testedConcept: listeningConcept._id,
+                skill: EQuestionSkill.LISTENING,
                 difficultyLevel: q.type === EQuestionType.TRUE_FALSE ? 1 : 2,
                 type: q.type,
                 stem: { text: q.stem },

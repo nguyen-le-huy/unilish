@@ -21,6 +21,23 @@ export interface User {
     interests?: string[];
     weakSkills?: string[];
     placementTestScore?: number;
+    placementTestDetails?: {
+        language: string;
+        status: 'in_progress' | 'submitted' | 'expired' | 'cancelled';
+        submittedAt?: string;
+        durationSeconds?: number | null;
+        totalQuestions: number;
+        listeningAccuracy: number;
+        readingAccuracy: number;
+        scoring: {
+            listeningCorrect: number;
+            listeningTotal: number;
+            readingCorrect: number;
+            readingTotal: number;
+            mcqScoreNormalized: number;
+            provisionalCefr: string;
+        };
+    } | null;
 
     // System Status
     subscription: {

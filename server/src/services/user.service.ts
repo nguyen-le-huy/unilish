@@ -6,6 +6,7 @@ import { HttpStatus } from '../constants/http-status.js';
 import { UserMongoRepository } from '../repositories/mongo/user.mongo.repository.js';
 import { LanguageMongoRepository } from '../repositories/mongo/language.mongo.repository.js';
 import { LearningGoalMongoRepository } from '../repositories/mongo/learning-goal.mongo.repository.js';
+import { PlacementTestAttemptMongoRepository } from '../repositories/mongo/placement-test-attempt.mongo.repository.js';
 import { logger } from '../utils/logger.js';
 import type { IUser } from '../models/mongo/user.model.js';
 
@@ -17,7 +18,8 @@ export class UserService {
     constructor(
         private readonly userRepo: UserMongoRepository,
         private readonly languageRepo: LanguageMongoRepository,
-        private readonly learningGoalRepo: LearningGoalMongoRepository
+        private readonly learningGoalRepo: LearningGoalMongoRepository,
+        private readonly placementAttemptRepo: PlacementTestAttemptMongoRepository,
     ) { }
 
     async checkEmailExists(email: string): Promise<boolean> {
@@ -168,12 +170,39 @@ export class UserService {
         if (!user) {
             throw new AppError('User not found', HttpStatus.NOT_FOUND);
         }
-        return user;
+        const latestAttempt = await this.placementAttemptRepo.findLatestSubmittedByUser(userId);
+
+        if (!latestAttempt?.scoring) {
+            return { ...user, placementTestDetails: null };
+        }
+
+        const listeningAccuracy = latestAttempt.scoring.listeningTotal > 0
+            ? latestAttempt.scoring.listeningCorrect / latestAttempt.scoring.listeningTotal
+            : 0;
+
+        const readingAccuracy = latestAttempt.scoring.readingTotal > 0
+            ? latestAttempt.scoring.readingCorrect / latestAttempt.scoring.readingTotal
+            : 0;
+
+        return {
+            ...user,
+            placementTestDetails: {
+                language: latestAttempt.language,
+                status: latestAttempt.status,
+                submittedAt: latestAttempt.submittedAt,
+                durationSeconds: latestAttempt.durationSeconds,
+                totalQuestions: latestAttempt.totalQuestions,
+                scoring: latestAttempt.scoring,
+                listeningAccuracy,
+                readingAccuracy,
+            },
+        };
     }
 }
 
 export const userService = new UserService(
     new UserMongoRepository(),
     new LanguageMongoRepository(),
-    new LearningGoalMongoRepository()
+    new LearningGoalMongoRepository(),
+    new PlacementTestAttemptMongoRepository(),
 );

@@ -113,6 +113,7 @@ export interface GradingConfig {
 export interface SpeakingHint {
     vi?: string;
     en?: string;
+    structure?: string;
 }
 
 export interface SpeakingContent {

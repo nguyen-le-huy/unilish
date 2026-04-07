@@ -93,13 +93,8 @@ export class CourseMongoRepository extends BaseMongoRepository<ICourse> {
         return this.model.countDocuments({ seriesId }).exec();
     }
 
-    /**
-     * Check whether a CEFR level already exists within the same series.
-     */
-    async existsBySeriesAndLevel(seriesId: string, level: string): Promise<boolean> {
-        const count = await this.model.countDocuments({ seriesId, level }).exec();
-        return count > 0;
-    }
+    // ✅ REMOVED: existsBySeriesAndLevel()
+    // Không cần nữa vì giờ cho phép nhiều courses cùng level trong 1 series
 
     /**
      * Aggregate the full course tree: course → units → lessons.

@@ -68,6 +68,19 @@ export class PlacementTestAttemptMongoRepository extends BaseMongoRepository<IPl
             .exec() as Promise<IPlacementTestAttempt | null>;
     }
 
+    async findLatestSubmittedByUser(userId: string): Promise<IPlacementTestAttempt | null> {
+        return this.model
+            .findOne({
+                userId: new mongoose.Types.ObjectId(userId),
+                status: EPlacementAttemptStatus.SUBMITTED,
+                scoring: { $ne: null },
+            })
+            .sort({ submittedAt: -1, createdAt: -1 })
+            .select('userId language status submittedAt durationSeconds totalQuestions scoring createdAt updatedAt')
+            .lean()
+            .exec() as Promise<IPlacementTestAttempt | null>;
+    }
+
     async updateAnswerSheet(attemptId: string, answerSheet: IPlacementTestAttempt['answerSheet']): Promise<IPlacementTestAttempt | null> {
         return this.model
             .findByIdAndUpdate(

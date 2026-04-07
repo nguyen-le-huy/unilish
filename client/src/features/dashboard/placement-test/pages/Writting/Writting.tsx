@@ -155,7 +155,7 @@ const Writting = () => {
                 <div className={styles.right}>
                     <div className={styles.header}>
                         <p>Khu vực viết bài</p>
-                        <p className={styles.wordCount}>Word count: {wordCount}/{minWordLimit}</p>
+                        <p className={styles.wordCount}>Word count: {wordCount}</p>
                     </div>
                     <div className={styles.writtingArea}>
                         <textarea

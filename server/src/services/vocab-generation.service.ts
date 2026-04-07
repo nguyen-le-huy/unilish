@@ -113,6 +113,7 @@ export class VocabGenerationService {
 
     /**
      * Generate vocabulary items using GPT with contextual constraints.
+     * Supports both standard models (GPT-4o, GPT-4) and reasoning models (o1, o3, gpt-5.x).
      */
     private static async callGPT(
         ctx: LessonLanguageContext,
@@ -153,37 +154,104 @@ For each word, provide a JSON object in this exact shape:
 IMPORTANT: exampleSentence must be SHORT (8–12 words). Do NOT write complex or compound sentences.
 Return a JSON array of exactly ${wordCount} items. Words must be diverse and appropriate difficulty for the scenario.`;
 
-        const response = await openaiClient.chat.completions.create({
-            model: env.OPENAI_MODEL,
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt },
-            ],
-            response_format: { type: 'json_object' },
-        });
+        // Detect if using reasoning model (o1, o3, gpt-5.x)
+        const isReasoningModel = env.OPENAI_MODEL.includes('o1') || 
+                                  env.OPENAI_MODEL.includes('o3') || 
+                                  env.OPENAI_MODEL.startsWith('gpt-5');
 
-        const raw = response.choices[0]?.message?.content ?? '{}';
-
-        let parsed: unknown;
         try {
-            parsed = JSON.parse(raw);
-        } catch {
-            throw new AppError('GPT returned invalid JSON', HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+            logger.info('[Vocab Generation] Calling OpenAI', {
+                model: env.OPENAI_MODEL,
+                isReasoningModel,
+                wordCount,
+                hasWordList: !!wordList,
+                scenario: ctx.scenario,
+            });
 
-        // GPT may wrap the array in an object key
-        const items = Array.isArray(parsed)
-            ? parsed
-            : (parsed as Record<string, unknown>).items ?? (parsed as Record<string, unknown>).vocabulary ?? [];
+            // Build API params based on model type
+            const apiParams: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming = {
+                model: env.OPENAI_MODEL,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt },
+                ],
+            };
 
-        if (!Array.isArray(items) || items.length === 0) {
+            // Reasoning models (o1, o3, gpt-5.x) configuration
+            if (isReasoningModel) {
+                // Reasoning models REQUIRE reasoning_effort and DO NOT support:
+                // - temperature
+                // - response_format (must use prompt engineering for JSON)
+                (apiParams as any).reasoning_effort = 'low';
+                
+                logger.info('[Vocab Generation] Using reasoning model config', {
+                    reasoning_effort: 'low',
+                    temperature: 'not_supported',
+                    response_format: 'not_supported',
+                });
+            } else {
+                // Standard models (GPT-4o, GPT-4, GPT-3.5) configuration
+                apiParams.response_format = { type: 'json_object' };
+                apiParams.temperature = 0.7;
+                
+                logger.info('[Vocab Generation] Using standard model config', {
+                    temperature: 0.7,
+                    response_format: 'json_object',
+                });
+            }
+
+            const response = await openaiClient.chat.completions.create(apiParams);
+
+            const raw = response.choices[0]?.message?.content ?? '{}';
+
+            let parsed: unknown;
+            try {
+                parsed = JSON.parse(raw);
+            } catch (parseError) {
+                logger.error('[Vocab Generation] Failed to parse GPT response', {
+                    rawResponse: raw.substring(0, 500),
+                    error: parseError instanceof Error ? parseError.message : String(parseError),
+                });
+                throw new AppError('GPT returned invalid JSON', HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+
+            // GPT may wrap the array in an object key
+            const items = Array.isArray(parsed)
+                ? parsed
+                : (parsed as Record<string, unknown>).items ?? (parsed as Record<string, unknown>).vocabulary ?? [];
+
+            if (!Array.isArray(items) || items.length === 0) {
+                logger.error('[Vocab Generation] GPT returned no items', {
+                    parsedResponse: parsed,
+                });
+                throw new AppError(
+                    'GPT returned no vocabulary items',
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                );
+            }
+
+            logger.info('[Vocab Generation] Successfully generated vocab', {
+                itemCount: items.length,
+            });
+
+            return items as GPTVocabItem[];
+        } catch (error) {
+            logger.error('[Vocab Generation] OpenAI API call failed', {
+                model: env.OPENAI_MODEL,
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+            });
+
+            // Re-throw AppError as is, wrap others
+            if (error instanceof AppError) {
+                throw error;
+            }
+
             throw new AppError(
-                'GPT returned no vocabulary items',
+                `Failed to generate vocabulary: ${error instanceof Error ? error.message : 'Unknown error'}`,
                 HttpStatus.INTERNAL_SERVER_ERROR,
             );
         }
-
-        return items as GPTVocabItem[];
     }
 
     // ── Concept Auto-Mapping ───────────────────────────────────────────────────

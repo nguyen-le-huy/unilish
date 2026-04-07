@@ -11,7 +11,7 @@ import { QuestionGenerationService } from './question-generation.service.js';
 import { Unit } from '../models/mongo/unit.model.js';
 import { Course } from '../models/mongo/course.model.js';
 import { CourseSeries } from '../models/mongo/course-series.model.js';
-import { Question, EQuestionType } from '../models/mongo/question.model.js';
+import { Question, EQuestionType, EQuestionSkill } from '../models/mongo/question.model.js';
 import { Concept, EConceptType } from '../models/mongo/concept.model.js';
 import { grammarTtsQueue } from '../jobs/queues/grammar-tts.queue.js';
 import { ContextAlignmentService } from './context-alignment.service.js';
@@ -299,7 +299,12 @@ export class GrammarService {
             body.types,
         );
 
-        const inserted = await Question.insertMany(generated);
+        const inserted = await Question.insertMany(
+            generated.map((question) => ({
+                ...question,
+                skill: EQuestionSkill.GRAMMAR,
+            })),
+        );
         const questionIds = inserted.map((item) => item._id.toString());
 
         await grammarRepo.setQuestionIds(lessonId, questionIds);

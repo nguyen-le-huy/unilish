@@ -18,8 +18,10 @@ import {
     Clock,
     User as UserIcon,
     Shield,
+    BarChart3,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useUser } from "../../hooks/useUsers";
 
 interface UserDetailsSheetProps {
     user: User | null;
@@ -28,7 +30,9 @@ interface UserDetailsSheetProps {
 }
 
 export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetProps) {
+    const { data: detailedUser } = useUser(user?._id ?? "");
     if (!user) return null;
+    const displayUser = detailedUser ?? user;
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return "Chưa cập nhật";
@@ -61,20 +65,20 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                     {/* Left Column: Avatar & Personal Info */}
                     <div className="md:col-span-1 border-r pr-6 space-y-6">
                         <div className="flex flex-col items-center text-center">
-                            <Avatar className="w-32 h-32 mb-4 border-2 border-primary/10">
-                                <AvatarImage src={user.avatarUrl} alt={user.fullName} />
-                                <AvatarFallback className="text-4xl">{user.fullName.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <h2 className="text-xl font-bold">{user.fullName}</h2>
-                            <div className="flex flex-wrap justify-center gap-2 mt-2">
-                                <Badge variant="outline" className="capitalize">
-                                    {user.role}
-                                </Badge>
-                                <Badge variant={user.subscription.plan === 'PREMIUM' ? 'default' : 'secondary'}>
-                                    {user.subscription.plan}
-                                </Badge>
+                                <Avatar className="w-32 h-32 mb-4 border-2 border-primary/10">
+                                    <AvatarImage src={displayUser.avatarUrl} alt={displayUser.fullName} />
+                                    <AvatarFallback className="text-4xl">{displayUser.fullName.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <h2 className="text-xl font-bold">{displayUser.fullName}</h2>
+                                <div className="flex flex-wrap justify-center gap-2 mt-2">
+                                    <Badge variant="outline" className="capitalize">
+                                        {displayUser.role}
+                                    </Badge>
+                                    <Badge variant={displayUser.subscription.plan === 'PREMIUM' ? 'default' : 'secondary'}>
+                                        {displayUser.subscription.plan}
+                                    </Badge>
+                                </div>
                             </div>
-                        </div>
 
                         <Separator />
 
@@ -84,14 +88,14 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                 Thông tin cá nhân
                             </h3>
                             <div className="grid grid-cols-1 gap-1">
-                                <InfoRow icon={Mail} label="Email" value={user.email} />
-                                <InfoRow icon={Phone} label="Số điện thoại" value={user.phoneNumber} />
+                                <InfoRow icon={Mail} label="Email" value={displayUser.email} />
+                                <InfoRow icon={Phone} label="Số điện thoại" value={displayUser.phoneNumber} />
                                 <InfoRow
                                     icon={UserIcon}
                                     label="Giới tính"
-                                    value={user.gender === 'male' ? 'Nam' : user.gender === 'female' ? 'Nữ' : 'Khác'}
+                                    value={displayUser.gender === 'male' ? 'Nam' : displayUser.gender === 'female' ? 'Nữ' : 'Khác'}
                                 />
-                                <InfoRow icon={Calendar} label="Ngày sinh" value={formatDate(user.dateOfBirth)} />
+                                <InfoRow icon={Calendar} label="Ngày sinh" value={formatDate(displayUser.dateOfBirth)} />
                             </div>
                         </div>
                     </div>
@@ -111,11 +115,11 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="p-3 bg-muted/40 rounded-lg">
                                         <div className="text-muted-foreground text-[10px] uppercase font-bold mb-1">Level hiện tại</div>
-                                        <div className="text-xl font-bold text-primary">{user.currentLevel || 'A0'}</div>
+                                        <div className="text-xl font-bold text-primary">{displayUser.currentLevel || 'A0'}</div>
                                     </div>
                                     <div className="p-3 bg-muted/40 rounded-lg">
                                         <div className="text-muted-foreground text-[10px] uppercase font-bold mb-1">Mục tiêu</div>
-                                        <div className="text-xl font-bold">{user.targetLevel || 'N/A'}</div>
+                                        <div className="text-xl font-bold">{displayUser.targetLevel || 'N/A'}</div>
                                     </div>
                                     <div className="p-3 bg-muted/40 rounded-lg col-span-2">
                                         <div className="text-muted-foreground text-[10px] uppercase font-bold mb-1">Chương trình học</div>
@@ -129,15 +133,15 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                                     business_work: 'Tiếng Anh công sở (Business)',
                                                     travel_survival: 'Tiếng Anh du lịch (Travel)',
                                                 };
-                                                return user.learningGoal ? (labels[user.learningGoal] || user.learningGoal) : 'Chưa chọn';
+                                                return displayUser.learningGoal ? (labels[displayUser.learningGoal] || displayUser.learningGoal) : 'Chưa chọn';
                                             })()}
                                         </div>
                                     </div>
                                     <div className="p-3 bg-muted/40 rounded-lg col-span-2">
                                         <div className="text-muted-foreground text-[10px] uppercase font-bold mb-1">Kỹ năng yếu</div>
                                         <div className="flex flex-wrap gap-1.5 mt-2">
-                                            {user.weakSkills?.length ? (
-                                                user.weakSkills.map(skill => (
+                                            {displayUser.weakSkills?.length ? (
+                                                displayUser.weakSkills.map(skill => (
                                                     <Badge key={skill} variant="secondary" className="capitalize text-[10px]">
                                                         {skill}
                                                     </Badge>
@@ -146,6 +150,47 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                                 <span className="text-xs text-muted-foreground">Chưa có dữ liệu</span>
                                             )}
                                         </div>
+                                    </div>
+                                    <div className="p-3 bg-muted/40 rounded-lg col-span-2">
+                                        <div className="text-muted-foreground text-[10px] uppercase font-bold mb-2 flex items-center gap-1">
+                                            <BarChart3 className="w-3 h-3" />
+                                            Chi tiết Placement Test
+                                        </div>
+                                        {displayUser.placementTestDetails?.scoring ? (
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-muted-foreground">CEFR tạm tính</span>
+                                                    <Badge variant="default">{displayUser.placementTestDetails.scoring.provisionalCefr}</Badge>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-muted-foreground">Listening</span>
+                                                    <span className="font-medium">
+                                                        {displayUser.placementTestDetails.scoring.listeningCorrect}/{displayUser.placementTestDetails.scoring.listeningTotal}
+                                                        {' '}
+                                                        ({Math.round(displayUser.placementTestDetails.listeningAccuracy * 100)}%)
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-muted-foreground">Reading</span>
+                                                    <span className="font-medium">
+                                                        {displayUser.placementTestDetails.scoring.readingCorrect}/{displayUser.placementTestDetails.scoring.readingTotal}
+                                                        {' '}
+                                                        ({Math.round(displayUser.placementTestDetails.readingAccuracy * 100)}%)
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-muted-foreground">Điểm chuẩn hóa</span>
+                                                    <span className="font-medium">
+                                                        {Math.round(displayUser.placementTestDetails.scoring.mcqScoreNormalized * 100)}%
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-muted-foreground pt-1">
+                                                    Lần thi gần nhất: {formatDate(displayUser.placementTestDetails.submittedAt)}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">Chưa có dữ liệu placement test</span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -160,7 +205,7 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                     <InfoRow
                                         icon={Clock}
                                         label="Ngày tham gia"
-                                        value={formatDate(user.createdAt)}
+                                        value={formatDate(displayUser.createdAt)}
                                         className="py-1"
                                     />
                                     <Separator />
@@ -170,12 +215,12 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                         className="py-1"
                                         value={
                                             <div className="flex flex-col gap-1">
-                                                <Badge variant={user.subscription.status === 'active' ? 'default' : 'destructive'} className="w-fit uppercase text-[10px]">
-                                                    {user.subscription.status}
+                                                <Badge variant={displayUser.subscription.status === 'active' ? 'default' : 'destructive'} className="w-fit uppercase text-[10px]">
+                                                    {displayUser.subscription.status}
                                                 </Badge>
-                                                {user.subscription.endDate && (
+                                                {displayUser.subscription.endDate && (
                                                     <span className="text-xs text-muted-foreground">
-                                                        Hết hạn: {formatDate(user.subscription.endDate)}
+                                                        Hết hạn: {formatDate(displayUser.subscription.endDate)}
                                                     </span>
                                                 )}
                                             </div>
@@ -185,14 +230,14 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                     <InfoRow
                                         icon={Clock}
                                         label="Hoạt động gần nhất"
-                                        value={user.lastActiveAt ? format(new Date(user.lastActiveAt), "HH:mm - dd/MM/yyyy") : "Chưa hoạt động"}
+                                        value={displayUser.lastActiveAt ? format(new Date(displayUser.lastActiveAt), "HH:mm - dd/MM/yyyy") : "Chưa hoạt động"}
                                         className="py-1"
                                     />
                                     <Separator />
                                     <InfoRow
                                         icon={Shield}
                                         label="Auth Provider"
-                                        value={<Badge variant="outline">{user.authProvider}</Badge>}
+                                        value={<Badge variant="outline">{displayUser.authProvider}</Badge>}
                                         className="py-1"
                                     />
                                     <Separator />
@@ -200,8 +245,8 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                         icon={Shield}
                                         label="Sync Graph"
                                         value={
-                                            <Badge variant={user.isSyncedToGraph ? "default" : "destructive"}>
-                                                {user.isSyncedToGraph ? "Yes" : "No"}
+                                            <Badge variant={displayUser.isSyncedToGraph ? "default" : "destructive"}>
+                                                {displayUser.isSyncedToGraph ? "Yes" : "No"}
                                             </Badge>
                                         }
                                         className="py-1"
@@ -215,4 +260,3 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
         </Dialog>
     );
 }
-
