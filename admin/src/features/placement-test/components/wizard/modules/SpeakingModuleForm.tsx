@@ -139,7 +139,8 @@ const topicsToQuestionDrafts = (topics?: (ISpeakingQuestion | LegacySpeakingTopi
     (topics ?? [])
         .map((q) => {
             const text = pickTopicText(q);
-            const audioKey = typeof q === 'string' ? undefined : (q.audioKey ?? q.audio?.key);
+            const legacy = q as LegacySpeakingTopic;
+            const audioKey = typeof q === 'string' ? undefined : (q.audioKey ?? legacy.audio?.key);
             return {
                 id: uid(),
                 text,
@@ -166,10 +167,11 @@ const cueCardsToQuestionDrafts = (cueCards?: (ISpeakingCueCard | LegacyCueCard |
 
             const text = pickTopicText(cueCard);
             const shouldSay = toStringArray(cueCard.shouldSay);
+            const legacy = cueCard as LegacyCueCard;
             const fallbackHints = [
-                ...toStringArray(cueCard.hints),
-                ...toStringArray(cueCard.bullets),
-                ...toStringArray(cueCard.points),
+                ...toStringArray(legacy.hints),
+                ...toStringArray(legacy.bullets),
+                ...toStringArray(legacy.points),
             ];
 
             return {
