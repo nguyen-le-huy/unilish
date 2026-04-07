@@ -50,7 +50,6 @@ const Writting = () => {
         || imageQues;
     const promptText = writingSession?.prompt?.trim() || 'Chưa có đề Writing trong bài kiểm tra hiện tại.';
     const timeLimitMinutes = Math.max(1, writingSession?.timeLimitMinutes ?? cachedEssayModule?.timeLimitMinutes ?? 30);
-    const minWordLimit = Math.max(1, writingSession?.wordLimit ?? cachedEssayModule?.wordLimits?.mid ?? 150);
 
     const wordCount = essay
         .trim()
