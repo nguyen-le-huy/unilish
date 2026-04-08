@@ -14,11 +14,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Environment Files (Auto Copy from Host)
+      - name: Setup Environment Files (From Secrets)
         run: |
-          cp /home/nguyenlehuy/unilish/server/.env server/.env
-          cp /home/nguyenlehuy/unilish/client/.env.production client/.env.production
-          cp /home/nguyenlehuy/unilish/admin/.env.production admin/.env.production
+          cat << 'EOF' > server/.env
+          ${{ secrets.SERVER_ENV_FILE }}
+          EOF
+          
+          cat << 'EOF' > client/.env
+          ${{ secrets.CLIENT_ENV_FILE }}
+          EOF
+          
+          cat << 'EOF' > admin/.env
+          ${{ secrets.ADMIN_ENV_FILE }}
+          EOF
 
       - name: Build and Deploy Production
         run: |

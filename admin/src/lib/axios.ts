@@ -16,7 +16,7 @@ let refreshTokenPromise: Promise<string | null> | null = null;
 const refreshAccessToken = async (): Promise<string | null> => {
     if (!refreshTokenPromise) {
         refreshTokenPromise = apiClient
-            .post('/auth/refresh')
+            .post('/auth/refresh', { appType: 'admin' })
             .then((response: { data?: { data?: { accessToken?: string } } }) => {
                 const nextToken = response.data?.data?.accessToken ?? null;
                 const currentUser = useAuthStore.getState().user;

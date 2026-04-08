@@ -21,7 +21,10 @@ export interface AuthApiResponse {
  * @returns Auth response with user and access token
  */
 export const loginApi = async (credentials: LoginFormData): Promise<AuthApiResponse> => {
-    const response = await apiClient.post<AuthApiResponse>('/auth/login', credentials);
+    const response = await apiClient.post<AuthApiResponse>('/auth/login', {
+        ...credentials,
+        appType: 'admin',
+    });
     return response.data;
 };
 
@@ -29,5 +32,5 @@ export const loginApi = async (credentials: LoginFormData): Promise<AuthApiRespo
  * Admin logout API call (if backend support)
  */
 export const logoutApi = async (): Promise<void> => {
-    await apiClient.post('/auth/logout');
+    await apiClient.post('/auth/logout', { appType: 'admin' });
 };

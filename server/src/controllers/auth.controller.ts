@@ -15,8 +15,8 @@ export class AuthController {
         return env.NODE_ENV === 'production';
     }
 
-    private static setRefreshTokenCookie(res: Response, refreshToken: string): void {
-        res.cookie('refreshToken', refreshToken, {
+    private static setRefreshTokenCookie(res: Response, refreshToken: string, cookieName: string = 'refreshToken'): void {
+        res.cookie(cookieName, refreshToken, {
             httpOnly: true,
             secure: AuthController.resolveCookieSecure(),
             sameSite: AuthController.resolveCookieSameSite(),
@@ -27,7 +27,8 @@ export class AuthController {
 
     static login = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
         const result = await authService.login(req.body);
-        AuthController.setRefreshTokenCookie(res, result.refreshToken);
+        const cookieName = req.body.appType === 'admin' ? 'adminRefreshToken' : 'refreshToken';
+        AuthController.setRefreshTokenCookie(res, result.refreshToken, cookieName);
         sendResponse(res, 200, 'Đăng nhập thành công', result);
     });
 
@@ -37,9 +38,10 @@ export class AuthController {
     });
 
     static verifyOTP = catchAsync(async (req: Request, res: Response) => {
-        const { email, otp } = req.body;
+        const { email, otp, appType } = req.body;
         const result = await authService.verifyOTP(email, otp);
-        AuthController.setRefreshTokenCookie(res, result.refreshToken);
+        const cookieName = appType === 'admin' ? 'adminRefreshToken' : 'refreshToken';
+        AuthController.setRefreshTokenCookie(res, result.refreshToken, cookieName);
         sendResponse(res, 200, 'Xác thực OTP thành công', result);
     });
 
@@ -50,6 +52,7 @@ export class AuthController {
         }
 
         const { accessToken, refreshToken, isNewUser } = result;
+        // Google auth is typically used for client only. Default to refreshToken.
         AuthController.setRefreshTokenCookie(res, refreshToken);
 
         const fragment = new URLSearchParams({
@@ -61,7 +64,9 @@ export class AuthController {
     });
 
     static refreshToken = catchAsync(async (req: Request, res: Response) => {
-        const rawRefreshToken = req.cookies?.refreshToken as string | undefined;
+        const isClientAdmin = req.body.appType === 'admin' || req.query.appType === 'admin';
+        const cookieName = isClientAdmin ? 'adminRefreshToken' : 'refreshToken';
+        const rawRefreshToken = req.cookies?.[cookieName] as string | undefined;
         if (!rawRefreshToken) {
             throw new AppError('Không có refresh token', 401);
         }
@@ -70,7 +75,9 @@ export class AuthController {
     });
 
     static logout = catchAsync(async (req: Request, res: Response) => {
-        res.clearCookie('refreshToken', {
+        const isClientAdmin = req.body.appType === 'admin' || req.query.appType === 'admin';
+        const cookieName = isClientAdmin ? 'adminRefreshToken' : 'refreshToken';
+        res.clearCookie(cookieName, {
             httpOnly: true,
             secure: AuthController.resolveCookieSecure(),
             sameSite: AuthController.resolveCookieSameSite(),
