@@ -192,6 +192,7 @@ const allowedOrigins = [
     environment:
       - PORT=5432
       - REDIS_URI=redis://redis:6379
+      - SERVER_URL=https://api-unilish.devenir.shop
       - CLIENT_URL=https://unilish.devenir.shop
       - NODE_ENV=production
 
