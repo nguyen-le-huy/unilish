@@ -45,18 +45,22 @@ cloudflared tunnel create unilish
 
 ### **Bước 3: Map 3 Subdomain về Tunnel**
 
+> **Lưu ý Quan Trọng:** Vì server đã có tunnel của dự án Devenir, bạn LẮT BUỘC phải dùng `TUNNEL_UUID` (ví dụ: `e60a5f70-...`) kèm cờ `-f` để map đúng tunnel, nếu không request sẽ trỏ nhầm sang Admin của Devenir gây ra lỗi 404!
+
 ```bash
+# Thay <TUNNEL_UUID> bằng UUID thật của tunnel unilish sinh ra ở bước 2
+
 # Client
-cloudflared tunnel route dns unilish unilish.devenir.shop
+cloudflared tunnel route dns -f <TUNNEL_UUID> unilish.devenir.shop
 
 # Admin
-cloudflared tunnel route dns unilish admin-unilish.devenir.shop
+cloudflared tunnel route dns -f <TUNNEL_UUID> admin-unilish.devenir.shop
 
 # API
-cloudflared tunnel route dns unilish api-unilish.devenir.shop
+cloudflared tunnel route dns -f <TUNNEL_UUID> api-unilish.devenir.shop
 ```
 
-> Sau bước này, Cloudflare DNS sẽ tự động thêm 3 record Tunnel trỏ về `devenir.shop`.  
+> Sau bước này, Cloudflare DNS sẽ tự động cập nhật CNAME trỏ về Tunnel mới.  
 > Kiểm tra tại **Cloudflare Dashboard → devenir.shop → DNS → Records**.
 
 ---
@@ -70,13 +74,13 @@ tunnel: <TUNNEL_UUID>
 credentials-file: /home/<username>/.cloudflared/<TUNNEL_UUID>.json
 
 ingress:
-  # Client → port 5173
+  # Client → port 5176 (tránh đụng 5173 của Devenir)
   - hostname: unilish.devenir.shop
-    service: http://localhost:5173
+    service: http://localhost:5176
 
-  # Admin → port 5174
+  # Admin → port 5175 (tránh đụng 5174 của Devenir)
   - hostname: admin-unilish.devenir.shop
-    service: http://localhost:5174
+    service: http://localhost:5175
 
   # API → port 5432 (Express + Socket.IO)
   - hostname: api-unilish.devenir.shop
@@ -187,22 +191,31 @@ const allowedOrigins = [
 
 ### **Bước 8: Cập nhật `docker-compose.prod.yml`**
 
+Do chạy chung server với Devenir, cần đổi exposed ports của Client và Admin ra bên ngoài thành **5176** và **5175** để không bị lỗi `port is already allocated`.
+
 ```yaml
   server:
+    ports:
+      - "5432:5432"
     environment:
       - PORT=5432
       - REDIS_URI=redis://redis:6379
       - SERVER_URL=https://api-unilish.devenir.shop
       - CLIENT_URL=https://unilish.devenir.shop
+      - ADMIN_URL=https://admin-unilish.devenir.shop
       - NODE_ENV=production
 
   client:
+    ports:
+      - "5176:80"
     build:
       args:
         - VITE_API_URL=https://api-unilish.devenir.shop/api
         - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
 
   admin:
+    ports:
+      - "5175:80"
     build:
       args:
         - VITE_API_URL=https://api-unilish.devenir.shop

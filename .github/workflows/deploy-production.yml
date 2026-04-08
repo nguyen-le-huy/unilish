@@ -1,0 +1,29 @@
+name: Deploy Production Unilish
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Environment Files (Auto Copy from Host)
+        run: |
+          cp /home/nguyenlehuy/unilish/server/.env server/.env
+          cp /home/nguyenlehuy/unilish/client/.env.production client/.env.production
+          cp /home/nguyenlehuy/unilish/admin/.env.production admin/.env.production
+
+      - name: Build and Deploy Production
+        run: |
+          docker compose -f docker-compose.prod.yml up -d --build
+
+      - name: Cleanup Docker Cache
+        run: |
+          docker image prune -f
