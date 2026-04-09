@@ -245,7 +245,6 @@ ${azureMetricsSummary}
             model: env.OPENAI_GRADING_MODEL,
             reasoning_effort: env.OPENAI_GRADING_REASONING_EFFORT,
             response_format: { type: 'json_object' },
-            temperature: 0.3,
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },

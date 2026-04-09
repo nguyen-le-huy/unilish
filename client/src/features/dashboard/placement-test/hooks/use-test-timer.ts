@@ -10,25 +10,21 @@ const getRemainingSeconds = (expiresAt?: string): number => {
 };
 
 export const useTestTimer = (expiresAt?: string): number => {
-    const [timeRemaining, setTimeRemaining] = useState<number>(() => getRemainingSeconds(expiresAt));
+    const [, setTick] = useState(0);
 
     useEffect(() => {
         if (!expiresAt) {
-            setTimeRemaining(0);
             return;
         }
 
-        const tick = () => {
-            setTimeRemaining(getRemainingSeconds(expiresAt));
-        };
-
-        tick();
-        const intervalId = window.setInterval(tick, 1000);
+        const intervalId = window.setInterval(() => {
+            setTick((t) => t + 1);
+        }, 1000);
 
         return () => {
             window.clearInterval(intervalId);
         };
     }, [expiresAt]);
 
-    return timeRemaining;
+    return getRemainingSeconds(expiresAt);
 };

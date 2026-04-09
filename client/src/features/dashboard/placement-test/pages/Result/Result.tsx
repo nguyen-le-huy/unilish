@@ -97,7 +97,10 @@ export const Result = () => {
             {
                 label: 'Writing',
                 score: formatBand(result.scores.writing.band),
-                content: flattenFeedback(result.feedback?.writing?.strengths),
+                content: [
+                    result.scores.writing.criteria ? `Tiêu chí (TR: ${formatBand(result.scores.writing.criteria.TR)} | CC: ${formatBand(result.scores.writing.criteria.CC)} | LR: ${formatBand(result.scores.writing.criteria.LR)} | GRA: ${formatBand(result.scores.writing.criteria.GRA)})` : '',
+                    flattenFeedback(result.feedback?.writing?.strengths),
+                ].filter(Boolean).join('\n\n'),
             },
             {
                 label: 'Writing Tips',
@@ -107,7 +110,10 @@ export const Result = () => {
             {
                 label: 'Speaking',
                 score: formatBand(result.scores.speaking.band),
-                content: flattenFeedback(result.feedback?.speaking?.strengths),
+                content: [
+                    result.scores.speaking.criteria ? `Tiêu chí (Fluency: ${formatBand(result.scores.speaking.criteria.fluency)} | Lexical: ${formatBand(result.scores.speaking.criteria.lexical)} | Grammar: ${formatBand(result.scores.speaking.criteria.grammar)} | Pronunciation: ${formatBand(result.scores.speaking.criteria.pronunciation)})` : '',
+                    flattenFeedback(result.feedback?.speaking?.strengths),
+                ].filter(Boolean).join('\n\n'),
             },
             {
                 label: 'Speaking Tips',
@@ -193,7 +199,7 @@ export const Result = () => {
                 type="button"
                 onClick={() => {
                     clearPlacementSession();
-                    navigate(PATHS.DASHBOARD.ROADMAP);
+                    navigate(PATHS.DASHBOARD.HOME);
                 }}
             >
                 Tìm khoá học phù hợp

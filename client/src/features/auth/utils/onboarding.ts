@@ -16,29 +16,47 @@ export const hasSelectedLevel = (user: User | null): boolean => {
         return false;
     }
 
-    if (user.currentLevel !== 'A0') {
+    // If user has completed placement test (has score), consider level as selected
+    // even if result is A0
+    if (user.placementTestScore && user.placementTestScore > 0) {
         return true;
     }
 
-    return (user.placementTestScore ?? 0) > 0;
+    // Otherwise, only consider level selected if it's not A0 (manually set)
+    return user.currentLevel !== 'A0';
 };
 
 export const getRequiredOnboardingPath = (user: User | null): string | null => {
-    // If user already has a level and a learning goal they are fully onboarded —
-    // skip all onboarding forms regardless of whether nativeLanguage is set.
-    if (hasSelectedLevel(user) && hasSelectedLearningGoal(user)) {
+    // If user has completed placement test (has score OR has level other than A0)
+    // consider them fully onboarded. They can set language/goal later from settings.
+    if (user?.placementTestScore && user.placementTestScore > 0) {
         return null;
     }
 
-    if (!hasSelectedLanguage(user)) {
+    // If user has a level set (not default A0), they've completed placement test
+    // even if placementTestScore wasn't properly saved
+    if (user?.currentLevel && user.currentLevel !== 'A0') {
+        return null;
+    }
+
+    const hasLevel = hasSelectedLevel(user);
+    const hasGoal = hasSelectedLearningGoal(user);
+    const hasLanguage = hasSelectedLanguage(user);
+
+    // If user already has a level and a learning goal they are fully onboarded
+    if (hasLevel && hasGoal) {
+        return null;
+    }
+
+    if (!hasLanguage) {
         return PATHS.DASHBOARD.LANGUAGE_SELECTION;
     }
 
-    if (!hasSelectedLearningGoal(user)) {
+    if (!hasGoal) {
         return PATHS.DASHBOARD.GOAL_SELECTION;
     }
 
-    if (!hasSelectedLevel(user)) {
+    if (!hasLevel) {
         return PATHS.DASHBOARD.LEVEL_SELECTION;
     }
 

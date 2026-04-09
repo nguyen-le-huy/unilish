@@ -40,9 +40,8 @@ const Writting = () => {
 
     const {
         submitEssay,
-        submitState,
         isSubmitting,
-        hasTimedOut,
+        isSuccess,
     } = useWritingSubmit({ sessionId });
 
     const promptImageSrc = writingSession?.promptImageUrl?.trim()
@@ -56,14 +55,13 @@ const Writting = () => {
         .split(/\s+/)
         .filter(Boolean)
         .length;
-    const canManualSubmit = !isSubmitting && submitState !== 'grading' && submitState !== 'done';
 
-    const submitWriting = async () => {
-        if (!sessionId || !writingSession?.writingAttemptId || submitState === 'grading' || isSubmitting) {
+    const submitWriting = async (currentRemainingSeconds: number) => {
+        if (!sessionId || !writingSession?.writingAttemptId || isSubmitting || isSuccess) {
             return;
         }
 
-        const elapsedSeconds = Math.max(0, timeLimitMinutes * 60 - remainingSeconds);
+        const elapsedSeconds = Math.max(0, timeLimitMinutes * 60 - currentRemainingSeconds);
 
         try {
             await submitEssay({
@@ -80,16 +78,20 @@ const Writting = () => {
 
     const { remainingSeconds } = useWritingTimer({
         timeLimitMinutes,
-        isActive: Boolean(writingSession?.writingAttemptId) && !isSubmittedCardOpen && submitState !== 'done',
+        isActive: Boolean(writingSession?.writingAttemptId) && !isSuccess,
         onExpire: () => {
             if (hasAutoSubmittedRef.current) {
                 return;
             }
 
             hasAutoSubmittedRef.current = true;
-            void submitWriting();
+            void submitWriting(0);
         },
     });
+
+    const canManualSubmit = !isSubmitting && !isSuccess;
+    const hasTimedOut = remainingSeconds <= 0;
+    const submitState = isSubmitting ? 'grading' : isSuccess ? 'done' : 'idle';
 
     useEffect(() => {
         if (!writingSession?.writingAttemptId) {
@@ -99,14 +101,6 @@ const Writting = () => {
         setWritingAttemptId(writingSession.writingAttemptId);
         setCurrentModule('writing');
     }, [setCurrentModule, setWritingAttemptId, writingSession?.writingAttemptId]);
-
-    useEffect(() => {
-        if (!hasTimedOut) {
-            return;
-        }
-
-        toast.error('Hệ thống đang bận, vui lòng thử lại.');
-    }, [hasTimedOut]);
 
     const handleContinue = () => {
         setCurrentModule('speaking');
@@ -176,10 +170,10 @@ const Writting = () => {
                             variant="primary"
                             disabled={!canManualSubmit}
                             onClick={() => {
-                                void submitWriting();
+                                void submitWriting(remainingSeconds);
                             }}
                         >
-                            {isSubmitting ? 'Đang nộp...' : 'Nộp bài'}
+                            {isSubmitting ? 'Đang nộp...' : submitState === 'grading' ? 'Đang chấm điểm...' : 'Nộp bài'}
                         </Button>
                     </div>
                 </div>

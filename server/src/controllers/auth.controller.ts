@@ -64,7 +64,7 @@ export class AuthController {
     });
 
     static refreshToken = catchAsync(async (req: Request, res: Response) => {
-        const isClientAdmin = req.body.appType === 'admin' || req.query.appType === 'admin';
+        const isClientAdmin = req.body?.appType === 'admin' || req.query?.appType === 'admin';
         const cookieName = isClientAdmin ? 'adminRefreshToken' : 'refreshToken';
         const rawRefreshToken = req.cookies?.[cookieName] as string | undefined;
         if (!rawRefreshToken) {
@@ -75,7 +75,7 @@ export class AuthController {
     });
 
     static logout = catchAsync(async (req: Request, res: Response) => {
-        const isClientAdmin = req.body.appType === 'admin' || req.query.appType === 'admin';
+        const isClientAdmin = req.body?.appType === 'admin' || req.query?.appType === 'admin';
         const cookieName = isClientAdmin ? 'adminRefreshToken' : 'refreshToken';
         res.clearCookie(cookieName, {
             httpOnly: true,

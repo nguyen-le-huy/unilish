@@ -71,7 +71,6 @@ end
 == STEP 2c — Submit & Async Grading ==
 
 User -> Writing : click "Nộp bài" (or timer auto-submit)
-Writing -> Writing : validate wordCount >= wordLimit
 Writing -> SessionCtrl : POST /placement-sessions/:sessionId/writing/submit\n{ writingAttemptId, essay, wordCount, durationSeconds }
 SessionCtrl -> Mongo : update WritingAttempt { essay, status:'submitted', durationSeconds }
 SessionCtrl -> Redis : enqueue writing-grading-job\n{ writingAttemptId, essay, promptText, criteria:['TR','CC','LR','GRA'] }

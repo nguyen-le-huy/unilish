@@ -10,6 +10,7 @@ export const api = axios.create({
 });
 
 import { useAuthStore } from '@/stores/auth.store';
+import { usePlacementTestStore } from '@/stores/placement-test.store';
 
 interface EnvelopeLike<T = unknown> {
     status: string;
@@ -147,6 +148,10 @@ api.interceptors.response.use(
                 const newAccessToken = (refreshResponse as unknown as { data: { accessToken: string } }).data.accessToken
                     ?? (refreshResponse as unknown as { accessToken: string }).accessToken;
 
+                if (!newAccessToken) {
+                    throw new Error('No access token in refresh response');
+                }
+
                 // Update store with new token
                 useAuthStore.setState((state) => ({ ...state, token: newAccessToken }));
 
@@ -155,9 +160,30 @@ api.interceptors.response.use(
                 return api(originalRequest);
             } catch (refreshError) {
                 processQueue(refreshError, null);
-                // Refresh failed → force logout
-                useAuthStore.getState().logout();
-                window.location.href = '/auth/login';
+                
+                // Check if user is in placement test to prevent data loss
+                const placementState = usePlacementTestStore.getState();
+                const isInPlacementTest = Boolean(
+                    placementState.sessionId || 
+                    placementState.attemptId || 
+                    placementState.currentModule
+                );
+                
+                if (isInPlacementTest) {
+                    // Clear localStorage auth but keep sessionStorage for placement test
+                    localStorage.removeItem('unilish-auth-storage');
+                } else {
+                    // Refresh failed → force logout
+                    useAuthStore.getState().logout();
+                }
+                
+                // Preserve current URL to redirect back after login
+                const currentPath = window.location.pathname + window.location.search;
+                const loginUrl = currentPath !== '/auth/login' 
+                    ? `/auth/login?redirect=${encodeURIComponent(currentPath)}`
+                    : '/auth/login';
+                
+                window.location.href = loginUrl;
                 return Promise.reject(refreshError);
             } finally {
                 isRefreshing = false;

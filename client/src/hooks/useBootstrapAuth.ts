@@ -34,6 +34,8 @@ export const useBootstrapAuth = () => {
 
                 if (newToken) {
                     useAuthStore.setState((state) => ({ ...state, token: newToken }));
+                } else {
+                    useAuthStore.getState().logout();
                 }
             } catch {
                 // Cookie hết hạn hoặc không có → logout để clean state

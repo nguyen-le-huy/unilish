@@ -294,6 +294,16 @@ const ListeningReading = () => {
                 return;
             }
 
+            // Update user profile with placement test results
+            const currentUser = useAuthStore.getState().user;
+            if (currentUser && result.profileUpdate) {
+                useAuthStore.getState().setUser({
+                    ...currentUser,
+                    currentLevel: result.profileUpdate.currentLevel,
+                    placementTestScore: result.profileUpdate.placementTestScore,
+                });
+            }
+
             setAttemptId(attempt.attemptId);
             setLrRawScore(lrRawScore);
             setSessionId(sessionResult.sessionId);
@@ -317,6 +327,21 @@ const ListeningReading = () => {
         setSessionId,
         submitAttemptMutation,
     ]);
+
+    const hasExpired = attempt?.expiresAt ? timeRemaining === 0 : false;
+
+    useEffect(() => {
+        if (attempt?.attemptId) {
+            setAttemptId(attempt.attemptId);
+        }
+    }, [attempt?.attemptId, setAttemptId]);
+
+    useEffect(() => {
+        if (hasExpired && !isSubmitting && !submissionSummary) {
+            toast.info(PT_MESSAGES.timeUpInfo);
+            void handleSubmit();
+        }
+    }, [hasExpired, isSubmitting, submissionSummary, handleSubmit]);
 
     if (!isAuthenticated) {
         return <Navigate to={PATHS.AUTH.LOGIN} replace />;

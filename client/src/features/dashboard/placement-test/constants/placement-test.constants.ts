@@ -13,4 +13,5 @@ export const PT_MESSAGES = {
     notFoundView: 'Chưa tìm thấy đề placement test active.',
     sessionExpiredView: 'Phiên đăng nhập hết hạn. Đang chuyển tới trang đăng nhập...',
     loadErrorView: 'Không tải được bài thi đầu vào. Vui lòng thử lại sau.',
+    timeUpInfo: 'Đã hết thời gian làm bài. Đang tự động nộp bài...',
 } as const;

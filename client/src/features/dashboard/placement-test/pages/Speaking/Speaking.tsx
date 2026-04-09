@@ -179,6 +179,7 @@ const Speaking = () => {
                                             : [...prevCompletedParts, partNumber]
                                     ));
                                 }}
+                                isSubmitting={submitSpeakingMutation.isPending}
                             />
                         )}
                     </div>

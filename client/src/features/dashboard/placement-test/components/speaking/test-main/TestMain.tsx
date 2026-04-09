@@ -37,6 +37,7 @@ interface Props {
         pronunciationData?: PronunciationDataPayload;
     }) => Promise<void>;
     onCompleteTest: () => Promise<void>;
+    isSubmitting?: boolean;
 }
 
 const TestMain = ({
@@ -48,6 +49,7 @@ const TestMain = ({
     onPartComplete,
     onUploadChunk,
     onCompleteTest,
+    isSubmitting: externalIsSubmitting = false,
 }: Props) => {
     const [step, setStep] = useState<TestMainStep>('intro-part-1');
     const [questionIndex, setQuestionIndex] = useState(0);
@@ -57,7 +59,8 @@ const TestMain = ({
     const [part2Phase, setPart2Phase] = useState<Part2Phase>('thinking');
     const [part2ThinkingTimeLeft, setPart2ThinkingTimeLeft] = useState(PART2_THINKING_TIME_SECONDS);
     const [part2SpeakingTimeLeft, setPart2SpeakingTimeLeft] = useState(PART2_SPEAKING_TIME_SECONDS);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [internalIsSubmitting, setInternalIsSubmitting] = useState(false);
+    const isSubmitting = externalIsSubmitting || internalIsSubmitting;
     const { startRecording, stopRecording, isRecording } = useAudioRecorder();
     const { startRecognition, stopRecognition, isRecognizing } = useAzureSpeechRecognition();
     const { speak, stop, isSpeaking } = useExaminerTts();
@@ -192,11 +195,11 @@ const TestMain = ({
         }
 
         onPartComplete(3);
-        setIsSubmitting(true);
+        setInternalIsSubmitting(true);
         try {
             await onCompleteTest();
         } finally {
-            setIsSubmitting(false);
+            setInternalIsSubmitting(false);
         }
     };
 
