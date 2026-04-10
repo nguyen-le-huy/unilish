@@ -190,6 +190,23 @@ docker compose -f docker-compose.prod.yml logs -f server
 docker compose -f docker-compose.prod.yml logs -f client
 ```
 
+### 2.1/ Lỗi Google OAuth `redirect_uri_mismatch`
+
+Khi login Google báo lỗi 400 `redirect_uri_mismatch`, cần kiểm tra:
+
+1. Google Cloud Console → OAuth 2.0 Client → **Authorized redirect URIs** có đúng:
+
+```text
+https://api-unilish.devenir.shop/api/auth/google/callback
+```
+
+2. Runtime production có `GOOGLE_CALLBACK_URL` trùng 100% URI trên.
+3. Redeploy lại server sau khi sửa env/secrets:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build --force-recreate server
+```
+
 ### 3/ Xem tình trạng GitHub Runner
 ```bash
 cd ~/github-runners/unilish

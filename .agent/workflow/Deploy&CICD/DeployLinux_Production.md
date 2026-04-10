@@ -155,6 +155,17 @@ CLERK_SECRET_KEY=...
 # ... các key khác
 ```
 
+**Google OAuth (BẮT BUỘC nếu dùng login Google):**
+
+1. Mở Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client.
+2. Trong mục **Authorized redirect URIs**, thêm URI production:
+
+```text
+https://api-unilish.devenir.shop/api/auth/google/callback
+```
+
+3. Đảm bảo `GOOGLE_CALLBACK_URL` trong runtime trùng chính xác URI trên.
+
 **`client/.env.production`:**
 
 ```env

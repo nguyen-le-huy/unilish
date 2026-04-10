@@ -24,7 +24,7 @@ const RegisterForm = () => {
     }, [doRegister]);
 
     const signInWithGoogle = () => {
-        window.location.href = `${env.API_URL}/v1/auth/google`;
+        window.location.href = `${env.API_URL}/auth/google`;
     };
 
     return (

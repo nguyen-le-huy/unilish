@@ -78,6 +78,7 @@ const envSchema = z.object({
     // Auth
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
+    GOOGLE_CALLBACK_URL: z.string().optional(),
     SESSION_SECRET: z.string().default('unilish-secret-key'),
 });
 

@@ -30,6 +30,7 @@ services:
       - PORT=5432
       - REDIS_URI=redis://redis:6379
       - SERVER_URL=https://api-unilish.devenir.shop
+      - GOOGLE_CALLBACK_URL=https://api-unilish.devenir.shop/api/auth/google/callback
       - CLIENT_URL=https://unilish.devenir.shop
       - ADMIN_URL=https://admin-unilish.devenir.shop
       - NODE_ENV=production

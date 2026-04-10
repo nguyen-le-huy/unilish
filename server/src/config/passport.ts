@@ -5,6 +5,16 @@ import { authService } from '../services/auth.service.js';
 import { logger } from '../utils/logger.js';
 import { AppError } from '../utils/app-error.js';
 
+const normalizeBaseUrl = (url: string): string => url.replace(/\/+$/, '');
+
+const resolveGoogleCallbackUrl = (): string => {
+    if (env.GOOGLE_CALLBACK_URL) {
+        return env.GOOGLE_CALLBACK_URL;
+    }
+
+    return `${normalizeBaseUrl(env.SERVER_URL)}/api/auth/google/callback`;
+};
+
 passport.serializeUser((user: any, done) => {
     done(null, user.user._id || user._id);
 });
@@ -25,7 +35,7 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
             {
                 clientID: env.GOOGLE_CLIENT_ID,
                 clientSecret: env.GOOGLE_CLIENT_SECRET,
-                callbackURL: `${env.SERVER_URL}/api/v1/auth/google/callback`,
+                callbackURL: resolveGoogleCallbackUrl(),
             },
             async (_accessToken, _refreshToken, profile, done) => {
                 try {
