@@ -9,7 +9,9 @@ dotenv.config({ path: path.join(process.cwd(), '.env') });
 const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     PORT: z.string().default('5000'),
-    MONGO_URI: z.string().min(1, 'MONGO_URI is required'),
+    // Support legacy key MONGODB_URI used by old deploy docs.
+    MONGO_URI: z.string().optional(),
+    MONGODB_URI: z.string().optional(),
     REDIS_URI: z.string().optional(),
     CLIENT_URL: z.string().default('http://localhost:5173'),
     ADMIN_URL: z.string().default('http://localhost:5174'),
@@ -86,4 +88,14 @@ if (!envServer.success) {
     process.exit(1);
 }
 
-export const env = envServer.data;
+const resolvedMongoUri = envServer.data.MONGO_URI ?? envServer.data.MONGODB_URI;
+
+if (!resolvedMongoUri || resolvedMongoUri.trim().length === 0) {
+    console.error('❌ Invalid environment variables: MONGO_URI (or legacy MONGODB_URI) is required');
+    process.exit(1);
+}
+
+export const env = {
+    ...envServer.data,
+    MONGO_URI: resolvedMongoUri,
+};

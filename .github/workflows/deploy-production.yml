@@ -32,6 +32,15 @@ jobs:
         run: |
           docker compose -f docker-compose.prod.yml up -d --build
 
+      - name: Verify Server Container Is Running
+        run: |
+          docker compose -f docker-compose.prod.yml ps
+          if ! docker compose -f docker-compose.prod.yml ps --services --filter "status=running" | grep -q "^server$"; then
+            echo "Server container is not running after deploy"
+            docker compose -f docker-compose.prod.yml logs --tail=200 server
+            exit 1
+          fi
+
       - name: Cleanup Docker Cache
         run: |
           docker image prune -f
