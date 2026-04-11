@@ -24,5 +24,8 @@ RUN apk add --no-cache ffmpeg
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY --from=builder /app/dist ./dist
+# Copy .env so dotenv can load secrets at runtime (env_file via Docker Compose is the primary source,
+# but this acts as a reliable fallback when compose env_file fails to inject vars)
+COPY --from=builder /app/.env .env
 EXPOSE 5432
 CMD ["npm", "run", "start"]
