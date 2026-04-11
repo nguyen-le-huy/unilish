@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
 import { useOnboardingDraftStore } from '@/stores/onboarding.store';
+import { usePlacementTestStore } from '@/stores/placement-test.store';
 import { PATHS } from '@/config/paths';
 import { useSyncAuthUser } from '@/features/auth/hooks/use-sync-auth-user';
 import { getRequiredOnboardingPath } from '@/features/auth/utils/onboarding';
@@ -26,6 +27,9 @@ export const ProtectedRoute = () => {
     const draftLanguageCode = useOnboardingDraftStore((state) => state.languageCode);
     const draftLearningGoal = useOnboardingDraftStore((state) => state.learningGoal);
     const clearOnboardingDraft = useOnboardingDraftStore((state) => state.clear);
+    const placementSessionId = usePlacementTestStore((state) => state.sessionId);
+    const placementAttemptId = usePlacementTestStore((state) => state.attemptId);
+    const placementCurrentModule = usePlacementTestStore((state) => state.currentModule);
     const hasAuthCredentials = isAuthenticated && (Boolean(token) || Boolean(user));
 
     useSyncAuthUser();
@@ -55,6 +59,14 @@ export const ProtectedRoute = () => {
         ? getRequiredOnboardingPath(onboardingGuardUser)
         : null;
     const isPlacementTestPage = location.pathname.startsWith(PATHS.DASHBOARD.PLACEMENT_TEST.ROOT);
+    const hasPlacementTestProgress = Boolean(
+        placementSessionId || placementAttemptId || placementCurrentModule,
+    );
+    const shouldAllowPlacementTestRoute = isPlacementTestPage
+        && (
+            requiredOnboardingPath === PATHS.DASHBOARD.LEVEL_SELECTION
+            || hasPlacementTestProgress
+        );
 
     useEffect(() => {
         if (!hasHydrated) {
@@ -77,7 +89,7 @@ export const ProtectedRoute = () => {
     if (
         requiredOnboardingPath
         && location.pathname !== requiredOnboardingPath
-        && !(requiredOnboardingPath === PATHS.DASHBOARD.LEVEL_SELECTION && isPlacementTestPage)
+        && !shouldAllowPlacementTestRoute
     ) {
         return <Navigate to={requiredOnboardingPath} replace />;
     }

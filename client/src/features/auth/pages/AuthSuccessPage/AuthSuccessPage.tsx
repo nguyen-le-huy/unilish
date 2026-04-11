@@ -8,7 +8,6 @@ const AuthSuccessPage = () => {
     return (
         <div className="flex items-center justify-center min-h-screen">
             <Loading />
-            <p className="ml-4 text-gray-500">Completing login...</p>
         </div>
     );
 };

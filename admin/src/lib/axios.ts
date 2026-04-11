@@ -17,12 +17,11 @@ const refreshAccessToken = async (): Promise<string | null> => {
     if (!refreshTokenPromise) {
         refreshTokenPromise = apiClient
             .post('/auth/refresh', { appType: 'admin' })
-            .then((response: { data?: { data?: { accessToken?: string } } }) => {
-                const nextToken = response.data?.data?.accessToken ?? null;
-                const currentUser = useAuthStore.getState().user;
+            .then((response: { data?: { data?: { accessToken?: string; token?: string } } }) => {
+                const nextToken = response.data?.data?.accessToken ?? response.data?.data?.token ?? null;
 
-                if (nextToken && currentUser) {
-                    useAuthStore.getState().setAuth(currentUser, nextToken);
+                if (nextToken) {
+                    useAuthStore.getState().setToken(nextToken);
                     return nextToken;
                 }
 
@@ -55,12 +54,17 @@ apiClient.interceptors.response.use(
         const status = error.response?.status as number | undefined;
         const requestUrl = String(originalRequest?.url ?? '');
         const isRefreshRequest = requestUrl.includes('/auth/refresh');
+        const isAuthRequest = requestUrl.includes('/auth/login')
+            || requestUrl.includes('/auth/logout')
+            || requestUrl.includes('/auth/register')
+            || requestUrl.includes('/auth/verify-otp')
+            || isRefreshRequest;
 
         if (
             status === 401
             && originalRequest
             && !originalRequest._retry
-            && !isRefreshRequest
+            && !isAuthRequest
         ) {
             originalRequest._retry = true;
 
@@ -72,7 +76,7 @@ apiClient.interceptors.response.use(
             }
         }
 
-        if (status === 401) {
+        if (status === 401 && useAuthStore.getState().isAuthenticated) {
             useAuthStore.getState().logout();
         }
 
