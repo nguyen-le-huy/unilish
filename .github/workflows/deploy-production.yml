@@ -16,17 +16,49 @@ jobs:
 
       - name: Setup Environment Files (From Secrets)
         run: |
-          cat << 'EOF' > server/.env
-          ${{ secrets.SERVER_ENV_FILE }}
-          EOF
-          
-          cat << 'EOF' > client/.env
-          ${{ secrets.CLIENT_ENV_FILE }}
-          EOF
-          
-          cat << 'EOF' > admin/.env
-          ${{ secrets.ADMIN_ENV_FILE }}
-          EOF
+          set -euo pipefail
+
+          printf '%s\n' "${{ secrets.SERVER_ENV_FILE }}" > server/.env
+          printf '%s\n' "${{ secrets.CLIENT_ENV_FILE }}" > client/.env
+          printf '%s\n' "${{ secrets.ADMIN_ENV_FILE }}" > admin/.env
+
+          for env_file in server/.env client/.env admin/.env; do
+            if [ ! -s "$env_file" ]; then
+              echo "::error::${env_file} is empty. Please verify corresponding GitHub secret."
+              exit 1
+            fi
+          done
+
+          required_server_keys=(
+            JWT_SECRET
+            PINECONE_API_KEY
+            OPENAI_API_KEY
+            AZURE_SPEECH_KEY
+            AZURE_SPEECH_REGION
+          )
+
+          missing_keys=()
+          for key in "${required_server_keys[@]}"; do
+            if ! grep -Eq "^${key}=.+$" server/.env; then
+              missing_keys+=("$key")
+            fi
+          done
+
+          if ! grep -Eq '^MONGO_URI=.+$|^MONGODB_URI=.+$' server/.env; then
+            missing_keys+=("MONGO_URI (or MONGODB_URI)")
+          fi
+
+          if [ ${#missing_keys[@]} -gt 0 ]; then
+            echo "::error::SERVER_ENV_FILE is missing required keys: ${missing_keys[*]}"
+            exit 1
+          fi
+
+          echo "Env diagnostics (redacted):"
+          echo "- server/.env lines: $(wc -l < server/.env)"
+          echo "- client/.env lines: $(wc -l < client/.env)"
+          echo "- admin/.env lines: $(wc -l < admin/.env)"
+          grep -E '^(JWT_SECRET|PINECONE_API_KEY|OPENAI_API_KEY|AZURE_SPEECH_KEY|AZURE_SPEECH_REGION|MONGO_URI|MONGODB_URI)=' server/.env \
+            | sed -E 's/=.*$/=[set]/'
 
       - name: Build and Deploy Production
         run: |

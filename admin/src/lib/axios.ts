@@ -1,9 +1,18 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/features/auth';
 
+const normalizeApiBaseUrl = (rawBaseUrl: string): string => {
+    const trimmed = rawBaseUrl.trim().replace(/\/+$/, '');
+    if (trimmed.endsWith('/api')) {
+        return trimmed;
+    }
+
+    return `${trimmed}/api`;
+};
+
 
 const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5432/api',
+    baseURL: normalizeApiBaseUrl(import.meta.env.VITE_API_URL || 'http://localhost:5432/api'),
     withCredentials: true,
 });
 

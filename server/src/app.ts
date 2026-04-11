@@ -11,6 +11,14 @@ import { AppError } from './utils/app-error.js';
 
 const app = express();
 
+const normalizeOrigin = (value: string): string => {
+    try {
+        return new URL(value).origin.toLowerCase();
+    } catch {
+        return value.trim().replace(/\/+$/, '').toLowerCase();
+    }
+};
+
 import session from 'express-session';
 import passport from 'passport';
 import './config/passport.js';
@@ -32,8 +40,16 @@ app.use(cors({
             return;
         }
 
-        const allowList = new Set([env.CLIENT_URL, env.ADMIN_URL]);
-        const isAllowedByList = allowList.has(origin);
+        const allowList = new Set([
+            env.CLIENT_URL,
+            env.ADMIN_URL,
+            env.SERVER_URL,
+            'https://unilish.devenir.shop',
+            'https://admin-unilish.devenir.shop',
+        ].map(normalizeOrigin));
+
+        const normalizedOrigin = normalizeOrigin(origin);
+        const isAllowedByList = allowList.has(normalizedOrigin);
 
         if (isAllowedByList) {
             callback(null, true);
