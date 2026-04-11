@@ -68,7 +68,7 @@ services:
       context: ./admin
       target: production
       args:
-        - VITE_API_URL=https://api-unilish.devenir.shop
+        - VITE_API_URL=https://api-unilish.devenir.shop/api
     container_name: unilish-admin-prod
     restart: always
     ports:
