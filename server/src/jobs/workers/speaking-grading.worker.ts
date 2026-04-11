@@ -209,13 +209,13 @@ QUY TẮC CHẤM ĐIỂM:
 - Feedback phải tham chiếu cụ thể tới số liệu Azure Speech nếu có
 - Không dùng markdown, không thêm key ngoài schema`;
 
-    const userPrompt = `🎤 TRANSCRIPT BÀI NÓI CỦA HỌC VIÊN:
+    const userPrompt = `TRANSCRIPT BÀI NÓI CỦA HỌC VIÊN:
 ${transcripts.length > 0 ? transcripts.join('\n---\n') : 'Không có transcript. Chấm điểm thận trọng dựa trên dữ liệu có sẵn.'}
 
-📊 SỐ LIỆU PHÁT ÂM TỪ AZURE SPEECH:
+SỐ LIỆU PHÁT ÂM TỪ AZURE SPEECH:
 ${azureMetricsSummary}
 
-📋 YÊU CẦU CHẤM ĐIỂM:
+YÊU CẦU CHẤM ĐIỂM:
 
 1. **Fluency (Độ trôi chảy)**
    - Nói liên tục không ngắt quãng nhiều?
@@ -235,7 +235,7 @@ ${azureMetricsSummary}
    - Dùng đúng thì, giọng, số?
    - Ít lỗi cơ bản?
 
-💡 **LƯU Ý:**
+**LƯU Ý:**
 - Pronunciation KHÔNG chấm ở đây (đã có điểm riêng từ Azure)
 - Tham khảo số liệu Azure để đánh giá độ rõ ràng khi phát âm ảnh hưởng tới comprehension
 - Chấm điểm công bằng, khách quan theo tiêu chuẩn IELTS thực tế`;
