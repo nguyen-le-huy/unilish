@@ -20,7 +20,7 @@ services:
       target: development
     container_name: unilish-server
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - ./server:/app             # Sync code for hot-reload
       - /app/node_modules         # Prevent overwriting container modules
@@ -28,7 +28,7 @@ services:
       - PORT=5432
       - REDIS_URI=redis://redis:6379
       - CLIENT_URL=http://localhost:5173
-      - VITE_API_URL=http://localhost:5432
+      - VITE_API_URL=http://localhost:5433
     env_file:
       - ./server/.env
     depends_on:
