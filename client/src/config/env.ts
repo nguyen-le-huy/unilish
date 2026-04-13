@@ -10,7 +10,7 @@ const resolveApiUrl = (): string => {
     const configuredApiUrl = import.meta.env.VITE_API_URL;
 
     if (typeof window !== 'undefined' && LOCAL_HOSTNAMES.has(window.location.hostname)) {
-        const localApiUrl = import.meta.env.VITE_API_URL_LOCAL || LOCAL_API_FALLBACK;
+        const localApiUrl = import.meta.env.VITE_API_URL_LOCAL || import.meta.env.VITE_API_URL || LOCAL_API_FALLBACK;
         return normalizeApiUrl(localApiUrl);
     }
 

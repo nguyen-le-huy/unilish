@@ -49,7 +49,8 @@ const LoginForm = () => {
     }, []);
 
     const signInWithGoogle = () => {
-        window.location.href = `${env.API_URL}/auth/google`;
+        const clientUrl = encodeURIComponent(window.location.origin);
+        window.location.href = `${env.API_URL}/auth/google?clientUrl=${clientUrl}`;
     };
 
     return (

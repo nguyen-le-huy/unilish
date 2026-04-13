@@ -60,7 +60,19 @@ export class AuthController {
             isNewUser: isNewUser ? '1' : '0',
         }).toString();
 
-        res.redirect(`${env.CLIENT_URL}/auth/success#${fragment}`);
+        let redirectBase = env.CLIENT_URL;
+        if (req.query.state) {
+            try {
+                const stateData = JSON.parse(Buffer.from(req.query.state as string, 'base64').toString('ascii'));
+                if (stateData.clientUrl) {
+                    redirectBase = stateData.clientUrl;
+                }
+            } catch (error) {
+                // Ignore parse error, use default
+            }
+        }
+
+        res.redirect(`${redirectBase}/auth/success#${fragment}`);
     });
 
     static refreshToken = catchAsync(async (req: Request, res: Response) => {

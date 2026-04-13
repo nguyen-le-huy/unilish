@@ -1,10 +1,11 @@
 services:
-  # 1. Redis Service (Local Cache)
+  # 1. Redis Service (Dev)
   redis:
-    image: redis:alpine
+    image: redis/redis-stack:latest
     container_name: unilish-redis
     ports:
-      - "6379:6379"
+      - "6379:6379"   # Exposed locally for debugging (RedisInsight, etc.)
+      - "8001:8001"   # RedisInsight UI
     networks:
       - unilish-net
     healthcheck:
@@ -13,22 +14,25 @@ services:
       timeout: 10s
       retries: 3
 
-  # 2. Server Service (Express API)
+  # 2. Server Service (Express API - dev with hot-reload)
   server:
     build:
       context: ./server
       target: development
     container_name: unilish-server
     ports:
-      - "5433:5432"
+      - "5433:5432"   # Expose dev server on host :5433
     volumes:
       - ./server:/app             # Sync code for hot-reload
       - /app/node_modules         # Prevent overwriting container modules
     environment:
       - PORT=5432
+      - NODE_ENV=development
       - REDIS_URI=redis://redis:6379
       - CLIENT_URL=http://localhost:5173
-      - VITE_API_URL=http://localhost:5433
+      - ADMIN_URL=http://localhost:5174
+      - SERVER_URL=http://localhost:5433
+      - GOOGLE_CALLBACK_URL=http://localhost:5433/api/auth/google/callback
     env_file:
       - ./server/.env
     depends_on:
@@ -36,8 +40,6 @@ services:
         condition: service_healthy
     networks:
       - unilish-net
-
-
 
   # 3. Client & Admin run NATIVELY on macOS (not in Docker)
   # Reason: Docker Desktop VirtioFS caches mtime, breaking all file watchers
@@ -49,7 +51,6 @@ services:
   #
   # client:  ← intentionally omitted
   # admin:   ← intentionally omitted
-
 
 networks:
   unilish-net:

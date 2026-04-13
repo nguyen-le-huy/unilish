@@ -22,9 +22,14 @@ router.post('/logout', AuthController.logout);
 // Google OAuth
 router.get(
     '/google',
-    passport.authenticate('google', {
-        scope: ['profile', 'email'],
-    })
+    (req, res, next) => {
+        const clientUrl = req.query.clientUrl || env.CLIENT_URL;
+        const state = Buffer.from(JSON.stringify({ clientUrl })).toString('base64');
+        passport.authenticate('google', {
+            scope: ['profile', 'email'],
+            state: state,
+        })(req, res, next);
+    }
 );
 
 router.get(
