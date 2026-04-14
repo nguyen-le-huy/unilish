@@ -6,6 +6,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Loading } from "@/components/common/Loading";
@@ -13,6 +14,7 @@ import type { User } from "../../types/users.types";
 import { UserActionMenu } from "../UserActionMenu/UserActionMenu";
 import { formatDistanceToNow, format } from "date-fns";
 import { vi } from "date-fns/locale";
+import { useLearningGoals } from "@/features/curriculum/goals";
 
 interface UserTableProps {
     users: User[];
@@ -22,7 +24,33 @@ interface UserTableProps {
     onViewDetails: (user: User) => void;
 }
 
+const learningGoalLabels: Record<string, string> = {
+    general_communication: 'Giao tiếp',
+    exam_thptqg: 'THPTQG',
+    exam_ielts: 'IELTS',
+    exam_toeic: 'TOEIC',
+    business_work: 'Công việc',
+    travel_survival: 'Du lịch',
+};
+
+const normalizeGoal = (goal: string | null | undefined): string | null => {
+    if (!goal || !goal.trim()) return null;
+    return learningGoalLabels[goal] ?? goal;
+};
+
 export function UserTable({ users, loading, onEditSubscription, onEditRole, onViewDetails }: UserTableProps) {
+    const { data: learningGoalsResponse } = useLearningGoals({ page: 1, limit: 100 });
+    const learningGoalTitleById = useMemo(() => {
+        const map = new Map<string, string>();
+        const goals = learningGoalsResponse?.data ?? [];
+
+        goals.forEach((goal) => {
+            map.set(goal._id, goal.title);
+        });
+
+        return map;
+    }, [learningGoalsResponse?.data]);
+
     if (loading) {
         return <Loading className="p-8" />;
     }
@@ -54,16 +82,17 @@ export function UserTable({ users, loading, onEditSubscription, onEditRole, onVi
                         const subscriptionPlan = user.subscription?.plan ?? 'FREE';
                         const subscriptionStatus = user.subscription?.status ?? 'active';
 
-                        const learningGoalLabels: Record<string, string> = {
-                            general_communication: 'Giao tiếp',
-                            exam_thptqg: 'THPTQG',
-                            exam_ielts: 'IELTS',
-                            exam_toeic: 'TOEIC',
-                            business_work: 'Công việc',
-                            travel_survival: 'Du lịch',
-                        };
+                        const learningGoalFromProfile = user.learningGoal ? normalizeGoal(user.learningGoal) : null;
+                        const learningGoalFromRef =
+                            typeof user.learningGoalId === 'object' && user.learningGoalId
+                                ? normalizeGoal(user.learningGoalId.slug ?? user.learningGoalId.title)
+                                : null;
+                        const learningGoalFromId =
+                            typeof user.learningGoalId === 'string'
+                                ? learningGoalTitleById.get(user.learningGoalId) ?? null
+                                : null;
 
-                        const goalLabel = user.learningGoal ? (learningGoalLabels[user.learningGoal] || user.learningGoal) : 'Chưa chọn';
+                        const goalLabel = learningGoalFromProfile ?? learningGoalFromRef ?? learningGoalFromId ?? 'Chưa chọn';
 
                         return (
                             <TableRow key={user._id} className="hover:bg-muted/50 transition-colors">

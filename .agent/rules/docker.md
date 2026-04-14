@@ -2,7 +2,7 @@
 trigger: always_on
 ---
 
-# DOCKER SETUP INSTRUCTIONS FOR UNILISH
+# DOCKER SETUP
 
 ## 1. Context & Architecture (Enterprise Standard)
 - **Project Structure:** Monorepo (Server, Client, Admin).

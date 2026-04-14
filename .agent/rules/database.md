@@ -2,7 +2,7 @@
 trigger: always_on
 ---
 
-# UNILISH DATABASE ARCHITECTURE & STORAGE STANDARDS
+# UNILISH DATABASE
 
 ## 1. Overview: Polyglot Persistence Strategy
 

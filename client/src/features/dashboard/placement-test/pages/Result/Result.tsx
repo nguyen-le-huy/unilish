@@ -5,6 +5,7 @@ import styles from './Result.module.css';
 import { Button } from '@/components/core/Button';
 import { PATHS } from '@/config/paths';
 import { Loading } from '@/components/common/Loading/Loading';
+import { queryClient } from '@/lib/react-query';
 import { useAuthStore } from '@/stores/auth.store';
 import { usePlacementTestStore } from '@/stores/placement-test.store';
 import { usePlacementResultQuery } from '../../hooks/use-placement-result-query';
@@ -33,9 +34,13 @@ const flattenFeedback = (items: string[] | undefined): string => {
     return items.join(' ');
 };
 
+const CEFR_LEVELS = new Set(['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
+
 export const Result = () => {
     const navigate = useNavigate();
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const user = useAuthStore((state) => state.user);
+    const setUser = useAuthStore((state) => state.setUser);
     const sessionId = usePlacementTestStore((state) => state.sessionId);
     const clearPlacementSession = usePlacementTestStore((state) => state.clear);
 
@@ -53,6 +58,29 @@ export const Result = () => {
 
         toast.error('Hệ thống đang bận, vui lòng thử lại.');
     }, [hasTimedOut]);
+
+    useEffect(() => {
+        if (!result || !user) {
+            return;
+        }
+
+        if (result.status === 'pending' || result.status === 'computing') {
+            return;
+        }
+
+        const normalizedLevel = result.cefr.trim().toUpperCase();
+        if (!CEFR_LEVELS.has(normalizedLevel) || user.currentLevel === normalizedLevel) {
+            return;
+        }
+
+        const nextUser = {
+            ...user,
+            currentLevel: normalizedLevel,
+        };
+
+        setUser(nextUser);
+        queryClient.setQueryData(['auth', 'me'], nextUser);
+    }, [result, setUser, user]);
 
     const skillScores = useMemo(() => {
         if (!result) {
@@ -199,7 +227,7 @@ export const Result = () => {
                 type="button"
                 onClick={() => {
                     clearPlacementSession();
-                    navigate(PATHS.DASHBOARD.HOME);
+                    navigate(PATHS.DASHBOARD.RECOMMEND_COURSE);
                 }}
             >
                 Tìm khoá học phù hợp

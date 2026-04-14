@@ -5,6 +5,12 @@ interface LanguageFilters {
     isActive?: boolean;
 }
 
+interface LanguageLite {
+    _id: ILanguage['_id'];
+    name: ILanguage['name'];
+    nativeName: ILanguage['nativeName'];
+}
+
 export class LanguageMongoRepository extends BaseMongoRepository<ILanguage> {
     constructor() {
         super(Language);
@@ -23,5 +29,13 @@ export class LanguageMongoRepository extends BaseMongoRepository<ILanguage> {
             .sort({ name: 1 })
             .lean()
             .exec() as Promise<ILanguage[]>;
+    }
+
+    async findLiteById(id: string): Promise<LanguageLite | null> {
+        return this.model
+            .findById(id)
+            .select('_id name nativeName')
+            .lean()
+            .exec() as Promise<LanguageLite | null>;
     }
 }

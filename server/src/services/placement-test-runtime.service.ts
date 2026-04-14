@@ -16,6 +16,7 @@ import { Question } from '../models/mongo/question.model.js';
 import type { CreatePlacementAttemptBody, SavePlacementAnswersBody } from '../validations/placement-test-runtime.validation.js';
 import { AppError } from '../utils/app-error.js';
 import { logger } from '../utils/logger.js';
+import { recommendationService } from './recommendation.service.js';
 
 interface RuntimeQuestionView {
     questionId: string;
@@ -699,6 +700,14 @@ export class PlacementTestRuntimeService {
         if (!updatedUser) {
             throw new AppError('User not found while updating placement profile', HttpStatus.NOT_FOUND);
         }
+
+        void recommendationService.invalidateRecommendationsByUserId(userId).catch((error: unknown) => {
+            logger.error('Failed to invalidate recommendation cache after placement submit', {
+                userId,
+                attemptId,
+                error,
+            });
+        });
 
         logger.info('Placement test attempt submitted', {
             attemptId,

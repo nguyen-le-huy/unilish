@@ -65,6 +65,7 @@ const LoginForm = () => {
                 size="full"
                 padding="A"
                 leftIcon={GoogleLogo}
+
                 onClick={signInWithGoogle}
                 disabled={isLoginPending}
             >

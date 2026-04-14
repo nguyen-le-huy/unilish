@@ -9,6 +9,7 @@ import { LearningGoalMongoRepository } from '../repositories/mongo/learning-goal
 import { PlacementTestAttemptMongoRepository } from '../repositories/mongo/placement-test-attempt.mongo.repository.js';
 import { logger } from '../utils/logger.js';
 import type { IUser } from '../models/mongo/user.model.js';
+import { recommendationService } from './recommendation.service.js';
 
 type UpdateProfileInput = z.infer<typeof updateProfileSchema>['body'];
 type GetUsersQuery = z.infer<typeof getUsersSchema>['query'];
@@ -90,6 +91,18 @@ export class UserService {
             throw new AppError('User not found', HttpStatus.NOT_FOUND);
         }
 
+        if (
+            Object.prototype.hasOwnProperty.call(data, 'currentLevel')
+            || Object.prototype.hasOwnProperty.call(data, 'learningGoal')
+            || Object.prototype.hasOwnProperty.call(data, 'nativeLanguage')
+            || Object.prototype.hasOwnProperty.call(data, 'learningGoalId')
+            || Object.prototype.hasOwnProperty.call(data, 'learningLanguageId')
+        ) {
+            void recommendationService.invalidateRecommendationsByUserId(userId).catch((error: unknown) => {
+                logger.error('Failed to invalidate recommendation cache after profile update', { userId, error });
+            });
+        }
+
         return user;
     }
 
@@ -131,6 +144,10 @@ export class UserService {
         if (!user) {
             throw new AppError('User not found', HttpStatus.NOT_FOUND);
         }
+
+        void recommendationService.invalidateRecommendationsByUserId(userId).catch((error: unknown) => {
+            logger.error('Failed to invalidate recommendation cache after level update', { userId, error });
+        });
 
         return user;
     }

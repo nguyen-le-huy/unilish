@@ -1,0 +1,83 @@
+.courseCard {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--grey);
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+}
+
+.innerCard {
+    border: 1px solid var(--grey);
+    border-radius: 20px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.imageWrapper {
+    height: 208.5px;
+    width: 100%;
+}
+
+.image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+}
+
+.title {
+    margin: 0;
+    font-family: var(--font-family);
+    font-size: 20px;
+    font-weight: 500;
+    line-height: normal;
+    color: #000;
+}
+
+.description {
+    margin: 0;
+    font-family: var(--font-family);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: normal;
+    color: var(--dark-grey);
+}
+
+.meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.badge {
+    border: 1px solid var(--grey);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: #000;
+    background: #fff;
+}
+
+.totalCourses {
+    font-size: 12px;
+    color: var(--dark-grey);
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+}
+
+.joinButton {
+    background: transparent;
+}

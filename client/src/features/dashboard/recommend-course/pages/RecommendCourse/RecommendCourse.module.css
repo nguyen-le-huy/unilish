@@ -1,0 +1,79 @@
+.recommendCourse {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    padding: 20px;
+}
+
+.title {
+    margin: 0;
+    font-family: var(--font-family);
+    font-size: 24px;
+    font-weight: 500;
+    line-height: normal;
+    color: #000;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.courseGrid {
+    width: 100%;
+    max-width: 1728px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+@media (max-width: 1280px) {
+    .courseGrid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1024px) {
+    .courseGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    .courseGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.stateWrapper {
+    width: 100%;
+    padding: 20px;
+}
+
+.stateMessage {
+    font-size: 20px;
+    text-align: center;
+}
+
+.errorMessage {
+    color: #dc2626;
+}
+
+.skeletonCard {
+    border-radius: 20px;
+    min-height: 420px;
+    border: 1px solid var(--grey);
+    background: linear-gradient(90deg, #f6f6f6 25%, #eeeeee 37%, #f6f6f6 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 100% 0;
+    }
+
+    100% {
+        background-position: -100% 0;
+    }
+}

@@ -1,0 +1,139 @@
+```plantuml
+@startuml Course Series Recommendation Workflow
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+skinparam participant {
+  BackgroundColor #FFFFFF
+  BorderColor #CCCCCC
+  FontSize 13
+}
+skinparam arrow {
+  Color #444444
+  FontSize 12
+}
+skinparam note {
+  BackgroundColor #FFF9E6
+  BorderColor #E8D87A
+}
+
+title Course Series Recommendation — Sequence Diagram
+
+actor       "Admin"            as Admin
+participant "API Server"        as API
+database    "MongoDB"           as Mongo
+participant "EmbeddingService"  as Embed
+participant "OpenAI\nEmbeddings API" as OpenAI
+participant "PineconeService"  as Pine
+database    "Pinecone\nVector DB" as PC
+
+actor       "User"              as User
+participant "RecommendationService" as Rec
+
+'══════════════════════════════════════════════
+== ① WRITE FLOW — Admin tạo / cập nhật Series ==
+'══════════════════════════════════════════════
+
+Admin -> API : POST /course-series\n{ title, description, languageId,\n  learningGoalId, ... }
+
+API -> Mongo : CourseSeries.create(data)
+Mongo --> API : series (with _id)
+
+API -> Pine : upsertSeries(series)
+
+activate Pine
+  Pine -> Pine : buildSeriesEmbedText()\n→ "Hành Trang Tiếng Anh (A1-B1).\nTrọn bộ bí kíp giao tiếp..."
+
+  Pine -> Embed : embedText(text)
+  activate Embed
+    Embed -> OpenAI : POST /v1/embeddings\n{ model: "text-embedding-3-small",\n  input: seriesText }
+    OpenAI --> Embed : { embedding: float[1536] }
+  deactivate Embed
+  Embed --> Pine : vector float[1536]
+
+  Pine -> Pine : parseLevelRange(title)\n→ { levelMin:"A1", levelMinNum:1,\n   levelMax:"B1", levelMaxNum:3 }
+
+  Pine -> PC : index.upsert([{\n  id: series._id,\n  values: float[1536],\n  metadata: {\n    languageId, learningGoalId,\n    isActive, levelMinNum, levelMaxNum,\n    title, slug, description,\n    thumbnailUrl, totalCourses\n  }\n}])
+  PC --> Pine : upserted: 1
+deactivate Pine
+
+API --> Admin : 201 Created { series }
+
+note over Mongo, PC
+  MongoDB = source of truth
+  Pinecone = search / recommendation layer
+end note
+
+'══════════════════════════════════════════════
+== ② BATCH SYNC — Chạy 1 lần đầu ==
+'══════════════════════════════════════════════
+
+note over API, PC
+  Script: sync-all-series.ts
+  Chạy một lần duy nhất để đồng bộ
+  toàn bộ series hiện có lên Pinecone
+end note
+
+API -> Mongo : CourseSeries.find({ isActive: true })
+Mongo --> API : series[] (N items)
+
+API -> Embed : embedBatch(texts[])
+activate Embed
+  Embed -> OpenAI : POST /v1/embeddings\n{ input: texts[N] }\n(1 API call cho N series)
+  OpenAI --> Embed : embeddings[N]
+deactivate Embed
+
+API -> PC : index.upsert(records[N])\n(batch 100 items/request)
+PC --> API : upserted: N
+
+'══════════════════════════════════════════════
+== ③ READ FLOW — User nhận đề xuất khoá học ==
+'══════════════════════════════════════════════
+
+User -> API : GET /recommendations\nHeaders: Authorization Bearer <token>
+
+API -> Mongo : User.findById(userId)\n→ { languageId, learningGoalId,\n    level: "A2", levelNum: 2,\n    languageName: "tiếng Anh",\n    learningGoalName: "du lịch",\n    interests: ["giao tiếp", "đặt phòng"] }
+Mongo --> API : userProfile
+
+API -> Rec : getRecommendedSeries(userProfile)
+activate Rec
+  Rec -> Rec : buildUserQueryText(user)\n→ "Học tiếng Anh trình độ A2.\n   Mục tiêu học: du lịch.\n   Quan tâm đến: giao tiếp, đặt phòng."
+
+  Rec -> Embed : embedText(queryText)
+  activate Embed
+    Embed -> OpenAI : POST /v1/embeddings\n{ model: "text-embedding-3-small",\n  input: queryText }
+    OpenAI --> Embed : { embedding: float[1536] }
+  deactivate Embed
+  Embed --> Rec : queryVector float[1536]
+
+  Rec -> PC : index.query({\n  vector: queryVector,\n  topK: 6,\n  includeMetadata: true,\n  filter: {\n    languageId:     { $eq: "..." },\n    learningGoalId: { $eq: "..." },\n    isActive:       { $eq: true },\n    levelMinNum:    { $lte: 2 },\n    levelMaxNum:    { $gte: 2 }\n  }\n})
+
+  PC -> PC : ANN Search\n(Approximate Nearest Neighbor)\n+ metadata filter
+
+  PC --> Rec : matches[6] {\n  id, score,\n  metadata: { title, slug,\n    description, thumbnailUrl,\n    totalCourses, levelMin, levelMax }\n}
+
+  Rec -> Rec : map matches\n→ sort by score DESC
+
+deactivate Rec
+
+note right of PC
+  Không cần query MongoDB
+  metadata đã đủ để render UI
+end note
+
+API --> User : 200 OK\n[\n  { title, slug, thumbnailUrl,\n    description, totalCourses,\n    levelMin, levelMax,\n    score: 0.91 },\n  ...\n]
+
+User -> User : Render "KHOÁ HỌC ĐỀ XUẤT" 🎉
+
+@enduml
+```
+
+***
+
+Paste code trên vào [PlantUML Online Editor](https://www.plantuml.com/plantuml/uml/) để render. Diagram bao gồm đủ 3 flow:
+
+- **① Write Flow** — Admin tạo/update series → embed bằng OpenAI → upsert Pinecone
+- **② Batch Sync** — Script chạy 1 lần đầu, embed batch N series, 1 API call duy nhất
+- **③ Read Flow** — User hoàn thành test → build query text → embed → Pinecone ANN search + metadata filter → trả về top-6 results với `score`, render UI mà không cần query MongoDB thêm

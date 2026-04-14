@@ -3,6 +3,13 @@ import { User, ESubscriptionStatus, ESubscriptionPlan } from '../../models/mongo
 import type { IUser } from '../../models/mongo/user.model.js';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.js';
 
+export interface UserRecommendationProfile {
+    _id: IUser['_id'];
+    learningLanguageId: IUser['learningLanguageId'];
+    learningGoalId: IUser['learningGoalId'];
+    currentLevel: IUser['currentLevel'];
+}
+
 export class UserMongoRepository extends BaseMongoRepository<IUser> implements IUserRepository {
     constructor() {
         super(User);
@@ -32,6 +39,14 @@ export class UserMongoRepository extends BaseMongoRepository<IUser> implements I
         return this.model.findOne({
             $or: [{ clerkId }, { email }]
         }).lean().exec() as Promise<IUser | null>;
+    }
+
+    async findRecommendationProfileById(userId: string): Promise<UserRecommendationProfile | null> {
+        return this.model
+            .findById(userId)
+            .select('_id learningLanguageId learningGoalId currentLevel')
+            .lean()
+            .exec() as Promise<UserRecommendationProfile | null>;
     }
 
     async findAllWithPagination(query: any): Promise<{ users: IUser[], pagination: any }> {

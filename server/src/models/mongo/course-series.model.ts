@@ -17,6 +17,22 @@ export interface ICourseSeries extends mongoose.Document {
     // --- 4. STATUS ---
     isActive: boolean;
 
+    // --- 5. OPTIONAL AI CACHE ---
+    aiCache?: {
+        analysis: {
+            summary: string;
+            topics: string[];
+            audience: 'beginner' | 'intermediate' | 'advanced' | 'all';
+            skills: Array<'nghe' | 'nói' | 'đọc' | 'viết'>;
+            tags: string[];
+            levelMin: 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+            levelMax: 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+            useCase: string;
+        };
+        analyzedAt: Date;
+        contentHash: string;
+    } | null;
+
     // --- 5. METADATA ---
     createdAt: Date;
     updatedAt: Date;
@@ -74,6 +90,26 @@ const CourseSeriesSchema = new mongoose.Schema<ICourseSeries>(
             type: Boolean,
             default: true,
             index: true,
+        },
+        aiCache: {
+            type: new mongoose.Schema(
+                {
+                    analysis: {
+                        summary: { type: String, trim: true },
+                        topics: [{ type: String, trim: true }],
+                        audience: { type: String, enum: ['beginner', 'intermediate', 'advanced', 'all'] },
+                        skills: [{ type: String, enum: ['nghe', 'nói', 'đọc', 'viết'] }],
+                        tags: [{ type: String, trim: true }],
+                        levelMin: { type: String, enum: ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'] },
+                        levelMax: { type: String, enum: ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'] },
+                        useCase: { type: String, trim: true },
+                    },
+                    analyzedAt: { type: Date },
+                    contentHash: { type: String, trim: true },
+                },
+                { _id: false },
+            ),
+            default: null,
         },
     },
     {

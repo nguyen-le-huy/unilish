@@ -38,10 +38,20 @@ export interface VectorQueryOptions {
  * @template T - Metadata type (must extend RecordMetadata)
  */
 export abstract class BaseVectorRepository<T extends RecordMetadata = RecordMetadata> {
-    protected index: Index;
+    private index: Index | null;
+    private readonly getIndexInstance: () => Index;
 
-    constructor() {
-        this.index = getPineconeIndex();
+    constructor(indexFactory: () => Index = getPineconeIndex) {
+        this.index = null;
+        this.getIndexInstance = indexFactory;
+    }
+
+    protected ensureIndex(): Index {
+        if (!this.index) {
+            this.index = this.getIndexInstance();
+        }
+
+        return this.index;
     }
 
     /**
@@ -57,7 +67,7 @@ export abstract class BaseVectorRepository<T extends RecordMetadata = RecordMeta
         }
 
         try {
-            await this.index.namespace(namespace ?? '').upsert({ records: vectors });
+            await this.ensureIndex().namespace(namespace ?? '').upsert({ records: vectors });
 
             logger.info(`✅ Upserted ${vectors.length} vectors${namespace ? ` to namespace: ${namespace}` : ''}`);
         } catch (error) {
@@ -82,7 +92,7 @@ export abstract class BaseVectorRepository<T extends RecordMetadata = RecordMeta
         } = options;
 
         try {
-            const result = await this.index.namespace(namespace ?? '').query({
+            const result = await this.ensureIndex().namespace(namespace ?? '').query({
                 vector,
                 topK,
                 includeMetadata,
@@ -108,7 +118,7 @@ export abstract class BaseVectorRepository<T extends RecordMetadata = RecordMeta
         }
 
         try {
-            return await this.index.namespace(namespace ?? '').fetch({ ids });
+            return await this.ensureIndex().namespace(namespace ?? '').fetch({ ids });
         } catch (error) {
             logger.error('BaseVectorRepository.fetch failed:', { error, ids: ids.length });
             throw error;
@@ -127,7 +137,7 @@ export abstract class BaseVectorRepository<T extends RecordMetadata = RecordMeta
         }
 
         try {
-            await this.index.namespace(namespace ?? '').deleteMany(ids);
+            await this.ensureIndex().namespace(namespace ?? '').deleteMany(ids);
 
             logger.info(`✅ Deleted ${ids.length} vectors${namespace ? ` from namespace: ${namespace}` : ''}`);
         } catch (error) {
@@ -143,7 +153,7 @@ export abstract class BaseVectorRepository<T extends RecordMetadata = RecordMeta
      */
     async deleteByFilter(filter: Record<string, unknown>, namespace?: string): Promise<void> {
         try {
-            await this.index.namespace(namespace ?? '').deleteMany({ filter });
+            await this.ensureIndex().namespace(namespace ?? '').deleteMany({ filter });
 
             logger.info(`✅ Deleted vectors by filter${namespace ? ` in namespace: ${namespace}` : ''}`, { filter });
         } catch (error) {
@@ -159,7 +169,7 @@ export abstract class BaseVectorRepository<T extends RecordMetadata = RecordMeta
      */
     async deleteAll(namespace?: string): Promise<void> {
         try {
-            await this.index.namespace(namespace ?? '').deleteAll();
+            await this.ensureIndex().namespace(namespace ?? '').deleteAll();
 
             logger.warn(`⚠️ Deleted ALL vectors${namespace ? ` in namespace: ${namespace}` : ''}`);
         } catch (error) {
@@ -173,7 +183,7 @@ export abstract class BaseVectorRepository<T extends RecordMetadata = RecordMeta
      */
     async getStats() {
         try {
-            return await this.index.describeIndexStats();
+            return await this.ensureIndex().describeIndexStats();
         } catch (error) {
             logger.error('BaseVectorRepository.getStats failed:', { error });
             throw error;

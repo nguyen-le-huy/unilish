@@ -17,7 +17,12 @@ export interface User {
     // Contextual Learning
     currentLevel: 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
     targetLevel: 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
-    learningGoal: 'general_communication' | 'exam_thptqg' | 'exam_ielts' | 'exam_toeic' | 'business_work' | 'travel_survival' | string;
+    learningGoal?: 'general_communication' | 'exam_thptqg' | 'exam_ielts' | 'exam_toeic' | 'business_work' | 'travel_survival' | string | null;
+    learningGoalId?: string | {
+        _id: string;
+        slug?: string;
+        title?: string;
+    } | null;
     interests?: string[];
     weakSkills?: string[];
     placementTestScore?: number;

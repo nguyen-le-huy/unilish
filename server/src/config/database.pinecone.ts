@@ -8,7 +8,8 @@ import { logger } from '../utils/logger.js';
  */
 class PineconeClient {
     private static instance: Pinecone | null = null;
-    private static indexInstance: Index | null = null;
+    private static knowledgeIndexInstance: Index | null = null;
+    private static courseSeriesIndexInstance: Index | null = null;
 
     /**
      * Initialize and connect to Pinecone
@@ -24,18 +25,57 @@ class PineconeClient {
                 apiKey: env.PINECONE_API_KEY,
             });
 
-            // Validate index existence and configuration
-            const indexDescription = await this.instance.describeIndex(env.PINECONE_INDEX_NAME);
+            const indexNames = Array.from(new Set([
+                env.PINECONE_INDEX_NAME,
+                env.PINECONE_COURSE_SERIES_INDEX_NAME,
+            ]));
 
-            logger.info(
-                `✅ Pinecone Connected | Index: ${env.PINECONE_INDEX_NAME} | Dimension: ${indexDescription.dimension} | Metric: ${indexDescription.metric}`
-            );
+            await Promise.all(indexNames.map((indexName) => this.validateIndex(indexName)));
 
             return this.instance;
         } catch (error) {
             logger.error('❌ Pinecone connection failed:', error);
             throw new Error('Failed to connect to Pinecone vector database');
         }
+    }
+
+    private static async validateIndex(indexName: string): Promise<void> {
+        if (!this.instance) {
+            throw new Error('Pinecone client is not initialized');
+        }
+
+        try {
+            const indexDescription = await this.instance.describeIndex(indexName);
+            logger.info(
+                `✅ Pinecone Connected | Index: ${indexName} | Dimension: ${indexDescription.dimension} | Metric: ${indexDescription.metric}`
+            );
+        } catch (error) {
+            if (this.isNotFoundError(error)) {
+                logger.warn(
+                    `⚠️ Pinecone index "${indexName}" not found. Server will continue booting, but features using this index will fail until the index is created.`
+                );
+                return;
+            }
+
+            throw error;
+        }
+    }
+
+    private static isNotFoundError(error: unknown): boolean {
+        if (!error || typeof error !== 'object') {
+            return false;
+        }
+
+        const maybeError = error as { name?: unknown; message?: unknown; status?: unknown; statusCode?: unknown };
+        const name = typeof maybeError.name === 'string' ? maybeError.name : '';
+        const message = typeof maybeError.message === 'string' ? maybeError.message : '';
+        const status = maybeError.status;
+        const statusCode = maybeError.statusCode;
+
+        return name === 'PineconeNotFoundError'
+            || message.includes('HTTP status 404')
+            || status === 404
+            || statusCode === 404;
     }
 
     /**
@@ -48,11 +88,28 @@ class PineconeClient {
             throw new Error('Pinecone not initialized. Call PineconeClient.connect() first.');
         }
 
-        if (!this.indexInstance) {
-            this.indexInstance = this.instance.index(env.PINECONE_INDEX_NAME);
+        if (!this.knowledgeIndexInstance) {
+            this.knowledgeIndexInstance = this.instance.index(env.PINECONE_INDEX_NAME);
         }
 
-        return this.indexInstance;
+        return this.knowledgeIndexInstance;
+    }
+
+    /**
+     * Get Course Series Pinecone index instance for recommendation vectors
+     * @returns Pinecone Index instance
+     * @throws Error if Pinecone is not initialized
+     */
+    static getCourseSeriesIndex(): Index {
+        if (!this.instance) {
+            throw new Error('Pinecone not initialized. Call PineconeClient.connect() first.');
+        }
+
+        if (!this.courseSeriesIndexInstance) {
+            this.courseSeriesIndexInstance = this.instance.index(env.PINECONE_COURSE_SERIES_INDEX_NAME);
+        }
+
+        return this.courseSeriesIndexInstance;
     }
 
     /**
@@ -62,7 +119,8 @@ class PineconeClient {
         // Pinecone SDK doesn't require explicit disconnection
         // but we reset instances for clean shutdown
         this.instance = null;
-        this.indexInstance = null;
+        this.knowledgeIndexInstance = null;
+        this.courseSeriesIndexInstance = null;
         logger.info('✅ Pinecone disconnected');
     }
 }
@@ -70,4 +128,5 @@ class PineconeClient {
 // Named exports for backward compatibility
 export const connectPinecone = PineconeClient.connect.bind(PineconeClient);
 export const getPineconeIndex = PineconeClient.getIndex.bind(PineconeClient);
+export const getCourseSeriesIndex = PineconeClient.getCourseSeriesIndex.bind(PineconeClient);
 export const disconnectPinecone = PineconeClient.disconnect.bind(PineconeClient);

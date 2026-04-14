@@ -2,6 +2,7 @@ import redisClient from '../config/redis.js';
 import { HttpStatus } from '../constants/http-status.js';
 import type { ICourseSeries } from '../models/mongo/course-series.model.js';
 import { CourseSeriesMongoRepository } from '../repositories/mongo/course-series.mongo.repository.js';
+import { vectorSyncQueue } from '../jobs/queues/vector-sync.queue.js';
 import type {
     CreateCourseSeriesBody,
     GetCourseSeriesListQuery,
@@ -25,7 +26,9 @@ interface SeriesListResult {
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 export class CourseSeriesService {
-    constructor(private readonly seriesRepo: CourseSeriesMongoRepository) {}
+    constructor(
+        private readonly seriesRepo: CourseSeriesMongoRepository,
+    ) {}
 
     // ─── Read ──────────────────────────────────────────────────────────────
 
@@ -92,6 +95,7 @@ export class CourseSeriesService {
 
         const created = await this.seriesRepo.create(body as unknown as Partial<ICourseSeries>);
         await this.invalidateListCaches();
+        this.enqueueVectorSync(String(created._id), 'upsert', 'createSeries');
 
         return created;
     }
@@ -104,6 +108,7 @@ export class CourseSeriesService {
         }
 
         await this.invalidateAllCaches(slug);
+        this.enqueueVectorSync(String(updated._id), 'upsert', 'updateSeries');
 
         return updated;
     }
@@ -121,6 +126,7 @@ export class CourseSeriesService {
 
         // updated is guaranteed non-null here since we found it above
         await this.invalidateAllCaches(slug);
+        this.enqueueVectorSync(String(updated!._id), 'upsert', 'toggleSeriesStatus');
 
         return updated!;
     }
@@ -141,6 +147,7 @@ export class CourseSeriesService {
 
         await this.seriesRepo.deleteBySlug(slug);
         await this.invalidateAllCaches(slug);
+        this.enqueueVectorSync(String(series._id), 'delete', 'deleteSeries');
     }
 
     // ─── Cache helpers ──────────────────────────────────────────────────────
@@ -198,6 +205,23 @@ export class CourseSeriesService {
         } catch (error) {
             logger.error('Redis delete by pattern failed', { pattern, error });
         }
+    }
+
+    private enqueueVectorSync(seriesId: string, action: 'upsert' | 'delete', source: string): void {
+        const jobName = `course-series:${action}:${seriesId}:${Date.now()}`;
+        void vectorSyncQueue
+            .add(jobName, { seriesId, action })
+            .then((job) => {
+                logger.info('CourseSeries vector sync queued', {
+                    seriesId,
+                    action,
+                    source,
+                    jobId: job.id,
+                });
+            })
+            .catch((error: unknown) => {
+                logger.error('CourseSeries vector sync queue failed', { seriesId, action, source, error });
+            });
     }
 }
 

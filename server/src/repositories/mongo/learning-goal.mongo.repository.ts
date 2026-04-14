@@ -18,6 +18,12 @@ interface GoalListResult {
     };
 }
 
+interface LearningGoalLite {
+    _id: ILearningGoal['_id'];
+    slug: ILearningGoal['slug'];
+    title: ILearningGoal['title'];
+}
+
 export class LearningGoalMongoRepository extends BaseMongoRepository<ILearningGoal> {
     constructor() {
         super(LearningGoal);
@@ -69,6 +75,14 @@ export class LearningGoalMongoRepository extends BaseMongoRepository<ILearningGo
             .select('-__v')
             .lean()
             .exec() as Promise<ILearningGoal | null>;
+    }
+
+    async findLiteById(id: string): Promise<LearningGoalLite | null> {
+        return this.model
+            .findById(id)
+            .select('_id slug title')
+            .lean()
+            .exec() as Promise<LearningGoalLite | null>;
     }
 
     async updateBySlug(slug: string, data: Partial<ILearningGoal>): Promise<ILearningGoal | null> {

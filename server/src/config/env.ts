@@ -36,10 +36,12 @@ const envSchema = z.object({
     PINECONE_API_KEY: z.string().min(1, 'Pinecone API Key is required for vector search'),
     PINECONE_ENVIRONMENT: z.string().default('us-east1-gcp'),
     PINECONE_INDEX_NAME: z.string().default('unilish-knowledge'),
+    PINECONE_COURSE_SERIES_INDEX_NAME: z.string().default('unilish-course-series'),
 
     // OpenAI
     OPENAI_API_KEY: z.string().min(1, 'OpenAI API Key is required for embeddings'),
     OPENAI_MODEL: z.string().default('gpt-5.4-mini-2026-03-17'),
+    AI_ANALYSIS_CONCURRENCY: z.coerce.number().int().min(1).max(20).default(5),
     OPENAI_GRADING_MODEL: z.string().default('gpt-5.4-mini-2026-03-17'),
     OPENAI_GRADING_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
 

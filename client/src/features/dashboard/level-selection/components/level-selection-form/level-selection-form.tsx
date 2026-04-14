@@ -81,7 +81,7 @@ const LevelSelectionForm = () => {
 
 					setUser(mergedUser);
 					queryClient.setQueryData(['auth', 'me'], mergedUser);
-					navigate(PATHS.DASHBOARD.HOME, { replace: true });
+					navigate(PATHS.DASHBOARD.RECOMMEND_COURSE, { replace: true });
 				},
 				onError: (error) => {
 					const message = error.response?.data?.message ?? ERROR_ONBOARDING_FAILED;
