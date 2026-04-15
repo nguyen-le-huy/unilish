@@ -1,230 +1,190 @@
-# UNILISH ENTERPRISE CODING STANDARDS (GITHUB COPILOT INSTRUCTIONS)
+# Unilish — GitHub Copilot Instructions
 
-You are an expert Senior Software Engineer working on **Unilish**, an AI-Powered Adaptive Language Learning Platform.
-Your goal is to generate code that is **Production-Ready**, **Strictly Typed**, **Performant**, and **Architecturally Compliant**.
-
----
-
-## 1. CRITICAL ARCHITECTURAL CONTEXT
-
-### A. The Polyglot Persistence Strategy
-We do NOT use a single database. Choose the correct store for the data type:
-
-| Store | Technology | Use Case |
-| --- | --- | --- |
-| **Operational DB** | **MongoDB Atlas** (Mongoose) | System of Record: Users, Lessons, Progress, Payments |
-| **Vector DB** | **Pinecone Serverless** | Semantic Search, Adaptive Recommendations, RAG Chatbot |
-| **Speed Layer** | **Redis (Cluster)** | Session cache, BullMQ job queues, real-time leaderboard |
-| **Analytics** | **ClickHouse** | High-volume user behavior logs, ML pipeline input |
-| **Object Storage** | **Cloudflare R2** | Raw audio/video/PDF (S3-compatible, zero egress fees) |
-| **Media CDN** | **Cloudinary (Enterprise)** | Auto-format (WebP/AVIF), adaptive bitrate streaming |
-
-> ⚠️ **IMPORTANT**: The project uses **Pinecone**, NOT Neo4j. There is no graph database. Vector embeddings power all knowledge/recommendation features.
-
-### B. Server Architecture: Service-Repository Pattern
-3-layer separation — never skip layers:
-*   **Controller** (`controllers/`): HTTP adapter only. Validates input (Zod), calls Service, returns response.
-*   **Service** (`services/`): Business logic. The ONLY layer that orchestrates across multiple repositories.
-*   **Repository** (`repositories/`): Data access only. Two sub-types:
-    *   `repositories/mongo/` — extends `BaseMongoRepository`, uses Mongoose only.
-    *   `repositories/vector/` — extends `BaseVectorRepository`, uses Pinecone SDK only.
-
-### C. Frontend: Feature-First Architecture
-*   **Client (`/client`)**: Feature-First Design with self-contained feature modules.
-*   **Admin (`/admin`)**: CRUD-optimized structure with Shadcn/UI components.
-*   **Layer dependency**: `app` → `pages` → `features` → `components` → `lib`. No circular imports.
-
-### D. The Styling "Schism" — CRITICAL, NEVER VIOLATE
-*   **Client App (`/client`)**: **CSS Modules** (`.module.css`) + **GSAP**. **NO Tailwind. NO UI Libraries.**
-*   **Admin App (`/admin`)**: **Tailwind CSS** + **Shadcn/UI**. No CSS Modules.
+You are a Senior Engineer on **Unilish**, an AI-Powered Adaptive Language Learning Platform.
+Generate code that is **production-ready**, **strictly typed**, and **architecturally compliant** with the rules below.
 
 ---
 
-## 2. MANDATORY CODING RULES (DO NOT VIOLATE)
+## 1. Project Overview
 
-### TypeScript & Safety
-1.  **NO `any`**: Use `unknown` + Zod `.parse()` if the type is uncertain.
-2.  **Strict Props**: All React components MUST have explicit `interface Props { ... }`.
-3.  **Async Safety**: ALL async Express controllers MUST be wrapped with `catchAsync`.
-4.  **Error Handling**: Throw `AppError` for operational errors. Let the global error handler catch programmer errors.
+**Monorepo** with 3 apps:
 
-### Performance
-1.  **Backend Reads**: ALL MongoDB `find` / `findOne` operations MUST use `.lean()` and `.select()`.
-2.  **Frontend State**: NEVER use `useEffect` for data fetching. Use **TanStack Query** (`useQuery`, `useMutation`).
-3.  **Lists**: Lists > 50 items MUST use `react-window` (virtualization).
-4.  **Code Splitting**: All routes MUST be lazy-loaded with `React.lazy`.
-5.  **Re-renders**: Use `useMemo` / `useCallback` for props passed to children. Use `React.memo` for pure leaf nodes.
-
-### Security
-1.  **Validation**: ALL API inputs (Body/Query/Params) MUST pass a **Zod middleware** before reaching the controller.
-2.  **Secrets**: NEVER hardcode API keys or connection strings. Use `config/env.ts` (validated by Zod on startup).
-3.  **Logging**: `console.log` is **BANNED**. Use `Logger.info()` / `Logger.warn()` / `Logger.error()` (Winston).
-4.  **Security Middleware**: `helmet`, `cors`, and `rate-limit` MUST be initialized in `app.ts` before any routes.
+| App | Path | Port | Styling |
+|---|---|---|---|
+| User-facing Client | `client/` | `5173` | CSS Modules + GSAP |
+| Admin CMS | `admin/` | `5174` | TailwindCSS + Shadcn/UI |
+| API Server | `server/` | `5432` | — |
 
 ---
 
-## 3. CODE GENERATION PATTERNS
+## 2. Architecture
 
-### A. Backend Controller (Standard)
+### Backend: Controller → Service → Repository
+
+- **Controller** — Zod middleware validates input → calls Service → returns response. Zero business logic.
+- **Service** — All business logic. The **only** layer that can call multiple repositories or external APIs.
+- **Repository** — Pure data access. Two types:
+  - `repositories/mongo/` — extends `BaseMongoRepository`, Mongoose only.
+  - `repositories/vector/` — extends `BaseVectorRepository`, Pinecone SDK only.
+
+### Frontend: Feature-First
+
+Each feature under `features/[feature]/` owns its `pages/`, `components/`, `api/`, `hooks/`, `types/`, and `index.ts` (public API). No cross-feature direct imports.
+
+### Data Stores
+
+| Store | Use For |
+|---|---|
+| MongoDB Atlas (Mongoose) | Users, Lessons, Submissions, Progress |
+| Pinecone | Vector embeddings, semantic search, RAG |
+| Redis + BullMQ | Sessions, cache, background jobs, leaderboard |
+| Cloudflare R2 | Raw audio / video / PDF |
+| Cloudinary | Images (auto-WebP, CDN) |
+
+---
+
+## 3. Mandatory Rules
+
+### TypeScript
+- `any` is **forbidden** — use `unknown` + Zod `.parse()` for uncertain types.
+- All React components must have explicit `interface Props`.
+
+### Backend
+- ALL async controllers → wrapped in `catchAsync`.
+- ALL MongoDB reads → `.lean()` + `.select()`. No exceptions.
+- ALL API inputs (body/query/params) → Zod middleware **before** controller.
+- `console.log` is **banned** → use `Logger.info/warn/error` (Winston).
+- Secrets → only via `config/env.ts` (Zod-validated on startup).
+- `helmet` + `cors` + `rate-limit` → initialized in `app.ts` before any routes.
+- Throw `AppError` for operational errors (4xx). Let global handler catch programmer errors.
+
+### Frontend
+- **Client** → CSS Modules only. No Tailwind, no inline styles, no UI libraries.
+- **Admin** → Tailwind + Shadcn/UI only. No CSS Modules.
+- Data fetching → **TanStack Query** (`useQuery`/`useMutation`). Never `useEffect` for fetching.
+- Complex animations → **GSAP** via `useGSAP()`. Never raw `useEffect` for GSAP timelines.
+- Zustand → UI state only (theme, modals, sidebar). Never server data.
+- Lists > 50 items → `react-window`.
+- All routes → `React.lazy()` + `Suspense`.
+- CSS class names → `camelCase` (`.submitButton`, `.isActive`).
+- CSS values → always use variables from `_variables.css`. No hardcoded hex/px.
+
+---
+
+## 4. Code Patterns
+
+### Backend Controller
 ```typescript
-// server/src/controllers/user.controller.ts
-import { catchAsync } from '@/utils/catchAsync';
-import { UserService } from '@/services/user.service';
-import { sendResponse } from '@/utils/response';
-
-export const getUserProfile = catchAsync(async (req, res) => {
-  const { userId } = req.params; // Already validated by Zod middleware
-  const user = await UserService.getProfile(userId);
-  sendResponse(res, 200, 'Profile retrieved', user);
+// server/src/controllers/lesson.controller.ts
+export const getLesson = catchAsync(async (req: Request, res: Response) => {
+  const lesson = await lessonService.getById(req.params.id);
+  res.status(200).json({ success: true, data: lesson });
 });
 ```
 
-### B. Backend Service (Polyglot — Mongo + Pinecone)
+### Backend Service (Polyglot)
 ```typescript
 // server/src/services/lesson.service.ts
-import { LessonMongoRepo } from '@/repositories/mongo/lesson.mongo.repo';
-import { KnowledgeVectorRepo } from '@/repositories/vector/knowledge.vector.repo';
-
 export class LessonService {
-  // Service is the ONLY layer that talks to multiple repos
-  static async createLesson(data: CreateLessonDto) {
-    // 1. Save content to MongoDB (Source of Truth)
-    const lesson = await LessonMongoRepo.create(data);
-    // 2. Generate and upsert embedding to Pinecone
-    await KnowledgeVectorRepo.upsert({ id: lesson._id.toString(), ...data });
+  static async create(data: CreateLessonDto) {
+    const lesson = await LessonMongoRepo.create(data);               // MongoDB
+    await KnowledgeVectorRepo.upsert({ id: lesson._id.toString(), ...data }); // Pinecone
     return lesson;
   }
 }
 ```
 
-### C. MongoDB Repository (Lean + Select required)
+### MongoDB Repository
 ```typescript
-// server/src/repositories/mongo/user.mongo.repo.ts
-import { UserModel } from '@/models/mongo/user.model';
-
-export class UserMongoRepo {
-  static async findById(userId: string) {
-    // .lean() + .select() are MANDATORY for all reads
-    return UserModel.findById(userId).select('name email role').lean();
+// server/src/repositories/mongo/lesson.mongo.repo.ts
+export class LessonMongoRepo {
+  static async findById(id: string) {
+    return LessonModel.findById(id).select('title level tags').lean(); // lean() + select() MANDATORY
   }
 }
 ```
 
-### D. Pinecone Vector Repository
+### TanStack Query Hook
 ```typescript
-// server/src/repositories/vector/knowledge.vector.repo.ts
-import { getPineconeIndex } from '@/config/database.pinecone';
-
-export class KnowledgeVectorRepo {
-  static async similaritySearch(vector: number[], topK = 5) {
-    const index = getPineconeIndex();
-    return index.query({ vector, topK, includeMetadata: true });
-  }
-}
+// client/src/features/learning/hooks/useLessonQuery.ts
+export const useLessonQuery = (lessonId: string) =>
+  useQuery({
+    queryKey: ['lesson', lessonId],
+    queryFn: () => lessonService.getById(lessonId),
+    enabled: !!lessonId,
+    staleTime: 5 * 60 * 1000,
+  });
 ```
 
-### E. Frontend Component (Client App — CSS Modules)
+### React Component (Client — CSS Modules)
 ```typescript
 // client/src/features/auth/components/LoginForm/LoginForm.tsx
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { loginSchema } from '../validation/login.schema';
-import { useLogin } from '../hooks/useLogin';
-import styles from './LoginForm.module.css'; // CSS Modules — MANDATORY for /client
+import styles from './LoginForm.module.css';
 
-interface Props {
-  onSuccess?: () => void;
-}
+interface Props { onSuccess?: () => void; }
 
 export const LoginForm = ({ onSuccess }: Props) => {
-  const { mutate, isPending } = useLogin({ onSuccess });
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(loginSchema),
   });
-
   return (
-    <form className={styles.container} onSubmit={handleSubmit((d) => mutate(d))}>
-      <input className={styles.input} {...register('email')} aria-label="Email" />
-      {errors.email && <span className={styles.error}>{errors.email.message}</span>}
-      <button className={styles.submitButton} type="submit" disabled={isPending}>
-        {isPending ? 'Logging in...' : 'Login'}
-      </button>
+    <form className={styles.form} onSubmit={handleSubmit(onSuccess)}>
+      <input {...register('email')} aria-label="Email" className={styles.input} />
+      {errors.email && <span role="alert" className={styles.error}>{errors.email.message}</span>}
     </form>
   );
 };
 ```
 
-### F. TanStack Query Hook (Data Fetching)
+### GSAP Animation
 ```typescript
-// client/src/features/learning/hooks/useLessonQuery.ts
-import { useQuery } from '@tanstack/react-query';
-import { lessonApi } from '../api/lessonService';
-
-export const useLessonQuery = (lessonId: string) => {
-  return useQuery({
-    queryKey: ['lesson', lessonId],
-    queryFn: () => lessonApi.getById(lessonId),
-    enabled: !!lessonId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-};
+// Always useGSAP(), never raw useEffect for timelines
+const ref = useRef<HTMLDivElement>(null);
+useGSAP(() => {
+  gsap.from(ref.current, { opacity: 0, y: 30, duration: 0.6, ease: 'power3.out' });
+}, { scope: ref });
 ```
 
 ---
 
-## 4. DIRECTORY & FILE NAMING
-*   **Files**: `kebab-case.ts` / `kebab-case.tsx` (e.g., `user.mongo.repo.ts`, `login-form.tsx`).
-*   **Classes/Components**: `PascalCase` (e.g., `UserService`, `LessonMongoRepo`, `LoginForm`).
-*   **Variables/Functions**: `camelCase`.
-*   **Constants/Env Keys**: `UPPER_SNAKE_CASE`.
-*   **CSS Module classes**: `camelCase` (e.g., `.submitButton`, `.isActive`).
+## 5. Naming Conventions
+
+| Type | Convention | Example |
+|---|---|---|
+| Files | `kebab-case` | `lesson.mongo.repo.ts`, `login-form.tsx` |
+| Classes / Components | `PascalCase` | `LessonService`, `LoginForm` |
+| Variables / Functions | `camelCase` | `getLesson`, `lessonId` |
+| Constants / Env | `UPPER_SNAKE_CASE` | `OPENAI_MODEL`, `JWT_SECRET` |
+| CSS Module classes | `camelCase` | `.submitButton`, `.isActive` |
+| Feature hooks | `use[Feature][Action]` | `useLessonQuery`, `useLoginMutation` |
 
 ---
 
-## 5. KEY DIRECTORY PATHS
+## 6. AI & Services Reference
 
-```
-server/src/
-├── config/           # env.ts, database.mongo.ts, database.pinecone.ts, redis.ts
-├── controllers/      # HTTP layer only — thin, no business logic
-├── services/         # Business logic — orchestrates across repos
-├── repositories/
-│   ├── mongo/        # Mongoose-only operations
-│   └── vector/       # Pinecone SDK-only operations
-├── models/
-│   ├── mongo/        # Mongoose schemas
-│   └── vector/       # Vector metadata type definitions
-├── middlewares/      # auth, error, validate (Zod)
-├── validations/      # Zod schemas for all API inputs
-├── jobs/             # BullMQ queues + workers
-├── socket/           # Socket.io + Redis adapter
-└── utils/            # logger.ts (Winston), catchAsync, sendResponse
-
-client/src/
-├── features/         # Self-contained feature modules (api/, hooks/, components/, pages/, types/)
-├── components/
-│   ├── core/         # Design system (CSS Modules + Vitest tests)
-│   ├── common/       # App-specific shared UI (Logo, PageLoader)
-│   └── layouts/      # MarketingLayout, DashboardLayout
-├── assets/styles/    # _variables.css, _reset.css, _typography.css, global.css
-├── stores/           # Zustand (UI state ONLY — theme, modals)
-└── lib/              # axios.ts, react-query.ts, utils.ts
-
-admin/src/
-├── features/         # CMS modules (users, lessons, analytics)
-├── components/
-│   ├── ui/           # Shadcn/UI components
-│   └── layouts/      # AdminLayout
-└── lib/              # utils.ts (cn helper)
-```
+| Service | Variable | Default |
+|---|---|---|
+| OpenAI LLM | `OPENAI_MODEL` | `gpt-5.4-mini-2026-03-17` |
+| OpenAI TTS | `OPENAI_TTS_MODEL` | `gpt-4o-mini-tts-2025-12-15` |
+| OpenAI Realtime | `OPENAI_REALTIME_MODEL` | `gpt-realtime-mini-2025-12-15` |
+| Transcription | `DEEPGRAM_API_KEY` | Deepgram |
+| Pronunciation | `AZURE_SPEECH_KEY` | Azure AI Speech (`southeastasia`) |
+| TTS (expressive) | `ELEVENLABS_API_KEY` | ElevenLabs |
+| Embeddings | `text-embedding-3-small` | 1536 dims, Pinecone metric: `cosine` |
 
 ---
 
-## 6. BEFORE GENERATING ANY CODE — CHECK THESE
-1.  *"Which app is this for: `/client` (CSS Modules + GSAP) or `/admin` (Tailwind + Shadcn)?"*
-2.  *"Is this a read query? Did I add `.lean()` and `.select()` to the Mongoose call?"*
-3.  *"Is my React component typed? Does it have `interface Props`?"*
-4.  *"Is business logic in the Service layer, not the Controller?"*
-5.  *"Am I using the right data store? (Mongo for documents, Pinecone for vectors, Redis for cache/queues)"*
-6.  *"Is every async controller wrapped in `catchAsync`?"*
-7.  *"Are all API inputs validated by a Zod schema before reaching the controller?"*
+## 7. Pre-Generation Checklist
+
+Before writing any code, verify:
+
+1. Which app? `/client` (CSS Modules) or `/admin` (Tailwind)?
+2. MongoDB read? → `.lean()` + `.select()` added?
+3. Async controller? → wrapped in `catchAsync`?
+4. API input? → Zod middleware in route, not inline?
+5. Data fetch in React? → TanStack Query, not `useEffect`?
+6. GSAP animation? → `useGSAP()`, not raw `useEffect`?
+7. Business logic in Service layer, not Controller?
+8. Right store? Mongo for documents, Pinecone for vectors, Redis for cache/queues.
+9. Secrets via `config/env.ts`, not hardcoded?
+10. `Logger` instead of `console.log`?

@@ -20,6 +20,7 @@ const WrittingPage = React.lazy(() => import('@/features/dashboard/placement-tes
 const SpeakingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Speaking/Speaking'));
 const ResultPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Result/Result'));
 const RecommendCoursePage = React.lazy(() => import('@/features/dashboard/recommend-course/pages/RecommendCourse/RecommendCourse'));
+const NotFoundPage = React.lazy(() => import('@/features/dashboard/not-found/pages/not-found-page/not-found-page'));
 
 export const router = createBrowserRouter([
     {
@@ -165,6 +166,14 @@ export const router = createBrowserRouter([
                             </Suspense>
                         ),
                     },
+                    {
+                        path: '*',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <NotFoundPage />
+                            </Suspense>
+                        ),
+                    },
                 ],
             },
         ],
@@ -172,6 +181,10 @@ export const router = createBrowserRouter([
 
     {
         path: '*',
-        element: <div>404 Not Found (This page is being built...)</div>,
+        element: (
+            <Suspense fallback={<Loading />}>
+                <NotFoundPage />
+            </Suspense>
+        ),
     },
 ]);

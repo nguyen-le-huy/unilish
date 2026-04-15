@@ -16,7 +16,10 @@ const RecommendCourse = () => {
 
     return (
         <section className={styles.recommendCourse}>
-            <h1 className={styles.title}>KHOÁ HỌC ĐỀ XUẤT</h1>
+            <div className={styles.header}>
+                <h1 className={styles.title}>KHOÁ HỌC ĐỀ XUẤT</h1>
+                <p className={styles.description}>Khám phá các khoá học được thiết kế riêng cho bạn</p>
+            </div>
 
             {isLoading && (
                 <div className={styles.courseGrid}>

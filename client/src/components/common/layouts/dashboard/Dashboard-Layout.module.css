@@ -6,8 +6,10 @@
 
 .contentArea {
     flex: 1;
-    margin-top: 65px;      /* header height */
-    padding-bottom: 80px;  /* dock height + gap */
+    margin-top: 65px;
+    /* header height */
+    padding-bottom: 80px;
+    /* dock height + gap */
     overflow-y: auto;
     display: flex;
     justify-content: center;
@@ -51,7 +53,7 @@
     align-items: center;
     gap: 8px;
     padding: 8px;
-    background-color: var(--grey);
+    background-color: white;
     border-radius: 20px;
     width: fit-content;
     position: fixed;

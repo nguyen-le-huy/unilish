@@ -1,4 +1,5 @@
 import { Navigate, useNavigate } from 'react-router-dom';
+import chillImg from '@/assets/images/chill.svg';
 import { useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import styles from './Result.module.css';
@@ -182,6 +183,7 @@ export const Result = () => {
         return (
             <div className={styles.loadingState} role="status" aria-live="polite">
                 <Loading />
+                <img src={chillImg} alt="AI Chill" className={styles.chill} />
                 <p>Giám khảo AI đang chấm điểm...</p>
             </div>
         );

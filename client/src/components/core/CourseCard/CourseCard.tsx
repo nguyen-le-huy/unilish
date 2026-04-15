@@ -53,7 +53,7 @@ const CourseCard = ({
                         <div className={styles.meta}>
                             {badge && <span className={styles.badge}>{badge}</span>}
                             {typeof totalCourses === 'number' && (
-                                <span className={styles.totalCourses}>{totalCourses} khoá học</span>
+                                <span className={styles.totalCourses}>Bao gồm {totalCourses} khoá học</span>
                             )}
                         </div>
                     )}
