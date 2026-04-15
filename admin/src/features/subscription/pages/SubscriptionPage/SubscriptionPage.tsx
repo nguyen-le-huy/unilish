@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Button } from '@/components/ui/button';
 import type { SubscriptionConfig } from '../../types/config.types';
@@ -39,18 +39,8 @@ export default function SubscriptionPage() {
     const saveDraft = useSaveDraft();
     const publishConfig = usePublishConfig();
     const refreshCache = useRefreshCache();
-
-    // Sync localDraft with serverDraft when loaded
-    useEffect(() => {
-        if (serverDraft && !localDraft) {
-            setLocalDraft(serverDraft);
-        } else if (!serverDraft && liveConfig && !localDraft) {
-            setLocalDraft(liveConfig);
-        }
-    }, [serverDraft, liveConfig, localDraft]);
-
-    // Working config (prefer localDraft > serverDraft > liveConfig)
-    const workingConfig = localDraft || serverDraft || liveConfig;
+    const resolvedBaseConfig = serverDraft || liveConfig || null;
+    const workingConfig = localDraft || resolvedBaseConfig;
 
     // Derived state
     const hasUnpublishedChanges = JSON.stringify(liveConfig) !== JSON.stringify(workingConfig);

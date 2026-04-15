@@ -77,7 +77,7 @@ function derivePipelineStep(status: string): { step: 1 | 2 | 3; progress: number
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLevel: _courseLevel }: Props) {
+export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLevel }: Props) {
     const lessonId = lesson._id;
     const [desiredScriptPrompt, setDesiredScriptPrompt] = useState('');
     const [scriptFormat, setScriptFormat] = useState<ListeningScriptFormat>('DIALOGUE');
@@ -202,7 +202,7 @@ export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLev
     const handleGenerateScript = useCallback(() => {
         generateScriptMutation.mutate(
             {
-                topic: desiredScriptPrompt.trim() || lesson.title,
+                topic: desiredScriptPrompt.trim() || (lesson.title + " (" + courseLevel + ")"),
                 scriptFormat,
             },
             {
@@ -213,7 +213,7 @@ export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLev
                 onError: (err) => notification.error(`Lỗi khi tạo kịch bản: ${err.message}`),
             },
         );
-    }, [desiredScriptPrompt, generateScriptMutation, lesson.title, scriptFormat, setActiveSection]);
+    }, [courseLevel, desiredScriptPrompt, generateScriptMutation, lesson.title, scriptFormat, setActiveSection]);
 
     const handleMixAndSync = handleSubmit(async (formValues: ListeningLessonFormValues) => {
         try {

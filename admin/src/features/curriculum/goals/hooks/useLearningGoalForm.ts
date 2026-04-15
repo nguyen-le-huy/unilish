@@ -50,8 +50,8 @@ interface UseGoalFormOptions {
 }
 
 export const useGoalForm = ({ isCreateMode, goalDetail }: UseGoalFormOptions) => {
-    const form = useForm<GoalFormValues, any, GoalFormValues>({
-        resolver: zodResolver(goalFormSchema) as Resolver<GoalFormValues, any, GoalFormValues>,
+    const form = useForm<GoalFormValues, unknown, GoalFormValues>({
+        resolver: zodResolver(goalFormSchema) as Resolver<GoalFormValues, unknown, GoalFormValues>,
         defaultValues: {
             slug: '',
             title: '',

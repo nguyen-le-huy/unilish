@@ -1,0 +1,60 @@
+.home {
+  padding: 20px;
+}
+
+.grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.currentSeriesBox {
+  grid-column: 1 / span 2;
+}
+
+.progressBox {
+  grid-column: 3;
+}
+
+.streakBox {
+  grid-column: 4;
+}
+
+.upgradeBox {
+  grid-column: 1 / span 2;
+}
+
+.rankBox {
+  grid-column: 3 / span 2;
+}
+
+@media (max-width: 1400px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .currentSeriesBox,
+  .upgradeBox,
+  .rankBox {
+    grid-column: span 2;
+  }
+
+  .progressBox,
+  .streakBox {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .currentSeriesBox,
+  .progressBox,
+  .streakBox,
+  .upgradeBox,
+  .rankBox {
+    grid-column: 1;
+  }
+}

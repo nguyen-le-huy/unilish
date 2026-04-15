@@ -41,7 +41,6 @@ export function FillQuiz({ question, answer, onAnswer }: Props) {
                     disabled={confirmed}
                     className="text-sm"
                     aria-label="Nhập câu trả lời điền từ"
-                    // eslint-disable-next-line jsx-a11y/no-autofocus
                     autoFocus
                 />
                 {!confirmed && (

@@ -9,16 +9,25 @@ interface Props {
     // liveTranscript removed — no longer shown in chat panel
 }
 
+type GoogleTranslateChunk = [string, ...unknown[]];
+
 /** Gọi Google Translate API không cần key (free endpoint) */
 const translateToVietnamese = async (text: string): Promise<string> => {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=${encodeURIComponent(text)}`;
+    const query = encodeURIComponent(text);
+    const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=' + query;
     const res = await fetch(url);
     if (!res.ok) throw new Error('Translation failed');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await res.json() as any[][];
-    // Result format: [[["translated", "original", ...]]]
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    return (data[0] as any[][]).map((chunk) => chunk[0] as string).join('');
+
+    const data = await res.json() as unknown;
+    if (!Array.isArray(data) || !Array.isArray(data[0])) {
+        throw new Error('Unexpected translation payload');
+    }
+
+    const chunks = data[0].filter((chunk): chunk is GoogleTranslateChunk => {
+        return Array.isArray(chunk) && typeof chunk[0] === 'string';
+    });
+
+    return chunks.map((chunk) => chunk[0]).join('');
 };
 
 export const SandboxChatPanel = ({
@@ -26,7 +35,7 @@ export const SandboxChatPanel = ({
     messages,
 }: Props) => {
     const scrollRef = useRef<HTMLDivElement>(null);
-    const timelineStart = messages.length > 0 ? messages[0].createdAt : Date.now();
+    const timelineStart = messages[0]?.createdAt ?? 0;
 
     // translationMap: messageId → translated text | 'loading' | 'error'
     const [translationMap, setTranslationMap] = useState<Record<string, string>>({});

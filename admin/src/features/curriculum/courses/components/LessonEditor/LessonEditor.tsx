@@ -1,4 +1,4 @@
-import { memo, useRef } from 'react';
+import { memo, useCallback, useRef, type BaseSyntheticEvent } from 'react';
 import { Play, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +19,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useUpdateLesson } from '../../hooks/useLessonMutations';
-import { useLessonForm } from '../../hooks/useLessonForm';
+import { useLessonForm, type LessonFormValues } from '../../hooks/useLessonForm';
 import type { LessonSummary, UpdateLessonPayload, LessonType, PracticeMode } from '../../types/course.types';
 import { LESSON_TYPES, PRACTICE_MODES } from '../../types/course.types';
 import { SpeakingStudio, type SpeakingStudioRef } from '../SpeakingStudio/SpeakingStudio';
@@ -55,7 +55,7 @@ export const LessonEditor = memo(function LessonEditor({ lesson, courseId }: Pro
     const selectedType = form.watch('type');
     const isTypeSelected = Boolean(selectedType);
 
-    const onSubmit = form.handleSubmit(async (values) => {
+    const handleFormSubmit = useCallback(async (values: LessonFormValues) => {
         try {
             // Nếu là bài học Speaking, trigger validate và save của SpeakingStudio trước
             if (values.type === 'SPEAKING' && speakingStudioRef.current) {
@@ -89,7 +89,11 @@ export const LessonEditor = memo(function LessonEditor({ lesson, courseId }: Pro
 
             notification.error('Lưu nội dung bài học thất bại. Vui lòng thử lại.');
         }
-    });
+    }, [lesson._id, updateMutation]);
+
+    const onSubmit = useCallback((event?: BaseSyntheticEvent) => {
+        void form.handleSubmit(handleFormSubmit)(event);
+    }, [form, handleFormSubmit]);
 
     return (
         <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">

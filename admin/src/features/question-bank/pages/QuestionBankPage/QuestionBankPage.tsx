@@ -122,7 +122,9 @@ export default function QuestionBankPage() {
 
     function handleExport() {
         // Export with current filters (minus pagination)
-        const { page: _p, limit: _l, ...exportFilters } = queryFilters;
+        const exportFilters = { ...queryFilters };
+        delete exportFilters.page;
+        delete exportFilters.limit;
         exportQuestions({ filters: exportFilters, format: 'csv' });
     }
 

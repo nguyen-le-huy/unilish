@@ -36,8 +36,8 @@ interface UseCourseFormOptions {
 }
 
 export const useCourseForm = ({ course }: UseCourseFormOptions = {}) => {
-    const form = useForm<CourseFormValues, any, CourseFormValues>({
-        resolver: zodResolver(courseFormSchema) as Resolver<CourseFormValues, any, CourseFormValues>,
+    const form = useForm<CourseFormValues, unknown, CourseFormValues>({
+        resolver: zodResolver(courseFormSchema) as Resolver<CourseFormValues, unknown, CourseFormValues>,
         defaultValues: {
             name: '',
             level: 'A1',

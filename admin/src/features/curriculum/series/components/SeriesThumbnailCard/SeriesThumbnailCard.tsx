@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import type { Control } from 'react-hook-form';
 import { useWatch } from 'react-hook-form';
 import { BookOpen, ImageIcon, X } from 'lucide-react';
@@ -34,30 +34,22 @@ export function SeriesThumbnailCard({
     className,
 }: SeriesThumbnailCardProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [localPreviewUrl, setLocalPreviewUrl] = useState<string>('');
     const [pendingFile, setPendingFile] = useState<File | null>(null);
-    const [imgError, setImgError] = useState(false);
+    const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
 
     // useWatch — correct pattern for child components in RHF v7
     const thumbnailUrl = useWatch({ control, name: 'thumbnailUrl' });
+    const localPreviewUrl = useMemo(() => (pendingFile ? URL.createObjectURL(pendingFile) : ''), [pendingFile]);
 
-    // Reset img error when the committed URL changes
     useEffect(() => {
-        setImgError(false);
-    }, [thumbnailUrl]);
+        return () => {
+            if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+        };
+    }, [localPreviewUrl]);
 
-    // Generate and revoke Object URL for instant local preview
-    useEffect(() => {
-        if (!pendingFile) {
-            setLocalPreviewUrl('');
-            return;
-        }
-        const url = URL.createObjectURL(pendingFile);
-        setLocalPreviewUrl(url);
-        return () => URL.revokeObjectURL(url);
-    }, [pendingFile]);
-
-    const previewUrl = localPreviewUrl || (!imgError ? (thumbnailUrl ?? '') : '');
+    const committedPreviewUrl = thumbnailUrl ?? '';
+    const committedHasError = failedImageSrc === committedPreviewUrl;
+    const previewUrl = localPreviewUrl || (!committedHasError ? committedPreviewUrl : '');
 
     const handleFileChange = useCallback(
         (event: ChangeEvent<HTMLInputElement>) => {
@@ -72,8 +64,7 @@ export function SeriesThumbnailCard({
         onClear();
         onFileSelect(null);
         setPendingFile(null);
-        setLocalPreviewUrl('');
-        setImgError(false);
+        setFailedImageSrc(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     }, [onClear, onFileSelect]);
 
@@ -114,7 +105,7 @@ export function SeriesThumbnailCard({
                                 src={previewUrl}
                                 alt="Xem trước thumbnail"
                                 className="h-full w-full object-cover"
-                                onError={() => setImgError(true)}
+                                onError={(event) => setFailedImageSrc(event.currentTarget.currentSrc || event.currentTarget.src)}
                             />
                             {/* Clear button — only for committed Cloudinary URL, not for pending local file */}
                             {thumbnailUrl && !pendingFile && (

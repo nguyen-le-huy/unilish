@@ -34,3 +34,9 @@ export interface CouponStats {
     totalRedeemed: number;
     revenueSaved: number;
 }
+
+export type CouponQueryParams = Record<
+    string,
+    string | number | boolean | null | undefined
+
+>;

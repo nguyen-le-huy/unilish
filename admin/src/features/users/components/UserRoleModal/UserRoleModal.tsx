@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import type { User } from "../../types/users.types";
 import { useUpdateRole } from "../../hooks/useUsers";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface UserRoleModalProps {
     user: User | null;
@@ -24,19 +24,17 @@ interface UserRoleModalProps {
     onOpenChange: (open: boolean) => void;
 }
 
-export function UserRoleModal({ user, open, onOpenChange }: UserRoleModalProps) {
-    const [role, setRole] = useState<User["role"]>("student");
+interface UserRoleModalContentProps {
+    user: User;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}
 
+function UserRoleModalContent({ user, open, onOpenChange }: UserRoleModalContentProps) {
+    const [role, setRole] = useState<User["role"]>(user.role);
     const updateRole = useUpdateRole();
 
-    useEffect(() => {
-        if (user) {
-            setRole(user.role);
-        }
-    }, [user]);
-
     const handleSave = () => {
-        if (!user) return;
         updateRole.mutate(
             { id: user._id, payload: { role } },
             {
@@ -46,8 +44,6 @@ export function UserRoleModal({ user, open, onOpenChange }: UserRoleModalProps) 
             }
         );
     };
-
-    if (!user) return null;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,4 +88,9 @@ export function UserRoleModal({ user, open, onOpenChange }: UserRoleModalProps) 
             </DialogContent>
         </Dialog>
     );
+}
+
+export function UserRoleModal({ user, open, onOpenChange }: UserRoleModalProps) {
+    if (!user) return null;
+    return <UserRoleModalContent key={user._id} user={user} open={open} onOpenChange={onOpenChange} />;
 }

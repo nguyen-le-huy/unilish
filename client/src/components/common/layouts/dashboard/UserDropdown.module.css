@@ -1,0 +1,67 @@
+.dropdown {
+    width: 300px;
+    border: 1px solid var(--grey);
+    border-radius: 20px;
+    background-color: white;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: 0 22px 44px rgba(0, 0, 0, 0.2), 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+.item {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: black;
+    font-family: var(--font-family);
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
+}
+
+.item:hover {
+    background-color: var(--grey);
+}
+
+.userIcon {
+    width: 17px;
+    height: 20px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.cardIcon {
+    width: 25px;
+    height: 20px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.settingIcon {
+    width: 25px;
+    height: 25px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.logoutIcon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+    .dropdown {
+        width: min(360px, calc(100vw - 40px));
+    }
+}

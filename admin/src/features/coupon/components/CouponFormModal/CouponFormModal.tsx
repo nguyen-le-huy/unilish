@@ -20,7 +20,7 @@ import {
 import { useEffect } from "react";
 import type { ICoupon } from "../../types/coupon.types";
 import { EDiscountType, EPlanScope } from "../../types/coupon.types";
-import { useForm, Controller } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { useCreateCoupon, useUpdateCoupon } from "../../hooks/useCouponData";
 
 interface Props {
@@ -30,46 +30,65 @@ interface Props {
     onSuccess: () => void;
 }
 
-export function CouponFormModal({ open, onClose, couponToEdit, onSuccess }: Props) {
-    const defaultValues = {
-        code: "",
-        description: "",
-        discountType: EDiscountType.FIXED_AMOUNT,
-        value: 0,
-        appliesToPlans: EPlanScope.ALL,
-        usageLimit: null as number | null,
-        minOrderValue: 0,
-        expiryDate: "",
-        isActive: true,
-    };
+interface CouponFormValues {
+    code: string;
+    description: string;
+    discountType: (typeof EDiscountType)[keyof typeof EDiscountType];
+    value: number;
+    appliesToPlans: (typeof EPlanScope)[keyof typeof EPlanScope];
+    usageLimit: number | null;
+    minOrderValue: number;
+    expiryDate: string;
+    isActive: boolean;
+}
 
+const DEFAULT_FORM_VALUES: CouponFormValues = {
+    code: "",
+    description: "",
+    discountType: EDiscountType.FIXED_AMOUNT,
+    value: 0,
+    appliesToPlans: EPlanScope.ALL,
+    usageLimit: null,
+    minOrderValue: 0,
+    expiryDate: "",
+    isActive: true,
+};
+
+export function CouponFormModal({ open, onClose, couponToEdit, onSuccess }: Props) {
     const createCoupon = useCreateCoupon();
     const updateCoupon = useUpdateCoupon();
 
-    const { register, handleSubmit, reset, control, watch } = useForm({
-        defaultValues
+    const { register, handleSubmit, reset, control } = useForm<CouponFormValues>({
+        defaultValues: DEFAULT_FORM_VALUES,
     });
+
+    const isActive = useWatch({ control, name: "isActive" });
 
     useEffect(() => {
         if (couponToEdit) {
             reset({
+                ...DEFAULT_FORM_VALUES,
                 ...couponToEdit,
-                appliesToPlans: couponToEdit.appliesToPlans[0] || EPlanScope.ALL, // Simplify to single select for MVP
-                expiryDate: couponToEdit.expiryDate ? new Date(couponToEdit.expiryDate).toISOString().split('T')[0] : ""
+                appliesToPlans: couponToEdit.appliesToPlans[0] ?? EPlanScope.ALL,
+                usageLimit: couponToEdit.usageLimit ?? null,
+                expiryDate: couponToEdit.expiryDate
+                    ? new Date(couponToEdit.expiryDate).toISOString().split("T")[0]
+                    : "",
             });
-        } else {
-            reset(defaultValues);
+            return;
         }
-    }, [couponToEdit, open]);
 
-    const onSubmit = async (data: any) => {
+        if (open) {
+            reset(DEFAULT_FORM_VALUES);
+        }
+    }, [couponToEdit, open, reset]);
+
+    const onSubmit = async (data: CouponFormValues) => {
         const payload = {
             ...data,
             appliesToPlans: [data.appliesToPlans],
-            value: Number(data.value),
-            minOrderValue: Number(data.minOrderValue),
-            usageLimit: data.usageLimit ? Number(data.usageLimit) : null,
-            expiryDate: data.expiryDate ? new Date(data.expiryDate) : null
+            usageLimit: data.usageLimit,
+            expiryDate: data.expiryDate || undefined,
         };
 
         if (couponToEdit) {
@@ -113,13 +132,13 @@ export function CouponFormModal({ open, onClose, couponToEdit, onSuccess }: Prop
                                     control={control}
                                     render={({ field }) => (
                                         <Switch
-                                            checked={field.value}
+                                            checked={Boolean(field.value)}
                                             onCheckedChange={field.onChange}
                                         />
                                     )}
                                 />
                                 <span className="text-sm text-muted-foreground">
-                                    {watch("isActive") ? "Đang hoạt động" : "Tạm dừng"}
+                                    {isActive ? "Đang hoạt động" : "Tạm dừng"}
                                 </span>
                             </div>
                         </div>
@@ -158,7 +177,7 @@ export function CouponFormModal({ open, onClose, couponToEdit, onSuccess }: Prop
                             <Input
                                 type="number"
                                 placeholder="VD: 50000 hoặc 20"
-                                {...register("value", { required: true, min: 0 })}
+                                {...register("value", { required: true, min: 0, valueAsNumber: true })}
                             />
                         </div>
                     </div>
@@ -188,7 +207,7 @@ export function CouponFormModal({ open, onClose, couponToEdit, onSuccess }: Prop
                             <Input
                                 type="number"
                                 placeholder="0 = Không yêu cầu"
-                                {...register("minOrderValue")}
+                                {...register("minOrderValue", { valueAsNumber: true })}
                             />
                             <p className="text-[10px] text-muted-foreground">Đơn hàng phải &ge; mức này mới được dùng mã.</p>
                         </div>
@@ -199,7 +218,9 @@ export function CouponFormModal({ open, onClose, couponToEdit, onSuccess }: Prop
                             <Label>Giới hạn lượt dùng</Label>
                             <Input
                                 type="number"
-                                {...register("usageLimit")}
+                                {...register("usageLimit", {
+                                    setValueAs: (value: string) => value === "" ? null : Number(value),
+                                })}
                                 placeholder="Để trống = Vô hạn"
                             />
                         </div>

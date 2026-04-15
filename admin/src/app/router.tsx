@@ -25,7 +25,7 @@ const QuestionBankPage = lazy(() => import("@/features/question-bank/pages/Quest
 const QuestionEditorPage = lazy(() => import("@/features/question-bank/pages/QuestionEditorPage/QuestionEditorPage"));
 const PlacementTestListPage = lazy(() => import("@/features/placement-test/pages/PlacementTestListPage/PlacementTestListPage"));
 const PlacementTestWizardPage = lazy(() => import("@/features/placement-test/pages/PlacementTestWizardPage/PlacementTestWizardPage"));
-const PageLoader = () => (
+const pageLoaderFallback = (
     <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
     </div>
@@ -36,7 +36,7 @@ export const router = createBrowserRouter([
     {
         path: "/auth/login",
         element: (
-            <Suspense fallback={<PageLoader />}>
+            <Suspense fallback={pageLoaderFallback}>
                 <LoginPage />
             </Suspense>
         ),
@@ -58,7 +58,7 @@ export const router = createBrowserRouter([
             {
                 path: "dashboard",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <DashboardHome />
                     </Suspense>
                 ),
@@ -67,7 +67,7 @@ export const router = createBrowserRouter([
             {
                 path: "curriculum/courses",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <CourseListPage />
                     </Suspense>
                 ),
@@ -75,7 +75,7 @@ export const router = createBrowserRouter([
             {
                 path: "curriculum/courses/:courseId/studio",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <CourseStudioPage />
                     </Suspense>
                 ),
@@ -83,7 +83,7 @@ export const router = createBrowserRouter([
             {
                 path: "curriculum/languages",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <LanguageListPage />
                     </Suspense>
                 ),
@@ -91,7 +91,7 @@ export const router = createBrowserRouter([
             {
                 path: "curriculum/languages/:code",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <LanguageEditorPage />
                     </Suspense>
                 ),
@@ -99,7 +99,7 @@ export const router = createBrowserRouter([
             {
                 path: "curriculum/goals",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <GoalListPage />
                     </Suspense>
                 ),
@@ -107,13 +107,13 @@ export const router = createBrowserRouter([
             {
                 path: "curriculum/goals/:slug",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <GoalEditorPage />
                     </Suspense>
                 ),
             },
             { path: "questions", element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <QuestionBankPage />
                     </Suspense>
                 ),
@@ -121,7 +121,7 @@ export const router = createBrowserRouter([
             {
                 path: "questions/new",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <QuestionEditorPage />
                     </Suspense>
                 ),
@@ -129,7 +129,7 @@ export const router = createBrowserRouter([
             {
                 path: "questions/:id/edit",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <QuestionEditorPage />
                     </Suspense>
                 ),
@@ -137,7 +137,7 @@ export const router = createBrowserRouter([
             {
                 path: "placement-tests",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <PlacementTestListPage />
                     </Suspense>
                 ),
@@ -145,7 +145,7 @@ export const router = createBrowserRouter([
             {
                 path: "placement-tests/create",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <PlacementTestWizardPage />
                     </Suspense>
                 ),
@@ -153,7 +153,7 @@ export const router = createBrowserRouter([
             {
                 path: "placement-tests/:id/edit",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <PlacementTestWizardPage />
                     </Suspense>
                 ),
@@ -161,7 +161,7 @@ export const router = createBrowserRouter([
             {
                 path: "curriculum/series",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <SeriesListPage />
                     </Suspense>
                 ),
@@ -169,7 +169,7 @@ export const router = createBrowserRouter([
             {
                 path: "curriculum/series/new",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <SeriesEditorPage />
                     </Suspense>
                 ),
@@ -177,7 +177,7 @@ export const router = createBrowserRouter([
             {
                 path: "curriculum/series/:slug",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <SeriesEditorPage />
                     </Suspense>
                 ),
@@ -187,7 +187,7 @@ export const router = createBrowserRouter([
             {
                 path: "users",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <UsersPage />
                     </Suspense>
                 ),
@@ -195,7 +195,7 @@ export const router = createBrowserRouter([
             {
                 path: "plans",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <SubscriptionPage />
                     </Suspense>
                 ),
@@ -203,7 +203,7 @@ export const router = createBrowserRouter([
             {
                 path: "coupons",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <CouponPage />
                     </Suspense>
                 ),
@@ -214,7 +214,7 @@ export const router = createBrowserRouter([
             {
                 path: "settings",
                 element: (
-                    <Suspense fallback={<PageLoader />}>
+                    <Suspense fallback={pageLoaderFallback}>
                         <SettingsPage />
                     </Suspense>
                 ),
@@ -226,7 +226,7 @@ export const router = createBrowserRouter([
     {
         path: "*",
         element: (
-            <Suspense fallback={<PageLoader />}>
+            <Suspense fallback={pageLoaderFallback}>
                 <NotFoundPage />
             </Suspense>
         ),

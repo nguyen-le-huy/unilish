@@ -54,8 +54,8 @@ export interface IAuditLog {
     action: typeof EAuditAction[keyof typeof EAuditAction];
     target: string;
     diff?: {
-        oldValue: any;
-        newValue: any;
+        oldValue: unknown;
+        newValue: unknown;
     };
     createdAt: string;
 }

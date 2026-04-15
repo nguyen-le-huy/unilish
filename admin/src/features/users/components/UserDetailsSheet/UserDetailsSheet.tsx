@@ -22,7 +22,27 @@ import {
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useUser } from "../../hooks/useUsers";
+import type { ElementType, ReactNode } from 'react';
 
+interface InfoRowProps {
+    icon: ElementType;
+    label: string;
+    value: ReactNode;
+    className?: string;
+}
+
+function InfoRow({ icon: Icon, label, value, className }: InfoRowProps) {
+    const rowClassName = className ? "flex items-start space-x-3 py-2 " + className : "flex items-start space-x-3 py-2";
+    return (
+        <div className={rowClassName}>
+            <Icon className="w-5 h-5 text-muted-foreground mt-0.5" />
+            <div className="flex-1">
+                <p className="text-sm font-medium text-muted-foreground">{label}</p>
+                <div className="text-sm text-foreground font-medium mt-1 break-words">{value || "—"}</div>
+            </div>
+        </div>
+    );
+}
 interface UserDetailsSheetProps {
     user: User | null;
     open: boolean;
@@ -42,16 +62,6 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
             return "N/A";
         }
     };
-
-    const InfoRow = ({ icon: Icon, label, value, className }: { icon: React.ElementType, label: string, value: React.ReactNode, className?: string }) => (
-        <div className={`flex items-start space-x-3 py-2 ${className}`}>
-            <Icon className="w-5 h-5 text-muted-foreground mt-0.5" />
-            <div className="flex-1">
-                <p className="text-sm font-medium text-muted-foreground">{label}</p>
-                <div className="text-sm text-foreground font-medium mt-1 break-words">{value || "—"}</div>
-            </div>
-        </div>
-    );
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>

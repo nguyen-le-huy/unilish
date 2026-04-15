@@ -1,5 +1,5 @@
 import apiClient from '@/lib/axios';
-import type { ICoupon, CouponStats } from '../types/coupon.types';
+import type { ICoupon, CouponQueryParams, CouponStats } from '../types/coupon.types';
 
 export const couponApi = {
     getStats: async (): Promise<CouponStats> => {
@@ -7,7 +7,7 @@ export const couponApi = {
         return response.data.data;
     },
 
-    getCoupons: async (params?: any): Promise<ICoupon[]> => {
+    getCoupons: async (params?: CouponQueryParams): Promise<ICoupon[]> => {
         const response = await apiClient.get('/coupons', { params });
         return response.data.data;
     },

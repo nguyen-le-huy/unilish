@@ -1,0 +1,89 @@
+.card {
+  position: relative;
+  min-height: 534px;
+  overflow: hidden;
+  border: 1px solid var(--dark-grey);
+  border-radius: 20px;
+  background: white;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  width: 100%;
+  padding: 20px;
+  position: relative;
+  z-index: 2;
+}
+
+.textBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 860px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.description {
+  color: var(--dark-grey);
+  font-size: var(--text-lg);
+  line-height: 1.5;
+}
+
+.upgradeButton {
+  width: fit-content;
+}
+
+.happyWrap {
+  position: absolute;
+  left: 324px;
+  top: 125.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 571.5px;
+  height: 586px;
+  pointer-events: none;
+}
+
+.happyImage {
+  width: 493.615px;
+  transform: rotate(-9.54deg);
+}
+
+@media (max-width: 1400px) {
+  .happyWrap {
+    left: 45%;
+    top: 150px;
+  }
+}
+
+@media (max-width: 900px) {
+  .card {
+    background: white;
+  }
+
+  .content {
+    gap: 20px;
+  }
+
+  .happyWrap {
+    left: auto;
+    right: -120px;
+    top: auto;
+    bottom: -180px;
+    width: 420px;
+    height: 420px;
+  }
+
+  .happyImage {
+    width: 420px;
+    transform: rotate(-9.54deg);
+  }
+}

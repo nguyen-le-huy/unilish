@@ -845,7 +845,7 @@ export interface WritingLessonFormValues {
     taughtConcepts: string[];
 }
 
-export interface SaveWritingContentPayload extends WritingLessonFormValues {}
+export type SaveWritingContentPayload = WritingLessonFormValues;
 
 export interface GenerateWritingMissionPayload {
     level: CEFRLevel;

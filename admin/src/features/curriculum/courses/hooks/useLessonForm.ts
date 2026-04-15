@@ -26,8 +26,8 @@ interface UseLessonFormOptions {
 }
 
 export const useLessonForm = ({ lesson }: UseLessonFormOptions = {}) => {
-    const form = useForm<LessonFormValues, any, LessonFormValues>({
-        resolver: zodResolver(lessonFormSchema) as Resolver<LessonFormValues, any, LessonFormValues>,
+    const form = useForm<LessonFormValues, unknown, LessonFormValues>({
+        resolver: zodResolver(lessonFormSchema) as Resolver<LessonFormValues, unknown, LessonFormValues>,
         defaultValues: {
             title: '',
             type: 'VOCAB',

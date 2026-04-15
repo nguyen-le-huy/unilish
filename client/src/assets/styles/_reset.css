@@ -8,3 +8,7 @@ img {
     height: auto;
     object-fit: cover;
 }
+
+body {
+    background-color: var(--background-body);
+}

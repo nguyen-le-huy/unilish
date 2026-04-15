@@ -72,8 +72,8 @@ export function CreateCourseDrawer({ open, onOpenChange, defaultSeriesId }: Prop
     // ── Hooks ─────────────────────────────────────────────────────────────────
     const createMutation = useCreateCourse();
 
-    const form = useForm<CreateCourseFormValues, any, CreateCourseFormValues>({
-        resolver: zodResolver(createCourseSchema) as Resolver<CreateCourseFormValues, any, CreateCourseFormValues>,
+    const form = useForm<CreateCourseFormValues, unknown, CreateCourseFormValues>({
+        resolver: zodResolver(createCourseSchema) as Resolver<CreateCourseFormValues, unknown, CreateCourseFormValues>,
         defaultValues: {
             seriesId: defaultSeriesId ?? '',
             name: '',

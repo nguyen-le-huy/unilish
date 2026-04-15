@@ -1,0 +1,104 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  min-height: 534px;
+  border: 1px solid var(--dark-grey);
+  border-radius: 20px;
+  background: white;
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.viewAllButton {
+  border: 0;
+  background: transparent;
+  color: var(--dark-grey);
+  font-size: 18px;
+  font-family: var(--font-family);
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.viewAllButton:hover {
+  text-decoration: underline;
+}
+
+.rankList {
+  margin-top: 20px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  list-style: none;
+}
+
+.rankItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr) 50px;
+  align-items: center;
+  gap: 20px;
+  border-bottom: 1px solid var(--grey);
+  padding: 10px 0;
+  min-height: 84px;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.name,
+.score {
+  font-size: var(--text-lg);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.score {
+  justify-self: start;
+}
+
+.rankBadge {
+  width: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topBadgeImage {
+  width: 35px;
+  max-width: none;
+}
+
+.topBadgeSecond {
+  width: 35px;
+  object-fit: contain;
+}
+
+.rankNumber {
+  width: 20px;
+  text-align: center;
+  font-size: var(--text-lg);
+  font-weight: 500;
+  line-height: 1.2;
+}

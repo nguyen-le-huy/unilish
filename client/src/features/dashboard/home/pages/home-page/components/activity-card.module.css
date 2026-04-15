@@ -1,0 +1,85 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  min-height: 534px;
+  border: 1px solid var(--dark-grey);
+  border-radius: 20px;
+  background: white;
+  padding: 20px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.days {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  line-height: 1;
+}
+
+.daysValue {
+  font-size: 48px;
+  font-weight: 500;
+  color: var(--green);
+}
+
+.daysLabel {
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--green);
+}
+
+.time {
+  color: var(--dark-grey);
+  font-size: var(--text-lg);
+}
+
+.monthArea {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.monthLabel {
+  font-size: var(--text-lg);
+}
+
+.dotRows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dotRow {
+  display: flex;
+  gap: 10px;
+  width: 350px;
+  max-width: 100%;
+}
+
+.dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--grey);
+}
+
+.dotActive {
+  background: var(--green);
+}
+
+.dotMuted {
+  background: var(--dark-grey);
+  opacity: 0.35;
+}

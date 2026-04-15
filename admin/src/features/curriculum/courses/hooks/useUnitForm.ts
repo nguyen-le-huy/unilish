@@ -26,8 +26,8 @@ interface UseUnitFormOptions {
 }
 
 export const useUnitForm = ({ unit }: UseUnitFormOptions = {}) => {
-    const form = useForm<UnitFormValues, any, UnitFormValues>({
-        resolver: zodResolver(unitFormSchema) as Resolver<UnitFormValues, any, UnitFormValues>,
+    const form = useForm<UnitFormValues, unknown, UnitFormValues>({
+        resolver: zodResolver(unitFormSchema) as Resolver<UnitFormValues, unknown, UnitFormValues>,
         defaultValues: {
             title: '',
             description: '',

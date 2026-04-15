@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/features/auth';
 import type { LlmResult, SttResult } from '../types/pipeline.types';
 
@@ -67,6 +67,7 @@ export const useOpenAiPipeline = (): UseOpenAiPipelineReturn => {
     const hasStartedPlayingRef = useRef(false);
     const finishResolversRef = useRef<(() => void)[]>([]);
     const onAudioStartRef = useRef<(() => void) | undefined>(undefined);
+    const processAudioQueueRef = useRef<() => Promise<void>>(async () => {});
 
     const transcribe = useCallback(async (lessonId: string, audioBlob: Blob): Promise<SttResult> => {
         const token = useAuthStore.getState().token;
@@ -110,7 +111,7 @@ export const useOpenAiPipeline = (): UseOpenAiPipelineReturn => {
             // If interrupted or failed properly
             if (!blob) {
                 isPlayingRef.current = false;
-                void processAudioQueue();
+                void processAudioQueueRef.current();
                 return;
             }
 
@@ -137,8 +138,12 @@ export const useOpenAiPipeline = (): UseOpenAiPipelineReturn => {
         }
 
         isPlayingRef.current = false;
-        void processAudioQueue();
+        void processAudioQueueRef.current();
     }, []);
+
+    useEffect(() => {
+        processAudioQueueRef.current = processAudioQueue;
+    }, [processAudioQueue]);
 
     const enqueueTTS = useCallback((lessonId: string, text: string) => {
         if (!text.trim()) return;

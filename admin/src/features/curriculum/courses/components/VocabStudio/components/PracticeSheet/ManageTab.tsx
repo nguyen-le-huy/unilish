@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useRef, useState } from 'react';
 import {
     PenLine,
     RefreshCw,
@@ -343,25 +343,31 @@ export function ManageTab({
     isError,
 }: ManageTabProps) {
     const updatePassingScoreMutation = useUpdatePassingScore(lessonId);
-    const [localScore, setLocalScore] = useState(passingScore);
+    const [localScoreOverride, setLocalScoreOverride] = useState<number | null>(null);
+    const localScore = localScoreOverride ?? passingScore;
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hasQuestions = Array.isArray(questions) && questions.length > 0;
 
-    useEffect(() => setLocalScore(passingScore), [passingScore]);
 
     const handleScoreChange = useCallback(
         (val: number[]) => {
-            const score = val[0] ?? passingScore;
-            setLocalScore(score);
+            const score = val[0] ?? localScore;
+            setLocalScoreOverride(score);
             if (debounceRef.current) clearTimeout(debounceRef.current);
             debounceRef.current = setTimeout(() => {
                 updatePassingScoreMutation.mutate(
                     { passingScore: score },
-                    { onError: () => notification.error('Lỗi khi lưu điểm đạt') },
+                    {
+                        onSuccess: () => setLocalScoreOverride(null),
+                        onError: () => {
+                            setLocalScoreOverride(null);
+                            notification.error('Lỗi khi lưu điểm đạt');
+                        },
+                    },
                 );
             }, 800);
         },
-        [passingScore, updatePassingScoreMutation],
+        [localScore, updatePassingScoreMutation],
     );
 
     return (

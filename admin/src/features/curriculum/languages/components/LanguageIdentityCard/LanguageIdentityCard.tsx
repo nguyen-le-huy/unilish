@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, type ChangeEvent } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { Loader2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,34 +26,26 @@ interface LanguageIdentityCardProps {
 export function LanguageIdentityCard({ form, isCreateMode, className }: LanguageIdentityCardProps) {
     const uploadFlagMutation = useUploadFlagIcon();
     const uploadGreetingSoundMutation = useUploadGreetingSound();
-    const [localPreviewUrl, setLocalPreviewUrl] = useState<string>('');
-    const [localGreetingSoundPreviewUrl, setLocalGreetingSoundPreviewUrl] = useState<string>('');
 
     const flagFile = form.watch('_flagFile');
     const flagIconUrl = form.watch('flagIconUrl');
     const greetingSoundFile = form.watch('_greetingSoundFile');
     const greetingSound = form.watch('greetingSound');
 
-    // Generate object URL for local preview when a file is selected
-    useEffect(() => {
-        if (!flagFile) {
-            setLocalPreviewUrl('');
-            return;
-        }
-        const url = URL.createObjectURL(flagFile);
-        setLocalPreviewUrl(url);
-        return () => URL.revokeObjectURL(url);
-    }, [flagFile]);
+    const localPreviewUrl = useMemo(() => (flagFile ? URL.createObjectURL(flagFile) : ''), [flagFile]);
+    const localGreetingSoundPreviewUrl = useMemo(() => (greetingSoundFile ? URL.createObjectURL(greetingSoundFile) : ''), [greetingSoundFile]);
 
     useEffect(() => {
-        if (!greetingSoundFile) {
-            setLocalGreetingSoundPreviewUrl('');
-            return;
-        }
-        const url = URL.createObjectURL(greetingSoundFile);
-        setLocalGreetingSoundPreviewUrl(url);
-        return () => URL.revokeObjectURL(url);
-    }, [greetingSoundFile]);
+        return () => {
+            if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+        };
+    }, [localPreviewUrl]);
+
+    useEffect(() => {
+        return () => {
+            if (localGreetingSoundPreviewUrl) URL.revokeObjectURL(localGreetingSoundPreviewUrl);
+        };
+    }, [localGreetingSoundPreviewUrl]);
 
     const previewImageUrl = localPreviewUrl || flagIconUrl;
     const previewGreetingSoundUrl = localGreetingSoundPreviewUrl || greetingSound;
@@ -79,7 +71,6 @@ export function LanguageIdentityCard({ form, isCreateMode, className }: Language
         const uploaded = await uploadFlagMutation.mutateAsync(flagFile);
         form.setValue('flagIconUrl', uploaded.url);
         form.setValue('_flagFile', undefined);
-        setLocalPreviewUrl('');
     }, [flagFile, form, uploadFlagMutation]);
 
     const handleUploadGreetingSound = useCallback(async () => {
@@ -87,7 +78,6 @@ export function LanguageIdentityCard({ form, isCreateMode, className }: Language
         const uploaded = await uploadGreetingSoundMutation.mutateAsync(greetingSoundFile);
         form.setValue('greetingSound', uploaded.url);
         form.setValue('_greetingSoundFile', undefined);
-        setLocalGreetingSoundPreviewUrl('');
     }, [form, greetingSoundFile, uploadGreetingSoundMutation]);
 
     return (

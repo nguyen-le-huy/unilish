@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import type { User } from "../../types/users.types";
 import { useUpdateSubscription } from "../../hooks/useUsers";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface UserSubscriptionModalProps {
     user: User | null;
@@ -24,21 +24,22 @@ interface UserSubscriptionModalProps {
     onClose: () => void;
 }
 
-export function UserSubscriptionModal({ user, open, onClose }: UserSubscriptionModalProps) {
-    const { mutate: updateSubscription, isPending } = useUpdateSubscription();
-    const [plan, setPlan] = useState<"FREE" | "PREMIUM">("FREE");
-    const [period, setPeriod] = useState<"monthly" | "yearly">("monthly");
+type SubscriptionPlan = "FREE" | "PREMIUM";
+type SubscriptionPeriod = "monthly" | "yearly";
 
-    useEffect(() => {
-        if (user && user.subscription) {
-            setPlan(user.subscription.plan || "FREE");
-            // Default period to monthly as we don't track period in User model explicitly for UI default
-            // unless we prefer yearly.
-        }
-    }, [user]);
+interface UserSubscriptionModalContentProps {
+    user: User;
+    open: boolean;
+    onClose: () => void;
+}
+
+function UserSubscriptionModalContent({ user, open, onClose }: UserSubscriptionModalContentProps) {
+    const { mutate: updateSubscription, isPending } = useUpdateSubscription();
+    const initialPlan = user.subscription?.plan || "FREE";
+    const [plan, setPlan] = useState<SubscriptionPlan>(initialPlan);
+    const [period, setPeriod] = useState<SubscriptionPeriod>("monthly");
 
     const handleSubmit = () => {
-        if (!user) return;
         updateSubscription(
             { id: user._id, payload: { plan, period } },
             {
@@ -55,7 +56,7 @@ export function UserSubscriptionModal({ user, open, onClose }: UserSubscriptionM
                 <DialogHeader>
                     <DialogTitle>Cập nhật gói cước</DialogTitle>
                     <DialogDescription>
-                        Thay đổi gói cước cho học viên <b>{user?.email}</b>.
+                        Thay đổi gói cước cho học viên <b>{user.email}</b>.
                         <br />
                         Hành động này sẽ cập nhật trạng thái gói thành Active ngay lập tức.
                     </DialogDescription>
@@ -63,7 +64,7 @@ export function UserSubscriptionModal({ user, open, onClose }: UserSubscriptionM
                 <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <label className="text-right text-sm font-medium">Gói cước</label>
-                        <Select value={plan} onValueChange={(v) => setPlan(v as "FREE" | "PREMIUM")}>
+                        <Select value={plan} onValueChange={(v) => setPlan(v as SubscriptionPlan)}>
                             <SelectTrigger className="col-span-3">
                                 <SelectValue placeholder="Chọn gói" />
                             </SelectTrigger>
@@ -75,7 +76,7 @@ export function UserSubscriptionModal({ user, open, onClose }: UserSubscriptionM
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <label className="text-right text-sm font-medium">Thời hạn</label>
-                        <Select value={period} onValueChange={(v) => setPeriod(v as "monthly" | "yearly")}>
+                        <Select value={period} onValueChange={(v) => setPeriod(v as SubscriptionPeriod)}>
                             <SelectTrigger className="col-span-3">
                                 <SelectValue placeholder="Chọn thời hạn" />
                             </SelectTrigger>
@@ -97,4 +98,9 @@ export function UserSubscriptionModal({ user, open, onClose }: UserSubscriptionM
             </DialogContent>
         </Dialog>
     );
+}
+
+export function UserSubscriptionModal({ user, open, onClose }: UserSubscriptionModalProps) {
+    if (!user) return null;
+    return <UserSubscriptionModalContent key={user._id} user={user} open={open} onClose={onClose} />;
 }

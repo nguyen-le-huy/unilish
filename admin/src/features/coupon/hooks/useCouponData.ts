@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { couponApi } from '../api/coupon.api';
-import type { ICoupon } from '../types/coupon.types';
+import type { CouponQueryParams, ICoupon } from '../types/coupon.types';
 import { toast } from 'sonner';
 
 // Query keys for cache management
@@ -24,7 +24,7 @@ export const useCouponStats = () => {
 /**
  * Hook to fetch list of coupons
  */
-export const useCoupons = (params?: any) => {
+export const useCoupons = (params?: CouponQueryParams) => {
     return useQuery({
         queryKey: [...COUPON_QUERY_KEYS.list, params],
         queryFn: () => couponApi.getCoupons(params),

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Loader2, Save, Upload } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -126,17 +126,12 @@ export default function GoalEditorPage() {
     const skillWeights = form.watch('skillWeights');
     const iconFile = form.watch('_iconFile');
     const iconUrl = form.watch('iconUrl');
-    const [localPreviewUrl, setLocalPreviewUrl] = useState<string>('');
-
+    const localPreviewUrl = useMemo(() => (iconFile ? URL.createObjectURL(iconFile) : ''), [iconFile]);
     useEffect(() => {
-        if (!iconFile) {
-            setLocalPreviewUrl('');
-            return;
-        }
-        const url = URL.createObjectURL(iconFile);
-        setLocalPreviewUrl(url);
-        return () => URL.revokeObjectURL(url);
-    }, [iconFile]);
+        return () => {
+            if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+        };
+    }, [localPreviewUrl]);
 
     const previewIconUrl = localPreviewUrl || iconUrl;
 
@@ -156,7 +151,6 @@ export default function GoalEditorPage() {
                 resolvedIconUrl = uploaded.url;
                 form.setValue('iconUrl', uploaded.url);
                 form.setValue('_iconFile', undefined);
-                setLocalPreviewUrl('');
             }
 
             if (isCreateMode) {
@@ -235,7 +229,6 @@ export default function GoalEditorPage() {
                                                 const uploaded = await uploadIconMutation.mutateAsync(iconFile);
                                                 form.setValue('iconUrl', uploaded.url, { shouldValidate: true });
                                                 form.setValue('_iconFile', undefined);
-                                                setLocalPreviewUrl('');
                                             }}
                                             disabled={!iconFile || uploadIconMutation.isPending}
                                             aria-label="Upload selected goal icon"
