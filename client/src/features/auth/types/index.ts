@@ -21,6 +21,7 @@ export interface User {
     nativeLanguage?: string | null;
     learningGoal?: string | null;
     currentLevel?: string;
+    lastActiveCourseId?: string | null;
     placementTestScore?: number;
     stats?: UserStats;
     subscription?: unknown;
