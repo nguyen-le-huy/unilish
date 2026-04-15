@@ -1,9 +1,9 @@
 import styles from './home-page.module.css';
-import { ActivityCard } from './components/activity-card';
-import { CurrentSeriesCard } from './components/current-series-card';
-import { LearningProgressCard } from './components/learning-progress-card';
-import { RankingCard } from './components/ranking-card';
-import { UpgradeCard } from './components/upgrade-card';
+import { ActivityCard } from '../components/activity-card';
+import { CurrentSeriesCard } from '../components/current-series-card';
+import { LearningProgressCard } from '../components/learning-progress-card';
+import { RankingCard } from '../components/ranking-card';
+import { UpgradeCard } from '../components/upgrade-card';
 
 interface DashboardHomePageProps {
   className?: string;

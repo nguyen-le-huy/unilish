@@ -8,7 +8,7 @@ import DashboardLayout from '@/components/common/layouts/dashboard/DashboardLayo
 // Lazy load pages
 const LoginPage = React.lazy(() => import('@/features/auth/pages/LoginPage/LoginPage'));
 const RegisterPage = React.lazy(() => import('@/features/auth/pages/RegisterPage/RegisterPage'));
-const DashboardHomePage = React.lazy(() => import('@/features/dashboard/home/pages/home-page/home-page'));
+const DashboardHomePage = React.lazy(() => import('@/features/dashboard/home/pages/home-page'));
 const GoalSelectionPage = React.lazy(() => import('@/features/dashboard/goal-selection'));
 const LanguageSelectionPage = React.lazy(() => import('@/features/dashboard/language-selection'));
 const LevelSelectionPage = React.lazy(() => import('@/features/dashboard/level-selection'));
