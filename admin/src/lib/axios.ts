@@ -1,4 +1,5 @@
-import axios, { type InternalAxiosRequestConfig } from 'axios';
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { notify } from '@/lib/notification';
 import { useAuthStore } from '@/features/auth';
 
 const normalizeApiBaseUrl = (rawBaseUrl: string): string => {
@@ -7,9 +8,8 @@ const normalizeApiBaseUrl = (rawBaseUrl: string): string => {
         return trimmed;
     }
 
-    return `${trimmed}/api`;
+    return trimmed + '/api';
 };
-
 
 const apiClient = axios.create({
     baseURL: normalizeApiBaseUrl(import.meta.env.VITE_API_URL || 'http://localhost:5432/api'),
@@ -20,36 +20,128 @@ type RetriableRequestConfig = InternalAxiosRequestConfig & {
     _retry?: boolean;
 };
 
-let refreshTokenPromise: Promise<string | null> | null = null;
+interface RefreshTokenResponseEnvelope {
+    status: string;
+    code: number;
+    message: string;
+    data?: {
+        accessToken?: string;
+        token?: string;
+    };
+}
 
-const refreshAccessToken = async (): Promise<string | null> => {
+type RefreshFailureReason = 'session_invalid' | 'network' | 'unknown';
+
+class RefreshTokenError extends Error {
+    readonly reason: RefreshFailureReason;
+    readonly statusCode?: number;
+
+    constructor(reason: RefreshFailureReason, message: string, statusCode?: number) {
+        super(message);
+        this.name = 'RefreshTokenError';
+        this.reason = reason;
+        this.statusCode = statusCode;
+    }
+}
+
+const isAxiosNetworkError = (error: AxiosError): boolean => {
+    return !error.response;
+};
+
+const classifyRefreshError = (error: unknown): RefreshTokenError => {
+    if (error instanceof RefreshTokenError) {
+        return error;
+    }
+
+    if (axios.isAxiosError(error)) {
+        const statusCode = error.response?.status;
+
+        if (statusCode === 401) {
+            return new RefreshTokenError('session_invalid', 'Phiên đăng nhập đã hết hạn', statusCode);
+        }
+
+        if (isAxiosNetworkError(error)) {
+            return new RefreshTokenError('network', 'Không thể kết nối tới máy chủ để làm mới phiên');
+        }
+
+        return new RefreshTokenError('unknown', 'Không thể làm mới phiên đăng nhập', statusCode);
+    }
+
+    return new RefreshTokenError('unknown', 'Không thể làm mới phiên đăng nhập');
+};
+
+const wait = (delayMs: number): Promise<void> => {
+    return new Promise((resolve) => {
+        window.setTimeout(resolve, delayMs);
+    });
+};
+
+const resolveAccessTokenFromRefresh = (response: RefreshTokenResponseEnvelope): string => {
+    const nextToken = response.data?.accessToken ?? response.data?.token;
+
+    if (!nextToken) {
+        throw new RefreshTokenError('session_invalid', 'Phiên đăng nhập đã hết hạn', 401);
+    }
+
+    return nextToken;
+};
+
+const applyAccessToken = (token: string): void => {
+    useAuthStore.getState().setToken(token);
+};
+
+const requestAccessTokenRefresh = async (): Promise<string> => {
+    const response = await apiClient.post<RefreshTokenResponseEnvelope>('/auth/refresh', { appType: 'admin' });
+    const nextToken = resolveAccessTokenFromRefresh(response.data);
+    applyAccessToken(nextToken);
+    return nextToken;
+};
+
+let refreshTokenPromise: Promise<string> | null = null;
+
+const refreshAccessToken = async (): Promise<string> => {
     if (!refreshTokenPromise) {
-        refreshTokenPromise = apiClient
-            .post('/auth/refresh', { appType: 'admin' })
-            .then((response: { data?: { data?: { accessToken?: string; token?: string } } }) => {
-                const nextToken = response.data?.data?.accessToken ?? response.data?.data?.token ?? null;
+        refreshTokenPromise = (async () => {
+            try {
+                return await requestAccessTokenRefresh();
+            } catch (error) {
+                const classifiedError = classifyRefreshError(error);
 
-                if (nextToken) {
-                    useAuthStore.getState().setToken(nextToken);
-                    return nextToken;
+                if (classifiedError.reason !== 'network') {
+                    throw classifiedError;
                 }
 
-                return null;
-            })
-            .catch(() => null)
-            .finally(() => {
+                await wait(300);
+
+                try {
+                    return await requestAccessTokenRefresh();
+                } catch (retryError) {
+                    throw classifyRefreshError(retryError);
+                }
+            } finally {
                 refreshTokenPromise = null;
-            });
+            }
+        })();
     }
 
     return refreshTokenPromise;
+};
+
+const handleSessionExpired = (): void => {
+    const authState = useAuthStore.getState();
+    if (!authState.isAuthenticated) {
+        return;
+    }
+
+    authState.logout();
+    notify.auth.sessionExpired();
 };
 
 apiClient.interceptors.request.use(
     (config) => {
         const token = useAuthStore.getState().token;
         if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+            config.headers.Authorization = 'Bearer ' + token;
         }
         return config;
     },
@@ -77,16 +169,20 @@ apiClient.interceptors.response.use(
         ) {
             originalRequest._retry = true;
 
-            const nextToken = await refreshAccessToken();
-            if (nextToken) {
+            try {
+                const nextToken = await refreshAccessToken();
                 originalRequest.headers = originalRequest.headers ?? {};
-                originalRequest.headers.Authorization = `Bearer ${nextToken}`;
+                originalRequest.headers.Authorization = 'Bearer ' + nextToken;
                 return apiClient(originalRequest);
-            }
-        }
+            } catch (refreshError) {
+                const classifiedError = classifyRefreshError(refreshError);
 
-        if (status === 401 && useAuthStore.getState().isAuthenticated) {
-            useAuthStore.getState().logout();
+                if (classifiedError.reason === 'session_invalid') {
+                    handleSessionExpired();
+                }
+
+                return Promise.reject(error);
+            }
         }
 
         return Promise.reject(error);
