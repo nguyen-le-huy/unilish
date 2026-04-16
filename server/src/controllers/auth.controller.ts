@@ -78,7 +78,13 @@ export class AuthController {
     static refreshToken = catchAsync(async (req: Request, res: Response) => {
         const isClientAdmin = req.body?.appType === 'admin' || req.query?.appType === 'admin';
         const cookieName = isClientAdmin ? 'adminRefreshToken' : 'refreshToken';
-        const rawRefreshToken = req.cookies?.[cookieName] as string | undefined;
+
+        // Priority: body token (for cross-origin dev where SameSite=Lax blocks cookies)
+        // Fallback: httpOnly cookie (standard flow for same-origin / production)
+        const rawRefreshToken =
+            (req.body?.refreshToken as string | undefined) ??
+            (req.cookies?.[cookieName] as string | undefined);
+
         if (!rawRefreshToken) {
             throw new AppError('Không có refresh token', 401);
         }

@@ -91,7 +91,11 @@ const applyAccessToken = (token: string): void => {
 };
 
 const requestAccessTokenRefresh = async (): Promise<string> => {
-    const response = await apiClient.post<RefreshTokenResponseEnvelope>('/auth/refresh', { appType: 'admin' });
+    const { refreshToken } = useAuthStore.getState();
+    const response = await apiClient.post<RefreshTokenResponseEnvelope>('/auth/refresh', {
+        appType: 'admin',
+        ...(refreshToken ? { refreshToken } : {}),
+    });
     const nextToken = resolveAccessTokenFromRefresh(response.data);
     applyAccessToken(nextToken);
     return nextToken;

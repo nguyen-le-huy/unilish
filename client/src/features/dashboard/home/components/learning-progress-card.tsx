@@ -1,6 +1,7 @@
 import arrowDownIcon from '@/assets/images/arrow-down.svg';
 import bookIcon from '@/assets/images/book.svg';
 import clockIcon from '@/assets/images/clock.svg';
+import optimisticIcon from '@/assets/images/optimistic.svg';
 import tickIcon from '@/assets/images/tick.svg';
 import { Button } from '@/components/core/Button';
 import styles from './learning-progress-card.module.css';
@@ -33,19 +34,21 @@ export const LearningProgressCard = ({ className }: LearningProgressCardProps) =
       <ul className={styles.statsList}>
         <li className={styles.statItem}>
           <img src={clockIcon} alt="" className={styles.clockIcon} />
-          <span>8 tiếng</span>
+          <span className={styles.statText}>8 tiếng</span>
         </li>
 
         <li className={styles.statItem}>
           <img src={tickIcon} alt="" className={styles.tickIcon} />
-          <span>8 khoá đã hoàn thành</span>
+          <span className={styles.statText}>8 khoá đã hoàn thành</span>
         </li>
 
         <li className={styles.statItem}>
           <img src={bookIcon} alt="" className={styles.bookIcon} />
-          <span>2 khoá đang tham gia</span>
+          <span className={styles.statText}>2 khoá đang tham gia</span>
         </li>
       </ul>
+
+      <img src={optimisticIcon} alt="" className={styles.optimisticImage} />
     </article>
   );
 };

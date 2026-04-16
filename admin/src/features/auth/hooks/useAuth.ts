@@ -12,7 +12,7 @@ export const useLogin = () => {
     return useMutation({
         mutationFn: loginApi,
         onSuccess: (response) => {
-            const { user, accessToken, token } = response.data;
+            const { user, accessToken, token, refreshToken } = response.data;
             const resolvedToken = accessToken ?? token;
 
             if (user.role !== 'admin') {
@@ -25,7 +25,7 @@ export const useLogin = () => {
                 return;
             }
 
-            setAuth(user, resolvedToken);
+            setAuth(user, resolvedToken, refreshToken);
             notify.auth.loginSuccess();
             navigate('/dashboard');
         },

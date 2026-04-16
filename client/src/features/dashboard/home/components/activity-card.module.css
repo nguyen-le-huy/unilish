@@ -1,15 +1,24 @@
 .card {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 36px;
   min-height: 534px;
+  overflow: hidden;
   border: 1px solid var(--dark-grey);
   border-radius: 20px;
   background: white;
+}
+
+.content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 40px;
+  width: 100%;
   padding: 20px;
 }
 
 .title {
+  margin: 0;
   font-size: 24px;
   font-weight: 500;
 }
@@ -17,14 +26,15 @@
 .summary {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 20px;
 }
 
 .days {
   display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  line-height: 1;
+  align-items: baseline;
+  gap: 5px;
+  margin: 0;
+  line-height: 1.2;
 }
 
 .daysValue {
@@ -34,13 +44,14 @@
 }
 
 .daysLabel {
-  font-size: 36px;
+  font-size: 20px;
   font-weight: 500;
-  line-height: 1.1;
+  line-height: 1.2;
   color: var(--green);
 }
 
 .time {
+  margin: 0;
   color: var(--dark-grey);
   font-size: var(--text-lg);
 }
@@ -52,6 +63,7 @@
 }
 
 .monthLabel {
+  margin: 0;
   font-size: var(--text-lg);
 }
 
@@ -82,4 +94,16 @@
 .dotMuted {
   background: var(--dark-grey);
   opacity: 0.35;
+}
+
+.mascotImage {
+  position: absolute;
+  left: 50%;
+  bottom: -32px;
+  width: 220px;
+  height: 220px;
+  transform: translateX(-50%);
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
 }
