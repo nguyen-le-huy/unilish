@@ -1,8 +1,7 @@
 import styles from './ActivityCard.module.css';
+import sickMascotUrl from '@/assets/images/sick.svg';
 
 type DotState = 'active' | 'inactive' | 'muted';
-
-const sickMascotUrl = 'https://www.figma.com/api/mcp/asset/8dc7baf3-4f95-4d0a-b31a-827f9cd7d7e2';
 
 const activityRows: DotState[][] = [
   Array.from({ length: 12 }, () => 'active'),

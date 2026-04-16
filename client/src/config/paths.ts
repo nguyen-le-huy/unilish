@@ -16,7 +16,6 @@ export const PATHS = {
         HOME: '/dashboard',
         RESULT: '/dashboard/result',
         WRITING: '/dashboard/writing',
-        WRITTING: '/dashboard/writting',
         SPEAKING: '/dashboard/speaking',
         LEARNING: '/dashboard/learning',
         ROADMAP: '/dashboard/roadmap',

@@ -21,9 +21,9 @@ export const LearningProgressCard = ({ className }: LearningProgressCardProps) =
           type="button"
           variant="ghost"
           padding="B"
-          fontSize={18}
+          fontSize={16}
           rightIcon={arrowDownIcon}
-          iconWidth={15}
+          iconWidth={12}
           textColor="black"
           className={styles.periodButton}
         >

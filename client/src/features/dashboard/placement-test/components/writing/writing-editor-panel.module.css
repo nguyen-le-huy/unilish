@@ -1,0 +1,90 @@
+.panel {
+    flex: 1;
+    padding: 0;
+    border-radius: 20px;
+    border: 1px solid var(--dark-grey);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-height: 80vh;
+    position: relative;
+    overflow: hidden;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--dark-grey);
+    padding: 20px;
+}
+
+.headerTitle,
+.wordCount {
+    margin: 0;
+    font-weight: 500;
+}
+
+.writingArea {
+    width: 100%;
+    padding: 20px;
+}
+
+.textArea {
+    height: 500px;
+    width: 100%;
+    padding: 20px;
+    border-radius: 20px;
+    border: 1px solid var(--dark-grey);
+    font-family: var(--font-family);
+    font-size: var(--text-base);
+    resize: none;
+}
+
+.textArea:focus-visible {
+    outline: 2px solid var(--dark-green);
+    outline-offset: 2px;
+}
+
+.textArea::placeholder {
+    font-style: italic;
+}
+
+.footer {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-top: 1px solid var(--dark-grey);
+}
+
+.timeBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.timeLabel {
+    margin: 0;
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--dark-grey);
+}
+
+.timeValue {
+    margin: 0;
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: black;
+}
+
+.timeoutText {
+    margin: 0;
+    color: var(--brand-blue-strong);
+    font-size: 14px;
+    font-weight: 500;
+}

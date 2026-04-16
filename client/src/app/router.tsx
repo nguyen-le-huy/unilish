@@ -16,7 +16,7 @@ const MarketingHomePage = React.lazy(() => import('@/features/marketing/pages/ho
 const OTPPage = React.lazy(() => import('@/features/auth/pages/OTPVerifyPage/OTPVerifyPage'));
 const ListeningReadingPage = React.lazy(() => import('@/features/dashboard/placement-test'));
 const AuthSuccessPage = React.lazy(() => import('@/features/auth/pages/AuthSuccessPage/AuthSuccessPage'));
-const WrittingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Writting/Writting'));
+const WritingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Writing/Writing'));
 const SpeakingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Speaking/Speaking'));
 const ResultPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Result/Result'));
 const RecommendCoursePage = React.lazy(() => import('@/features/dashboard/recommend-course/pages/RecommendCourse'));
@@ -130,7 +130,7 @@ export const router = createBrowserRouter([
                         path: 'placement-test/writing',
                         element: (
                             <Suspense fallback={<Loading />}>
-                                <WrittingPage />
+                                <WritingPage />
                             </Suspense>
                         ),
                     },

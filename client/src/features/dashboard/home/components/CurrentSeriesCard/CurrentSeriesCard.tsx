@@ -3,7 +3,7 @@ import clockIcon from '@/assets/images/clock.svg';
 import { Button } from '@/components/core/Button';
 import styles from './CurrentSeriesCard.module.css';
 
-const courseBannerUrl = 'https://www.figma.com/api/mcp/asset/73d288a2-2f42-46fd-967e-24d51a5041fa';
+const courseBannerUrl = 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=2346&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
 interface CurrentSeriesCardProps {
   className?: string;
@@ -17,7 +17,7 @@ export const CurrentSeriesCard = ({ className }: CurrentSeriesCardProps) => {
       <img src={courseBannerUrl} alt="Khoá Tiếng Pháp Du Lịch" className={styles.cover} />
 
       <div className={styles.content}>
-        <h2 className={styles.title}>Khoá Tiếng Pháp Du Lịch</h2>
+        <h2 className={styles.title}>Tiếng Pháp Du Lịch A2</h2>
 
         <div className={styles.metaRow}>
           <div className={styles.metaItem}>
