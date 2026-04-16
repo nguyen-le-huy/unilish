@@ -19,8 +19,8 @@ const AuthSuccessPage = React.lazy(() => import('@/features/auth/pages/AuthSucce
 const WrittingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Writting/Writting'));
 const SpeakingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Speaking/Speaking'));
 const ResultPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Result/Result'));
-const RecommendCoursePage = React.lazy(() => import('@/features/dashboard/recommend-course/pages/RecommendCourse/RecommendCourse'));
-const NotFoundPage = React.lazy(() => import('@/features/dashboard/not-found/pages/not-found-page/not-found-page'));
+const RecommendCoursePage = React.lazy(() => import('@/features/dashboard/recommend-course/pages/RecommendCourse'));
+const NotFoundPage = React.lazy(() => import('@/features/dashboard/not-found/not-found-page'));
 
 export const router = createBrowserRouter([
     {

@@ -1,7 +1,7 @@
 import bookIcon from '@/assets/images/book.svg';
 import clockIcon from '@/assets/images/clock.svg';
 import { Button } from '@/components/core/Button';
-import styles from './current-series-card.module.css';
+import styles from './CurrentSeriesCard.module.css';
 
 const courseBannerUrl = 'https://www.figma.com/api/mcp/asset/73d288a2-2f42-46fd-967e-24d51a5041fa';
 

@@ -7,8 +7,8 @@ import { PATHS } from '@/config/paths';
 import { queryClient } from '@/lib/react-query';
 import { useAuthStore } from '@/stores/auth.store';
 import type { ApiErrorResponse } from '@/types/common';
-import { useJoinRecommendedCourseMutation } from '../../hooks/use-join-recommended-course-mutation';
-import { useRecommendationsQuery } from '../../hooks/use-recommendations-query';
+import { useJoinRecommendedCourseMutation } from '../hooks/use-join-recommended-course-mutation';
+import { useRecommendationsQuery } from '../hooks/use-recommendations-query';
 import styles from './RecommendCourse.module.css';
 
 const SKELETON_CARD_COUNT = 4;

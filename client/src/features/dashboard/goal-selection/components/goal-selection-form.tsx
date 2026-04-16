@@ -10,8 +10,8 @@ import { useOnboardingDraftStore } from '@/stores/onboarding.store';
 import {
     GOAL_DESCRIPTION_FALLBACK,
     GOAL_EMPTY_STATE_MESSAGE,
-} from '../../constants/goal-selection.constants';
-import { useLearningGoalsQuery } from '../../hooks/use-learning-goals-query';
+} from '../constants/goal-selection.constants';
+import { useLearningGoalsQuery } from '../hooks/use-learning-goals-query';
 import planeIcon from '@/assets/icons/plane.svg';
 import styles from './goal-selection-form.module.css';
 

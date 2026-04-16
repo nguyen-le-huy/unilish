@@ -2,7 +2,7 @@ import avatarImage from '@/assets/images/hi.png';
 import top1Image from '@/assets/images/Top1.png';
 import top2Image from '@/assets/images/Top2.png';
 import top3Image from '@/assets/images/Top3.png';
-import styles from './ranking-card.module.css';
+import styles from './RankingCard.module.css';
 
 interface RankingEntry {
   id: number;

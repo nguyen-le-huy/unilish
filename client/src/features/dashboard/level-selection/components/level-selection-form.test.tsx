@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { User } from '@/features/auth/types';
 import { PATHS } from '@/config/paths';
 import type { UpdateOnboardingProfilePayload } from '@/features/dashboard/user/api/update-onboarding-profile';
-import { ERROR_ONBOARDING_FAILED } from '../../constants/level-selection.constants';
+import { ERROR_ONBOARDING_FAILED } from '../constants/level-selection.constants';
 import LevelSelectionForm from './level-selection-form';
 
 interface OnboardingMockState {

@@ -4,7 +4,7 @@ import clockIcon from '@/assets/images/clock.svg';
 import optimisticIcon from '@/assets/images/optimistic.svg';
 import tickIcon from '@/assets/images/tick.svg';
 import { Button } from '@/components/core/Button';
-import styles from './learning-progress-card.module.css';
+import styles from './LearningProgressCard.module.css';
 
 interface LearningProgressCardProps {
   className?: string;

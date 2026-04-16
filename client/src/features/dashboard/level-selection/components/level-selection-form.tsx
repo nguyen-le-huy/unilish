@@ -14,7 +14,7 @@ import {
 	ERROR_MISSING_LANGUAGE,
 	ERROR_ONBOARDING_FAILED,
 	LEVELS,
-} from '../../constants/level-selection.constants';
+} from '../constants/level-selection.constants';
 
 const LazyPlacementTestIntroModal = lazy(async () => {
 	const module = await import('@/features/dashboard/placement-test');

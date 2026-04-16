@@ -8,10 +8,10 @@ import { Loading } from '@/components/common/Loading/Loading';
 import { PATHS } from '@/config/paths';
 import { useAuthStore } from '@/stores/auth.store';
 import { useOnboardingDraftStore } from '@/stores/onboarding.store';
-import { FALLBACK_GREETING } from '../../constants/language-selection.constants';
-import { useAudioPlayer } from '../../hooks/use-audio-player';
-import { useLanguagesQuery } from '../../hooks/use-languages-query';
-import type { LanguageOption } from '../../types/language';
+import { FALLBACK_GREETING } from '../constants/language-selection.constants';
+import { useAudioPlayer } from '../hooks/use-audio-player';
+import { useLanguagesQuery } from '../hooks/use-languages-query';
+import type { LanguageOption } from '../types/language';
 import styles from './language-selection-form.module.css';
 
 const LanguageSelectionForm = () => {

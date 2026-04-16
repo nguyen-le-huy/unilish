@@ -1,7 +1,7 @@
 import happyImage from '@/assets/images/happy.svg';
 import thunderIcon from '@/assets/icons/thunder.svg';
 import { Button } from '@/components/core/Button';
-import styles from './upgrade-card.module.css';
+import styles from './UpgradeCard.module.css';
 
 interface UpgradeCardProps {
   className?: string;

@@ -1,5 +1,5 @@
 import styles from './language-selection-page.module.css';
-import LanguageSelectionForm from '../components/language-selection-form/language-selection-form';
+import LanguageSelectionForm from '../components/language-selection-form';
 
 const LanguageSelectionPage = () => {
     return (

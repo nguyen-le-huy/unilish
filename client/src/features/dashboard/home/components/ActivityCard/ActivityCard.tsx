@@ -1,4 +1,4 @@
-import styles from './activity-card.module.css';
+import styles from './ActivityCard.module.css';
 
 type DotState = 'active' | 'inactive' | 'muted';
 
