@@ -31,11 +31,14 @@ const mapPlacementQuestionItemToExam = (item: PlacementQuestionItem): IExamQuest
 
 export const toPlacementMcqModule = (examModules: IExamModule[]): IModuleMCQ => {
     const parts: PlacementPart[] = [];
+    let totalMinutes = 0;
 
     examModules.forEach((module) => {
         if (module.type !== 'listening' && module.type !== 'reading') {
             return;
         }
+
+        totalMinutes += module.timeLimitMinutes || 0;
 
         module.parts.forEach((part) => {
             parts.push({
@@ -68,7 +71,7 @@ export const toPlacementMcqModule = (examModules: IExamModule[]): IModuleMCQ => 
         order: 1,
         type: 'mcq',
         name: 'TOEIC Compact (Listening + Reading)',
-        timeLimitMinutes: 45,
+        timeLimitMinutes: totalMinutes > 0 ? totalMinutes : 120,
         showCountdown: true,
         allowBackNavigation: false,
         adaptive: true,
@@ -105,11 +108,15 @@ export const toExamModulesFromPlacementMcq = (module: IModuleMCQ): IExamModule[]
     const listeningParts = mappedParts.filter((part) => part.part <= 4);
     const readingParts = mappedParts.filter((part) => part.part >= 5);
 
+    const totalMinutes = module.timeLimitMinutes || 120;
+    const listeningMinutes = Math.round(totalMinutes * (45 / 120));
+    const readingMinutes = totalMinutes - listeningMinutes;
+
     return [
         {
             type: 'listening',
             name: 'Listening',
-            timeLimitMinutes: 45,
+            timeLimitMinutes: listeningMinutes,
             parts: listeningParts.length > 0
                 ? listeningParts
                 : (defaultListening?.parts ?? []),
@@ -117,7 +124,7 @@ export const toExamModulesFromPlacementMcq = (module: IModuleMCQ): IExamModule[]
         {
             type: 'reading',
             name: 'Reading',
-            timeLimitMinutes: 75,
+            timeLimitMinutes: readingMinutes,
             parts: readingParts.length > 0
                 ? readingParts
                 : (defaultReading?.parts ?? []),

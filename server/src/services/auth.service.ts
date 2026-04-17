@@ -362,7 +362,7 @@ export class AuthService {
             throw new AppError('JWT_SECRET is not defined', 500);
         }
         return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
-            expiresIn: '15m',
+            expiresIn: process.env.JWT_EXPIRES_IN || '15m',
         } as jwt.SignOptions);
     }
 
