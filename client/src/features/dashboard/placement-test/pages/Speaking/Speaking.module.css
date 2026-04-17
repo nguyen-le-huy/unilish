@@ -31,7 +31,7 @@
     background-color: white;
     border-radius: 20px;
     padding: 20px;
-    border: 1px solid var(--grey);
+    border: 1px solid var(--dark-grey);
 }
 
 .header {
@@ -61,7 +61,7 @@
     display: grid;
     place-items: center;
     padding: 100px 0;
-    border: 1px solid var(--grey);
+    border: 1px solid var(--dark-grey);
 }
 
 .content {

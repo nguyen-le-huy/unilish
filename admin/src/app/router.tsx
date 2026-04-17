@@ -25,6 +25,9 @@ const QuestionBankPage = lazy(() => import("@/features/question-bank/pages/Quest
 const QuestionEditorPage = lazy(() => import("@/features/question-bank/pages/QuestionEditorPage/QuestionEditorPage"));
 const PlacementTestListPage = lazy(() => import("@/features/placement-test/pages/PlacementTestListPage/PlacementTestListPage"));
 const PlacementTestWizardPage = lazy(() => import("@/features/placement-test/pages/PlacementTestWizardPage/PlacementTestWizardPage"));
+const ExamTestListPage = lazy(() => import("@/features/exam-tests/pages/ExamTestListPage/ExamTestListPage"));
+const ExamTestWizardPage = lazy(() => import("@/features/exam-tests/pages/ExamTestWizardPage/ExamTestWizardPage"));
+const ToeicTestWizardPage = lazy(() => import("@/features/exam-tests/pages/ToeicTestWizardPage/ToeicTestWizardPage"));
 const pageLoaderFallback = (
     <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -155,6 +158,38 @@ export const router = createBrowserRouter([
                 element: (
                     <Suspense fallback={pageLoaderFallback}>
                         <PlacementTestWizardPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "exam-tests",
+                element: (
+                    <Suspense fallback={pageLoaderFallback}>
+                        <ExamTestListPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "exam-tests/create",
+                element: (
+                    <Suspense fallback={pageLoaderFallback}>
+                        <ExamTestWizardPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "exam-tests/create/toeic",
+                element: (
+                    <Suspense fallback={pageLoaderFallback}>
+                        <ToeicTestWizardPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "exam-tests/:id/edit",
+                element: (
+                    <Suspense fallback={pageLoaderFallback}>
+                        <ExamTestWizardPage />
                     </Suspense>
                 ),
             },

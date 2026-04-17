@@ -157,6 +157,11 @@ export const sidebarConfig: SidebarConfig = {
           description: "Quản lý bài kiểm tra xếp lớp theo ngôn ngữ",
         },
         {
+          title: "Quản lý Bài Thi",
+          url: "/exam-tests",
+          description: "Đề thi thử TOEIC L&R và IELTS theo chuẩn quốc tế",
+        },
+        {
           title: "Tài nguyên mở rộng",
           url: "/curriculum/resources",
           description: "News (CNN/BBC) & YouTube Gap-Fill",

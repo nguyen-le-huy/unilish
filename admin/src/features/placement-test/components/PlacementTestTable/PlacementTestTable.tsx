@@ -1,4 +1,5 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { MoreHorizontal, Pencil, BarChart2, History, Pause, Play, Archive, Send, Database } from 'lucide-react';
 import {
@@ -19,9 +20,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { placementTestApi } from '../../api/placement-test.api';
+import { PLACEMENT_TEST_QUERY_KEYS } from '../../constants/query-keys';
 import { StatusBadge } from '../StatusBadge/StatusBadge';
 import { usePushToQuestionBank } from '../../hooks/usePlacementTestMutations';
-import type { IPlacementTestSummary } from '../../types';
+import type { IPlacementTestModule, IPlacementTestSummary } from '../../types';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -32,6 +35,17 @@ interface Props {
     onOpenAnalytics: (id: string) => void;
     onOpenVersionHistory: (id: string) => void;
 }
+
+interface PlacementSummaryWithModules extends IPlacementTestSummary {
+    modules?: IPlacementTestModule[];
+}
+
+const extractModuleNames = (modules: IPlacementTestModule[] | undefined): string[] => {
+    if (!modules) return [];
+    return modules
+        .map((module) => module.name?.trim())
+        .filter((name): name is string => Boolean(name));
+};
 
 // ─── Skeleton Row ─────────────────────────────────────────────────────────────
 
@@ -74,6 +88,7 @@ export function PlacementTestTable({
     onOpenVersionHistory,
 }: Props) {
     const navigate = useNavigate();
+    const summaryWithModules = data as PlacementSummaryWithModules[];
 
     const handleEdit = useCallback(
         (id: string) => navigate(`/placement-tests/${id}/edit`),
@@ -88,6 +103,39 @@ export function PlacementTestTable({
     );
 
     const { mutate: pushToQuestionBank, isPending: isPushing } = usePushToQuestionBank();
+
+    const moduleDetailQueries = useQueries({
+        queries: summaryWithModules.map((test) => {
+            const hasInlineModules = Array.isArray(test.modules);
+            const hasModuleCount = typeof test.moduleCount === 'number';
+
+            return {
+                queryKey: PLACEMENT_TEST_QUERY_KEYS.detail(test._id),
+                queryFn: () => placementTestApi.getById(test._id),
+                enabled: !isLoading && !hasInlineModules && !hasModuleCount,
+                staleTime: 60 * 1000,
+            };
+        }),
+    });
+
+    const modulesByTestId = useMemo(() => {
+        const result = new Map<string, { count: number; names: string[] }>();
+
+        summaryWithModules.forEach((test, index) => {
+            const inlineModules = Array.isArray(test.modules) ? test.modules : undefined;
+            const detailModules = moduleDetailQueries[index]?.data?.modules;
+            const modules = inlineModules ?? detailModules;
+
+            if (modules) {
+                result.set(test._id, {
+                    count: modules.length,
+                    names: extractModuleNames(modules),
+                });
+            }
+        });
+
+        return result;
+    }, [summaryWithModules, moduleDetailQueries]);
 
     return (
         <div className="rounded-md border">
@@ -108,8 +156,15 @@ export function PlacementTestTable({
                         ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow index={i} key={i} />)
                         : data.length === 0
                             ? <EmptyState />
-                            : data.map((test) => (
-                                <TableRow key={test._id} className="hover:bg-muted/40">
+                            : data.map((test, index) => {
+                                const moduleInfo = modulesByTestId.get(test._id);
+                                const moduleCount = typeof test.moduleCount === 'number'
+                                    ? test.moduleCount
+                                    : moduleInfo?.count;
+                                const isLoadingModules = moduleDetailQueries[index]?.isFetching;
+
+                                return (
+                                    <TableRow key={test._id} className="hover:bg-muted/40">
                                     {/* Name + Language */}
                                     <TableCell>
                                         <div className="flex flex-col gap-0.5">
@@ -139,9 +194,25 @@ export function PlacementTestTable({
 
                                     {/* Module count */}
                                     <TableCell>
-                                        <span className="text-sm text-muted-foreground">
-                                            {test.moduleCount ?? 0} modules
-                                        </span>
+                                        {isLoadingModules && moduleCount === undefined ? (
+                                            <span className="text-xs text-muted-foreground">
+                                                Đang tải modules...
+                                            </span>
+                                        ) : (
+                                            <div className="flex max-w-64 flex-col gap-0.5">
+                                                <span className="text-sm text-muted-foreground">
+                                                    {moduleCount !== undefined ? `${moduleCount} modules` : 'Chưa có dữ liệu'}
+                                                </span>
+                                                {moduleInfo && moduleInfo.names.length > 0 && (
+                                                    <span
+                                                        className="truncate text-xs text-muted-foreground"
+                                                        title={moduleInfo.names.join(', ')}
+                                                    >
+                                                        {moduleInfo.names.join(', ')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </TableCell>
 
                                     {/* Updated at */}
@@ -220,8 +291,9 @@ export function PlacementTestTable({
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
-                                </TableRow>
-                            ))
+                                    </TableRow>
+                                );
+                            })
                     }
                 </TableBody>
             </Table>

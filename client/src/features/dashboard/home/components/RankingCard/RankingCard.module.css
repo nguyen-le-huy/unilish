@@ -53,6 +53,10 @@
   min-height: 84px;
 }
 
+.rankItem:last-child {
+  border-bottom: none;
+}
+
 .userInfo {
   display: flex;
   align-items: center;

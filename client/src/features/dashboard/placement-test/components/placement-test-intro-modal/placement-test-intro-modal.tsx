@@ -39,7 +39,7 @@ const MODULES: ModuleRow[] = [
 		number: 3,
 		name: 'IELTS Speaking',
 		content: 'Phỏng vấn 1:1 với AI Examiner',
-		duration: '~15 phút',
+		duration: '15 phút',
 	},
 ];
 
@@ -47,7 +47,7 @@ const CHECKLIST: ChecklistItem[] = [
 	{ label: 'Tai nghe', detail: 'để nghe rõ audio phần Listening' },
 	{ label: 'Internet ổn định', detail: 'tránh mất kết nối giữa chừng' },
 	{ label: 'Nơi yên tĩnh', detail: 'giúp tập trung làm bài hiệu quả hơn' },
-	{ label: '~0 phút liên tục', detail: 'không thể tạm dừng giữa chừng' },
+	{ label: 'Làm bài liên tục', detail: 'không thể tạm dừng giữa chừng' },
 ];
 
 const PlacementTestIntroModal = ({ onClose }: Props) => {
@@ -106,7 +106,7 @@ const PlacementTestIntroModal = ({ onClose }: Props) => {
 						className={styles.oupLogo}
 					/>
 					<h2 id="pt-modal-title" className={styles.title}>
-						Bài Kiểm Tra Đầu Vào Theo OUP
+						Bài Kiểm Tra Đầu Vào
 					</h2>
 					<p className={styles.subtitle}>
 						Chúng tôi sẽ đánh giá kỹ năng Listening và Reading của bạn để tạo lộ trình
