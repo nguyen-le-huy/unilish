@@ -61,13 +61,13 @@ export const MissionEditor = () => {
                     <div className="space-y-2">
                         <CardTitle className="text-lg">Gợi ý Tình huống (Hints)</CardTitle>
                         <CardDescription>
-                            Gợi ý có cấu trúc để người dùng tham khảo khi "bí" từ. Nên có 4 gợi ý theo thứ tự:
+                            Gợi ý có cấu trúc để người dùng tham khảo khi bí từ. Có thể linh hoạt theo từng tình huống, không bắt buộc mở đầu bằng câu chào.
                         </CardDescription>
                         <div className="space-y-1 text-xs text-muted-foreground pl-4">
-                            <p>1. <span className="font-medium">Name + Background</span> → "Hi, I'm [Name]. I study at..."</p>
-                            <p>2. <span className="font-medium">Current Role</span> → "I'm interning as a frontend developer..."</p>
-                            <p>3. <span className="font-medium">Technical Skills</span> → "I mainly work with React / MERN stack..."</p>
-                            <p>4. <span className="font-medium">Personality/Motivation</span> → "I'm excited to learn / contribute..."</p>
+                            <p>1. <span className="font-medium">Bối cảnh / Vai trò</span> → Bạn đang ở đâu, vai trò là gì trong tình huống này</p>
+                            <p>2. <span className="font-medium">Mục tiêu / Vấn đề</span> → Điều bạn cần giải quyết hoặc mong muốn đạt được</p>
+                            <p>3. <span className="font-medium">Chi tiết quan trọng</span> → Thông tin bổ sung, ràng buộc, mốc thời gian...</p>
+                            <p>4. <span className="font-medium">Kết quả mong muốn</span> → Cách bạn muốn cuộc hội thoại kết thúc</p>
                         </div>
                     </div>
                 </CardHeader>
@@ -75,26 +75,26 @@ export const MissionEditor = () => {
                     {fields.length > 0 ? (
                         <div className="space-y-3">
                             {fields.map((field, index) => {
-                                const hintLabels = ['Name + Background', 'Current Role', 'Technical Skills', 'Personality/Motivation'];
+                                const hintLabels = ['Bối cảnh / Vai trò', 'Mục tiêu / Vấn đề', 'Chi tiết quan trọng', 'Kết quả mong muốn'];
                                 const viPlaceholders = [
-                                    'Chào, tôi là [Tên]. Tôi học tại...',
-                                    'Tôi đang thực tập với vị trí lập trình viên frontend...',
-                                    'Tôi chủ yếu làm việc với React / MERN stack...',
-                                    'Tôi rất hào hứng được học hỏi / đóng góp...'
+                                    'Ví dụ: Tôi là hành khách trên chuyến bay VN123 vừa hạ cánh...',
+                                    'Ví dụ: Tôi cần báo mất hành lý và nhờ hỗ trợ tìm lại...',
+                                    'Ví dụ: Vali màu xanh, thẻ hành lý số..., tôi đã chờ hơn 30 phút...',
+                                    'Ví dụ: Tôi mong nhận được cập nhật sớm và hướng dẫn bước tiếp theo...'
                                 ];
                                 const enPlaceholders = [
-                                    "Hi, I'm [Name]. I study at...",
-                                    "I'm interning as a frontend developer...",
-                                    "I mainly work with React / MERN stack...",
-                                    "I'm excited to learn / contribute..."
+                                    "Example: I'm a passenger on flight VN123 that just landed...",
+                                    'Example: I need to report a lost bag and ask for support...',
+                                    'Example: Blue suitcase, baggage tag number..., waited for 30+ minutes...',
+                                    'Example: I would like an update soon and clear next steps...'
                                 ];
                                 const structurePlaceholders = [
-                                    "My name is _____. I'm from _____. I study at _____.",
-                                    "I'm working as _____ at _____. / I'm currently studying _____.",
-                                    "I mainly work with _____ and _____. / My tech stack includes _____.",
-                                    "I'm excited to _____. / I'm passionate about _____."
+                                    'I am _____ in this situation. / I am currently at _____.',
+                                    'I need to _____ because _____.',
+                                    'Important details: _____, _____, and _____.',
+                                    'Could you please _____ so that _____?'
                                 ];
-                                
+
                                 return (
                                     <div key={field.id} className="group rounded-lg border bg-card p-4 transition-all hover:shadow-sm">
                                         <div className="mb-3 flex items-center justify-between">
@@ -103,7 +103,7 @@ export const MissionEditor = () => {
                                                     {index + 1}
                                                 </span>
                                                 <span className="text-sm font-medium text-muted-foreground">
-                                                    {hintLabels[index] || 'Extra Hint'}
+                                                    {hintLabels[index] || 'Gợi ý mở rộng'}
                                                 </span>
                                             </div>
                                             <Button
@@ -164,7 +164,7 @@ export const MissionEditor = () => {
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-                            <p className="text-sm">Chưa có gợi ý nào. Hãy thêm gợi ý theo cấu trúc 4 bước bên trên.</p>
+                            <p className="text-sm">Chưa có gợi ý nào. Hãy thêm gợi ý theo ngữ cảnh thực tế của tình huống.</p>
                         </div>
                     )}
 

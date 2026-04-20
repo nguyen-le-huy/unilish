@@ -85,7 +85,7 @@ interface GenerateMissionResult {
         firstMessage: string;
         systemInstruction: string;
     };
-    hints: Array<{ vi: string; en: string }>;
+    hints: Array<{ vi: string; en: string; structure?: string }>;
 }
 
 export const speakingService = {
@@ -230,11 +230,21 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no extra
     "systemInstruction": "You are [role] in a real-world scenario. Stay FULLY in character at all times. You are NOT a language teacher. React naturally as a real [role] would — if the learner is unclear, ask them to repeat in character (e.g. 'Sorry, could you repeat that?'), never correct pronunciation or teach. Move the conversation forward naturally. Keep responses short and conversational. [Add 3-5 sentences describing the specific scenario, what the character wants from the learner, and how the conversation should progress.]"
   },
   "hints": [
-    { "vi": "Vietnamese hint for the learner", "en": "English translation of the hint" },
-    { "vi": "Vietnamese hint 2", "en": "English hint 2" },
-    { "vi": "Vietnamese hint 3", "en": "English hint 3" }
+    {
+      "vi": "Vietnamese hint for the learner",
+      "en": "English translation of the hint",
+      "structure": "Sentence pattern with blanks using _____"
+    },
+    { "vi": "Vietnamese hint 2", "en": "English hint 2", "structure": "Sentence pattern with blanks using _____" },
+    { "vi": "Vietnamese hint 3", "en": "English hint 3", "structure": "Sentence pattern with blanks using _____" },
+    { "vi": "Vietnamese hint 4", "en": "English hint 4", "structure": "Sentence pattern with blanks using _____" }
   ]
-}`;
+}
+
+Rules for hints:
+- Each hint MUST include vi, en, and structure.
+- "structure" must be a practical sentence pattern that matches the same hint and uses _____ placeholders.
+- Do NOT force the first hint to be a greeting. Start with the most natural step for the scenario context.`;
 
         let raw = '{}';
         try {
@@ -278,7 +288,36 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no extra
                 firstMessage: parsed.aiConfig?.firstMessage ?? 'Hello! Let\'s begin.',
                 systemInstruction: parsed.aiConfig?.systemInstruction ?? '',
             },
-            hints: Array.isArray(parsed.hints) ? parsed.hints : [],
+            hints: Array.isArray(parsed.hints)
+                ? parsed.hints
+                    .map((hint) => {
+                        if (!hint || typeof hint !== 'object') {
+                            return null;
+                        }
+
+                        const normalizedHint = hint as {
+                            vi?: unknown;
+                            en?: unknown;
+                            structure?: unknown;
+                        };
+                        const vi = typeof normalizedHint.vi === 'string' ? normalizedHint.vi.trim() : '';
+                        const en = typeof normalizedHint.en === 'string' ? normalizedHint.en.trim() : '';
+                        const structure = typeof normalizedHint.structure === 'string'
+                            ? normalizedHint.structure.trim()
+                            : '';
+
+                        if (!vi || !en) {
+                            return null;
+                        }
+
+                        return {
+                            vi,
+                            en,
+                            ...(structure ? { structure } : {}),
+                        };
+                    })
+                    .filter((hint): hint is { vi: string; en: string; structure?: string } => hint !== null)
+                : [],
         };
     },
 

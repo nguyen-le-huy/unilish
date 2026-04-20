@@ -27,6 +27,7 @@ export const GradingConfigSchema = z.object({
 export const SpeakingHintSchema = z.object({
     vi: z.string().min(1, 'Không được để trống'),
     en: z.string().min(1, 'Không được để trống'),
+    structure: z.string().optional(),
 });
 
 // ─── GET /:lessonId/speaking/content ────────────────────────────────────────

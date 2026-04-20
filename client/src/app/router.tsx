@@ -21,6 +21,7 @@ const SpeakingPage = React.lazy(() => import('@/features/dashboard/placement-tes
 const ResultPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Result/Result'));
 const RecommendCoursePage = React.lazy(() => import('@/features/dashboard/recommend-course/pages/RecommendCourse'));
 const NotFoundPage = React.lazy(() => import('@/features/dashboard/not-found/not-found-page'));
+const AIVoicePage = React.lazy(() => import('@/features/dashboard/ai-voice/pages/AIVoice'));
 
 export const router = createBrowserRouter([
     {
@@ -163,6 +164,14 @@ export const router = createBrowserRouter([
                         element: (
                             <Suspense fallback={<Loading />}>
                                 <RecommendCoursePage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'ai-voice',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <AIVoicePage />
                             </Suspense>
                         ),
                     },

@@ -17,10 +17,11 @@ interface Props {
     items: VocabItem[];
     passingScore: number;
     generationStatus: VocabGenerationStatus;
+    isGeneratingVocab: boolean;
     isSaving: boolean;
     isGeneratingAudio: boolean;
     onSave: () => void;
-    onGenerateVocab: (config: { wordCount: number; wordList?: string[] }) => void;
+    onGenerateVocab: (config: { wordCount: number; wordList?: string[] }) => Promise<boolean>;
     onGenerateAllAudio: () => void;
 }
 
@@ -43,6 +44,7 @@ export const VocabTopBar = memo(function VocabTopBar({
     items,
     passingScore,
     generationStatus,
+    isGeneratingVocab,
     isSaving,
     isGeneratingAudio,
     onSave,
@@ -50,7 +52,9 @@ export const VocabTopBar = memo(function VocabTopBar({
     onGenerateAllAudio,
 }: Props) {
     const isGenerating =
-        generationStatus === 'GENERATING' || generationStatus === 'GENERATING_AUDIO';
+        isGeneratingVocab ||
+        generationStatus === 'GENERATING' ||
+        generationStatus === 'GENERATING_AUDIO';
 
     const badge = STATUS_BADGE[generationStatus];
 

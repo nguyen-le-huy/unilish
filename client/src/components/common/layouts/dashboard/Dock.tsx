@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import styles from './Dashboard-Layout.module.css';
 import bookImage from '@/assets/images/dock/Books.png';
 import faceTimeImage from '@/assets/images/dock/FaceTime.png';
@@ -14,11 +15,12 @@ import siriImage from '@/assets/images/dock/Siri.png';
 interface DockItem {
   src: string;
   alt: string;
+  path?: string;
 }
 
 const dockItems: DockItem[] = [
-  { src: finderImage, alt: 'Finder' },
-  { src: faceTimeImage, alt: 'FaceTime' },
+  { src: finderImage, alt: 'Home', path: '/dashboard' },
+  { src: faceTimeImage, alt: 'AI Voice', path: '/dashboard/ai-voice' },
   { src: photosImage, alt: 'Photos' },
   { src: newsImage, alt: 'News' },
   { src: settingsImage, alt: 'Settings' },
@@ -31,10 +33,17 @@ const dockItems: DockItem[] = [
 ];
 
 const Dock = () => {
+  const navigate = useNavigate();
+
   return (
     <div className={styles.dock}>
       {dockItems.map((item) => (
-        <div key={item.alt} className={styles.dockItem}>
+        <div 
+          key={item.alt} 
+          className={styles.dockItem}
+          onClick={() => item.path && navigate(item.path)}
+          style={{ cursor: item.path ? 'pointer' : 'default' }}
+        >
           <span className={styles.dockLabel}>{item.alt}</span>
           <img src={item.src} alt={item.alt} className={styles.dockImage} />
         </div>

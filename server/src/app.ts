@@ -115,6 +115,7 @@ import placementSessionRouter from './routes/placement-session.route.js';
 import speakingExaminerRouter from './routes/speaking-examiner.route.js';
 import azureSpeechRouter from './routes/azure-speech.route.js';
 import speakingPipelineRouter from './routes/speaking-pipeline.route.js';
+import aiVoiceRouter from './routes/ai-voice.route.js';
 import recommendationRouter from './routes/recommendation.route.js';
 import { streamListeningAudio } from './controllers/listening.controller.js';
 
@@ -148,6 +149,7 @@ app.use('/api/placement-sessions', placementSessionRouter);
 app.use('/api/speaking', speakingExaminerRouter);
 app.use('/api/v1/azure-speech', azureSpeechRouter);
 app.use('/api/v1/speaking', speakingPipelineRouter);
+app.use('/api/v1/ai-voice', aiVoiceRouter);
 app.use('/api/v1/recommendations', recommendationRouter);
 
 app.get('/', (req, res) => {

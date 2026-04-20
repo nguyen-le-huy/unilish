@@ -1,0 +1,234 @@
+.chatWindow {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-5);
+	padding-bottom: 160px;
+}
+
+.closeRow {
+	width: 100%;
+	display: flex;
+	justify-content: flex-end;
+}
+
+.closeButton {
+	width: 20px;
+	height: 20px;
+	border: none;
+	background: transparent;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: opacity 0.3s ease;
+}
+
+.closeButton:hover {
+	opacity: 0.5;
+}
+
+.closeButton:focus-visible {
+	outline: 2px solid var(--green);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+.closeIcon {
+	width: 20px;
+	height: 20px;
+	object-fit: contain;
+}
+
+.messageList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-5);
+	overflow-y: auto;
+	padding-right: var(--space-2);
+}
+
+.messageRow {
+	width: 100%;
+	display: flex;
+	align-items: flex-start;
+}
+
+.messageRowRight {
+	justify-content: flex-end;
+}
+
+.messageBubble {
+	border-radius: 20px;
+	padding: var(--space-5);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+
+.systemInfoBubble {
+	background: var(--brand-blue-muted);
+	border: 1px solid #bcc3e8;
+	max-width: 650px;
+}
+
+.systemInfoLabel {
+	margin: 0;
+	font-size: var(--text-sm);
+	font-weight: 700;
+	color: var(--brand-blue);
+}
+
+.aiBubble {
+	background: var(--light-grey);
+	max-width: 650px;
+	border: 1px solid var(--dark-grey);
+}
+
+.userBubble {
+	background: var(--dark-green);
+	max-width: 650px;
+}
+
+.aiMessageText,
+.userMessageText,
+.translationText {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 400;
+	line-height: 1.5;
+}
+
+.aiMessageText,
+.translationText {
+	color: var(--dark-green);
+}
+
+.userMessageText {
+	color: white;
+}
+
+.aiMessageWithTranslate {
+	width: 100%;
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--space-5);
+}
+
+.aiMessageWithTranslate .aiMessageText {
+	flex: 1;
+	min-width: 0;
+}
+
+.translateButton {
+	width: 24px;
+	height: 24px;
+	min-width: 24px;
+	min-height: 24px;
+	flex: 0 0 auto;
+	border: none;
+	background: transparent;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+}
+
+.translateButton:disabled {
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+.translateButton:focus-visible {
+	outline: 2px solid var(--green);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+.translateIcon {
+	width: 24px;
+	height: 24px;
+	flex: 0 0 auto;
+	object-fit: contain;
+}
+
+.translationHint,
+.translationError,
+.translationLabel,
+.emptyState {
+	margin: 0;
+	font-size: var(--text-sm);
+	line-height: 1.4;
+}
+
+.translationHint,
+.emptyState {
+	color: var(--dark-grey);
+}
+
+.translationError {
+	color: #b3261e;
+}
+
+
+
+.translationLabel {
+	color: var(--dark-grey);
+	font-weight: 700;
+	margin-bottom: var(--space-1);
+}
+
+.endedBanner {
+	border: 1px solid var(--green);
+	background: #f2f8ed;
+	border-radius: 10px;
+	padding: var(--space-4);
+	color: var(--dark-green);
+	font-size: var(--text-base);
+	line-height: 1.5;
+}
+
+.micControlArea {
+	position: fixed;
+	bottom: 100px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	justify-content: center;
+	padding-top: var(--space-5);
+	pointer-events: none;
+}
+
+.micControlArea>* {
+	pointer-events: auto;
+}
+
+@media (max-width: 900px) {
+	.chatWindow {
+		min-height: 640px;
+		padding-bottom: 148px;
+	}
+
+	.messageList {
+		max-height: calc(100vh - 300px);
+	}
+
+	.aiBubble,
+	.userBubble,
+	.systemInfoBubble {
+		max-width: 100%;
+	}
+
+	.aiMessageText,
+	.userMessageText,
+	.translationText {
+		font-size: 20px;
+	}
+
+	.micControlArea {
+		bottom: 88px;
+	}
+}

@@ -107,17 +107,23 @@ export const VocabStudio = memo(function VocabStudio({ lesson }: Props) {
     }, [generateAudioMutation]);
 
     const handleGenerate = useCallback(
-        (config: { wordCount: number; wordList?: string[] }) => {
-            generateMutation.mutate(config, {
-                onSuccess: () => {
-                    notification.success('Đang tạo từ vựng… Âm thanh sẽ được tạo tự động sau.');
-                    // Trigger audio generation as a separate independent mutation
-                    // to keep error handling isolated from the vocab generation step.
-                    handleGenerateAllAudio();
-                },
-                onError: () => notification.error('Lỗi khi tạo từ vựng'),
-            });
-        },
+        (config: { wordCount: number; wordList?: string[] }) =>
+            new Promise<boolean>((resolve) => {
+                notification.info('Đang tạo từ vựng, vui lòng chờ…');
+                generateMutation.mutate(config, {
+                    onSuccess: () => {
+                        notification.success('Đã gửi yêu cầu tạo từ vựng. Âm thanh sẽ được tạo tự động sau.');
+                        // Trigger audio generation as a separate independent mutation
+                        // to keep error handling isolated from the vocab generation step.
+                        handleGenerateAllAudio();
+                        resolve(true);
+                    },
+                    onError: () => {
+                        notification.error('Lỗi khi tạo từ vựng');
+                        resolve(false);
+                    },
+                });
+            }),
         [generateMutation, handleGenerateAllAudio],
     );
 
@@ -186,63 +192,64 @@ export const VocabStudio = memo(function VocabStudio({ lesson }: Props) {
 
     return (
         <div className="flex h-full flex-col overflow-hidden">
-                {/* Top Bar */}
-                <VocabTopBar
-                    lessonId={lessonId}
-                    lessonTitle={lesson.title}
-                    itemCount={items.length}
-                    items={items}
-                    passingScore={lesson.practiceConfig.passingScore}
-                    generationStatus={generationStatus}
-                    isSaving={saveMutation.isPending}
-                    isGeneratingAudio={generateAudioMutation.isPending}
-                    onSave={handleSave}
-                    onGenerateVocab={handleGenerate}
-                    onGenerateAllAudio={handleGenerateAllAudio}
-                />
+            {/* Top Bar */}
+            <VocabTopBar
+                lessonId={lessonId}
+                lessonTitle={lesson.title}
+                itemCount={items.length}
+                items={items}
+                passingScore={lesson.practiceConfig.passingScore}
+                generationStatus={generationStatus}
+                isGeneratingVocab={generateMutation.isPending}
+                isSaving={saveMutation.isPending}
+                isGeneratingAudio={generateAudioMutation.isPending}
+                onSave={handleSave}
+                onGenerateVocab={handleGenerate}
+                onGenerateAllAudio={handleGenerateAllAudio}
+            />
 
-                {/* Generation Progress Banner */}
-                {generationStatus !== 'IDLE' && generationStatus !== 'DONE' && (
-                    <div className="shrink-0 px-4 pt-3">
-                        <GenerationProgress
-                            status={generationStatus}
-                            completedCount={statusData?.completedCount ?? 0}
-                            totalCount={statusData?.totalCount ?? items.length}
-                        />
-                    </div>
-                )}
-
-                {/* Split Pane: Navigator | Editor */}
-                <div className="flex flex-1 overflow-hidden">
-                    {/* Left: Item Navigator */}
-                    <div className="w-2/5 overflow-hidden">
-                        <VocabNavigator
-                            items={items}
-                            selectedItemId={selectedItem?.id ?? null}
-                            onSelectItem={selectItem}
-                            onReorder={handleReorder}
-                            onAddItem={handleAddItem}
-                            generationDone={generationStatus === 'DONE'}
-                        />
-                    </div>
-
-                    {/* Right: Review Editor */}
-                    <div className="flex-1 overflow-hidden">
-                        {effectiveItem ? (
-                            <VocabReviewEditor
-                                lessonId={lessonId}
-                                item={effectiveItem}
-                                scenario={content?.scenario ?? ''}
-                                onItemChange={handleItemChange}
-                                onImageUpload={handleImageUpload}
-                            />
-                        ) : (
-                            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                                <p>Chọn một từ để chỉnh sửa</p>
-                            </div>
-                        )}
-                    </div>
+            {/* Generation Progress Banner */}
+            {generationStatus !== 'IDLE' && generationStatus !== 'DONE' && (
+                <div className="shrink-0 px-4 pt-3">
+                    <GenerationProgress
+                        status={generationStatus}
+                        completedCount={statusData?.completedCount ?? 0}
+                        totalCount={statusData?.totalCount ?? items.length}
+                    />
                 </div>
+            )}
+
+            {/* Split Pane: Navigator | Editor */}
+            <div className="flex flex-1 overflow-hidden">
+                {/* Left: Item Navigator */}
+                <div className="w-2/5 overflow-hidden">
+                    <VocabNavigator
+                        items={items}
+                        selectedItemId={selectedItem?.id ?? null}
+                        onSelectItem={selectItem}
+                        onReorder={handleReorder}
+                        onAddItem={handleAddItem}
+                        generationDone={generationStatus === 'DONE'}
+                    />
+                </div>
+
+                {/* Right: Review Editor */}
+                <div className="flex-1 overflow-hidden">
+                    {effectiveItem ? (
+                        <VocabReviewEditor
+                            lessonId={lessonId}
+                            item={effectiveItem}
+                            scenario={content?.scenario ?? ''}
+                            onItemChange={handleItemChange}
+                            onImageUpload={handleImageUpload}
+                        />
+                    ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                            <p>Chọn một từ để chỉnh sửa</p>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 });

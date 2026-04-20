@@ -21,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 interface Props {
     isVocabGenerating: boolean;
-    onGenerateVocab: (config: { wordCount: number; wordList?: string[] }) => void;
+    onGenerateVocab: (config: { wordCount: number; wordList?: string[] }) => Promise<boolean>;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -31,21 +31,28 @@ export const AiAssistantSheet = memo(function AiAssistantSheet({
     onGenerateVocab,
 }: Props) {
     // ── Vocab gen state ──────────────────────────────────────────────────────
+    const [isOpen, setIsOpen] = useState(false);
     const [wordCount, setWordCount] = useState(10);
     const [rawWordList, setRawWordList] = useState('');
 
     // ── Handlers ─────────────────────────────────────────────────────────────
 
-    const handleGenerateVocab = () => {
+    const handleGenerateVocab = async () => {
         const wordList = rawWordList
             .split(/[\n,]+/)
             .map((w) => w.trim())
             .filter(Boolean);
 
-        onGenerateVocab({
+        const isSuccess = await onGenerateVocab({
             wordCount: wordList.length > 0 ? wordList.length : wordCount,
             wordList: wordList.length > 0 ? wordList : undefined,
         });
+
+        if (isSuccess) {
+            setIsOpen(false);
+            setWordCount(10);
+            setRawWordList('');
+        }
     };
 
     const customWords = rawWordList
@@ -54,7 +61,7 @@ export const AiAssistantSheet = memo(function AiAssistantSheet({
         .filter(Boolean);
 
     return (
-        <Sheet>
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
                 <Button
                     variant="outline"
@@ -105,7 +112,7 @@ export const AiAssistantSheet = memo(function AiAssistantSheet({
                                 step={1}
                                 value={[wordCount]}
                                 onValueChange={([v = 10]) => setWordCount(v)}
-                                disabled={customWords.length > 0}
+                                disabled={customWords.length > 0 || isVocabGenerating}
                                 aria-label="Số lượng từ"
                             />
                             <div className="flex justify-between text-[10px] text-muted-foreground">
@@ -127,6 +134,7 @@ export const AiAssistantSheet = memo(function AiAssistantSheet({
                                 onChange={(e) => setRawWordList(e.target.value)}
                                 rows={4}
                                 className="resize-none text-xs"
+                                disabled={isVocabGenerating}
                             />
                             <p className="text-[10px] text-muted-foreground">
                                 Mỗi từ trên một dòng hoặc phân cách bằng dấu phẩy.

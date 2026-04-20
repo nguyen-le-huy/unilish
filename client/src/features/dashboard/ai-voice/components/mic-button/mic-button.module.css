@@ -1,0 +1,174 @@
+.micButton {
+	position: relative;
+	width: 80px;
+	height: 80px;
+	border-radius: 999px;
+	border: none;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: opacity 0.3s ease;
+}
+
+.micButton:hover {
+	opacity: 0.85;
+}
+
+.micButton:focus-visible {
+	outline: 2px solid var(--green);
+	outline-offset: 2px;
+}
+
+.micButton:disabled {
+	cursor: not-allowed;
+	opacity: 1;
+}
+
+.micIcon {
+	width: 30px;
+	height: 30px;
+	object-fit: contain;
+}
+
+.idle {
+	background: var(--dark-green);
+}
+
+.recording {
+	background: #e53935;
+	animation: recordingGlow 1.25s ease-in-out infinite;
+}
+
+.recording::before {
+	content: '';
+	position: absolute;
+	inset: -8px;
+	border-radius: 999px;
+	border: 2px solid rgba(229, 57, 53, 0.45);
+	animation: recordingRing 1.6s ease-out infinite;
+	pointer-events: none;
+}
+
+.recording .micIcon {
+	animation: waveBlink 0.95s ease-in-out infinite;
+}
+
+.processing {
+	background: #f6b73c;
+}
+
+.aiSpeaking {
+	background: var(--brand-blue-strong);
+	animation: aiSpeakingGlow 1.25s ease-in-out infinite;
+}
+
+.aiSpeaking::before {
+	content: '';
+	position: absolute;
+	inset: -8px;
+	border-radius: 999px;
+	border: 2px solid rgba(49, 83, 232, 0.45);
+	animation: aiSpeakingRing 1.6s ease-out infinite;
+	pointer-events: none;
+}
+
+.aiSpeaking .micIcon {
+	animation: waveBlink 0.95s ease-in-out infinite;
+}
+
+.error {
+	background: #e53935;
+}
+
+.spinner {
+	width: 30px;
+	height: 30px;
+	border-radius: 999px;
+	border: 3px solid rgba(255, 255, 255, 0.35);
+	border-top-color: white;
+	animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes recordingGlow {
+	0% {
+		box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.15);
+	}
+	50% {
+		box-shadow: 0 0 0 8px rgba(229, 57, 53, 0.22);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.15);
+	}
+}
+
+@keyframes recordingRing {
+	0% {
+		opacity: 0.75;
+		transform: scale(0.88);
+	}
+	100% {
+		opacity: 0;
+		transform: scale(1.12);
+	}
+}
+
+@keyframes waveBlink {
+	0% {
+		opacity: 0.55;
+		transform: scale(0.9);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1.08);
+	}
+	100% {
+		opacity: 0.55;
+		transform: scale(0.9);
+	}
+}
+
+@keyframes aiSpeakingGlow {
+	0% {
+		box-shadow: 0 0 0 0 rgba(49, 83, 232, 0.15);
+	}
+	50% {
+		box-shadow: 0 0 0 8px rgba(49, 83, 232, 0.22);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(49, 83, 232, 0.15);
+	}
+}
+
+@keyframes aiSpeakingRing {
+	0% {
+		opacity: 0.75;
+		transform: scale(0.88);
+	}
+	100% {
+		opacity: 0;
+		transform: scale(1.12);
+	}
+}
+
+@media (max-width: 900px) {
+	.micButton {
+		width: 84px;
+		height: 84px;
+	}
+
+	.micIcon {
+		width: 32px;
+		height: 32px;
+	}
+}

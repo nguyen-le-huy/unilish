@@ -13,6 +13,7 @@ const normalizePayload = (payload: SaveSpeakingContentPayload): SaveSpeakingCont
         ?.map((hint) => ({
             vi: hint.vi?.trim() ?? '',
             en: hint.en?.trim() ?? '',
+            structure: hint.structure?.trim() || undefined,
         }))
         .filter((hint) => hint.vi.length > 0 && hint.en.length > 0);
 
