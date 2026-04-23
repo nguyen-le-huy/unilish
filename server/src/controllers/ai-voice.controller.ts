@@ -60,6 +60,24 @@ export const aiVoiceController = {
                 }
             }
 
+            let suggestedReply = '';
+            if (fullText.trim()) {
+                try {
+                    suggestedReply = await aiVoiceService.generateSuggestedReply({
+                        sessionId,
+                        scenario,
+                        level,
+                        topic,
+                        assistantReply: fullText,
+                    });
+                } catch (error: unknown) {
+                    logger.warn('[ai-voice.controller] Failed to generate suggested reply', {
+                        sessionId,
+                        error,
+                    });
+                }
+            }
+
             res.write(toSseEvent('done', {
                 text: fullText,
                 latencyMs: Date.now() - startedAt,
@@ -68,6 +86,7 @@ export const aiVoiceController = {
                 requestedModel: completion.requestedModel,
                 usedFallback: completion.usedFallback,
                 isConversationEnded: completion.isConversationEnded,
+                suggestedReply,
             }));
         } catch (error: unknown) {
             logger.error('[ai-voice.controller] Error during SSE stream', {

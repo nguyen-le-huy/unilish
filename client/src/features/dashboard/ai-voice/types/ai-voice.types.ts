@@ -5,6 +5,7 @@ export interface AiVoiceChatMessage {
 	role: 'assistant' | 'user';
 	content: string;
 	createdAt: number;
+	suggestedReply?: string;
 }
 
 export interface AiVoiceScenario {

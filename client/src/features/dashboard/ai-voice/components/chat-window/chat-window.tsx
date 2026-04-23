@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import closeIcon from '@/assets/icons/close.svg';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import translateIcon from '@/assets/icons/translate.svg';
+import { Button } from '@/components/core/Button';
 import type { AiVoiceChatMessage, AiVoiceScenario } from '../../types/ai-voice.types';
 import { useAiVoiceSession } from '../../hooks/use-ai-voice-session';
 import MicButton from '../mic-button/mic-button';
@@ -17,6 +17,7 @@ const TRANSLATION_LOADING = '__loading__';
 const TRANSLATION_ERROR = '__error__';
 
 type TranslationMap = Record<string, string>;
+type SuggestionVisibilityMap = Record<string, boolean>;
 type GoogleTranslateChunk = [string, ...unknown[]];
 
 const translateToVietnamese = async (text: string): Promise<string> => {
@@ -42,6 +43,7 @@ const translateToVietnamese = async (text: string): Promise<string> => {
 const ChatWindow = ({ scenario, level, topic, onClose }: ChatWindowProps) => {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [translationMap, setTranslationMap] = useState<TranslationMap>({});
+	const [suggestionVisibilityMap, setSuggestionVisibilityMap] = useState<SuggestionVisibilityMap>({});
 
 	const {
 		pttStatus,
@@ -96,14 +98,36 @@ const ChatWindow = ({ scenario, level, topic, onClose }: ChatWindowProps) => {
 		}
 	};
 
+	const latestAssistantMessage = useMemo<AiVoiceChatMessage | null>(() => {
+		for (let index = chatMessages.length - 1; index >= 0; index -= 1) {
+			const message = chatMessages[index];
+			if (message.role === 'assistant' && message.content.trim() && message.suggestedReply) {
+				return message;
+			}
+		}
+
+		return null;
+	}, [chatMessages]);
+
+	const handleSuggestReply = useCallback(() => {
+		if (!latestAssistantMessage) {
+			return;
+		}
+
+		setSuggestionVisibilityMap((prev) => {
+			if (prev[latestAssistantMessage.id]) {
+				return prev;
+			}
+
+			return {
+				...prev,
+				[latestAssistantMessage.id]: true,
+			};
+		});
+	}, [latestAssistantMessage]);
+
 	return (
 		<section className={styles.chatWindow} aria-label="AI voice chat window">
-			<div className={styles.closeRow}>
-				<button type="button" className={styles.closeButton} aria-label="Đóng chat" onClick={handleClose}>
-					<img src={closeIcon} alt="" className={styles.closeIcon} aria-hidden="true" />
-				</button>
-			</div>
-
 			<div className={styles.messageList} ref={scrollRef}>
 				<div className={styles.messageRow}>
 					<div className={`${styles.messageBubble} ${styles.systemInfoBubble}`}>
@@ -119,6 +143,7 @@ const ChatWindow = ({ scenario, level, topic, onClose }: ChatWindowProps) => {
 				{chatMessages.map((message) => {
 					const isAssistant = message.role === 'assistant';
 					const translation = translationMap[message.id];
+					const shouldShowSuggestion = suggestionVisibilityMap[message.id] === true;
 
 					return (
 						<div
@@ -157,6 +182,12 @@ const ChatWindow = ({ scenario, level, topic, onClose }: ChatWindowProps) => {
 										<p className={styles.translationText}>{translation}</p>
 									</div>
 								)}
+								{isAssistant && shouldShowSuggestion && message.suggestedReply && (
+									<div className={styles.translationBox}>
+										<p className={styles.translationLabel}>Gợi ý trả lời:</p>
+										<p className={styles.translationText}>{message.suggestedReply}</p>
+									</div>
+								)}
 							</div>
 						</div>
 					);
@@ -170,7 +201,30 @@ const ChatWindow = ({ scenario, level, topic, onClose }: ChatWindowProps) => {
 			)}
 
 			<div className={styles.micControlArea}>
+				<Button
+					type="button"
+					variant="primary"
+					padding="B"
+					fontSize={18}
+					className={styles.sideActionButton}
+					aria-label="Gợi ý"
+					onClick={handleSuggestReply}
+					disabled={!latestAssistantMessage?.suggestedReply}
+				>
+					Gợi ý
+				</Button>
 				<MicButton status={pttStatus} onToggle={() => void handleToggleMic()} />
+				<Button
+					type="button"
+					variant="primary"
+					padding="B"
+					fontSize={18}
+					className={styles.sideActionButton}
+					aria-label="Thoát cuộc hội thoại"
+					onClick={handleClose}
+				>
+					Thoát
+				</Button>
 			</div>
 		</section>
 	);

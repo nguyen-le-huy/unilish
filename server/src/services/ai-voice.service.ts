@@ -49,6 +49,14 @@ interface CreateAiVoiceChatCompletionParams {
     topic: AiVoiceTopic;
 }
 
+interface GenerateSuggestedReplyParams {
+    sessionId: string;
+    scenario: AiVoiceScenario;
+    level: AiVoiceLevel;
+    topic: AiVoiceTopic;
+    assistantReply: string;
+}
+
 const toChatMessage = (item: AiVoiceChatHistoryItem): OpenAI.Chat.Completions.ChatCompletionMessageParam => ({
     role: item.role,
     content: item.content,
@@ -73,6 +81,20 @@ const createStreamingCompletion = async (
         stream_options: { include_usage: true },
         max_completion_tokens: 256,
     });
+};
+
+const createSuggestionCompletion = async (
+    model: string,
+    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+): Promise<string> => {
+    const completion = await openaiClient.chat.completions.create({
+        model,
+        messages,
+        max_completion_tokens: 80,
+        temperature: 0.7,
+    });
+
+    return completion.choices[0]?.message?.content?.trim() ?? '';
 };
 
 const normalizeDescription = (description: string): string => {
@@ -206,6 +228,64 @@ export const aiVoiceService = {
                 });
 
                 throw new AppError('AI voice chat is temporarily unavailable.', HttpStatus.BAD_GATEWAY);
+            }
+        }
+    },
+
+    generateSuggestedReply: async ({
+        sessionId,
+        scenario,
+        level,
+        topic,
+        assistantReply,
+    }: GenerateSuggestedReplyParams): Promise<string> => {
+        const normalizedAssistantReply = assistantReply.trim();
+        if (!normalizedAssistantReply) {
+            return '';
+        }
+
+        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+            {
+                role: 'system',
+                content: [
+                    'You generate one suggested English reply the learner can say next.',
+                    'Return plain text only, no quotes, no bullets, no labels.',
+                    'Keep it natural, first-person, and concise (1-2 short sentences).',
+                    'Match the CEFR level and scenario context.',
+                ].join(' '),
+            },
+            {
+                role: 'user',
+                content: [
+                    `Scenario title: ${scenario.title}`,
+                    `Scenario description: ${scenario.description}`,
+                    `Topic: ${topic}`,
+                    `Learner level: ${level}`,
+                    `Assistant latest message: ${normalizedAssistantReply}`,
+                    'Write a suggested learner reply now.',
+                ].join('\n'),
+            },
+        ];
+
+        try {
+            return await createSuggestionCompletion(env.OPENAI_MODEL, messages);
+        } catch (error: unknown) {
+            logger.error('[ai-voice.service] Primary suggestion model failed', {
+                sessionId,
+                model: env.OPENAI_MODEL,
+                error,
+            });
+
+            try {
+                const fallbackSuggestion = await createSuggestionCompletion(FALLBACK_MODEL, messages);
+                return fallbackSuggestion;
+            } catch (fallbackError: unknown) {
+                logger.error('[ai-voice.service] Fallback suggestion model failed', {
+                    sessionId,
+                    model: FALLBACK_MODEL,
+                    error: fallbackError,
+                });
+                throw fallbackError;
             }
         }
     },

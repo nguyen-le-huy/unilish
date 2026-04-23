@@ -12,6 +12,7 @@ export interface AiVoiceLlmResult {
 	tokenUsage: number;
 	model: string;
 	isConversationEnded: boolean;
+	suggestedReply: string;
 }
 
 type SseData = Record<string, unknown>;
@@ -207,6 +208,7 @@ export const useAiVoicePipeline = (): UseAiVoicePipelineReturn => {
 		let tokenUsage = 0;
 		let model = '';
 		let isConversationEnded = false;
+		let suggestedReply = '';
 
 		while (true) {
 			const { done, value } = await reader.read();
@@ -238,6 +240,9 @@ export const useAiVoicePipeline = (): UseAiVoicePipelineReturn => {
 					isConversationEnded = typeof data.isConversationEnded === 'boolean'
 						? data.isConversationEnded
 						: isConversationEnded;
+					suggestedReply = typeof data.suggestedReply === 'string'
+						? data.suggestedReply.trim()
+						: suggestedReply;
 				}
 			});
 		}
@@ -252,6 +257,7 @@ export const useAiVoicePipeline = (): UseAiVoicePipelineReturn => {
 			tokenUsage,
 			model,
 			isConversationEnded,
+			suggestedReply,
 		};
 	}, [enqueueTts]);
 

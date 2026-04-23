@@ -146,6 +146,19 @@ export const useAiVoiceSession = ({
 			await playDirectly(fallbackReply);
 		}
 
+		if (llm.suggestedReply) {
+			setChatMessages((prev) => prev.map((message) => {
+				if (message.id !== assistantMessageId) {
+					return message;
+				}
+
+				return {
+					...message,
+					suggestedReply: llm.suggestedReply,
+				};
+			}));
+		}
+
 		await waitForAudio();
 
 		if (llm.isConversationEnded) {

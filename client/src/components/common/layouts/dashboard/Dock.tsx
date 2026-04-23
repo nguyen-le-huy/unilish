@@ -20,7 +20,7 @@ interface DockItem {
 
 const dockItems: DockItem[] = [
   { src: finderImage, alt: 'Home', path: '/dashboard' },
-  { src: faceTimeImage, alt: 'AI Voice', path: '/dashboard/ai-voice' },
+  { src: faceTimeImage, alt: 'AI Speaking', path: '/dashboard/ai-voice' },
   { src: photosImage, alt: 'Photos' },
   { src: newsImage, alt: 'News' },
   { src: settingsImage, alt: 'Settings' },
