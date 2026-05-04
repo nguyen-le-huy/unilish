@@ -1,0 +1,34 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  padding: 20px;
+  width: 100%;
+}
+
+@media (max-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.statusWrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: var(--space-5);
+}
+
+.statusMessage {
+  margin: 0;
+  padding: var(--space-5);
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  color: var(--dark-grey);
+}

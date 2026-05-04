@@ -22,6 +22,8 @@ const ResultPage = React.lazy(() => import('@/features/dashboard/placement-test/
 const RecommendCoursePage = React.lazy(() => import('@/features/dashboard/recommend-course/pages/RecommendCourse'));
 const NotFoundPage = React.lazy(() => import('@/features/dashboard/not-found/not-found-page'));
 const AIVoicePage = React.lazy(() => import('@/features/dashboard/ai-voice/pages/AIVoice'));
+const ShadowingPage = React.lazy(() => import('@/features/dashboard/shadowing/pages/ShadowingPage/ShadowingPage'));
+const ShadowingPlayerPage = React.lazy(() => import('@/features/dashboard/shadowing/pages/ShadowingPlayerPage/ShadowingPlayerPage'));
 
 export const router = createBrowserRouter([
     {
@@ -172,6 +174,22 @@ export const router = createBrowserRouter([
                         element: (
                             <Suspense fallback={<Loading />}>
                                 <AIVoicePage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'shadowing',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <ShadowingPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'shadowing/:videoId',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <ShadowingPlayerPage />
                             </Suspense>
                         ),
                     },

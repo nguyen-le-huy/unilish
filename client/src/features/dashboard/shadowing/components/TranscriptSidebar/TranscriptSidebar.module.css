@@ -1,0 +1,109 @@
+.sidebarContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.tabActive {
+  font-weight: 700;
+  color: #333;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.tabInactive {
+  color: #888;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.progress {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  background: #f0f2f5;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.cueList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.cueCard {
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cueCard:hover {
+  background: #fafafa;
+}
+
+.cueCardActive {
+  border: 2px solid #232b4e;
+  background: #f8f9fc;
+}
+
+.cueCardActive:hover {
+  background: #f8f9fc;
+}
+
+.cueCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cueNumber {
+  font-size: 13px;
+  font-weight: 700;
+  color: #555;
+}
+
+.cueActions {
+  display: flex;
+  gap: 10px;
+  color: #888;
+  font-size: 14px;
+}
+
+.cueText {
+  font-size: 15px;
+  color: #222;
+  font-weight: 500;
+}
+
+.cueTrans {
+  font-size: 14px;
+  color: #666;
+  font-style: italic;
+}

@@ -75,7 +75,7 @@ const envSchema = z.object({
     ELEVENLABS_DEFAULT_VOICE_ID: z.string().default('EXAVITQu4vr4xnSDxMaL'), // "Sarah" — neutral EN voice
 
     // Deepgram (Word-level timestamp sync)
-    DEEPGRAM_API_KEY: z.string().optional(),
+    DEEPGRAM_API_KEY: z.string().min(1, 'DEEPGRAM_API_KEY is required'),
 
     // Auth
     GOOGLE_CLIENT_ID: z.string().optional(),

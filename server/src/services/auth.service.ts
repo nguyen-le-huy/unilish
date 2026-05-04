@@ -145,7 +145,7 @@ export class AuthService {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Generate OTP
+        // Generate OTP (4 numbers)
         const otp = this.generateOtp();
         const hashedOtp = await bcrypt.hash(otp, 10);
         const otpExpires = this.calculateOtpExpiry();

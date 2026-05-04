@@ -1,0 +1,28 @@
+.cueContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-top: 0.0625rem solid var(--grey);
+  background: var(--surface-color);
+}
+
+.cueMeta {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.cueText {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: var(--text-xl);
+  line-height: var(--line-height-lg);
+  color: var(--text-color);
+}
+
+.cueTextHidden {
+  filter: blur(0.25rem);
+  user-select: none;
+}

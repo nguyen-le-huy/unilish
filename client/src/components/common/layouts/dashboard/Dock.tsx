@@ -21,7 +21,7 @@ interface DockItem {
 const dockItems: DockItem[] = [
   { src: finderImage, alt: 'Home', path: '/dashboard' },
   { src: faceTimeImage, alt: 'AI Speaking', path: '/dashboard/ai-voice' },
-  { src: photosImage, alt: 'Photos' },
+  { src: photosImage, alt: 'Photos', path: '/dashboard/shadowing' },
   { src: newsImage, alt: 'News' },
   { src: settingsImage, alt: 'Settings' },
   { src: finalCutProImage, alt: 'Final Cut Pro' },
@@ -38,8 +38,8 @@ const Dock = () => {
   return (
     <div className={styles.dock}>
       {dockItems.map((item) => (
-        <div 
-          key={item.alt} 
+        <div
+          key={item.alt}
           className={styles.dockItem}
           onClick={() => item.path && navigate(item.path)}
           style={{ cursor: item.path ? 'pointer' : 'default' }}

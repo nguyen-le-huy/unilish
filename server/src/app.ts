@@ -117,6 +117,7 @@ import azureSpeechRouter from './routes/azure-speech.route.js';
 import speakingPipelineRouter from './routes/speaking-pipeline.route.js';
 import aiVoiceRouter from './routes/ai-voice.route.js';
 import recommendationRouter from './routes/recommendation.route.js';
+import shadowingRouter from './routes/shadowing.route.js';
 import { streamListeningAudio } from './controllers/listening.controller.js';
 
 // Routes
@@ -151,6 +152,8 @@ app.use('/api/v1/azure-speech', azureSpeechRouter);
 app.use('/api/v1/speaking', speakingPipelineRouter);
 app.use('/api/v1/ai-voice', aiVoiceRouter);
 app.use('/api/v1/recommendations', recommendationRouter);
+app.use('/api/v1/shadowing', shadowingRouter);
+app.use('/api/shadowing', shadowingRouter);
 
 app.get('/', (req, res) => {
     res.status(HttpStatus.OK).json({

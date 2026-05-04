@@ -1,0 +1,90 @@
+.cardContainer {
+  background-color: white;
+  border: 1px solid var(--light-grey-lite, #eee);
+  box-shadow: 0px 4px 2px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+  border-radius: 30px;
+  width: 100%;
+}
+
+.cardInner {
+  border: 1px solid var(--light-grey-lite, #eee);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow: hidden;
+  border-radius: 30px;
+  width: 100%;
+}
+
+.imageWrapper {
+  height: 208.5px;
+  width: 100%;
+  position: relative;
+}
+
+.image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 20px;
+  width: 100%;
+}
+
+.title {
+  font-family: 'Google Sans', sans-serif;
+  font-weight: 500;
+  font-size: 20px;
+  line-height: normal;
+  color: black;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actionWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+}
+
+.shadowingBtn {
+  border: 1px solid var(--light-grey-lite, #eee);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: 10px;
+  background: white;
+  color: black;
+  font-family: 'Google Sans', sans-serif;
+  font-weight: 500;
+  font-size: 18px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s ease;
+}
+
+.shadowingBtn:hover {
+  background-color: #f9f9f9;
+}
