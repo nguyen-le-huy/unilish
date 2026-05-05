@@ -37,16 +37,20 @@ export class DeepgramService {
             // exactly one complete sentence from a single speaker.
             const segments = await splitTranscriptWithGpt(
                 utterances.map((u) => ({
-                    transcript: u.transcript,
-                    start: u.start,
-                    end: u.end,
-                    speaker: u.speaker,
-                    words: u.words?.map((w) => ({
-                        word: w.word,
-                        start: w.start,
-                        end: w.end,
-                        speaker: w.speaker,
-                    })),
+                    ...(u.transcript !== undefined ? { transcript: u.transcript } : {}),
+                    ...(u.start !== undefined ? { start: u.start } : {}),
+                    ...(u.end !== undefined ? { end: u.end } : {}),
+                    ...(u.speaker !== undefined ? { speaker: u.speaker } : {}),
+                    ...(u.words
+                        ? {
+                            words: u.words.map((w) => ({
+                                ...(w.word !== undefined ? { word: w.word } : {}),
+                                ...(w.start !== undefined ? { start: w.start } : {}),
+                                ...(w.end !== undefined ? { end: w.end } : {}),
+                                ...(w.speaker !== undefined ? { speaker: w.speaker } : {}),
+                            })),
+                        }
+                        : {}),
                 })),
             );
 

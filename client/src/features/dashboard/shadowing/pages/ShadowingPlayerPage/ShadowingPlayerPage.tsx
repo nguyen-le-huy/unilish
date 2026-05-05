@@ -87,7 +87,9 @@ const ShadowingPlayerPage = () => {
                     video={video}
                     mode={mode}
                     onModeChange={setMode}
-                    onSaveCues={(cues) => updateCuesMutation.mutateAsync(cues)}
+                    onSaveCues={async (cues) => {
+                        await updateCuesMutation.mutateAsync(cues);
+                    }}
                     isSavingCues={updateCuesMutation.isPending}
                     saveError={updateCuesMutation.error?.response?.data.message ?? null}
                 />
