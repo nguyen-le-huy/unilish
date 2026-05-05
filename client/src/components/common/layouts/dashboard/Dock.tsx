@@ -21,7 +21,7 @@ interface DockItem {
 const dockItems: DockItem[] = [
   { src: finderImage, alt: 'Home', path: '/dashboard' },
   { src: faceTimeImage, alt: 'AI Speaking', path: '/dashboard/ai-voice' },
-  { src: photosImage, alt: 'Photos', path: '/dashboard/shadowing' },
+  { src: photosImage, alt: 'Shadowing', path: '/dashboard/shadowing' },
   { src: newsImage, alt: 'News' },
   { src: settingsImage, alt: 'Settings' },
   { src: finalCutProImage, alt: 'Final Cut Pro' },

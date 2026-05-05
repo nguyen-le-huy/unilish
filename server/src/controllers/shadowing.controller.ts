@@ -6,6 +6,7 @@ import { shadowingService } from '../services/shadowing.service.js';
 import type {
     ScorePronunciationBody,
     SubmitVideoBody,
+    UpdateCuesBody,
 } from '../validations/shadowing.schema.js';
 
 export class ShadowingController {
@@ -38,6 +39,16 @@ export class ShadowingController {
         }
 
         const payload = await shadowingService.scorePronunciation(file.buffer, req.body.referenceText, file.mimetype);
+        res.status(HttpStatus.OK).json(payload);
+    });
+
+    static updateCues = catchAsync(async (req: Request<{ videoId: string }, {}, UpdateCuesBody>, res: Response) => {
+        const userId = req.user?._id ? String(req.user._id) : '';
+        if (!userId) {
+            throw new AppError('Unauthorized', HttpStatus.UNAUTHORIZED);
+        }
+
+        const payload = await shadowingService.updateCues(req.params.videoId, userId, req.body.cues);
         res.status(HttpStatus.OK).json(payload);
     });
 }

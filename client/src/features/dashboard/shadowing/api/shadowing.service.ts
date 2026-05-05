@@ -3,6 +3,8 @@ import type {
     PaginatedVideos,
     PronunciationResult,
     SubmitVideoResponse,
+    UpdateCuesPayload,
+    UpdateCuesResponse,
     VideoStatusResponse,
 } from '../types/shadowing.types';
 
@@ -38,6 +40,13 @@ export const shadowingService = {
                     'Content-Type': 'multipart/form-data',
                 },
             },
+        );
+    },
+
+    updateVideoCues(videoId: string, payload: UpdateCuesPayload): Promise<UpdateCuesResponse> {
+        return api.patch<UpdateCuesResponse, UpdateCuesResponse>(
+            `${SHADOWING_VIDEOS_PATH}/${encodeURIComponent(videoId)}/cues`,
+            payload,
         );
     },
 };

@@ -69,6 +69,18 @@ export class ShadowingVideoMongoRepository
             .exec();
     }
 
+    async updateCues(videoId: string, addedBy: string, cues: IShadowingCue[]): Promise<IShadowingVideo | null> {
+        return this.model
+            .findOneAndUpdate(
+                { videoId, addedBy: new mongoose.Types.ObjectId(addedBy) },
+                { $set: { cues } },
+                { new: true },
+            )
+            .select(fullVideoSelect)
+            .lean()
+            .exec() as Promise<IShadowingVideo | null>;
+    }
+
     async markAsFailed(videoId: string): Promise<void> {
         await this.model
             .updateOne({ videoId }, { $set: { status: 'failed' } })
@@ -79,7 +91,7 @@ export class ShadowingVideoMongoRepository
         const skip = (page - 1) * limit;
         return this.model
             .find({ status: 'ready' })
-            .select('videoId title thumbnailUrl cues createdAt')
+            .select('videoId title thumbnailUrl cues durationSeconds createdAt')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)

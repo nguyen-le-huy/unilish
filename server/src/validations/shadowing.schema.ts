@@ -42,5 +42,30 @@ export const scorePronunciationSchema = z.object({
     }),
 });
 
+export const updateCuesSchema = z.object({
+    params: z.object({
+        videoId: z
+            .string()
+            .regex(youtubeVideoIdPattern, 'Invalid YouTube videoId'),
+    }),
+    body: z.object({
+        cues: z.array(z.object({
+            id: z.string().trim().min(1),
+            text: z.string().trim().min(1).max(2000),
+            startMs: z.number().int().min(0),
+            endMs: z.number().int().min(0),
+        }).superRefine((cue, ctx) => {
+            if (cue.endMs < cue.startMs) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'endMs must be greater than or equal to startMs',
+                    path: ['endMs'],
+                });
+            }
+        })).min(1),
+    }),
+});
+
 export type SubmitVideoBody = z.infer<typeof submitVideoSchema>['body'];
 export type ScorePronunciationBody = z.infer<typeof scorePronunciationSchema>['body'];
+export type UpdateCuesBody = z.infer<typeof updateCuesSchema>['body'];

@@ -23,6 +23,11 @@ const CueDisplay = ({ cue, mode, state }: CueDisplayProps) => {
             <p className={`${styles.cueText} ${shouldHideText ? styles.cueTextHidden : ''}`.trim()}>
                 {shouldHideText ? '••••••••••••••••••' : cue.text}
             </p>
+            {cue.text.length > 200 && (
+                <p className={styles.cueWarning} role="note">
+                    ⚠ This segment is long — take it slowly.
+                </p>
+            )}
         </section>
     );
 };

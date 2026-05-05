@@ -8,7 +8,7 @@ import {
     shadowingVideoRepo,
     type ShadowingVideoMongoRepository,
 } from '../repositories/mongo/shadowing-video.mongo.repository.js';
-import type { IShadowingVideo, ShadowingVideoStatus } from '../models/mongo/shadowing-video.model.js';
+import type { IShadowingCue, IShadowingVideo, ShadowingVideoStatus } from '../models/mongo/shadowing-video.model.js';
 import { AzurePronunciationService, type PronunciationResult } from './azure-pronunciation.service.js';
 
 const YOUTUBE_VIDEO_ID_REGEX = /^[A-Za-z0-9_-]{11}$/;
@@ -30,11 +30,17 @@ export type VideoStatusResponse = {
     video?: IShadowingVideo;
 };
 
+export type UpdateCuesResponse = {
+    status: 'ready';
+    video: IShadowingVideo;
+};
+
 export interface VideoLibraryItem {
     videoId: string;
     title: string;
     thumbnailUrl: string;
     cueCount: number;
+    durationSeconds: number;
     createdAt: Date;
 }
 
@@ -155,6 +161,7 @@ export class ShadowingService {
             title: video.title,
             thumbnailUrl: video.thumbnailUrl,
             cueCount: video.cues.length,
+            durationSeconds: video.durationSeconds,
             createdAt: video.createdAt,
         }));
 
@@ -176,6 +183,28 @@ export class ShadowingService {
         }
 
         return AzurePronunciationService.scoreAudioBuffer(audioBuffer, normalizedReferenceText, audioMimeType);
+    }
+
+    async updateCues(videoId: string, userId: string, cues: IShadowingCue[]): Promise<UpdateCuesResponse> {
+        const video = await this.shadowingRepo.findByVideoId(videoId);
+        if (!video) {
+            throw new AppError('Video not found', HttpStatus.NOT_FOUND);
+        }
+
+        if (video.status !== 'ready') {
+            throw new AppError('Video is not ready for edits', HttpStatus.CONFLICT);
+        }
+
+        if (String(video.addedBy) !== userId) {
+            throw new AppError('Forbidden', HttpStatus.FORBIDDEN);
+        }
+
+        const updated = await this.shadowingRepo.updateCues(videoId, userId, cues);
+        if (!updated) {
+            throw new AppError('Video not found', HttpStatus.NOT_FOUND);
+        }
+
+        return { status: 'ready', video: updated };
     }
 
     private async processVideo(videoId: string): Promise<void> {

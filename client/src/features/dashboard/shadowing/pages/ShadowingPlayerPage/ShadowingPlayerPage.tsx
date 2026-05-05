@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Loading } from '@/components/common/Loading/Loading';
@@ -7,7 +7,7 @@ import type { ApiErrorResponse } from '@/types/common';
 import styles from './ShadowingPlayerPage.module.css';
 import ShadowingPlayer from '../../components/ShadowingPlayer/ShadowingPlayer';
 import { shadowingService } from '../../api/shadowing.service';
-import type { VideoStatusResponse } from '../../types/shadowing.types';
+import type { Cue, UpdateCuesResponse, VideoStatusResponse } from '../../types/shadowing.types';
 
 const SHADOWING_LIBRARY_PATH = '/dashboard/shadowing';
 
@@ -17,11 +17,25 @@ const ShadowingPlayerPage = () => {
     const navigate = useNavigate();
     const { videoId } = useParams<{ videoId: string }>();
     const [mode, setMode] = useState<ShadowingMode>('with-transcript');
+    const queryClient = useQueryClient();
 
     const { data, isPending, isError, error } = useQuery<VideoStatusResponse, AxiosError<ApiErrorResponse>>({
         queryKey: ['shadowing', 'video', videoId],
         queryFn: () => shadowingService.getVideoStatus(videoId ?? ''),
         enabled: Boolean(videoId),
+    });
+
+    const updateCuesMutation = useMutation<UpdateCuesResponse, AxiosError<ApiErrorResponse>, Cue[]>({
+        mutationFn: async (cues) => {
+            return shadowingService.updateVideoCues(videoId ?? '', { cues });
+        },
+        onSuccess: (payload) => {
+            if (!videoId) {
+                return;
+            }
+
+            queryClient.setQueryData(['shadowing', 'video', videoId], payload);
+        },
     });
 
     const video = data?.status === 'ready' ? data.video : undefined;
@@ -69,7 +83,14 @@ const ShadowingPlayerPage = () => {
             </header>
 
             <main className={styles.mainLayout}>
-                <ShadowingPlayer video={video} mode={mode} onModeChange={setMode} />
+                <ShadowingPlayer
+                    video={video}
+                    mode={mode}
+                    onModeChange={setMode}
+                    onSaveCues={(cues) => updateCuesMutation.mutateAsync(cues)}
+                    isSavingCues={updateCuesMutation.isPending}
+                    saveError={updateCuesMutation.error?.response?.data.message ?? null}
+                />
             </main>
         </div>
     );

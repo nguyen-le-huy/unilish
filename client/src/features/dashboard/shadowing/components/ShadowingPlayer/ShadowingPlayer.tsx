@@ -8,11 +8,16 @@ import { useShadowingMachine } from '../../hooks/use-shadowing-machine';
 import { useShadowingRecorder } from '../../hooks/use-shadowing-recorder';
 import { useYtPlayer } from '../../hooks/use-yt-player';
 import type { ShadowingVideo } from '../../types/shadowing.types';
+import micIcon from '@/assets/icons/mic.svg';
+import retryIcon from '@/assets/icons/retry.svg';
 
 interface ShadowingPlayerProps {
     video: ShadowingVideo;
     mode: 'with-transcript' | 'without-transcript';
     onModeChange: (mode: 'with-transcript' | 'without-transcript') => void;
+    onSaveCues: (cues: ShadowingVideo['cues']) => Promise<void>;
+    isSavingCues: boolean;
+    saveError: string | null;
 }
 
 const getErrorMessage = (error: unknown): string => {
@@ -29,19 +34,25 @@ const formatRecordingTime = (seconds: number): string => {
     return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 };
 
-const ShadowingPlayer = ({ video, mode, onModeChange }: ShadowingPlayerProps) => {
+const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, saveError }: ShadowingPlayerProps) => {
     const onCueEndRef = useRef<(() => void) | null>(null);
     const hasAutoPlayedRef = useRef(false);
 
     const [recorderError, setRecorderError] = useState<string | null>(null);
     const [recordingSeconds, setRecordingSeconds] = useState(0);
+    const [editableCues, setEditableCues] = useState(video.cues);
+    const [selectedCueIds, setSelectedCueIds] = useState<Set<string>>(new Set());
+    const [editingCueId, setEditingCueId] = useState<string | null>(null);
+    const [draftText, setDraftText] = useState('');
+    const [isDirty, setIsDirty] = useState(false);
+    const [editorError, setEditorError] = useState<string | null>(null);
 
     const ytPlayer = useYtPlayer('yt-player-container', video.videoId, () => {
         onCueEndRef.current?.();
     });
 
     const machine = useShadowingMachine({
-        cues: video.cues,
+        cues: editableCues,
         playCue: ytPlayer.playCue,
         replayCue: ytPlayer.replayCue,
     });
@@ -56,8 +67,17 @@ const ShadowingPlayer = ({ video, mode, onModeChange }: ShadowingPlayerProps) =>
     const currentCue = machine.currentCue;
 
     const cueCounterLabel = useMemo(() => {
-        return `Cue ${Math.min(machine.currentCueIndex + 1, video.cues.length)}/${video.cues.length}`;
-    }, [machine.currentCueIndex, video.cues.length]);
+        return `Cue ${Math.min(machine.currentCueIndex + 1, editableCues.length)}/${editableCues.length}`;
+    }, [machine.currentCueIndex, editableCues.length]);
+
+    useEffect(() => {
+        setEditableCues(video.cues);
+        setSelectedCueIds(new Set());
+        setEditingCueId(null);
+        setDraftText('');
+        setIsDirty(false);
+        setEditorError(null);
+    }, [video.videoId, video.cues]);
 
     useEffect(() => {
         hasAutoPlayedRef.current = false;
@@ -174,8 +194,213 @@ const ShadowingPlayer = ({ video, mode, onModeChange }: ShadowingPlayerProps) =>
         clearError();
         setRecorderError(null);
         setRecordingSeconds(0);
-        machine.jumpToCue(index);
+        machine.jumpAndPlay(index);
     }, [clearError, machine, ytPlayer]);
+
+    const isEditable = useMemo(() => {
+        return ['idle', 'waiting', 'result', 'done'].includes(machine.state) && !isSavingCues;
+    }, [isSavingCues, machine.state]);
+
+    const selectedIndices = useMemo(() => {
+        const indexMap = new Map(editableCues.map((cue, index) => [cue.id, index] as const));
+        return Array.from(selectedCueIds)
+            .map((id) => indexMap.get(id))
+            .filter((value): value is number => value !== undefined)
+            .sort((a, b) => a - b);
+    }, [editableCues, selectedCueIds]);
+
+    const isMergeable = useMemo(() => {
+        if (selectedIndices.length < 2) {
+            return false;
+        }
+
+        return selectedIndices.every((index, i) => (i === 0 ? true : index === selectedIndices[i - 1]! + 1));
+    }, [selectedIndices]);
+
+    const updateCues = useCallback((nextCues: ShadowingVideo['cues']) => {
+        setEditableCues(nextCues);
+        setIsDirty(true);
+    }, []);
+
+    const handleToggleSelect = useCallback((cueId: string) => {
+        setEditorError(null);
+        setSelectedCueIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(cueId)) {
+                next.delete(cueId);
+            } else {
+                next.add(cueId);
+            }
+            return next;
+        });
+    }, []);
+
+    const handleStartEdit = useCallback((cueId: string) => {
+        const cue = editableCues.find((item) => item.id === cueId);
+        if (!cue) {
+            return;
+        }
+
+        setEditorError(null);
+        setEditingCueId(cueId);
+        setDraftText(cue.text);
+    }, [editableCues]);
+
+    const handleCancelEdit = useCallback(() => {
+        setEditingCueId(null);
+        setDraftText('');
+        setEditorError(null);
+    }, []);
+
+    const handleSaveEdit = useCallback((cueId: string, text: string) => {
+        const nextText = text.trim();
+        if (!nextText) {
+            setEditorError('Cue text cannot be empty.');
+            return;
+        }
+
+        const nextCues = editableCues.map((cue) => (
+            cue.id === cueId
+                ? { ...cue, text: nextText }
+                : cue
+        ));
+
+        updateCues(nextCues);
+        setEditingCueId(null);
+        setDraftText('');
+        setEditorError(null);
+    }, [editableCues, updateCues]);
+
+    const createCueId = useCallback(() => {
+        return `cue-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    }, []);
+
+    const handleSplitCue = useCallback((cueId: string, text: string, splitIndex: number) => {
+        const cueIndex = editableCues.findIndex((item) => item.id === cueId);
+        if (cueIndex < 0) {
+            return;
+        }
+
+        const cue = editableCues[cueIndex];
+        if (!cue) {
+            return;
+        }
+
+        const totalDuration = cue.endMs - cue.startMs;
+        if (totalDuration < 2) {
+            setEditorError('Cue is too short to split.');
+            return;
+        }
+
+        const leftText = text.slice(0, splitIndex).trim();
+        const rightText = text.slice(splitIndex).trim();
+
+        if (!leftText || !rightText) {
+            setEditorError('Split position must leave text on both sides.');
+            return;
+        }
+
+        const leftRatio = leftText.length / (leftText.length + rightText.length);
+        const leftEnd = Math.min(
+            cue.endMs - 1,
+            cue.startMs + Math.max(1, Math.round(totalDuration * leftRatio)),
+        );
+
+        const leftCue = {
+            ...cue,
+            text: leftText,
+            endMs: leftEnd,
+        };
+
+        const rightCue = {
+            id: createCueId(),
+            text: rightText,
+            startMs: leftEnd,
+            endMs: cue.endMs,
+        };
+
+        const nextCues = [
+            ...editableCues.slice(0, cueIndex),
+            leftCue,
+            rightCue,
+            ...editableCues.slice(cueIndex + 1),
+        ];
+
+        updateCues(nextCues);
+        setSelectedCueIds(new Set([leftCue.id, rightCue.id]));
+        setEditingCueId(null);
+        setDraftText('');
+        setEditorError(null);
+    }, [createCueId, editableCues, updateCues]);
+
+    const handleMergeSelected = useCallback(() => {
+        if (!isMergeable) {
+            setEditorError('Select consecutive cues to merge.');
+            return;
+        }
+
+        const firstIndex = selectedIndices[0];
+        const lastIndex = selectedIndices[selectedIndices.length - 1];
+
+        if (firstIndex === undefined || lastIndex === undefined) {
+            return;
+        }
+
+        const mergedCues = editableCues.slice(firstIndex, lastIndex + 1);
+        const mergedText = mergedCues.map((cue) => cue.text.trim()).filter(Boolean).join(' ');
+        const mergedCue = {
+            ...mergedCues[0]!,
+            text: mergedText,
+            startMs: mergedCues[0]!.startMs,
+            endMs: mergedCues[mergedCues.length - 1]!.endMs,
+        };
+
+        const nextCues = [
+            ...editableCues.slice(0, firstIndex),
+            mergedCue,
+            ...editableCues.slice(lastIndex + 1),
+        ];
+
+        updateCues(nextCues);
+        setSelectedCueIds(new Set([mergedCue.id]));
+        setEditingCueId(null);
+        setDraftText('');
+        setEditorError(null);
+    }, [editableCues, isMergeable, selectedIndices, updateCues]);
+
+    const handleReorder = useCallback((fromIndex: number, toIndex: number) => {
+        if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) {
+            return;
+        }
+
+        const nextCues = [...editableCues];
+        const [moved] = nextCues.splice(fromIndex, 1);
+        if (!moved) {
+            return;
+        }
+
+        nextCues.splice(toIndex, 0, moved);
+        updateCues(nextCues);
+    }, [editableCues, updateCues]);
+
+    const handleResetEdits = useCallback(() => {
+        setEditableCues(video.cues);
+        setSelectedCueIds(new Set());
+        setEditingCueId(null);
+        setDraftText('');
+        setIsDirty(false);
+        setEditorError(null);
+    }, [video.cues]);
+
+    const handleSaveAll = useCallback(async () => {
+        setEditorError(null);
+        try {
+            await onSaveCues(editableCues);
+            setIsDirty(false);
+        } catch {
+            setEditorError('Unable to save cue edits.');
+        }
+    }, [editableCues, onSaveCues]);
 
     if (!currentCue) {
         return (
@@ -228,10 +453,12 @@ const ShadowingPlayer = ({ video, mode, onModeChange }: ShadowingPlayerProps) =>
                         {machine.state === 'waiting' && (
                             <>
                                 <button className={styles.primaryButton} onClick={() => void handleStartRecording()} aria-label="Start recording">
-                                    🎙 Ready to record
+                                    <img src={micIcon} alt="" className={styles.buttonIcon} />
+                                    <span>Ready to record</span>
                                 </button>
                                 <button className={styles.ghostButton} onClick={handleRetry} aria-label="Replay current cue">
-                                    ↩ Replay
+                                    <img src={retryIcon} alt="" className={styles.buttonIcon} />
+                                    <span>Replay</span>
                                 </button>
                             </>
                         )}
@@ -278,11 +505,29 @@ const ShadowingPlayer = ({ video, mode, onModeChange }: ShadowingPlayerProps) =>
 
                 <div className={styles.rightColumn}>
                     <TranscriptPanel
-                        cues={video.cues}
+                        cues={editableCues}
                         activeCueIndex={machine.currentCueIndex}
                         mode={mode}
                         state={machine.state}
                         onCueClick={handleCueClick}
+                        isEditable={isEditable}
+                        selectedCueIds={selectedCueIds}
+                        editingCueId={editingCueId}
+                        draftText={draftText}
+                        isDirty={isDirty}
+                        isSaving={isSavingCues}
+                        isMergeable={isMergeable}
+                        editorError={editorError ?? saveError}
+                        onToggleSelect={handleToggleSelect}
+                        onStartEdit={handleStartEdit}
+                        onCancelEdit={handleCancelEdit}
+                        onDraftChange={setDraftText}
+                        onSaveEdit={handleSaveEdit}
+                        onSplitCue={handleSplitCue}
+                        onMergeSelected={handleMergeSelected}
+                        onReorder={handleReorder}
+                        onResetEdits={handleResetEdits}
+                        onSaveAll={handleSaveAll}
                     />
                 </div>
             </div>

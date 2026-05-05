@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './TranscriptPanel.module.css';
 import type { ShadowingState } from '../../hooks/use-shadowing-machine';
 import type { Cue } from '../../types/shadowing.types';
@@ -9,6 +9,24 @@ interface TranscriptPanelProps {
     mode: 'with-transcript' | 'without-transcript';
     state: ShadowingState;
     onCueClick?: (index: number) => void;
+    isEditable: boolean;
+    selectedCueIds: Set<string>;
+    editingCueId: string | null;
+    draftText: string;
+    isDirty: boolean;
+    isSaving: boolean;
+    isMergeable: boolean;
+    editorError: string | null;
+    onToggleSelect: (cueId: string) => void;
+    onStartEdit: (cueId: string) => void;
+    onCancelEdit: () => void;
+    onDraftChange: (text: string) => void;
+    onSaveEdit: (cueId: string, text: string) => void;
+    onSplitCue: (cueId: string, text: string, splitIndex: number) => void;
+    onMergeSelected: () => void;
+    onReorder: (fromIndex: number, toIndex: number) => void;
+    onResetEdits: () => void;
+    onSaveAll: () => void;
 }
 
 const formatTimeRange = (cue: Cue): string => {
@@ -21,8 +39,28 @@ const TranscriptPanel = ({
     mode,
     state,
     onCueClick,
+    isEditable,
+    selectedCueIds,
+    editingCueId,
+    draftText,
+    isDirty,
+    isSaving,
+    isMergeable,
+    editorError,
+    onToggleSelect,
+    onStartEdit,
+    onCancelEdit,
+    onDraftChange,
+    onSaveEdit,
+    onSplitCue,
+    onMergeSelected,
+    onReorder,
+    onResetEdits,
+    onSaveAll,
 }: TranscriptPanelProps) => {
     const cueRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const editInputRef = useRef<HTMLTextAreaElement | null>(null);
+    const [dragIndex, setDragIndex] = useState<number | null>(null);
 
     useEffect(() => {
         cueRefs.current[activeCueIndex]?.scrollIntoView({
@@ -31,11 +69,58 @@ const TranscriptPanel = ({
         });
     }, [activeCueIndex]);
 
+    const canEdit = isEditable && !isSaving;
+    const toolbarLabel = useMemo(() => {
+        if (!isEditable) {
+            return 'Editing disabled while playing.';
+        }
+
+        return 'Edit transcript cues.';
+    }, [isEditable]);
+
     return (
         <aside className={styles.panel} aria-label="Transcript panel">
+            <header className={styles.panelHeader} aria-label={toolbarLabel}>
+                <div className={styles.panelTitle}>Transcript</div>
+                <div className={styles.panelActions}>
+                    <button
+                        className={styles.toolbarButton}
+                        type="button"
+                        onClick={onMergeSelected}
+                        disabled={!canEdit || !isMergeable}
+                    >
+                        Merge selected
+                    </button>
+                    <button
+                        className={styles.toolbarButton}
+                        type="button"
+                        onClick={onResetEdits}
+                        disabled={!canEdit || !isDirty}
+                    >
+                        Reset
+                    </button>
+                    <button
+                        className={styles.primaryToolbarButton}
+                        type="button"
+                        onClick={onSaveAll}
+                        disabled={!canEdit || !isDirty}
+                    >
+                        {isSaving ? 'Saving...' : 'Save'}
+                    </button>
+                </div>
+            </header>
+
+            {editorError && (
+                <p className={styles.editorError} role="alert">
+                    {editorError}
+                </p>
+            )}
+
             {cues.map((cue, index) => {
                 const isActive = index === activeCueIndex;
                 const hideText = mode === 'without-transcript' && state === 'playing';
+                const isSelected = selectedCueIds.has(cue.id);
+                const isEditing = editingCueId === cue.id;
 
                 return (
                     <div
@@ -46,9 +131,18 @@ const TranscriptPanel = ({
                         className={`${styles.cueCard} ${isActive ? styles.cueCardActive : ''}`.trim()}
                         role={onCueClick ? 'button' : undefined}
                         tabIndex={onCueClick ? 0 : undefined}
-                        onClick={() => onCueClick?.(index)}
+                        onClick={() => {
+                            if (isEditing) {
+                                return;
+                            }
+                            onCueClick?.(index);
+                        }}
                         onKeyDown={(event) => {
                             if (!onCueClick) {
+                                return;
+                            }
+
+                            if (isEditing) {
                                 return;
                             }
 
@@ -58,11 +152,92 @@ const TranscriptPanel = ({
                             }
                         }}
                         aria-label={`Cue ${index + 1}: ${formatTimeRange(cue)}`}
+                        draggable={canEdit}
+                        onDragStart={() => setDragIndex(index)}
+                        onDragEnd={() => setDragIndex(null)}
+                        onDragOver={(event) => {
+                            if (!canEdit) {
+                                return;
+                            }
+
+                            event.preventDefault();
+                        }}
+                        onDrop={() => {
+                            if (!canEdit || dragIndex === null) {
+                                return;
+                            }
+
+                            onReorder(dragIndex, index);
+                            setDragIndex(null);
+                        }}
                     >
-                        <p className={styles.cueIndex}>#cue-{index + 1} · {formatTimeRange(cue)}</p>
-                        <p className={`${styles.cueText} ${hideText ? styles.cueTextHidden : ''}`.trim()}>
-                            {hideText ? '••••••••••••••••••' : cue.text}
-                        </p>
+                        <div className={styles.cueHeader}>
+                            <label className={styles.cueSelect}>
+                                <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    disabled={!canEdit}
+                                    onClick={(event) => event.stopPropagation()}
+                                    onChange={() => onToggleSelect(cue.id)}
+                                />
+                                <span className={styles.cueIndex}>#cue-{index + 1} · {formatTimeRange(cue)}</span>
+                            </label>
+                            <button
+                                className={styles.cueAction}
+                                type="button"
+                                disabled={!canEdit}
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    onStartEdit(cue.id);
+                                }}
+                            >
+                                Edit
+                            </button>
+                        </div>
+
+                        {isEditing ? (
+                            <div className={styles.editorBlock}>
+                                <textarea
+                                    ref={editInputRef}
+                                    className={styles.editorInput}
+                                    value={draftText}
+                                    onChange={(event) => onDraftChange(event.target.value)}
+                                    rows={4}
+                                />
+                                <div className={styles.editorActions}>
+                                    <button
+                                        className={styles.toolbarButton}
+                                        type="button"
+                                        disabled={!canEdit}
+                                        onClick={() => {
+                                            const cursor = editInputRef.current?.selectionStart ?? 0;
+                                            onSplitCue(cue.id, draftText, cursor);
+                                        }}
+                                    >
+                                        Split at cursor
+                                    </button>
+                                    <button
+                                        className={styles.toolbarButton}
+                                        type="button"
+                                        onClick={onCancelEdit}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        className={styles.primaryToolbarButton}
+                                        type="button"
+                                        disabled={!canEdit}
+                                        onClick={() => onSaveEdit(cue.id, draftText)}
+                                    >
+                                        Save cue
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className={`${styles.cueText} ${hideText ? styles.cueTextHidden : ''}`.trim()}>
+                                {hideText ? '••••••••••••••••••' : cue.text}
+                            </p>
+                        )}
                     </div>
                 );
             })}

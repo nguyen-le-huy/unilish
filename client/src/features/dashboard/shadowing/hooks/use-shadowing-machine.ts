@@ -20,6 +20,7 @@ type MachineAction =
     | { type: 'RETRY' }
     | { type: 'NEXT'; cueCount: number }
     | { type: 'JUMP_TO_CUE'; index: number; cueCount: number }
+    | { type: 'JUMP_AND_PLAY'; index: number; cueCount: number }
     | { type: 'RESTART' };
 
 interface UseShadowingMachineOptions {
@@ -43,6 +44,7 @@ interface UseShadowingMachineResult {
     retry: () => void;
     next: () => void;
     jumpToCue: (index: number) => void;
+    jumpAndPlay: (index: number) => void;
     restart: () => void;
 }
 
@@ -154,6 +156,22 @@ const reducer = (context: MachineContext, action: MachineAction): MachineContext
                 pronunciationResult: null,
             };
         }
+        case 'JUMP_AND_PLAY': {
+            if (action.index < 0 || action.index >= action.cueCount) {
+                return context;
+            }
+
+            if (context.state === 'recording' || context.state === 'scoring') {
+                return context;
+            }
+
+            return {
+                state: 'playing',
+                currentCueIndex: action.index,
+                audioBlob: null,
+                pronunciationResult: null,
+            };
+        }
         case 'RESTART': {
             return INITIAL_CONTEXT;
         }
@@ -218,6 +236,16 @@ export const useShadowingMachine = ({
         dispatch({ type: 'JUMP_TO_CUE', index, cueCount: cues.length });
     }, [cues.length]);
 
+    const jumpAndPlay = useCallback((index: number) => {
+        if (index < 0 || index >= cues.length) {
+            return;
+        }
+
+        const targetCue = cues[index];
+        playCue(targetCue);
+        dispatch({ type: 'JUMP_AND_PLAY', index, cueCount: cues.length });
+    }, [cues, playCue]);
+
     const restart = useCallback(() => {
         dispatch({ type: 'RESTART' });
     }, []);
@@ -237,6 +265,7 @@ export const useShadowingMachine = ({
         retry,
         next,
         jumpToCue,
+        jumpAndPlay,
         restart,
     }), [
         context.audioBlob,
@@ -245,6 +274,7 @@ export const useShadowingMachine = ({
         context.state,
         currentCue,
         jumpToCue,
+        jumpAndPlay,
         next,
         onCueEnd,
         onScoreComplete,

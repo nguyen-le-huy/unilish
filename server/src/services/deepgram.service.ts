@@ -5,6 +5,7 @@ import { AppError } from '../utils/app-error.js';
 import { HttpStatus } from '../constants/http-status.js';
 import type { IShadowingCue } from '../models/mongo/shadowing-video.model.js';
 import { logger } from '../utils/logger.js';
+import { splitTranscriptWithGpt } from './gpt-sentence-splitter.service.js';
 
 const deepgramClient = createDeepgramClient(env.DEEPGRAM_API_KEY);
 
@@ -14,9 +15,12 @@ export class DeepgramService {
             const audioBuffer = await fs.readFile(filePath);
             const response = await deepgramClient.listen.prerecorded.transcribeFile(audioBuffer, {
                 model: 'nova-2',
+                diarize: true,
                 utterances: true,
                 punctuate: true,
                 words: true,
+                smart_format: true,
+                paragraphs: true,
             });
 
             if (response.error) {
@@ -24,19 +28,40 @@ export class DeepgramService {
             }
 
             const utterances = response.result?.results?.utterances ?? [];
-            const cues = utterances
-                .map((utterance, index) => {
-                    const startMs = Math.max(0, Math.round((utterance.start ?? 0) * 1000));
-                    const endMs = Math.max(startMs, Math.round((utterance.end ?? utterance.start ?? 0) * 1000));
 
-                    return {
-                        id: `cue-${index}`,
-                        text: utterance.transcript?.trim() ?? '',
-                        startMs,
-                        endMs,
-                    };
-                })
-                .filter((cue) => cue.text.length > 0);
+            logger.info('DeepgramService: transcription complete', {
+                utteranceCount: utterances.length,
+            });
+
+            // Send speaker-aligned utterances to GPT so each cue is
+            // exactly one complete sentence from a single speaker.
+            const segments = await splitTranscriptWithGpt(
+                utterances.map((u) => ({
+                    transcript: u.transcript,
+                    start: u.start,
+                    end: u.end,
+                    speaker: u.speaker,
+                    words: u.words?.map((w) => ({
+                        word: w.word,
+                        start: w.start,
+                        end: w.end,
+                        speaker: w.speaker,
+                    })),
+                })),
+            );
+
+            const cues: IShadowingCue[] = segments
+                .filter((s) => s.text.length > 0)
+                .map((s, index) => ({
+                    id: `cue-${index}`,
+                    text: s.text,
+                    startMs: s.startMs,
+                    endMs: s.endMs,
+                }));
+
+            logger.info('DeepgramService: cue generation complete', {
+                cueCount: cues.length,
+            });
 
             return cues;
         } catch (error) {

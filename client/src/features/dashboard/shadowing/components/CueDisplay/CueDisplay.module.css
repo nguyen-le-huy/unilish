@@ -17,7 +17,7 @@
 .cueText {
   margin: 0;
   font-family: var(--font-family);
-  font-size: var(--text-xl);
+  font-size: 20px;
   line-height: var(--line-height-lg);
   color: var(--text-color);
 }
@@ -25,4 +25,11 @@
 .cueTextHidden {
   filter: blur(0.25rem);
   user-select: none;
+}
+
+.cueWarning {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: var(--text-xs);
+  color: var(--score-yellow);
 }

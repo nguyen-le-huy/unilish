@@ -11,6 +11,7 @@ export interface IShadowingVideoRepository extends IBaseRepository<IShadowingVid
         durationSeconds: number;
         cues: IShadowingCue[];
     }): Promise<void>;
+    updateCues(videoId: string, addedBy: string, cues: IShadowingCue[]): Promise<IShadowingVideo | null>;
     markAsFailed(videoId: string): Promise<void>;
     listReadyVideos(page: number, limit: number): Promise<IShadowingVideo[]>;
     countReadyVideos(): Promise<number>;

@@ -7,6 +7,7 @@ import {
     listVideosSchema,
     scorePronunciationSchema,
     submitVideoSchema,
+    updateCuesSchema,
     videoIdParamSchema,
 } from '../validations/shadowing.schema.js';
 import { shadowingSubmitRateLimit } from '../middlewares/shadowing-rate-limit.middleware.js';
@@ -39,6 +40,14 @@ router.get('/videos/:videoId/status', validate(videoIdParamSchema), ShadowingCon
  *     summary: List paginated processed shadowing videos
  */
 router.get('/videos', validate(listVideosSchema), ShadowingController.listVideos);
+
+/**
+ * @swagger
+ * /api/v1/shadowing/videos/{videoId}/cues:
+ *   patch:
+ *     summary: Update shadowing cues for a video
+ */
+router.patch('/videos/:videoId/cues', validate(updateCuesSchema), ShadowingController.updateCues);
 
 /**
  * @swagger

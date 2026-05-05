@@ -21,6 +21,7 @@ export interface ShadowingVideoSummary {
     title: string;
     thumbnailUrl: string;
     cueCount: number;
+    durationSeconds: number;
     createdAt: string;
 }
 
@@ -45,6 +46,15 @@ export interface SubmitVideoResponse {
 export interface VideoStatusResponse {
     status: 'processing' | 'ready' | 'failed';
     video?: ShadowingVideo;
+}
+
+export interface UpdateCuesPayload {
+    cues: Cue[];
+}
+
+export interface UpdateCuesResponse {
+    status: 'ready';
+    video: ShadowingVideo;
 }
 
 export type PronunciationErrorType = 'None' | 'Omission' | 'Insertion' | 'Mispronunciation';
