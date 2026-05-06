@@ -5,8 +5,23 @@ export type ShadowingVideoStatus = 'processing' | 'ready' | 'failed';
 export interface IShadowingCue {
     id: string;
     text: string;
+    translationVi?: string | null;
+    vocabulary: ShadowingCueVocabulary[];
+    commonPhrases: ShadowingCuePhrase[];
     startMs: number;
     endMs: number;
+}
+
+export interface ShadowingCueVocabulary {
+    word: string;
+    pos: string;
+    translationVi: string;
+    ipa: string;
+}
+
+export interface ShadowingCuePhrase {
+    phrase: string;
+    translationVi: string;
 }
 
 export interface IShadowingVideo extends mongoose.Document {
@@ -25,6 +40,33 @@ const ShadowingCueSchema = new mongoose.Schema<IShadowingCue>(
     {
         id: { type: String, required: true, trim: true },
         text: { type: String, required: true, trim: true },
+        translationVi: { type: String, trim: true },
+        vocabulary: {
+            type: [
+                new mongoose.Schema<ShadowingCueVocabulary>(
+                    {
+                        word: { type: String, required: true, trim: true },
+                        pos: { type: String, required: true, trim: true },
+                        translationVi: { type: String, required: true, trim: true },
+                        ipa: { type: String, required: true, trim: true },
+                    },
+                    { _id: false },
+                ),
+            ],
+            default: [],
+        },
+        commonPhrases: {
+            type: [
+                new mongoose.Schema<ShadowingCuePhrase>(
+                    {
+                        phrase: { type: String, required: true, trim: true },
+                        translationVi: { type: String, required: true, trim: true },
+                    },
+                    { _id: false },
+                ),
+            ],
+            default: [],
+        },
         startMs: { type: Number, required: true, min: 0 },
         endMs: { type: Number, required: true, min: 0 },
     },

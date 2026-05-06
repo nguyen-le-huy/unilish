@@ -52,6 +52,17 @@ export const updateCuesSchema = z.object({
         cues: z.array(z.object({
             id: z.string().trim().min(1),
             text: z.string().trim().min(1).max(2000),
+            translationVi: z.string().trim().min(1).max(4000).nullable().optional(),
+            vocabulary: z.array(z.object({
+                word: z.string().trim().min(1),
+                pos: z.string().trim().min(1),
+                translationVi: z.string().trim().min(1),
+                ipa: z.string().trim().min(1),
+            })).optional(),
+            commonPhrases: z.array(z.object({
+                phrase: z.string().trim().min(1),
+                translationVi: z.string().trim().min(1),
+            })).optional(),
             startMs: z.number().int().min(0),
             endMs: z.number().int().min(0),
         }).superRefine((cue, ctx) => {
@@ -63,6 +74,7 @@ export const updateCuesSchema = z.object({
                 });
             }
         })).min(1),
+        autoTranslate: z.boolean().optional(),
     }),
 });
 

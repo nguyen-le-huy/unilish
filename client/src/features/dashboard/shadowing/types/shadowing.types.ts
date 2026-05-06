@@ -1,6 +1,17 @@
 export interface Cue {
     id: string;
     text: string;
+    translationVi?: string | null;
+    vocabulary?: Array<{
+        word: string;
+        pos: string;
+        translationVi: string;
+        ipa: string;
+    }>;
+    commonPhrases?: Array<{
+        phrase: string;
+        translationVi: string;
+    }>;
     startMs: number;
     endMs: number;
 }
@@ -50,6 +61,7 @@ export interface VideoStatusResponse {
 
 export interface UpdateCuesPayload {
     cues: Cue[];
+    autoTranslate?: boolean;
 }
 
 export interface UpdateCuesResponse {

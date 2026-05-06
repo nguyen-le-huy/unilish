@@ -121,6 +121,63 @@
   color: var(--text-color);
 }
 
+.cueTextBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.cueTranslation {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--line-height-lg);
+  color: var(--text-muted);
+}
+
+.cueExtras {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cueSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.cueSectionTitle {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cueList {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.cueListItem {
+  font-size: var(--text-xs);
+  line-height: var(--line-height-lg);
+  color: var(--text-color);
+}
+
+.cueWord {
+  font-weight: 600;
+}
+
+.cueMetaInline {
+  color: var(--text-muted);
+  margin-left: var(--space-1);
+}
+
+.cueTranslationInline {
+  color: var(--text-muted);
+}
+
 .cueTextHidden {
   filter: blur(0.25rem);
   user-select: none;

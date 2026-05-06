@@ -59,6 +59,9 @@ export class DeepgramService {
                 .map((s, index) => ({
                     id: `cue-${index}`,
                     text: s.text,
+                    translationVi: s.translationVi ?? null,
+                    vocabulary: s.vocabulary ?? [],
+                    commonPhrases: [],
                     startMs: s.startMs,
                     endMs: s.endMs,
                 }));

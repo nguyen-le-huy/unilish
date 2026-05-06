@@ -121,6 +121,8 @@ const TranscriptPanel = ({
                 const hideText = mode === 'without-transcript' && state === 'playing';
                 const isSelected = selectedCueIds.has(cue.id);
                 const isEditing = editingCueId === cue.id;
+                const translation = cue.translationVi?.trim();
+                const vocabulary = cue.vocabulary ?? [];
 
                 return (
                     <div
@@ -234,9 +236,32 @@ const TranscriptPanel = ({
                                 </div>
                             </div>
                         ) : (
-                            <p className={`${styles.cueText} ${hideText ? styles.cueTextHidden : ''}`.trim()}>
-                                {hideText ? '••••••••••••••••••' : cue.text}
-                            </p>
+                            <div className={styles.cueTextBlock}>
+                                <p className={`${styles.cueText} ${hideText ? styles.cueTextHidden : ''}`.trim()}>
+                                    {hideText ? '••••••••••••••••••' : cue.text}
+                                </p>
+                                {!hideText && translation && (
+                                    <p className={styles.cueTranslation}>{translation}</p>
+                                )}
+                                {!hideText && vocabulary.length > 0 && (
+                                    <div className={styles.cueExtras}>
+                                        {vocabulary.length > 0 && (
+                                            <div className={styles.cueSection}>
+                                                <p className={styles.cueSectionTitle}>Vocabulary</p>
+                                                <ul className={styles.cueList}>
+                                                    {vocabulary.map((item) => (
+                                                        <li key={`${cue.id}-${item.word}-${item.ipa}`} className={styles.cueListItem}>
+                                                            <span className={styles.cueWord}>{item.word}</span>
+                                                            <span className={styles.cueMetaInline}> /{item.ipa}/ · {item.pos}</span>
+                                                            <span className={styles.cueTranslationInline}> — {item.translationVi}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 );

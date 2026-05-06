@@ -10,6 +10,7 @@ import {
 } from '../repositories/mongo/shadowing-video.mongo.repository.js';
 import type { IShadowingCue, IShadowingVideo, ShadowingVideoStatus } from '../models/mongo/shadowing-video.model.js';
 import { AzurePronunciationService, type PronunciationResult } from './azure-pronunciation.service.js';
+import { analyzeCueTextsWithGpt } from './gpt-sentence-splitter.service.js';
 
 const YOUTUBE_VIDEO_ID_REGEX = /^[A-Za-z0-9_-]{11}$/;
 
@@ -185,7 +186,12 @@ export class ShadowingService {
         return AzurePronunciationService.scoreAudioBuffer(audioBuffer, normalizedReferenceText, audioMimeType);
     }
 
-    async updateCues(videoId: string, userId: string, cues: IShadowingCue[]): Promise<UpdateCuesResponse> {
+    async updateCues(
+        videoId: string,
+        userId: string,
+        cues: IShadowingCue[],
+        autoTranslate: boolean = false,
+    ): Promise<UpdateCuesResponse> {
         const video = await this.shadowingRepo.findByVideoId(videoId);
         if (!video) {
             throw new AppError('Video not found', HttpStatus.NOT_FOUND);
@@ -199,7 +205,103 @@ export class ShadowingService {
             throw new AppError('Forbidden', HttpStatus.FORBIDDEN);
         }
 
-        const updated = await this.shadowingRepo.updateCues(videoId, userId, cues);
+        const existingById = new Map(video.cues.map((cue) => [cue.id, cue] as const));
+        const shouldAutoTranslate = Boolean(autoTranslate);
+        const cuesNeedingAnalysis = shouldAutoTranslate
+            ? cues.filter((cue) => {
+                const normalizedText = cue.text.trim();
+                if (!normalizedText) {
+                    return false;
+                }
+
+                const existing = existingById.get(cue.id);
+                if (!existing) {
+                    return true;
+                }
+
+                const textChanged = existing.text.trim() !== normalizedText;
+                const missingTranslation = !existing.translationVi?.trim();
+                const missingVocabulary = (existing.vocabulary ?? []).length === 0;
+
+                return textChanged || missingTranslation || missingVocabulary;
+            })
+            : [];
+
+        const analyses = cuesNeedingAnalysis.length > 0
+            ? await analyzeCueTextsWithGpt(cuesNeedingAnalysis.map((cue) => cue.text))
+            : [];
+
+        const analysesById = new Map<
+            string,
+            { translationVi: string; vocabulary: IShadowingCue['vocabulary'] }
+        >();
+        analyses.forEach((analysis, index) => {
+            const cueId = cuesNeedingAnalysis[index]?.id;
+            if (!cueId) {
+                return;
+            }
+
+            const normalized = analysis.translationVi.trim();
+            if (normalized.length > 0) {
+                analysesById.set(cueId, {
+                    translationVi: normalized,
+                    vocabulary: analysis.vocabulary,
+                });
+            }
+        });
+
+        const nextCues = cues.map((cue) => {
+            const normalizedText = cue.text.trim();
+            const providedTranslation = cue.translationVi?.trim();
+            const providedVocabulary = cue.vocabulary ?? [];
+
+            const analysis = analysesById.get(cue.id);
+            if (analysis) {
+                return {
+                    ...cue,
+                    text: normalizedText,
+                    translationVi: analysis.translationVi,
+                    vocabulary: analysis.vocabulary,
+                    commonPhrases: [],
+                };
+            }
+
+            if (!shouldAutoTranslate && (providedTranslation || providedVocabulary.length > 0)) {
+                return {
+                    ...cue,
+                    text: normalizedText,
+                    translationVi: providedTranslation ?? null,
+                    vocabulary: providedVocabulary,
+                    commonPhrases: [],
+                };
+            }
+
+            const existing = existingById.get(cue.id);
+            if (existing && existing.text.trim() === normalizedText) {
+                const fallbackTranslation = providedTranslation ?? existing.translationVi ?? null;
+                const fallbackVocabulary = providedVocabulary.length > 0
+                    ? providedVocabulary
+                    : (existing.vocabulary ?? []);
+
+                return {
+                    ...cue,
+                    text: normalizedText,
+                    translationVi: fallbackTranslation,
+                    vocabulary: fallbackVocabulary,
+                    commonPhrases: [],
+                };
+            }
+
+            return {
+                ...cue,
+                text: normalizedText,
+                translationVi: providedTranslation ?? null,
+                vocabulary: providedVocabulary,
+                commonPhrases: [],
+            };
+        });
+
+        const updated = await this.shadowingRepo.updateCues(videoId, userId, nextCues);
         if (!updated) {
             throw new AppError('Video not found', HttpStatus.NOT_FOUND);
         }

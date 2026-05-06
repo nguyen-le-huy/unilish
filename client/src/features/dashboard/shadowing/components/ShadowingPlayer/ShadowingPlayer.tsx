@@ -15,10 +15,12 @@ interface ShadowingPlayerProps {
     video: ShadowingVideo;
     mode: 'with-transcript' | 'without-transcript';
     onModeChange: (mode: 'with-transcript' | 'without-transcript') => void;
-    onSaveCues: (cues: ShadowingVideo['cues']) => Promise<void>;
+    onSaveCues: (cues: ShadowingVideo['cues']) => Promise<ShadowingVideo['cues']>;
     isSavingCues: boolean;
     saveError: string | null;
 }
+
+type CueVocabularyItem = NonNullable<ShadowingVideo['cues'][number]['vocabulary']>[number];
 
 const getErrorMessage = (error: unknown): string => {
     if (error instanceof Error && error.message) {
@@ -32,6 +34,29 @@ const formatRecordingTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+};
+
+const mergeVocabulary = (cues: ShadowingVideo['cues']): CueVocabularyItem[] => {
+    const uniqueByKey = new Map<string, CueVocabularyItem>();
+    cues.forEach((cue) => {
+        (cue.vocabulary ?? []).forEach((item) => {
+            const key = `${item.word.toLowerCase()}::${item.pos.toLowerCase()}`;
+            if (!uniqueByKey.has(key)) {
+                uniqueByKey.set(key, item);
+            }
+        });
+    });
+
+    return Array.from(uniqueByKey.values());
+};
+
+const mergeTranslation = (cues: ShadowingVideo['cues']): string | null => {
+    const merged = cues
+        .map((cue) => cue.translationVi?.trim() ?? '')
+        .filter(Boolean)
+        .join(' ');
+
+    return merged.length > 0 ? merged : null;
 };
 
 const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, saveError }: ShadowingPlayerProps) => {
@@ -333,7 +358,7 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
         setEditorError(null);
     }, [createCueId, editableCues, updateCues]);
 
-    const handleMergeSelected = useCallback(() => {
+    const handleMergeSelected = useCallback(async () => {
         if (!isMergeable) {
             setEditorError('Select consecutive cues to merge.');
             return;
@@ -348,11 +373,16 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
 
         const mergedCues = editableCues.slice(firstIndex, lastIndex + 1);
         const mergedText = mergedCues.map((cue) => cue.text.trim()).filter(Boolean).join(' ');
+        const mergedTranslation = mergeTranslation(mergedCues);
+        const mergedVocabulary = mergeVocabulary(mergedCues);
         const mergedCue = {
             ...mergedCues[0]!,
             text: mergedText,
+            translationVi: mergedTranslation,
             startMs: mergedCues[0]!.startMs,
             endMs: mergedCues[mergedCues.length - 1]!.endMs,
+            vocabulary: mergedVocabulary,
+            commonPhrases: [],
         };
 
         const nextCues = [
@@ -361,12 +391,18 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
             ...editableCues.slice(lastIndex + 1),
         ];
 
-        updateCues(nextCues);
-        setSelectedCueIds(new Set([mergedCue.id]));
-        setEditingCueId(null);
-        setDraftText('');
         setEditorError(null);
-    }, [editableCues, isMergeable, selectedIndices, updateCues]);
+        try {
+            const savedCues = await onSaveCues(nextCues);
+            setEditableCues(savedCues);
+            setIsDirty(false);
+            setSelectedCueIds(new Set([mergedCue.id]));
+            setEditingCueId(null);
+            setDraftText('');
+        } catch {
+            setEditorError('Unable to merge cues.');
+        }
+    }, [editableCues, isMergeable, onSaveCues, selectedIndices]);
 
     const handleReorder = useCallback((fromIndex: number, toIndex: number) => {
         if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) {
@@ -395,7 +431,8 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
     const handleSaveAll = useCallback(async () => {
         setEditorError(null);
         try {
-            await onSaveCues(editableCues);
+            const savedCues = await onSaveCues(editableCues);
+            setEditableCues(savedCues);
             setIsDirty(false);
         } catch {
             setEditorError('Unable to save cue edits.');

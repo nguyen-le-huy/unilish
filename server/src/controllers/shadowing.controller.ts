@@ -48,7 +48,12 @@ export class ShadowingController {
             throw new AppError('Unauthorized', HttpStatus.UNAUTHORIZED);
         }
 
-        const payload = await shadowingService.updateCues(req.params.videoId, userId, req.body.cues);
+        const payload = await shadowingService.updateCues(
+            req.params.videoId,
+            userId,
+            req.body.cues,
+            req.body.autoTranslate ?? false,
+        );
         res.status(HttpStatus.OK).json(payload);
     });
 }

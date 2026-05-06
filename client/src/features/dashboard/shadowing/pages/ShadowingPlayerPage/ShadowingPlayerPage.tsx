@@ -27,7 +27,7 @@ const ShadowingPlayerPage = () => {
 
     const updateCuesMutation = useMutation<UpdateCuesResponse, AxiosError<ApiErrorResponse>, Cue[]>({
         mutationFn: async (cues) => {
-            return shadowingService.updateVideoCues(videoId ?? '', { cues });
+            return shadowingService.updateVideoCues(videoId ?? '', { cues, autoTranslate: true });
         },
         onSuccess: (payload) => {
             if (!videoId) {
@@ -88,7 +88,8 @@ const ShadowingPlayerPage = () => {
                     mode={mode}
                     onModeChange={setMode}
                     onSaveCues={async (cues) => {
-                        await updateCuesMutation.mutateAsync(cues);
+                        const payload = await updateCuesMutation.mutateAsync(cues);
+                        return payload.video.cues;
                     }}
                     isSavingCues={updateCuesMutation.isPending}
                     saveError={updateCuesMutation.error?.response?.data.message ?? null}

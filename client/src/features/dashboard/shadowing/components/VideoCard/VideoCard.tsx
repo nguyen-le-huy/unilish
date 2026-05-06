@@ -20,7 +20,8 @@ const VideoCard = ({ video, onPreview }: VideoCardProps) => {
                     <img src={video.thumbnailUrl} alt={video.title} className={styles.image} />
                 </div>
                 <div className={styles.content}>
-                    <h3 className={styles.title}>{video.title}</h3>
+                    <h3 className={styles.title}>{video.title
+                        }</h3>
                     <p className={styles.duration}>Thời lượng: {durationLabel}</p>
                     <div className={styles.actionWrapper}>
                         <button
