@@ -3,6 +3,7 @@ import { HttpStatus } from '../constants/http-status.js';
 import { AppError } from '../utils/app-error.js';
 import { catchAsync } from '../utils/catch-async.js';
 import { shadowingService } from '../services/shadowing.service.js';
+import type { IShadowingCue } from '../models/mongo/shadowing-video.model.js';
 import type {
     ScorePronunciationBody,
     SubmitVideoBody,
@@ -48,10 +49,20 @@ export class ShadowingController {
             throw new AppError('Unauthorized', HttpStatus.UNAUTHORIZED);
         }
 
+        const normalizedCues: IShadowingCue[] = req.body.cues.map((cue) => ({
+            id: cue.id,
+            text: cue.text,
+            translationVi: cue.translationVi ?? null,
+            vocabulary: cue.vocabulary ?? [],
+            commonPhrases: cue.commonPhrases ?? [],
+            startMs: cue.startMs,
+            endMs: cue.endMs,
+        }));
+
         const payload = await shadowingService.updateCues(
             req.params.videoId,
             userId,
-            req.body.cues,
+            normalizedCues,
             req.body.autoTranslate ?? false,
         );
         res.status(HttpStatus.OK).json(payload);
