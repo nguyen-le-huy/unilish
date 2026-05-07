@@ -5,7 +5,7 @@ import { AppError } from '../utils/app-error.js';
 import { HttpStatus } from '../constants/http-status.js';
 import type { IShadowingCue } from '../models/mongo/shadowing-video.model.js';
 import { logger } from '../utils/logger.js';
-import { splitTranscriptWithGpt } from './gpt-sentence-splitter.service.js';
+import { splitUtteranceIntoSentences } from './deepgram-sentence-splitter.js';
 
 const deepgramClient = createDeepgramClient(env.DEEPGRAM_API_KEY);
 
@@ -33,34 +33,30 @@ export class DeepgramService {
                 utteranceCount: utterances.length,
             });
 
-            // Send speaker-aligned utterances to GPT so each cue is
-            // exactly one complete sentence from a single speaker.
-            const segments = await splitTranscriptWithGpt(
-                utterances.map((u) => ({
-                    ...(u.transcript !== undefined ? { transcript: u.transcript } : {}),
-                    ...(u.start !== undefined ? { start: u.start } : {}),
-                    ...(u.end !== undefined ? { end: u.end } : {}),
-                    ...(u.speaker !== undefined ? { speaker: u.speaker } : {}),
-                    ...(u.words
-                        ? {
-                            words: u.words.map((w) => ({
-                                ...(w.word !== undefined ? { word: w.word } : {}),
-                                ...(w.start !== undefined ? { start: w.start } : {}),
-                                ...(w.end !== undefined ? { end: w.end } : {}),
-                                ...(w.speaker !== undefined ? { speaker: w.speaker } : {}),
-                            })),
-                        }
-                        : {}),
-                })),
-            );
+            const segments = utterances.flatMap((utterance) => splitUtteranceIntoSentences({
+                ...(utterance.transcript !== undefined ? { transcript: utterance.transcript } : {}),
+                ...(utterance.start !== undefined ? { start: utterance.start } : {}),
+                ...(utterance.end !== undefined ? { end: utterance.end } : {}),
+                ...(utterance.speaker !== undefined ? { speaker: utterance.speaker } : {}),
+                ...(utterance.words
+                    ? {
+                        words: utterance.words.map((word) => ({
+                            ...(word.word !== undefined ? { word: word.word } : {}),
+                            ...(word.start !== undefined ? { start: word.start } : {}),
+                            ...(word.end !== undefined ? { end: word.end } : {}),
+                            ...(word.speaker !== undefined ? { speaker: word.speaker } : {}),
+                        })),
+                    }
+                    : {}),
+            }));
 
             const cues: IShadowingCue[] = segments
                 .filter((s) => s.text.length > 0)
                 .map((s, index) => ({
                     id: `cue-${index}`,
                     text: s.text,
-                    translationVi: s.translationVi ?? null,
-                    vocabulary: s.vocabulary ?? [],
+                    translationVi: null,
+                    vocabulary: [],
                     commonPhrases: [],
                     startMs: s.startMs,
                     endMs: s.endMs,

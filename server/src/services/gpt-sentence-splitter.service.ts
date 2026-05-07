@@ -36,10 +36,10 @@ const EMPTY_CUE_ANALYSIS: CueAnalysis = {
 };
 
 const CUE_ANALYSIS_BATCH_SIZE = 8;
-const CUE_ANALYSIS_FALLBACK_CONCURRENCY = 3;
 const CUE_ANALYSIS_MAX_RETRIES = 2;
 const SEGMENT_MIN_PREFERRED_WORDS = 6;
 const SEGMENT_MAX_PREFERRED_WORDS = 24;
+const GPT_REQUEST_TIMEOUT_MS = 20_000;
 
 const VocabularyItemSchema = z.object({
     word: z.string().trim().min(1),
@@ -164,6 +164,26 @@ const tryParseJsonObject = (raw: string): unknown | null => {
             return JSON.parse(normalized.slice(firstBrace, lastBrace + 1));
         } catch {
             return null;
+        }
+    }
+};
+
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    try {
+        return await Promise.race([
+            promise,
+            new Promise<T>((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    reject(new Error(`${label} timeout after ${timeoutMs}ms`));
+                }, timeoutMs);
+                timeoutId.unref?.();
+            }),
+        ]);
+    } finally {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
         }
     }
 };
@@ -338,16 +358,20 @@ export const alignSentencesToWords = (
 type SentenceSplitRequester = (transcript: string) => Promise<string | null>;
 
 const requestFromOpenAi: SentenceSplitRequester = async (transcript) => {
-    const completion = await openaiClient.chat.completions.create({
-        model: env.OPENAI_MODEL,
-        response_format: { type: 'json_object' },
-        temperature: 0,             // fully deterministic
-        max_completion_tokens: 2048, // increased for full-video transcripts
-        messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: buildUserPrompt(transcript) },
-        ],
-    });
+    const completion = await withTimeout(
+        openaiClient.chat.completions.create({
+            model: env.OPENAI_MODEL,
+            response_format: { type: 'json_object' },
+            temperature: 0,             // fully deterministic
+            max_completion_tokens: 2048, // increased for full-video transcripts
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user', content: buildUserPrompt(transcript) },
+            ],
+        }),
+        GPT_REQUEST_TIMEOUT_MS,
+        'Shadowing GPT sentence split',
+    );
     return completion.choices[0]?.message?.content ?? null;
 };
 
@@ -366,16 +390,20 @@ const analyzeCueBatchWithGpt = async (sentences: string[]): Promise<CueAnalysis[
 
     for (let attempt = 1; attempt <= CUE_ANALYSIS_MAX_RETRIES; attempt += 1) {
         try {
-            const completion = await openaiClient.chat.completions.create({
-                model: env.OPENAI_MODEL,
-                response_format: { type: 'json_object' },
-                temperature: 0,
-                max_completion_tokens: 2048,
-                messages: [
-                    { role: 'system', content: CUE_ANALYSIS_SYSTEM_PROMPT },
-                    { role: 'user', content: buildCueAnalysisPrompt(sentences) },
-                ],
-            });
+            const completion = await withTimeout(
+                openaiClient.chat.completions.create({
+                    model: env.OPENAI_MODEL,
+                    response_format: { type: 'json_object' },
+                    temperature: 0,
+                    max_completion_tokens: 2048,
+                    messages: [
+                        { role: 'system', content: CUE_ANALYSIS_SYSTEM_PROMPT },
+                        { role: 'user', content: buildCueAnalysisPrompt(sentences) },
+                    ],
+                }),
+                GPT_REQUEST_TIMEOUT_MS,
+                'Shadowing GPT cue analysis',
+            );
 
             const raw = completion.choices[0]?.message?.content ?? null;
             if (!raw) {
@@ -401,7 +429,7 @@ const analyzeCueBatchWithGpt = async (sentences: string[]): Promise<CueAnalysis[
                 continue;
             }
 
-            if (validated.data.analyses.length !== sentences.length) {
+            if (validated.data.analyses.length < sentences.length) {
                 logger.warn('GptSentenceSplitter: cue analysis count mismatch', {
                     attempt,
                     expected: sentences.length,
@@ -410,7 +438,15 @@ const analyzeCueBatchWithGpt = async (sentences: string[]): Promise<CueAnalysis[
                 continue;
             }
 
-            return validated.data.analyses.map((analysis) => ({
+            if (validated.data.analyses.length > sentences.length) {
+                logger.warn('GptSentenceSplitter: cue analysis returned extra items, trimming', {
+                    attempt,
+                    expected: sentences.length,
+                    received: validated.data.analyses.length,
+                });
+            }
+
+            return validated.data.analyses.slice(0, sentences.length).map((analysis) => ({
                 translationVi: analysis.translationVi.trim(),
                 vocabulary: analysis.vocabulary,
             }));
@@ -443,21 +479,7 @@ export const analyzeCueTextsWithGpt = async (sentences: string[]): Promise<CueAn
             batchResult.forEach((analysis, index) => {
                 results[start + index] = analysis;
             });
-            continue;
         }
-
-        const singleResults = await mapConcurrent(
-            chunk,
-            async (sentence) => {
-                const single = await analyzeCueBatchWithGpt([sentence]);
-                return single?.[0] ?? EMPTY_CUE_ANALYSIS;
-            },
-            CUE_ANALYSIS_FALLBACK_CONCURRENCY,
-        );
-
-        singleResults.forEach((analysis, index) => {
-            results[start + index] = analysis;
-        });
     }
 
     return results;

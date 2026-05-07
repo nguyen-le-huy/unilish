@@ -54,6 +54,24 @@ const VideoInput = () => {
         reset();
     }, [reset, submitVideo]);
 
+    const hasProcessingError = Boolean(processingVideoId)
+        && (videoStatus?.status === 'failed' || videoStatusError);
+
+    if (hasProcessingError) {
+        const errorMessage = videoStatusError?.response?.data?.message
+            ?? videoStatusError?.message
+            ?? 'Video xử lý thất bại. Vui lòng thử URL khác.';
+
+        return (
+            <div className={styles.processingScreen}>
+                <p className={styles.processingTitle} role="alert">
+                    {errorMessage}
+                </p>
+                <Button type="button" onClick={clearProcessingVideoId}>Thử lại</Button>
+            </div>
+        );
+    }
+
     const isProcessing = Boolean(processingVideoId)
         && (videoStatus?.status === 'processing' || isVideoStatusPending || isVideoStatusFetching);
 
@@ -63,17 +81,6 @@ const VideoInput = () => {
                 <Loading variant="inline" size="md" />
                 <p className={styles.processingTitle}>Processing video...</p>
                 <p className={styles.processingHint}>Hệ thống đang tách audio và tạo transcript.</p>
-            </div>
-        );
-    }
-
-    if (processingVideoId && (videoStatus?.status === 'failed' || videoStatusError)) {
-        return (
-            <div className={styles.processingScreen}>
-                <p className={styles.processingTitle} role="alert">
-                    Video xử lý thất bại. Vui lòng thử URL khác.
-                </p>
-                <Button type="button" onClick={clearProcessingVideoId}>Thử lại</Button>
             </div>
         );
     }

@@ -27,7 +27,7 @@ const ShadowingPlayerPage = () => {
 
     const updateCuesMutation = useMutation<UpdateCuesResponse, AxiosError<ApiErrorResponse>, Cue[]>({
         mutationFn: async (cues) => {
-            return shadowingService.updateVideoCues(videoId ?? '', { cues, autoTranslate: true });
+            return shadowingService.updateVideoCues(videoId ?? '', { cues });
         },
         onSuccess: (payload) => {
             if (!videoId) {

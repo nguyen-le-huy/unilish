@@ -5,6 +5,8 @@ import { AppError } from '../utils/app-error.js';
 import { HttpStatus } from '../constants/http-status.js';
 
 const execFileAsync = promisify(execFile);
+const YT_DLP_TIMEOUT_MS = 2 * 60 * 1000;
+const YT_DLP_MAX_BUFFER_BYTES = 10 * 1024 * 1024;
 
 interface ExecFileError extends Error {
     stderr?: string;
@@ -37,7 +39,10 @@ export class YtDlpService {
                 '-o',
                 outputTemplate,
                 sourceUrl,
-            ]);
+            ], {
+                timeout: YT_DLP_TIMEOUT_MS,
+                maxBuffer: YT_DLP_MAX_BUFFER_BYTES,
+            });
 
             logger.info('Shadowing audio extracted', { videoId, targetPath });
             return targetPath;
@@ -72,7 +77,10 @@ export class YtDlpService {
                 '-o',
                 outputTemplate,
                 sourceUrl,
-            ]);
+            ], {
+                timeout: YT_DLP_TIMEOUT_MS,
+                maxBuffer: YT_DLP_MAX_BUFFER_BYTES,
+            });
 
             const filePath = stdout
                 .split('\n')

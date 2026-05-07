@@ -13,6 +13,8 @@ import { AzurePronunciationService, type PronunciationResult } from './azure-pro
 import { analyzeCueTextsWithGpt } from './gpt-sentence-splitter.service.js';
 
 const YOUTUBE_VIDEO_ID_REGEX = /^[A-Za-z0-9_-]{11}$/;
+const STALE_PROCESSING_MS = 15 * 60 * 1000;
+const PROCESS_VIDEO_TIMEOUT_MS = 3 * 60 * 1000;
 
 interface SubmitVideoReadyResponse {
     status: 'ready';
@@ -89,8 +91,37 @@ const parseYoutubeVideoId = (rawUrl: string): string | null => {
     }
 };
 
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    try {
+        return await Promise.race([
+            promise,
+            new Promise<T>((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    reject(new Error(`${label} timeout after ${timeoutMs}ms`));
+                }, timeoutMs);
+                timeoutId.unref?.();
+            }),
+        ]);
+    } finally {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+    }
+};
+
 export class ShadowingService {
     constructor(private readonly shadowingRepo: ShadowingVideoMongoRepository) {}
+
+    private isStaleProcessing(updatedAt?: Date): boolean {
+        if (!updatedAt) {
+            return true;
+        }
+
+        const ageMs = Date.now() - updatedAt.getTime();
+        return ageMs >= STALE_PROCESSING_MS;
+    }
 
     async submitVideo(url: string, userId: string): Promise<SubmitVideoResponse> {
         const videoId = parseYoutubeVideoId(url);
@@ -109,6 +140,17 @@ export class ShadowingService {
         }
 
         if (existingVideo?.status === 'processing') {
+            if (this.isStaleProcessing(existingVideo.updatedAt)) {
+                logger.warn('ShadowingService: stale processing detected, re-queueing video', {
+                    videoId,
+                    updatedAt: existingVideo.updatedAt,
+                    staleAfterMs: STALE_PROCESSING_MS,
+                });
+
+                await this.shadowingRepo.markAsProcessing(videoId);
+                void this.processVideo(videoId);
+            }
+
             return {
                 status: 'processing',
                 videoId,
@@ -133,6 +175,18 @@ export class ShadowingService {
         const video = await this.shadowingRepo.findByVideoId(videoId);
         if (!video) {
             throw new AppError('Video not found', HttpStatus.NOT_FOUND);
+        }
+
+        if (video.status === 'processing' && this.isStaleProcessing(video.updatedAt)) {
+            logger.warn('ShadowingService: processing status expired, marking as failed', {
+                videoId,
+                updatedAt: video.updatedAt,
+                staleAfterMs: STALE_PROCESSING_MS,
+            });
+            await this.shadowingRepo.markAsFailed(videoId);
+            return {
+                status: 'failed',
+            };
         }
 
         if (video.status === 'ready') {
@@ -311,19 +365,21 @@ export class ShadowingService {
 
     private async processVideo(videoId: string): Promise<void> {
         try {
-            const audioPath = await YtDlpService.extractAudio(videoId);
-            const cues = await DeepgramService.transcribe(audioPath);
-            const metadata = await this.fetchOEmbed(videoId);
-            const durationSeconds = cues.length > 0
-                ? Math.ceil(cues[cues.length - 1]!.endMs / 1000)
-                : 0;
+            await withTimeout((async () => {
+                const audioPath = await YtDlpService.extractAudio(videoId);
+                const cues = await DeepgramService.transcribe(audioPath);
+                const metadata = await this.fetchOEmbed(videoId);
+                const durationSeconds = cues.length > 0
+                    ? Math.ceil(cues[cues.length - 1]!.endMs / 1000)
+                    : 0;
 
-            await this.shadowingRepo.markAsReady(videoId, {
-                title: metadata.title,
-                thumbnailUrl: metadata.thumbnail_url,
-                durationSeconds,
-                cues,
-            });
+                await this.shadowingRepo.markAsReady(videoId, {
+                    title: metadata.title,
+                    thumbnailUrl: metadata.thumbnail_url,
+                    durationSeconds,
+                    cues,
+                });
+            })(), PROCESS_VIDEO_TIMEOUT_MS, `Shadowing video processing (${videoId})`);
         } catch (error) {
             logger.error('Shadowing processing pipeline failed', { videoId, error });
             await this.shadowingRepo.markAsFailed(videoId);
