@@ -223,6 +223,18 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
         machine.retry();
     }, [clearError, machine]);
 
+    const handleNext = useCallback(() => {
+        clearError();
+        setRecorderError(null);
+        setRecordingSeconds(0);
+        const nextIndex = Math.min(machine.currentCueIndex + 1, editableCues.length - 1);
+        if (nextIndex === machine.currentCueIndex) {
+            return;
+        }
+
+        machine.jumpAndPlay(nextIndex);
+    }, [clearError, editableCues.length, machine]);
+
 
     const handleRestart = useCallback(() => {
         clearError();
@@ -508,6 +520,13 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
                             >
                                 <img src={retryIcon} alt="" className={styles.buttonIcon} />
                                 <span>Retry</span>
+                            </button>
+                            <button
+                                className={styles.ghostButton}
+                                onClick={handleNext}
+                                aria-label="Go to next cue"
+                            >
+                                <span>Next</span>
                             </button>
                         </div>
                     )}

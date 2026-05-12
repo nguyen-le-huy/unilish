@@ -108,6 +108,7 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4) 0;
+  margin-bottom: 10px;
 }
 
 .statusDot {
@@ -147,9 +148,6 @@
   cursor: pointer;
 }
 
-.retryButton {
-  margin-bottom: 10px;
-}
 
 .primaryButton:disabled,
 .ghostButton:disabled,
