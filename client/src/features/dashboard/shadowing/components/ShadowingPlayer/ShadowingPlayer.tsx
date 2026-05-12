@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './ShadowingPlayer.module.css';
-import ScorePanel from '../ScorePanel/ScorePanel';
 import CueDisplay from '../CueDisplay/CueDisplay';
 import TranscriptPanel from '../TranscriptPanel/TranscriptPanel';
 import { useAzurePronunciation } from '../../hooks/use-azure-pronunciation';
@@ -62,6 +61,7 @@ const mergeTranslation = (cues: ShadowingVideo['cues']): string | null => {
 const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, saveError }: ShadowingPlayerProps) => {
     const onCueEndRef = useRef<(() => void) | null>(null);
     const hasAutoPlayedRef = useRef(false);
+    const lastScoringRef = useRef<{ cueId: string; blobSize: number; blobType: string } | null>(null);
 
     const [recorderError, setRecorderError] = useState<string | null>(null);
     const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -138,6 +138,23 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
             return;
         }
 
+        const scoringKey = {
+            cueId: currentCue.id,
+            blobSize: audioBlob.size,
+            blobType: audioBlob.type,
+        };
+
+        if (
+            lastScoringRef.current
+            && lastScoringRef.current.cueId === scoringKey.cueId
+            && lastScoringRef.current.blobSize === scoringKey.blobSize
+            && lastScoringRef.current.blobType === scoringKey.blobType
+        ) {
+            return;
+        }
+
+        lastScoringRef.current = scoringKey;
+
         let isCancelled = false;
 
         const runScoring = async () => {
@@ -162,7 +179,13 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
         return () => {
             isCancelled = true;
         };
-    }, [currentCue, machine, scoreBlob]);
+    }, [currentCue, machine.audioBlob, machine.onScoreComplete, machine.onScoreFailed, machine.state, scoreBlob]);
+
+    useEffect(() => {
+        if (machine.state !== 'scoring') {
+            lastScoringRef.current = null;
+        }
+    }, [machine.state]);
 
     const handlePlayCurrent = useCallback(() => {
         clearError();
@@ -200,12 +223,6 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
         machine.retry();
     }, [clearError, machine]);
 
-    const handleNext = useCallback(() => {
-        clearError();
-        setRecorderError(null);
-        setRecordingSeconds(0);
-        machine.next();
-    }, [clearError, machine]);
 
     const handleRestart = useCallback(() => {
         clearError();
@@ -221,6 +238,7 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
         setRecordingSeconds(0);
         machine.jumpAndPlay(index);
     }, [clearError, machine, ytPlayer]);
+
 
     const isEditable = useMemo(() => {
         return ['idle', 'waiting', 'result', 'done'].includes(machine.state) && !isSavingCues;
@@ -473,6 +491,7 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
                 <div className={styles.leftColumn}>
                     <div className={styles.playerFrame}>
                         <div id="yt-player-container" className={styles.youtubeMount} aria-label={`YouTube player: ${video.title}`} />
+                        <div className={styles.playerInteractionBlocker} aria-hidden="true" />
                     </div>
 
                     <div className={styles.statusRow}>
@@ -480,49 +499,65 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
                         <span className={styles.statusText}>State: {machine.state}</span>
                     </div>
 
-                    <div className={styles.controlsRow}>
-                        {machine.state === 'idle' && (
-                            <button className={styles.primaryButton} onClick={handlePlayCurrent} aria-label="Play current cue">
-                                ▶ Play cue
+                    {machine.state === 'result' && (
+                        <div className={styles.statusActionRow}>
+                            <button
+                                className={styles.ghostButton + ' ' + styles.retryButton}
+                                onClick={handleRetry}
+                                aria-label="Replay current cue"
+                            >
+                                <img src={retryIcon} alt="" className={styles.buttonIcon} />
+                                <span>Retry</span>
                             </button>
-                        )}
-
-                        {machine.state === 'waiting' && (
-                            <>
-                                <button className={styles.primaryButton} onClick={() => void handleStartRecording()} aria-label="Start recording">
-                                    <img src={micIcon} alt="" className={styles.buttonIcon} />
-                                    <span>Ready to record</span>
-                                </button>
-                                <button className={styles.ghostButton} onClick={handleRetry} aria-label="Replay current cue">
-                                    <img src={retryIcon} alt="" className={styles.buttonIcon} />
-                                    <span>Replay</span>
-                                </button>
-                            </>
-                        )}
-
-                        {machine.state === 'recording' && (
-                            <>
-                                <button className={styles.dangerButton} onClick={() => void handleStopRecording()} aria-label="Stop recording">
-                                    ⏹ Finish
-                                </button>
-                                <span className={styles.timerText}>{formatRecordingTime(recordingSeconds)}</span>
-                            </>
-                        )}
-
-                        {machine.state === 'scoring' && (
-                            <p className={styles.statusText}>{isScoring ? 'Scoring pronunciation...' : 'Preparing score...'}</p>
-                        )}
-
-                        {machine.state === 'playing' && (
-                            <p className={styles.statusText}>Playing cue...</p>
-                        )}
-                    </div>
-
-                    <CueDisplay cue={currentCue} mode={mode} state={machine.state} />
-
-                    {machine.state === 'result' && machine.pronunciationResult && (
-                        <ScorePanel result={machine.pronunciationResult} onRetry={handleRetry} onNext={handleNext} />
+                        </div>
                     )}
+
+                    {machine.state !== 'result' && machine.state !== 'done' && (
+                        <div className={styles.controlsRow}>
+                            {machine.state === 'idle' && (
+                                <button className={styles.primaryButton} onClick={handlePlayCurrent} aria-label="Play current cue">
+                                    ▶ Play cue
+                                </button>
+                            )}
+
+                            {machine.state === 'waiting' && (
+                                <>
+                                    <button className={styles.primaryButton} onClick={() => void handleStartRecording()} aria-label="Start recording">
+                                        <img src={micIcon} alt="" className={styles.buttonIcon} />
+                                        <span>Ready to record</span>
+                                    </button>
+                                    <button className={styles.ghostButton} onClick={handleRetry} aria-label="Replay current cue">
+                                        <img src={retryIcon} alt="" className={styles.buttonIcon} />
+                                        <span>Replay</span>
+                                    </button>
+                                </>
+                            )}
+
+                            {machine.state === 'recording' && (
+                                <>
+                                    <button className={styles.dangerButton} onClick={() => void handleStopRecording()} aria-label="Stop recording">
+                                        ⏹ Finish
+                                    </button>
+                                    <span className={styles.timerText}>{formatRecordingTime(recordingSeconds)}</span>
+                                </>
+                            )}
+
+                            {machine.state === 'scoring' && (
+                                <p className={styles.statusText}>{isScoring ? 'Scoring pronunciation...' : 'Preparing score...'}</p>
+                            )}
+
+                            {machine.state === 'playing' && (
+                                <p className={styles.statusText}>Playing cue...</p>
+                            )}
+                        </div>
+                    )}
+
+                    <CueDisplay
+                        cue={currentCue}
+                        mode={mode}
+                        state={machine.state}
+                        pronunciationResult={machine.pronunciationResult}
+                    />
 
                     {machine.state === 'done' && (
                         <div className={styles.donePanel}>

@@ -14,7 +14,7 @@ interface YouTubePlayerInstance {
 interface YouTubePlayerConstructor {
     new (elementId: string, options: {
         videoId?: string;
-        playerVars?: Record<string, number>;
+        playerVars?: Record<string, number | string>;
         events?: {
             onReady?: () => void;
         };
@@ -158,8 +158,14 @@ export const useYtPlayer = (
             playerRef.current = new api.Player(containerId, {
                 videoId,
                 playerVars: {
+                    controls: 0,
+                    disablekb: 1,
+                    fs: 0,
+                    iv_load_policy: 3,
+                    modestbranding: 1,
                     rel: 0,
                     playsinline: 1,
+                    origin: window.location.origin,
                 },
                 events: {
                     onReady: () => {

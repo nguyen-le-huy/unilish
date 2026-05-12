@@ -14,6 +14,14 @@ interface ApiErrorPayload {
     message?: string;
 }
 
+const MAX_SCORE_ATTEMPTS = 2;
+const SCORE_TIMEOUT_MS = 25_000;
+const RETRY_BASE_DELAY_MS = 600;
+
+const wait = (ms: number): Promise<void> => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+});
+
 const getScoringErrorMessage = (error: unknown): string => {
     if (isAxiosError<ApiErrorPayload>(error)) {
         const apiMessage = error.response?.data?.message;
@@ -46,7 +54,19 @@ export const useAzurePronunciation = (): UseAzurePronunciationResult => {
             formData.append('audio', blob, 'shadowing-recording.webm');
             formData.append('referenceText', referenceText);
 
-            return await shadowingService.scorePronunciation(formData);
+            let lastError: unknown = null;
+            for (let attempt = 0; attempt < MAX_SCORE_ATTEMPTS; attempt += 1) {
+                try {
+                    return await shadowingService.scorePronunciation(formData, SCORE_TIMEOUT_MS);
+                } catch (scoringError) {
+                    lastError = scoringError;
+                    if (attempt < MAX_SCORE_ATTEMPTS - 1) {
+                        await wait(RETRY_BASE_DELAY_MS * (attempt + 1));
+                    }
+                }
+            }
+
+            throw lastError;
         } catch (scoringError) {
             const message = getScoringErrorMessage(scoringError);
             setError(message);

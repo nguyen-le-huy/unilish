@@ -7,6 +7,15 @@ interface UseShadowingRecorderReturn {
 }
 
 const DEFAULT_MIME_TYPE = 'audio/webm';
+const PREFERRED_MIME_TYPES = ['audio/wav', 'audio/webm;codecs=opus', 'audio/webm'];
+
+const resolveMimeType = (): string | undefined => {
+    if (typeof MediaRecorder === 'undefined') {
+        return undefined;
+    }
+
+    return PREFERRED_MIME_TYPES.find((type) => MediaRecorder.isTypeSupported(type));
+};
 
 export const useShadowingRecorder = (): UseShadowingRecorderReturn => {
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -31,7 +40,8 @@ export const useShadowingRecorder = (): UseShadowingRecorderReturn => {
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const recorder = new MediaRecorder(stream);
+            const mimeType = resolveMimeType();
+            const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
 
             streamRef.current = stream;
             mediaRecorderRef.current = recorder;

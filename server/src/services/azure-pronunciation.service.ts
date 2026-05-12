@@ -21,6 +21,8 @@ export interface PronunciationResult {
     words: PronunciationWordResult[];
 }
 
+const AZURE_SCORE_TIMEOUT_MS = 20_000;
+
 const isObject = (value: unknown): value is Record<string, unknown> => {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 };
@@ -145,7 +147,13 @@ const convertWebMToWav = async (webmBuffer: Buffer): Promise<Buffer> => {
         logger.info('Audio converted to WAV successfully', { outputSize: wavBuffer.length });
         return wavBuffer;
     } catch (error) {
-        logger.error('WebM to WAV conversion failed', { error: error instanceof Error ? error.message : String(error) });
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error('WebM to WAV conversion failed', { error: message });
+
+        if (message.toLowerCase().includes('ffmpeg') && message.toLowerCase().includes('not found')) {
+            throw new AppError('ffmpeg is required to process WebM audio on the server.', HttpStatus.BAD_GATEWAY);
+        }
+
         throw error;
     } finally {
         await fs.unlink(inputPath).catch(() => {});
@@ -157,6 +165,26 @@ const recognizeOnce = (recognizer: sdk.SpeechRecognizer): Promise<sdk.SpeechReco
     return new Promise<sdk.SpeechRecognitionResult>((resolve, reject) => {
         recognizer.recognizeOnceAsync(resolve, reject);
     });
+};
+
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    try {
+        return await Promise.race([
+            promise,
+            new Promise<T>((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    reject(new AppError(`${label} timeout after ${timeoutMs}ms`, HttpStatus.BAD_GATEWAY));
+                }, timeoutMs);
+                timeoutId.unref?.();
+            }),
+        ]);
+    } finally {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+    }
 };
 
 export class AzurePronunciationService {
@@ -197,7 +225,11 @@ export class AzurePronunciationService {
             );
             pronunciationConfig.applyTo(recognizer);
 
-            const result = await recognizeOnce(recognizer);
+            const result = await withTimeout(
+                recognizeOnce(recognizer),
+                AZURE_SCORE_TIMEOUT_MS,
+                'Azure pronunciation scoring',
+            );
 
             if (result.reason !== sdk.ResultReason.RecognizedSpeech) {
                 logger.warn('Azure Speech did not recognize', { reason: result.reason });

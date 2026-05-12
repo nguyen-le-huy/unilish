@@ -31,7 +31,7 @@ export const shadowingService = {
         });
     },
 
-    scorePronunciation(formData: FormData): Promise<PronunciationResult> {
+    scorePronunciation(formData: FormData, timeoutMs: number = 25_000): Promise<PronunciationResult> {
         return api.post<PronunciationResult, PronunciationResult>(
             `${SHADOWING_PATH}/pronunciation/score`,
             formData,
@@ -39,6 +39,7 @@ export const shadowingService = {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
+                timeout: timeoutMs,
             },
         );
     },

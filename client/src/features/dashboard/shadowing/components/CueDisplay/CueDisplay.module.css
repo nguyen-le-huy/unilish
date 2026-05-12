@@ -14,6 +14,26 @@
   color: var(--text-muted);
 }
 
+.cueMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.cueScoreBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 0.0625rem solid currentColor;
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
 .cueText {
   margin: 0;
   font-family: var(--font-family);
@@ -25,6 +45,21 @@
 .cueTextHidden {
   filter: blur(0.25rem);
   user-select: none;
+}
+
+.wordStrong {
+  color: var(--score-green);
+  font-weight: 600;
+}
+
+.wordAverage {
+  color: var(--score-yellow);
+  font-weight: 600;
+}
+
+.wordWeak {
+  color: var(--score-red);
+  font-weight: 600;
 }
 
 .cueWarning {
