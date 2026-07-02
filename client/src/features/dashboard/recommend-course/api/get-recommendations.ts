@@ -1,6 +1,6 @@
 import { apiGetUnwrappedEnvelope } from '@/lib/axios';
-import type { RecommendedSeriesDto } from '../types/recommend-course.types';
+import type { RecommendedCourseDto } from '../types/recommend-course.types';
 
-export const getRecommendations = async (): Promise<RecommendedSeriesDto[]> => {
-    return apiGetUnwrappedEnvelope<RecommendedSeriesDto[]>('/v1/recommendations');
+export const getRecommendations = async (): Promise<RecommendedCourseDto[]> => {
+    return apiGetUnwrappedEnvelope<RecommendedCourseDto[]>('/v1/recommendations');
 };

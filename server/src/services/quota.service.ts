@@ -1,40 +1,53 @@
-import { ConfigService } from './config.service.js';
 import redisClient from '../config/redis.js';
 import { logger } from '../utils/logger.js';
-import type { SubscriptionConfig } from '../types/config.type.js';
+
+// ─── Global Daily Limits ─────────────────────────────────────────────────────
+// These replace the old plan-based subscription config.
+// All users receive the same non-commercial access to protect against AI-cost abuse.
+// Configured via environment variables with safe defaults.
+
+const getDailyLimit = (feature: 'ai_chat' | 'ai_speaking'): number => {
+    const envKey = `GLOBAL_LIMIT_${feature.toUpperCase()}_DAILY`;
+    const raw = process.env[envKey];
+    if (raw) {
+        const parsed = parseInt(raw, 10);
+        if (Number.isFinite(parsed) && parsed >= -1) {
+            return parsed; // -1 = unlimited
+        }
+    }
+    // Defaults
+    return feature === 'ai_chat' ? 50 : 20;
+};
+
+const getUnitAccessLimit = (): number => {
+    const raw = process.env['GLOBAL_LIMIT_UNIT_ACCESS'];
+    if (raw) {
+        const parsed = parseInt(raw, 10);
+        if (Number.isFinite(parsed) && parsed >= -1) {
+            return parsed;
+        }
+    }
+    return 3; // default: 3 units
+};
 
 export class QuotaService {
     /**
-     * Check if user has quota for a feature
-     * @param userId User ID
-     * @param userPlan User Plan ('FREE' | 'PREMIUM')
-     * @param feature Feature key ('ai_chat' | 'ai_speaking') or 'unit_access'
+     * Check if user has quota remaining for a feature.
+     * All users share the same global daily limit.
      */
     static async checkQuota(
         userId: string,
-        userPlan: 'FREE' | 'PREMIUM',
-        feature: 'ai_chat' | 'ai_speaking'
+        _userPlan: 'FREE' | 'PREMIUM',
+        feature: 'ai_chat' | 'ai_speaking',
     ): Promise<boolean> {
         try {
-            // 1. Get Dynamic Config
-            const config = await ConfigService.getSubscriptionConfig();
-            const planConfig = config[userPlan];
-
-            if (!planConfig) {
-                logger.error(`Invalid plan config for user ${userId} with plan ${userPlan}`);
-                return false; // Fail safe
-            }
-
-            // 2. Check Unlimited (-1)
-            const limitKey = `${feature}_daily` as keyof typeof planConfig.limits;
-            const limit = planConfig.limits[limitKey];
+            const limit = getDailyLimit(feature);
 
             if (limit === -1) {
                 return true; // Unlimited
             }
 
-            // 3. Check Redis Counter
-            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const today = new Date().toISOString().split('T')[0];
             const redisKey = `quota:${userId}:${feature}:${today}`;
 
             const currentUsageStr = await redisClient.get(redisKey);
@@ -48,46 +61,35 @@ export class QuotaService {
             return true;
         } catch (error) {
             logger.error('Error checking quota:', error);
-            // In case of error, maybe allow or deny? Secure default implies deny, but for UX maybe allow?
-            // Let's deny for now to force fix.
             return false;
         }
     }
 
     /**
-     * Increment usage counter for a feature
+     * Increment usage counter for a feature.
      */
     static async incrementUsage(
         userId: string,
-        feature: 'ai_chat' | 'ai_speaking'
+        feature: 'ai_chat' | 'ai_speaking',
     ): Promise<void> {
         try {
             const today = new Date().toISOString().split('T')[0];
             const redisKey = `quota:${userId}:${feature}:${today}`;
 
-            // Increment and set expiry (24 hours + buffer)
             await redisClient.incr(redisKey);
-            await redisClient.expire(redisKey, 86400 * 2); // 48 hours to be safe
+            await redisClient.expire(redisKey, 86400 * 2); // 48 hours
         } catch (error) {
             logger.error('Error incrementing usage:', error);
         }
     }
 
     /**
-     * Check unit access limit
-     * @param userPlan 
-     * @param unitIndex 0-based index of the unit
+     * Check unit access limit (all users same).
      */
-    static async checkUnitAccess(userPlan: 'FREE' | 'PREMIUM', unitIndex: number): Promise<boolean> {
+    static async checkUnitAccess(_userPlan: 'FREE' | 'PREMIUM', unitIndex: number): Promise<boolean> {
         try {
-            const config = await ConfigService.getSubscriptionConfig();
-            const planConfig = config[userPlan];
-
-            const limit = planConfig.limits.unit_access_limit;
-
+            const limit = getUnitAccessLimit();
             if (limit === -1) return true;
-
-            // If limit is 3, user can access unit 0, 1, 2. So index < limit.
             return unitIndex < limit;
         } catch (error) {
             logger.error('Error checking unit access:', error);

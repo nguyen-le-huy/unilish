@@ -130,24 +130,22 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 1. Sign up at [app.pinecone.io](https://app.pinecone.io)
 2. Create an index:
-   - **Name:** `unilish-course-series`
+   - **Name:** `unilish-knowledge` (general knowledge graph)
    - **Dimensions:** `1536`
    - **Metric:** `cosine`
-3. Copy the API key → set `PINECONE_API_KEY` in `server/.env`
+3. Create a second index for course recommendations:
+   - **Name:** `unilish-course-series` (course vectors)
+   - **Dimensions:** `1536`
+   - **Metric:** `cosine`
+4. Copy the API key → set `PINECONE_API_KEY` in `server/.env`
 
 ---
 
 ## Vector Sync Scripts
 
 ```bash
-# Sync course series vectors
+# Sync course vectors for recommendation search
 npm run sync:vectors
-
-# Sync with AI analysis
-npm run sync:vectors:ai
-
-# Dry run (no writes)
-npm run sync:vectors:ai:dry
 ```
 
 ---

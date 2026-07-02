@@ -11,7 +11,6 @@ export { UserDetailsSheet } from './components/UserDetailsSheet/UserDetailsSheet
 export { UserFilterBar } from './components/UserFilter/UserFilter';
 export { UserRoleModal } from './components/UserRoleModal/UserRoleModal';
 export { UserStatsCards } from './components/UserStatsCards/UserStatsCards';
-export { UserSubscriptionModal } from './components/UserSubscriptionModal/UserSubscriptionModal';
 export { UserTable } from './components/UserTable/UserTable';
 
 // Hooks

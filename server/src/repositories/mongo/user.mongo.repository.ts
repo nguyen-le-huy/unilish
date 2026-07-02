@@ -1,44 +1,77 @@
+import { User, type IUser } from '../../models/mongo/user.model.js';
 import { BaseMongoRepository } from '../base/base.mongo.repository.js';
-import { User, ESubscriptionStatus, ESubscriptionPlan } from '../../models/mongo/user.model.js';
-import type { IUser } from '../../models/mongo/user.model.js';
-import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.js';
+import mongoose from 'mongoose';
 
-export interface UserRecommendationProfile {
-    _id: IUser['_id'];
-    learningLanguageId: IUser['learningLanguageId'];
-    learningGoalId: IUser['learningGoalId'];
-    currentLevel: IUser['currentLevel'];
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface UserRecommendationProfile {
+    _id: unknown;
+    learningLanguageId: unknown;
+    learningGoalId: unknown;
+    currentLevel: string;
 }
 
-export class UserMongoRepository extends BaseMongoRepository<IUser> implements IUserRepository {
+export interface UserListQuery {
+    page?: string | undefined;
+    limit?: string | undefined;
+    search?: string | undefined;
+    level?: string | undefined;
+    role?: string | undefined;
+}
+
+export interface UserListResult {
+    users: IUser[];
+    pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        pages: number;
+    };
+}
+
+export interface UserStats {
+    totalUsers: number;
+    newUsersToday: number;
+    activeLearners: number;
+}
+
+// ─── Repository ───────────────────────────────────────────────────────────────
+
+export class UserMongoRepository extends BaseMongoRepository<IUser> {
     constructor() {
         super(User);
     }
 
     async findByEmail(email: string): Promise<IUser | null> {
-        return this.model.findOne({ email }).lean().exec() as Promise<IUser | null>;
-    }
-
-    async findByClerkId(clerkId: string): Promise<IUser | null> {
-        return this.model.findOne({ clerkId }).lean().exec() as Promise<IUser | null>;
+        return this.model
+            .findOne({ email })
+            .lean()
+            .exec() as Promise<IUser | null>;
     }
 
     async findByEmailWithPassword(email: string): Promise<IUser | null> {
-        return this.model.findOne({ email }).select('+password').lean().exec() as Promise<IUser | null>;
+        return this.model
+            .findOne({ email })
+            .select('+password')
+            .lean()
+            .exec() as Promise<IUser | null>;
     }
 
     async findByEmailWithOTP(email: string): Promise<IUser | null> {
-        return this.model.findOne({ email }).select('+otp +otpExpires').lean().exec() as Promise<IUser | null>;
+        return this.model
+            .findOne({ email })
+            .select('+otp +otpExpires')
+            .lean()
+            .exec() as Promise<IUser | null>;
     }
+
     async findByGoogleIdOrEmail(googleId: string, email: string): Promise<IUser | null> {
-        return this.model.findOne({
-            $or: [{ googleId }, { email }]
-        }).lean().exec() as Promise<IUser | null>;
-    }
-    async findByClerkIdOrEmail(clerkId: string, email: string): Promise<IUser | null> {
-        return this.model.findOne({
-            $or: [{ clerkId }, { email }]
-        }).lean().exec() as Promise<IUser | null>;
+        return this.model
+            .findOne({
+                $or: [{ googleId }, { email }]
+            })
+            .lean()
+            .exec() as Promise<IUser | null>;
     }
 
     async findRecommendationProfileById(userId: string): Promise<UserRecommendationProfile | null> {
@@ -49,20 +82,19 @@ export class UserMongoRepository extends BaseMongoRepository<IUser> implements I
             .exec() as Promise<UserRecommendationProfile | null>;
     }
 
-    async findAllWithPagination(query: any): Promise<{ users: IUser[], pagination: any }> {
-        const { page = '1', limit = '10', search, plan, level, role } = query;
+    async findAllWithPagination(query: UserListQuery): Promise<UserListResult> {
+        const { page = '1', limit = '10', search, level, role } = query;
         const skip = (Number(page) - 1) * Number(limit);
 
-        const filter: any = {};
+        const filter: Record<string, unknown> = {};
 
         if (search) {
             filter.$or = [
                 { email: { $regex: search, $options: 'i' } },
-                { fullName: { $regex: search, $options: 'i' } }
+                { fullName: { $regex: search, $options: 'i' } },
             ];
         }
 
-        if (plan) filter['subscription.plan'] = plan;
         if (level) filter.currentLevel = level;
         if (role) filter.role = role;
 
@@ -73,7 +105,7 @@ export class UserMongoRepository extends BaseMongoRepository<IUser> implements I
                 .limit(Number(limit))
                 .select('-password -__v')
                 .lean(),
-            this.model.countDocuments(filter)
+            this.model.countDocuments(filter),
         ]);
 
         return {
@@ -82,35 +114,30 @@ export class UserMongoRepository extends BaseMongoRepository<IUser> implements I
                 page: Number(page),
                 limit: Number(limit),
                 total,
-                pages: Math.ceil(total / Number(limit))
-            }
+                pages: Math.ceil(total / Number(limit)),
+            },
         };
     }
 
-    async getStats(): Promise<any> {
+    async getStats(): Promise<UserStats> {
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-        const [totalUsers, premiumUsers, newUsersToday, activeLearners] = await Promise.all([
+        const [totalUsers, newUsersToday, activeLearners] = await Promise.all([
             this.model.countDocuments({}),
             this.model.countDocuments({
-                'subscription.status': ESubscriptionStatus.ACTIVE,
-                'subscription.plan': ESubscriptionPlan.PREMIUM
+                createdAt: { $gte: startOfToday },
             }),
             this.model.countDocuments({
-                createdAt: { $gte: startOfToday }
+                lastActiveAt: { $gte: twentyFourHoursAgo },
             }),
-            this.model.countDocuments({
-                lastActiveAt: { $gte: twentyFourHoursAgo }
-            })
         ]);
 
         return {
             totalUsers,
-            premiumUsers,
             newUsersToday,
-            activeLearners
+            activeLearners,
         };
     }
 }

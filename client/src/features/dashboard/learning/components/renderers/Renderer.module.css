@@ -1,0 +1,785 @@
+/* ─── Common ───────────────────────────────────────────────────────────────── */
+
+.renderer {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.lessonContent {
+  padding: 0;
+}
+
+.unsupported {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+  color: var(--dark-grey);
+  font-size: var(--text-md);
+}
+
+/* ─── VOCAB ────────────────────────────────────────────────────────────────── */
+
+.vocabStack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.scenario {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.35;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dark-grey);
+}
+
+.itemList {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.vocabCard {
+  border: 1px solid var(--grey);
+  border-radius: 10px;
+  padding: 16px 18px 18px;
+  background: white;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.vocabMain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 182px;
+  gap: 24px;
+  align-items: start;
+  margin-bottom: 18px;
+}
+
+.vocabCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vocabHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.vocabWord {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.vocabIpa {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--dark-grey);
+  font-family: monospace;
+}
+
+.vocabPos {
+  font-size: 14px;
+  color: var(--muted);
+  text-transform: lowercase;
+}
+
+.audioRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.audioChip,
+.inlineAudioButton {
+  border: 1px solid #d7e3fb;
+  background: #f7fbff;
+  color: #5a77b8;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, background-color 120ms ease;
+}
+
+.audioChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 9999px;
+  padding: 6px 10px 6px 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.audioChip:hover,
+.audioChip:focus-visible,
+.inlineAudioButton:hover,
+.inlineAudioButton:focus-visible {
+  border-color: #bfd0f2;
+  background: #eef5ff;
+  transform: translateY(-1px);
+}
+
+.audioChip:focus-visible,
+.inlineAudioButton:focus-visible {
+  outline: 2px solid #cdddf8;
+  outline-offset: 2px;
+}
+
+.audioIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: #dfe9fb;
+  color: #5571b0;
+}
+
+.audioIcon svg,
+.inlineAudioButton svg {
+  width: 15px;
+  height: 15px;
+}
+
+.audioLabel {
+  line-height: 1;
+}
+
+.vocabImageWrap {
+  justify-self: end;
+  width: 182px;
+  min-height: 122px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.vocabImage {
+  width: 100%;
+  height: 122px;
+  object-fit: cover;
+  border-radius: 2px;
+  background: #f5f5f5;
+}
+
+.vocabSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sectionLabel {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.definitionList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.definitionNative {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.definitionEn {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--body);
+  display: flex;
+  gap: 4px;
+}
+
+.definitionPrefix {
+  flex: none;
+}
+
+.exampleList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.exampleItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.inlineAudioButton {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  padding: 0;
+  margin-top: 2px;
+}
+
+.inlineAudioButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.exampleText {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.exampleSentence {
+  display: inline;
+}
+
+.exampleTranslation {
+  display: inline;
+  color: var(--body);
+}
+
+@media (max-width: 900px) {
+  .vocabMain {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vocabImageWrap {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .vocabCard {
+    padding: 14px;
+  }
+
+  .vocabWord {
+    font-size: 22px;
+  }
+
+  .exampleList {
+    padding-left: 18px;
+  }
+}
+
+/* ─── GRAMMAR ──────────────────────────────────────────────────────────────── */
+
+.grammarHero {
+  margin-bottom: 32px;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 12px;
+}
+
+.heroHook {
+  font-size: 18px;
+  font-weight: 450;
+  color: black;
+  margin: 0;
+}
+
+.heroContext {
+  margin-top: 12px;
+}
+
+.contextSentence {
+  font-size: var(--text-md);
+  color: var(--dark-grey);
+  margin: 4px 0;
+  font-style: italic;
+}
+
+.blockList {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.explanationBlock {
+  padding: 0;
+}
+
+.blockHeading {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 8px;
+  color: black;
+}
+
+.blockBody {
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: black;
+  margin: 0;
+}
+
+.highlight {
+  display: inline-block;
+  background: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: var(--text-sm);
+  margin-top: 8px;
+}
+
+.examples {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.examplePair {
+  padding: 8px 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.exampleEn {
+  font-size: var(--text-md);
+  color: black;
+  margin: 0;
+  font-style: italic;
+}
+
+.exampleVi {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  margin: 2px 0 0;
+}
+
+.callout {
+  padding: 12px 16px;
+  border-radius: 8px;
+  border-left: 4px solid var(--dark-grey);
+  background: #f9f9f9;
+  font-size: var(--text-md);
+  color: black;
+}
+
+.unitContext {
+  padding: 16px;
+  border-radius: 8px;
+  background: #f0f7ff;
+}
+
+/* ─── Summary Table ────────────────────────────────────────────────────────── */
+
+.summaryTable {
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+
+.summaryTable table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.summaryTable th,
+.summaryTable td {
+  padding: 8px 12px;
+  border: 1px solid var(--grey);
+  text-align: left;
+}
+
+.summaryTable th {
+  background: #f9f9f9;
+  font-weight: 500;
+}
+
+/* ─── Concepts ─────────────────────────────────────────────────────────────── */
+
+.concepts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.conceptTag {
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: var(--grey);
+  font-size: var(--text-sm);
+  color: black;
+}
+
+/* ─── READING ──────────────────────────────────────────────────────────────── */
+
+.readingText {
+  font-size: var(--text-md);
+  line-height: 1.7;
+  color: black;
+  margin-bottom: 24px;
+}
+
+.readingText p {
+  margin: 0 0 12px;
+}
+
+.toggleSection {
+  margin-bottom: 16px;
+}
+
+.toggleButton {
+  background: none;
+  border: 1px solid var(--grey);
+  border-radius: 9999px;
+  padding: 6px 16px;
+  font-size: var(--text-sm);
+  color: black;
+  cursor: pointer;
+}
+
+.toggleButton:hover {
+  background: #f0f0f0;
+}
+
+.translation {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  font-size: var(--text-md);
+  color: var(--dark-grey);
+  line-height: 1.6;
+}
+
+.glossary {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.glossaryItem {
+  display: flex;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--grey);
+  font-size: var(--text-sm);
+}
+
+.glossaryWord {
+  font-weight: 500;
+  color: black;
+  min-width: 100px;
+}
+
+.glossaryIpa {
+  color: var(--dark-grey);
+  font-family: monospace;
+  min-width: 80px;
+}
+
+.glossaryDef {
+  color: black;
+  flex: 1;
+}
+
+/* ─── LISTENING ────────────────────────────────────────────────────────────── */
+
+.accent {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  align-self: center;
+}
+
+.transcript {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 12px;
+  color: black;
+}
+
+.transcriptLine {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--grey);
+}
+
+.speaker {
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: black;
+}
+
+.transcriptText {
+  font-size: var(--text-md);
+  color: black;
+  margin: 2px 0;
+}
+
+.transcriptTranslation {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  font-style: italic;
+}
+
+.interactiveInfo {
+  padding: 12px 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.interactiveMode {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  margin: 0;
+}
+
+/* ─── SPEAKING ─────────────────────────────────────────────────────────────── */
+
+.mission {
+  margin-bottom: 24px;
+}
+
+.missionTitle {
+  font-size: 20px;
+  font-weight: 500;
+  color: black;
+  margin: 0 0 8px;
+}
+
+.missionDesc {
+  font-size: var(--text-md);
+  color: black;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.recordingArea {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.recordButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.recordButtonStop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.hints {
+  margin-bottom: 24px;
+}
+
+.hintsTitle {
+  font-size: 16px;
+  font-weight: 500;
+  color: black;
+  margin: 0 0 8px;
+}
+
+.hint {
+  padding: 8px 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.hintVi {
+  font-size: var(--text-md);
+  color: black;
+  margin: 0;
+}
+
+.hintEn {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  margin: 2px 0 0;
+  font-style: italic;
+}
+
+.hintStructure {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--text-sm);
+  font-family: monospace;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.privacyNote {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  text-align: center;
+  margin-top: 16px;
+}
+
+/* ─── WRITING ──────────────────────────────────────────────────────────────── */
+
+.writingPrompt {
+  margin-bottom: 20px;
+}
+
+.promptLabel {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--dark-grey);
+  margin: 0 0 8px;
+}
+
+.promptText {
+  font-size: 18px;
+  font-weight: 450;
+  color: black;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.promptTranslation {
+  font-size: var(--text-md);
+  color: var(--dark-grey);
+  font-style: italic;
+  margin: 4px 0 0;
+}
+
+.writingConfig {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.configTag {
+  padding: 4px 10px;
+  background: #f0f0f0;
+  border-radius: 9999px;
+  font-size: var(--text-sm);
+  color: black;
+}
+
+.sentenceStarters {
+  margin-bottom: 16px;
+}
+
+.startersTitle {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: black;
+  margin: 0 0 8px;
+}
+
+.starterChip {
+  display: inline-block;
+  margin: 0 4px 4px 0;
+  padding: 4px 10px;
+  background: none;
+  border: 1px solid var(--grey);
+  border-radius: 9999px;
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  cursor: pointer;
+}
+
+.starterChip:hover {
+  background: #f0f0f0;
+}
+
+.editorSection {
+  margin-bottom: 16px;
+}
+
+.editor {
+  width: 100%;
+  min-height: 200px;
+  padding: 12px 16px;
+  border: 1px solid var(--grey);
+  border-radius: 8px;
+  font-size: var(--text-md);
+  line-height: 1.5;
+  color: black;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.editor:focus {
+  outline: none;
+  border-color: black;
+}
+
+.wordCount {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  text-align: right;
+  margin-top: 4px;
+}
+
+.wordCountWarning {
+  color: #dc2626;
+}
+
+/* ─── UNIT_TEST ────────────────────────────────────────────────────────────── */
+
+.unitTestHeader {
+  margin-bottom: 16px;
+}
+
+.unitTestTitle {
+  font-size: 20px;
+  font-weight: 500;
+  color: black;
+  margin: 0 0 4px;
+}
+
+.unitTestCount {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  margin: 0;
+}
+
+.unitTestNote {
+  font-size: var(--text-md);
+  color: var(--dark-grey);
+  font-style: italic;
+}

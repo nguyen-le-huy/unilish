@@ -1,6 +1,7 @@
 export const PATHS = {
     HOME: '/',
-    SERIES: (slug: string) => `/dashboard/series/${encodeURIComponent(slug)}`,
+    COURSE_DETAIL: (slug: string) => `/dashboard/course/${encodeURIComponent(slug)}`,
+    LESSON_PLAYER: (lessonId: string) => `/dashboard/learning/lessons/${lessonId}`,
     MARKETING: {
         HOME: '/marketing',
     },

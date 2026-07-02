@@ -14,6 +14,16 @@ const paramsWithCourseId = z.object({
 
 const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
 
+const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+const slugSchema = z
+    .string()
+    .min(3, 'Slug phải có ít nhất 3 ký tự')
+    .max(200, 'Slug không được vượt quá 200 ký tự')
+    .regex(SLUG_REGEX, 'Slug chỉ được chứa chữ thường, số và dấu gạch ngang')
+    .trim()
+    .toLowerCase();
+
 const structureMatrixSchema = z.object({
     vocabCount: z.number().int().min(0).optional(),
     grammarCount: z.number().int().min(0).optional(),
@@ -39,11 +49,26 @@ const finalExamConfigSchema = z.object({
 
 export const getCoursesListSchema = z.object({
     query: z.object({
-        seriesId: objectIdSchema,
+        languageId: objectIdSchema.optional(),
+        learningGoalId: objectIdSchema.optional(),
+        level: z.enum(CEFR_LEVELS).optional(),
         isActive: z
             .enum(['true', 'false'])
             .optional()
             .transform((val) => (val === undefined ? undefined : val === 'true')),
+        search: z.string().max(200).optional(),
+        page: z
+            .string()
+            .optional()
+            .transform((val) => (val ? parseInt(val, 10) : undefined))
+            .pipe(z.number().int().min(1).default(1)),
+        limit: z
+            .string()
+            .optional()
+            .transform((val) => (val ? parseInt(val, 10) : undefined))
+            .pipe(z.number().int().min(1).max(100).default(20)),
+        sort: z.enum(['orderIndex', 'name', 'createdAt']).default('orderIndex'),
+        order: z.enum(['asc', 'desc']).default('asc'),
     }),
 });
 
@@ -61,11 +86,19 @@ export const getCourseTreeSchema = z.object({
 
 export const createCourseSchema = z.object({
     body: z.object({
-        seriesId: objectIdSchema,
-        name: z.string().min(3, 'Tên phải có ít nhất 3 ký tự').max(200, 'Tên không được vượt quá 200 ký tự').trim(),
-        level: z.enum(CEFR_LEVELS, { error: 'Level không hợp lệ' }),
-        orderInSeries: z.number().int().min(1, 'Vị trí phải lớn hơn 0'),
-        prerequisiteCourseId: objectIdSchema.optional().nullable(),
+        languageId: objectIdSchema,
+        learningGoalId: objectIdSchema,
+        name: z
+            .string()
+            .min(3, 'Tên phải có ít nhất 3 ký tự')
+            .max(200, 'Tên không được vượt quá 200 ký tự')
+            .trim(),
+        slug: slugSchema,
+        level: z.enum(CEFR_LEVELS, { message: 'Level không hợp lệ' }),
+        orderIndex: z.number().int().min(1, 'Vị trí phải lớn hơn 0'),
+        description: z.string().max(2000).nullable().optional(),
+        thumbnailUrl: z.string().url().nullable().optional(),
+        prerequisiteCourseId: objectIdSchema.nullable().optional(),
         finalExamConfig: finalExamConfigSchema.optional(),
     }),
 });
@@ -77,8 +110,13 @@ export const updateCourseSchema = z.object({
     body: z
         .object({
             name: z.string().min(3).max(200).trim().optional(),
+            slug: slugSchema.optional(),
             level: z.enum(CEFR_LEVELS).optional(),
-            orderInSeries: z.number().int().min(1).optional(),
+            orderIndex: z.number().int().min(1).optional(),
+            description: z.string().max(2000).nullable().optional(),
+            thumbnailUrl: z.string().url().nullable().optional(),
+            languageId: objectIdSchema.optional(),
+            learningGoalId: objectIdSchema.optional(),
             prerequisiteCourseId: objectIdSchema.nullable().optional(),
             finalExamConfig: finalExamConfigSchema.optional(),
             isActive: z.boolean().optional(),

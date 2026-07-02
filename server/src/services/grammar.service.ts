@@ -10,7 +10,6 @@ import { LessonMongoRepository } from '../repositories/mongo/lesson.mongo.reposi
 import { QuestionGenerationService } from './question-generation.service.js';
 import { Unit } from '../models/mongo/unit.model.js';
 import { Course } from '../models/mongo/course.model.js';
-import { CourseSeries } from '../models/mongo/course-series.model.js';
 import { Question, EQuestionType, EQuestionSkill } from '../models/mongo/question.model.js';
 import { Concept, EConceptType } from '../models/mongo/concept.model.js';
 import { grammarTtsQueue } from '../jobs/queues/grammar-tts.queue.js';
@@ -442,15 +441,12 @@ export class GrammarService {
         const unit = await Unit.findById(lesson.unitId).select('contextSeed courseId').lean().exec();
         if (!unit) throw new AppError('Chương học không tồn tại', HttpStatus.NOT_FOUND);
 
-        const course = await Course.findById(unit.courseId).select('seriesId').lean().exec();
+        const course = await Course.findById(unit.courseId).select('languageId').lean().exec();
         if (!course) throw new AppError('Khóa học không tồn tại', HttpStatus.NOT_FOUND);
-
-        const series = await CourseSeries.findById(course.seriesId).select('languageId').lean().exec();
-        if (!series) throw new AppError('Bộ khóa học không tồn tại', HttpStatus.NOT_FOUND);
 
         return {
             languageCode: 'en',
-            languageId: series.languageId.toString(),
+            languageId: course.languageId.toString(),
             scenario: unit.contextSeed?.scenario ?? '',
             keywords: unit.contextSeed?.keywords ?? [],
         };

@@ -19,7 +19,6 @@ import { useLearningGoals } from "@/features/curriculum/goals";
 interface UserTableProps {
     users: User[];
     loading: boolean;
-    onEditSubscription: (user: User) => void;
     onEditRole: (user: User) => void;
     onViewDetails: (user: User) => void;
 }
@@ -38,7 +37,7 @@ const normalizeGoal = (goal: string | null | undefined): string | null => {
     return learningGoalLabels[goal] ?? goal;
 };
 
-export function UserTable({ users, loading, onEditSubscription, onEditRole, onViewDetails }: UserTableProps) {
+export function UserTable({ users, loading, onEditRole, onViewDetails }: UserTableProps) {
     const { data: learningGoalsResponse } = useLearningGoals({ page: 1, limit: 100 });
     const learningGoalTitleById = useMemo(() => {
         const map = new Map<string, string>();
@@ -71,7 +70,6 @@ export function UserTable({ users, loading, onEditSubscription, onEditRole, onVi
                         <TableHead className="w-[80px]">Avatar</TableHead>
                         <TableHead>Tài khoản</TableHead>
                         <TableHead>Vai trò</TableHead>
-                        <TableHead>Gói cước</TableHead>
                         <TableHead>Mục tiêu & Level</TableHead>
                         <TableHead>Hoạt động</TableHead>
                         <TableHead className="w-[50px]"></TableHead>
@@ -79,9 +77,6 @@ export function UserTable({ users, loading, onEditSubscription, onEditRole, onVi
                 </TableHeader>
                 <TableBody>
                     {users.map((user) => {
-                        const subscriptionPlan = user.subscription?.plan ?? 'FREE';
-                        const subscriptionStatus = user.subscription?.status ?? 'active';
-
                         const learningGoalFromProfile = user.learningGoal ? normalizeGoal(user.learningGoal) : null;
                         const learningGoalFromRef =
                             typeof user.learningGoalId === 'object' && user.learningGoalId
@@ -116,29 +111,6 @@ export function UserTable({ users, loading, onEditSubscription, onEditRole, onVi
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
-                                    <div className="flex flex-col gap-1.5">
-                                        <Badge
-                                            variant={subscriptionPlan === 'PREMIUM' ? 'default' : 'outline'}
-                                            className="w-fit capitalize shadow-none font-medium"
-                                        >
-                                            {subscriptionPlan.toLowerCase()}
-                                        </Badge>
-
-                                        {subscriptionStatus === 'expired' && (
-                                            <span className="text-[10px] text-destructive font-medium flex items-center gap-1">
-                                                <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
-                                                Hết hạn
-                                            </span>
-                                        )}
-
-                                        {subscriptionPlan !== 'FREE' && user.subscription?.endDate && (
-                                            <span className="text-[10px] text-muted-foreground">
-                                                Exp: {format(new Date(user.subscription.endDate), 'dd/MM/yyyy')}
-                                            </span>
-                                        )}
-                                    </div>
-                                </TableCell>
-                                <TableCell>
                                     <div className="flex flex-col gap-1">
                                         <Badge variant="outline" className="w-fit font-mono text-xs shadow-none">
                                             {user.currentLevel || 'A0'}
@@ -165,7 +137,6 @@ export function UserTable({ users, loading, onEditSubscription, onEditRole, onVi
                                 <TableCell>
                                     <UserActionMenu
                                         user={user}
-                                        onEditSubscription={onEditSubscription}
                                         onEditRole={onEditRole}
                                         onViewDetails={onViewDetails}
                                     />

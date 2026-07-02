@@ -8,7 +8,6 @@ import { HttpStatus } from '../constants/http-status.js';
 import { LessonMongoRepository } from '../repositories/mongo/lesson.mongo.repository.js';
 import { Unit } from '../models/mongo/unit.model.js';
 import { Course } from '../models/mongo/course.model.js';
-import { CourseSeries } from '../models/mongo/course-series.model.js';
 import { Concept, EConceptType } from '../models/mongo/concept.model.js';
 import { ttsQueue } from '../jobs/queues/tts.queue.js';
 import { ContextAlignmentService } from './context-alignment.service.js';
@@ -75,23 +74,15 @@ export class VocabGenerationService {
         }
 
         const course = await Course.findById(unit.courseId)
-            .select('seriesId')
+            .select('languageId')
             .lean()
             .exec();
         if (!course) {
             throw new AppError('Course not found for this unit', HttpStatus.NOT_FOUND);
         }
 
-        const series = await CourseSeries.findById(course.seriesId)
-            .select('languageId')
-            .lean()
-            .exec();
-        if (!series) {
-            throw new AppError('Course series not found', HttpStatus.NOT_FOUND);
-        }
-
         const language = await mongoose.model('Language')
-            .findById(series.languageId)
+            .findById(course.languageId)
             .select('code nativeName')
             .lean()
             .exec() as { _id: mongoose.Types.ObjectId; code: string; nativeName: string } | null;
@@ -100,7 +91,7 @@ export class VocabGenerationService {
         }
 
         return {
-            languageId: series.languageId.toString(),
+            languageId: course.languageId.toString(),
             languageCode: language.code,
             nativeName: language.nativeName,
             learnerNativeLanguage: 'Vietnamese',

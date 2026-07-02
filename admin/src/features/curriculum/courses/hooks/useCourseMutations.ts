@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { courseApi } from '../api/course.api';
 import { COURSE_QUERY_KEYS } from '../constants/query-keys';
-import type { Course, CreateCoursePayload, UpdateCoursePayload } from '../types/course.types';
+import type { CourseListResponse, CreateCoursePayload, UpdateCoursePayload } from '../types/course.types';
 
 // ─── Create ───────────────────────────────────────────────────────────────────
 
@@ -56,17 +56,20 @@ export const useToggleCourseStatus = () => {
         onMutate: async (courseId) => {
             await queryClient.cancelQueries({ queryKey: COURSE_QUERY_KEYS.lists() });
 
-            const previousLists = queryClient.getQueriesData<Course[]>({
+            const previousLists = queryClient.getQueriesData<CourseListResponse>({
                 queryKey: COURSE_QUERY_KEYS.lists(),
             });
 
-            queryClient.setQueriesData<Course[]>(
+            queryClient.setQueriesData<CourseListResponse>(
                 { queryKey: COURSE_QUERY_KEYS.lists() },
                 (old) =>
                     old
-                        ? old.map((c) =>
-                              c._id === courseId ? { ...c, isActive: !c.isActive } : c,
-                          )
+                        ? {
+                              ...old,
+                              data: old.data.map((c) =>
+                                  c._id === courseId ? { ...c, isActive: !c.isActive } : c,
+                              ),
+                          }
                         : old,
             );
 

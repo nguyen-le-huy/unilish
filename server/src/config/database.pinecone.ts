@@ -9,7 +9,7 @@ import { logger } from '../utils/logger.js';
 class PineconeClient {
     private static instance: Pinecone | null = null;
     private static knowledgeIndexInstance: Index | null = null;
-    private static courseSeriesIndexInstance: Index | null = null;
+    private static courseIndexInstance: Index | null = null;
 
     /**
      * Initialize and connect to Pinecone
@@ -27,7 +27,7 @@ class PineconeClient {
 
             const indexNames = Array.from(new Set([
                 env.PINECONE_INDEX_NAME,
-                env.PINECONE_COURSE_SERIES_INDEX_NAME,
+                env.PINECONE_COURSE_INDEX_NAME,
             ]));
 
             await Promise.all(indexNames.map((indexName) => this.validateIndex(indexName)));
@@ -96,31 +96,30 @@ class PineconeClient {
     }
 
     /**
-     * Get Course Series Pinecone index instance for recommendation vectors
+     * Get Course Pinecone index instance for recommendation vectors.
+     * Replaces the old Course Series index.
      * @returns Pinecone Index instance
      * @throws Error if Pinecone is not initialized
      */
-    static getCourseSeriesIndex(): Index {
+    static getCourseIndex(): Index {
         if (!this.instance) {
             throw new Error('Pinecone not initialized. Call PineconeClient.connect() first.');
         }
 
-        if (!this.courseSeriesIndexInstance) {
-            this.courseSeriesIndexInstance = this.instance.index(env.PINECONE_COURSE_SERIES_INDEX_NAME);
+        if (!this.courseIndexInstance) {
+            this.courseIndexInstance = this.instance.index(env.PINECONE_COURSE_INDEX_NAME);
         }
 
-        return this.courseSeriesIndexInstance;
+        return this.courseIndexInstance;
     }
 
     /**
      * Disconnect from Pinecone (cleanup)
      */
     static async disconnect(): Promise<void> {
-        // Pinecone SDK doesn't require explicit disconnection
-        // but we reset instances for clean shutdown
         this.instance = null;
         this.knowledgeIndexInstance = null;
-        this.courseSeriesIndexInstance = null;
+        this.courseIndexInstance = null;
         logger.info('✅ Pinecone disconnected');
     }
 }
@@ -128,5 +127,6 @@ class PineconeClient {
 // Named exports for backward compatibility
 export const connectPinecone = PineconeClient.connect.bind(PineconeClient);
 export const getPineconeIndex = PineconeClient.getIndex.bind(PineconeClient);
-export const getCourseSeriesIndex = PineconeClient.getCourseSeriesIndex.bind(PineconeClient);
+export const getCourseIndex = PineconeClient.getCourseIndex.bind(PineconeClient);
 export const disconnectPinecone = PineconeClient.disconnect.bind(PineconeClient);
+

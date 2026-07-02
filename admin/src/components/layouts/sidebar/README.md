@@ -46,14 +46,11 @@ The **Đào tạo (Training)** section has been refactored to follow the databas
 - Tin tức (News)
 ```
 
-### After (Hierarchical Structure) ✅
+### After (Current Structure) ✅
 ```
 1. Mục tiêu & Chiến lược     → Learning Goals & Skill Weights
-2. Bộ khóa học (Series)      → Course Series (A1-C2 grouping)
-3. Khóa học (Courses)        → Course → Unit → Lesson
-4. Knowledge Graph           → Atomic Concepts (Grammar, Vocab)
-5. Ngân hàng Câu hỏi         → Reusable Question Bank
-6. Tài nguyên mở rộng        → News & YouTube (combined)
+2. Khóa học (Courses)        → Course → Unit → Lesson
+3. Ngân hàng Câu hỏi         → Reusable Question Bank
 ```
 
 ---
@@ -228,8 +225,6 @@ If you were previously using the old structure:
 
 2. **New Routes**:
    - `/curriculum/goals` - Learning Goals
-   - `/curriculum/series` - Course Series
-   - `/curriculum/concepts` - Knowledge Graph
 
 ---
 

@@ -45,11 +45,6 @@ export interface User {
     } | null;
 
     // System Status
-    subscription: {
-        plan: 'FREE' | 'PREMIUM';
-        endDate?: string; // Date string
-        status: 'active' | 'expired';
-    };
 
     settings?: {
         notification: boolean;
@@ -66,7 +61,6 @@ export interface UserFilter {
     page?: number;
     limit?: number;
     search?: string;
-    plan?: 'FREE' | 'PREMIUM';
     level?: 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
     role?: 'student' | 'admin' | 'content_creator';
 }
@@ -83,18 +77,12 @@ export interface UserResponse {
     pagination: Pagination;
 }
 
-export interface UpdateSubscriptionPayload {
-    plan: 'FREE' | 'PREMIUM';
-    period: 'monthly' | 'yearly';
-}
-
 export interface UpdateRolePayload {
     role: 'student' | 'admin' | 'content_creator';
 }
 
 export interface UserStatsOverview {
     totalUsers: number;
-    premiumUsers: number;
     newUsersToday: number;
     activeLearners: number;
 }

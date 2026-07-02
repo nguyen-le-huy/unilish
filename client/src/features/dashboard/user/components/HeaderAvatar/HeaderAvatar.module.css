@@ -1,6 +1,6 @@
 .container {
-	width: 40px;
-	height: 40px;
+	width: 28px;
+	height: 28px;
 	border-radius: 50%;
 	overflow: hidden;
 	cursor: pointer;
@@ -18,9 +18,9 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background-color: var(--dark-green);
+	background-color: var(--editorial-primary);
 	color: white;
-	font-size: 14px;
+	font-size: 12px;
 	font-weight: 600;
 	text-transform: uppercase;
 }

@@ -1,15 +1,26 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { BookOpen, Plus, Trash2, ExternalLink, Search, SlidersHorizontal, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+    BookOpen,
+    Plus,
+    Trash2,
+    ExternalLink,
+    Search,
+    SlidersHorizontal,
+    X,
+    ChevronLeft,
+    ChevronRight,
+    RefreshCw,
+    AlertTriangle,
+    ArrowUpDown,
+} from 'lucide-react';
 import { Loading } from '@/components/common/Loading';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
-import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import {
     Select,
     SelectContent,
@@ -22,17 +33,17 @@ import { Switch } from '@/components/ui/switch';
 // Cross-feature imports via public barrels (FSD §2)
 import { useLanguages } from '@/features/curriculum/languages';
 import { useLearningGoals } from '@/features/curriculum/goals';
-import { useSeriesList } from '@/features/curriculum/series';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useCoursesBySeriesId } from '../../hooks/useCourses';
+import { useCourses } from '../../hooks/useCourses';
 import { useToggleCourseStatus, useDeleteCourse } from '../../hooks/useCourseMutations';
 import { CreateCourseDrawer } from '../../components/CreateCourseDrawer/CreateCourseDrawer';
 import { DeleteNodeDialog } from '../../components/DeleteNodeDialog/DeleteNodeDialog';
 import { CEFR_LEVELS } from '../../types/course.types';
 import type { Course } from '../../types/course.types';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Constants ─────────────────────────────────────────────────────────────────
 
+const PAGE_SIZE = 15;
 const SKELETON_ROWS = Array.from({ length: 5 }, (_, i) => i);
 
 const CEFR_COLORS: Record<string, string> = {
@@ -44,29 +55,48 @@ const CEFR_COLORS: Record<string, string> = {
     C2: 'bg-red-100 text-red-700',
 };
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
 type StatusFilter = 'all' | 'published' | 'draft';
+type SortField = 'orderIndex' | 'name' | 'createdAt';
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CourseListPage() {
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
-    const seriesId = searchParams.get('seriesId') ?? '';
 
-    // ── Filter state ──────────────────────────────────────────────────────────
+    // ── Filter & Pagination state ──────────────────────────────────────────────
     const [search, setSearch] = useState('');
     const [languageId, setLanguageId] = useState<string | undefined>(undefined);
     const [goalId, setGoalId] = useState<string | undefined>(undefined);
     const [levelFilter, setLevelFilter] = useState<string | undefined>(undefined);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [advancedOpen, setAdvancedOpen] = useState(false);
+    const [page, setPage] = useState(1);
+    const [sortField, setSortField] = useState<SortField>('orderIndex');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
     const debouncedSearch = useDebounce(search, 300);
 
-    // ── Language + Goal data for cascade ──────────────────────────────────────
+    // Reset page when filters change
+    const resetPage = useCallback(() => setPage(1), []);
+
+    // ── Language + Goal data for name resolution ──────────────────────────────
     const { data: languages = [] } = useLanguages({ isActive: true });
     const { data: goalsData } = useLearningGoals({ limit: 100, isActive: true });
     const allGoals = goalsData?.data ?? [];
+
+    // Language lookup map
+    const languageMap = useMemo(
+        () => new Map(languages.map((l) => [l._id, l])),
+        [languages],
+    );
+    // Goal lookup map
+    const goalMap = useMemo(
+        () => new Map(allGoals.map((g) => [g._id, g])),
+        [allGoals],
+    );
+
     // Client-side cascade: when a language is selected, only show goals that support it
     const goals = useMemo(
         () =>
@@ -76,45 +106,38 @@ export default function CourseListPage() {
         [allGoals, languageId],
     );
 
-    // ── Series filtered by language + goal (cascade) ──────────────────────────
-    const { data: seriesData, isLoading: isLoadingSeries } = useSeriesList({
-        limit: 100,
-        ...(languageId ? { languageId } : {}),
-        ...(goalId ? { learningGoalId: goalId } : {}),
+    // ── Courses query ─────────────────────────────────────────────────────────
+    const {
+        data: courseListData,
+        isLoading: isLoadingCourses,
+        isError: isErrorCourses,
+        error: coursesError,
+        refetch: refetchCourses,
+    } = useCourses({
+        languageId,
+        learningGoalId: goalId,
+        level: levelFilter,
+        isActive: statusFilter === 'all' ? undefined : statusFilter === 'published',
+        search: debouncedSearch || undefined,
+        page,
+        limit: PAGE_SIZE,
+        sort: sortField,
+        order: sortOrder,
     });
-    const allSeries = seriesData?.data ?? [];
 
-    // Ensure selected series is still in the filtered list; reset if not
-    const activeSeries = allSeries.find((s) => s._id === seriesId) ?? null;
-
-    // ── Courses in the selected series ────────────────────────────────────────
-    const { data: allCourses = [], isLoading: isLoadingCourses } = useCoursesBySeriesId(
-        { seriesId },
-    );
-
-    // ── Client-side derived filtering ─────────────────────────────────────────
-    const courses = useMemo(() => {
-        return allCourses
-            .filter((c) =>
-                !debouncedSearch ||
-                c.name.toLowerCase().includes(debouncedSearch.toLowerCase()),
-            )
-            .filter((c) => !levelFilter || c.level === levelFilter)
-            .filter((c) => {
-                if (statusFilter === 'published') return c.isActive;
-                if (statusFilter === 'draft') return !c.isActive;
-                return true;
-            });
-    }, [allCourses, debouncedSearch, levelFilter, statusFilter]);
+    const courses = courseListData?.data ?? [];
+    const totalPages = courseListData?.meta?.pages ?? 1;
+    const totalCount = courseListData?.meta?.total ?? courses.length;
 
     // ── Active advanced-filter count (for badge) ──────────────────────────────
     const activeAdvancedCount = useMemo(() => {
         let n = 0;
-        if (seriesId) n++;
+        if (languageId) n++;
+        if (goalId) n++;
         if (levelFilter) n++;
         if (statusFilter !== 'all') n++;
         return n;
-    }, [seriesId, levelFilter, statusFilter]);
+    }, [languageId, goalId, levelFilter, statusFilter]);
 
     // ── Mutations ─────────────────────────────────────────────────────────────
     const toggleMutation = useToggleCourseStatus();
@@ -124,25 +147,48 @@ export default function CourseListPage() {
     const [createOpen, setCreateOpen] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<Course | null>(null);
 
-    const handleSeriesChange = useCallback(
-        (id: string) => setSearchParams(id ? { seriesId: id } : {}),
-        [setSearchParams],
+    // ── Handlers ──────────────────────────────────────────────────────────────
+    const handleLanguageChange = useCallback(
+        (id: string) => {
+            setLanguageId(id || undefined);
+            setGoalId(undefined);
+            resetPage();
+            if (id) setAdvancedOpen(true);
+        },
+        [resetPage],
     );
 
-    const handleLanguageChange = useCallback((id: string) => {
-        setLanguageId(id || undefined);
-        setGoalId(undefined);
-        setSearchParams({});
-        // Auto-open advanced panel so the Series selector is immediately visible
-        if (id) setAdvancedOpen(true);
-    }, [setSearchParams]);
+    const handleGoalChange = useCallback(
+        (id: string) => {
+            setGoalId(id || undefined);
+            resetPage();
+        },
+        [resetPage],
+    );
 
-    const handleGoalChange = useCallback((id: string) => {
-        setGoalId(id || undefined);
-        setSearchParams({});
-        // Auto-open advanced panel so the user can pick a filtered series right away
-        if (id) setAdvancedOpen(true);
-    }, [setSearchParams]);
+    const handleLevelChange = useCallback(
+        (v: string) => {
+            setLevelFilter(v === 'all' ? undefined : v);
+            resetPage();
+        },
+        [resetPage],
+    );
+
+    const handleStatusChange = useCallback(
+        (v: StatusFilter) => {
+            setStatusFilter(v);
+            resetPage();
+        },
+        [resetPage],
+    );
+
+    const handleSearchChange = useCallback(
+        (v: string) => {
+            setSearch(v);
+            resetPage();
+        },
+        [resetPage],
+    );
 
     const handleResetFilters = useCallback(() => {
         setSearch('');
@@ -150,8 +196,20 @@ export default function CourseListPage() {
         setGoalId(undefined);
         setLevelFilter(undefined);
         setStatusFilter('all');
-        setSearchParams({});
-    }, [setSearchParams]);
+        resetPage();
+    }, [resetPage]);
+
+    const handleSort = useCallback((field: SortField) => {
+        setSortField((prev) => {
+            if (prev === field) {
+                setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+                return prev;
+            }
+            setSortOrder('asc');
+            return field;
+        });
+        resetPage();
+    }, [resetPage]);
 
     const handleDeleteConfirm = useCallback(() => {
         if (!deleteTarget) return;
@@ -159,6 +217,28 @@ export default function CourseListPage() {
             onSuccess: () => setDeleteTarget(null),
         });
     }, [deleteMutation, deleteTarget]);
+
+    // ── Resolve display names ─────────────────────────────────────────────────
+    const resolveLanguageName = useCallback(
+        (id: string) => languageMap.get(id)?.name ?? id,
+        [languageMap],
+    );
+    const resolveGoalName = useCallback(
+        (id: string) => goalMap.get(id)?.title ?? id,
+        [goalMap],
+    );
+
+    // ── Pagination helpers ────────────────────────────────────────────────────
+    const hasPrev = page > 1;
+    const hasNext = page < totalPages;
+
+    const goToPrev = useCallback(() => {
+        if (hasPrev) setPage((p) => p - 1);
+    }, [hasPrev]);
+
+    const goToNext = useCallback(() => {
+        if (hasNext) setPage((p) => p + 1);
+    }, [hasNext]);
 
     return (
         <div className="space-y-6">
@@ -168,7 +248,7 @@ export default function CourseListPage() {
                 description="Quản lý Course → Unit → Lesson"
             />
 
-            {/* ── Row 1: Top Toolbar ── */}
+            {/* ── Top Toolbar ── */}
             <div className="flex flex-wrap items-center gap-3">
                 {/* Search */}
                 <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -178,7 +258,7 @@ export default function CourseListPage() {
                     />
                     <Input
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={(e) => handleSearchChange(e.target.value)}
                         placeholder="Tìm khóa học..."
                         className="pl-9 pr-9"
                         aria-label="Tìm kiếm khóa học"
@@ -186,7 +266,7 @@ export default function CourseListPage() {
                     {search && (
                         <button
                             type="button"
-                            onClick={() => setSearch('')}
+                            onClick={() => handleSearchChange('')}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                             aria-label="Xóa tìm kiếm"
                         >
@@ -198,7 +278,7 @@ export default function CourseListPage() {
                 {/* Language cascade filter */}
                 <Select
                     value={languageId ?? 'all'}
-                    onValueChange={(v) => handleLanguageChange(v === 'all' ? '' : v)}
+                    onValueChange={handleLanguageChange}
                 >
                     <SelectTrigger className="w-[150px]" aria-label="Lọc theo ngôn ngữ">
                         <SelectValue placeholder="Ngôn ngữ" />
@@ -216,7 +296,7 @@ export default function CourseListPage() {
                 {/* Learning Goal cascade filter */}
                 <Select
                     value={goalId ?? 'all'}
-                    onValueChange={(v) => handleGoalChange(v === 'all' ? '' : v)}
+                    onValueChange={handleGoalChange}
                 >
                     <SelectTrigger className="w-[170px]" aria-label="Lọc theo mục tiêu">
                         <SelectValue placeholder="Mục tiêu" />
@@ -260,41 +340,16 @@ export default function CourseListPage() {
                 </div>
             </div>
 
-            {/* ── Row 2: Advanced Filters (Collapsible) ── */}
+            {/* ── Advanced Filters (Collapsible) ── */}
             <Collapsible open={advancedOpen}>
                 <CollapsibleContent id="advanced-filters-panel">
                     <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-muted/30 px-4 py-3">
-                        {/* Series selector (moved here) */}
-                        <div className="flex flex-col gap-1.5">
-                            <span className="text-xs font-medium text-muted-foreground">Series</span>
-                            <Select
-                                value={seriesId || 'all'}
-                                onValueChange={(v) => handleSeriesChange(v === 'all' ? '' : v)}
-                                disabled={isLoadingSeries}
-                            >
-                                <SelectTrigger className="w-[220px]" aria-label="Chọn series">
-                                    <SelectValue placeholder="Chọn một series..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Tất cả series</SelectItem>
-                                    {allSeries.map((s) => (
-                                        <SelectItem key={s._id} value={s._id}>
-                                            {s.title}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <Separator orientation="vertical" className="mx-1 h-8 hidden sm:block" />
-
                         {/* Status filter */}
                         <div className="flex flex-col gap-1.5">
-                            <span className="text-xs font-medium text-muted-foreground">Trạng thái</span>
-                            <Select
-                                value={statusFilter}
-                                onValueChange={(v) => setStatusFilter(v as StatusFilter)}
-                            >
+                            <span className="text-xs font-medium text-muted-foreground">
+                                Trạng thái
+                            </span>
+                            <Select value={statusFilter} onValueChange={handleStatusChange}>
                                 <SelectTrigger className="w-[150px]" aria-label="Lọc theo trạng thái">
                                     <SelectValue />
                                 </SelectTrigger>
@@ -308,10 +363,12 @@ export default function CourseListPage() {
 
                         {/* CEFR Level filter */}
                         <div className="flex flex-col gap-1.5">
-                            <span className="text-xs font-medium text-muted-foreground">Cấp độ CEFR</span>
+                            <span className="text-xs font-medium text-muted-foreground">
+                                Cấp độ CEFR
+                            </span>
                             <Select
                                 value={levelFilter ?? 'all'}
-                                onValueChange={(v) => setLevelFilter(v === 'all' ? undefined : v)}
+                                onValueChange={handleLevelChange}
                             >
                                 <SelectTrigger className="w-[130px]" aria-label="Lọc theo cấp độ CEFR">
                                     <SelectValue placeholder="Tất cả" />
@@ -339,142 +396,268 @@ export default function CourseListPage() {
                                 Đặt lại
                             </Button>
                         )}
-
-                        {activeSeries && (
-                            <span className="self-end pb-1 text-xs text-muted-foreground">
-                                /{activeSeries.slug}
-                            </span>
-                        )}
                     </div>
                 </CollapsibleContent>
             </Collapsible>
 
-            {/* ── No series selected ── */}
-            {!seriesId ? (
-                <Empty>
-                    <EmptyHeader>
-                        <BookOpen className="h-10 w-10 text-muted-foreground/40" aria-hidden="true" />
-                        <EmptyTitle>Chưa chọn Series</EmptyTitle>
-                    </EmptyHeader>
-                    <p className="text-sm text-muted-foreground">
-                        Mở{' '}
-                        <button
-                            type="button"
-                            className="font-medium underline underline-offset-2 hover:text-foreground"
-                            onClick={() => setAdvancedOpen(true)}
-                        >
-                            Bộ lọc nâng cao
-                        </button>{' '}
-                        và chọn một Series để xem các khóa học bên trong.
-                    </p>
-                </Empty>
-            ) : (
-                /* ── Courses table ── */
-                <Card>
-                    <CardHeader className="pb-3">
+            {/* ── Courses table ── */}
+            <Card>
+                <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
-                            {isLoadingCourses
-                                ? <Loading size="sm" className="justify-start" />
-                                : `${courses.length} / ${allCourses.length} khóa học`}
+                            {isLoadingCourses ? (
+                                <Loading size="sm" className="justify-start" />
+                            ) : (
+                                `${totalCount} khóa học`
+                            )}
                         </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {isLoadingCourses ? (
-                            <div className="divide-y">
-                                {SKELETON_ROWS.map((i) => (
-                                    <div key={i} className="flex items-center gap-4 px-6 py-4">
-                                        <Skeleton className="h-4 w-48" />
-                                        <Skeleton className="h-5 w-10 rounded-full" />
-                                        <Skeleton className="ml-auto h-8 w-24" />
-                                    </div>
-                                ))}
-                            </div>
-                        ) : courses.length === 0 ? (
-                            <div className="flex flex-col items-center gap-4 py-12">
-                                <BookOpen className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
-                                <div className="text-center">
-                                    {allCourses.length > 0 ? (
-                                        <>
-                                            <p className="text-sm font-medium">Không có kết quả phù hợp</p>
-                                            <p className="mt-1 text-xs text-muted-foreground">
-                                                Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.
-                                            </p>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <p className="text-sm font-medium">Series này chưa có khóa học nào</p>
-                                            <p className="mt-1 text-xs text-muted-foreground">
-                                                Nhấn nút bên dưới để tạo course đầu tiên.
-                                            </p>
-                                        </>
-                                    )}
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    {/* ── Error State ── */}
+                    {isErrorCourses && !isLoadingCourses && (
+                        <div className="flex flex-col items-center gap-3 py-16">
+                            <AlertTriangle className="h-8 w-8 text-destructive/70" aria-hidden="true" />
+                            <p className="text-sm font-medium text-destructive">
+                                Không thể tải danh sách khóa học
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                {(coursesError as Error)?.message || 'Vui lòng thử lại sau.'}
+                            </p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => refetchCourses()}
+                                className="gap-2"
+                            >
+                                <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                                Thử lại
+                            </Button>
+                        </div>
+                    )}
+
+                    {/* ── Loading Skeleton ── */}
+                    {isLoadingCourses && (
+                        <div className="divide-y">
+                            {SKELETON_ROWS.map((i) => (
+                                <div
+                                    key={i}
+                                    className="flex items-center gap-4 px-6 py-4"
+                                >
+                                    <Skeleton className="h-5 w-10 rounded-full" />
+                                    <Skeleton className="h-4 w-32" />
+                                    <Skeleton className="h-4 w-20" />
+                                    <Skeleton className="h-4 w-24" />
+                                    <Skeleton className="ml-auto h-8 w-24" />
                                 </div>
-                                {allCourses.length === 0 && (
-                                    <Button size="sm" onClick={() => setCreateOpen(true)}>
-                                        <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-                                        Thêm khóa học đầu tiên
-                                    </Button>
-                                )}
+                            ))}
+                        </div>
+                    )}
+
+                    {/* ── Empty State ── */}
+                    {!isLoadingCourses && !isErrorCourses && courses.length === 0 && (
+                        <div className="flex flex-col items-center gap-4 py-16">
+                            <BookOpen
+                                className="h-10 w-10 text-muted-foreground/40"
+                                aria-hidden="true"
+                            />
+                            <div className="text-center">
+                                <p className="text-sm font-medium">Chưa có khóa học nào</p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    Nhấn nút bên dưới để tạo course đầu tiên.
+                                </p>
                             </div>
-                        ) : (
+                            <Button size="sm" onClick={() => setCreateOpen(true)}>
+                                <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+                                Thêm khóa học đầu tiên
+                            </Button>
+                        </div>
+                    )}
+
+                    {/* ── Data Table ── */}
+                    {!isLoadingCourses && !isErrorCourses && courses.length > 0 && (
+                        <>
+                            {/* Sort header row */}
+                            <div className="hidden md:flex items-center gap-3 border-b bg-muted/40 px-6 py-2 text-xs font-medium text-muted-foreground">
+                                <span className="w-14 shrink-0">CEFR</span>
+                                <button
+                                    type="button"
+                                    onClick={() => handleSort('name')}
+                                    className="flex flex-1 min-w-0 items-center gap-1 hover:text-foreground transition-colors"
+                                >
+                                    Tên khóa học
+                                    <ArrowUpDown className="h-3 w-3" aria-hidden="true" />
+                                </button>
+                                <span className="w-32 shrink-0">Ngôn ngữ</span>
+                                <span className="w-36 shrink-0">Mục tiêu</span>
+                                <span className="w-12 shrink-0 text-center">Units</span>
+                                <span className="ml-auto w-40 shrink-0 text-right">Hành động</span>
+                            </div>
+
+                            {/* Table rows */}
                             <div className="divide-y">
                                 {courses.map((course) => (
                                     <div
                                         key={course._id}
-                                        className="flex items-center gap-4 px-6 py-4 hover:bg-muted/30 transition-colors"
+                                        className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 px-4 md:px-6 py-3 md:py-4 hover:bg-muted/30 transition-colors"
                                     >
+                                        {/* Mobile: compact row */}
+                                        <div className="flex md:hidden items-center gap-2">
+                                            <Badge
+                                                variant="outline"
+                                                className={`shrink-0 text-xs ${CEFR_COLORS[course.level] ?? ''}`}
+                                            >
+                                                {course.level}
+                                            </Badge>
+                                            <span className="truncate font-medium text-sm flex-1">
+                                                {course.name}
+                                            </span>
+                                            <Switch
+                                                checked={course.isActive}
+                                                onCheckedChange={() =>
+                                                    toggleMutation.mutate(course._id)
+                                                }
+                                                aria-label={`Toggle ${course.name}`}
+                                                disabled={toggleMutation.isPending}
+                                            />
+                                        </div>
+
+                                        {/* Mobile: secondary info */}
+                                        <div className="flex md:hidden items-center gap-2 text-xs text-muted-foreground">
+                                            <span>{resolveLanguageName(course.languageId)}</span>
+                                            <span>·</span>
+                                            <span>{resolveGoalName(course.learningGoalId)}</span>
+                                            <span>·</span>
+                                            <span>{course.totalUnits} units</span>
+                                        </div>
+
+                                        {/* Mobile: actions */}
+                                        <div className="flex md:hidden items-center gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    navigate(
+                                                        `/curriculum/courses/${course._id}/studio`,
+                                                    )
+                                                }
+                                                className="h-7 text-xs px-2"
+                                            >
+                                                <ExternalLink className="mr-1 h-3 w-3" />
+                                                Studio
+                                            </Button>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-7 w-7"
+                                                onClick={() => setDeleteTarget(course)}
+                                                aria-label={`Xóa ${course.name}`}
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                            </Button>
+                                        </div>
+
+                                        {/* Desktop: full row */}
                                         <Badge
                                             variant="outline"
-                                            className={`shrink-0 ${CEFR_COLORS[course.level] ?? ''}`}
+                                            className={`hidden md:inline-flex shrink-0 w-14 justify-center ${CEFR_COLORS[course.level] ?? ''}`}
                                         >
                                             {course.level}
                                         </Badge>
 
-                                        <div className="flex-1 min-w-0">
-                                            <p className="truncate font-medium">{course.name}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {course.totalUnits} units · order #{course.orderInSeries}
+                                        <div className="hidden md:block flex-1 min-w-0">
+                                            <p className="truncate text-sm font-medium">
+                                                {course.name}
                                             </p>
                                         </div>
 
-                                        <Switch
-                                            checked={course.isActive}
-                                            onCheckedChange={() => toggleMutation.mutate(course._id)}
-                                            aria-label={`Toggle ${course.name}`}
-                                            disabled={toggleMutation.isPending}
-                                        />
+                                        <span className="hidden md:block w-32 shrink-0 text-xs text-muted-foreground truncate">
+                                            {resolveLanguageName(course.languageId)}
+                                        </span>
 
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => navigate(`/curriculum/courses/${course._id}/studio`)}
-                                            aria-label={`Mở Studio cho ${course.name}`}
-                                        >
-                                            <ExternalLink className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                                            Studio
-                                        </Button>
+                                        <span className="hidden md:block w-36 shrink-0 text-xs text-muted-foreground truncate">
+                                            {resolveGoalName(course.learningGoalId)}
+                                        </span>
 
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            onClick={() => setDeleteTarget(course)}
-                                            aria-label={`Xóa ${course.name}`}
-                                        >
-                                            <Trash2 className="h-4 w-4 text-destructive" aria-hidden="true" />
-                                        </Button>
+                                        <span className="hidden md:block w-12 shrink-0 text-center text-sm font-semibold tabular-nums text-foreground">
+                                            {Number.isFinite(course.totalUnits) ? course.totalUnits : 0}
+                                        </span>
+
+                                        <div className="hidden md:flex ml-auto w-40 shrink-0 items-center justify-end gap-1">
+                                            <Switch
+                                                checked={course.isActive}
+                                                onCheckedChange={() =>
+                                                    toggleMutation.mutate(course._id)
+                                                }
+                                                aria-label={`Toggle ${course.name}`}
+                                                disabled={toggleMutation.isPending}
+                                            />
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    navigate(
+                                                        `/curriculum/courses/${course._id}/studio`,
+                                                    )
+                                                }
+                                                className="h-7 text-xs px-2"
+                                            >
+                                                <ExternalLink className="mr-1 h-3 w-3" />
+                                                Studio
+                                            </Button>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-7 w-7"
+                                                onClick={() => setDeleteTarget(course)}
+                                                aria-label={`Xóa ${course.name}`}
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                            </Button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
 
-            {/* ── Create Course Drawer (Slide-over) ── */}
+                            {/* ── Pagination ── */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between border-t px-6 py-3">
+                                    <p className="text-xs text-muted-foreground">
+                                        Trang {page} / {totalPages}
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={goToPrev}
+                                            disabled={!hasPrev}
+                                            aria-label="Trang trước"
+                                        >
+                                            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={goToNext}
+                                            disabled={!hasNext}
+                                            aria-label="Trang sau"
+                                        >
+                                            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* ── Create Course Drawer ── */}
             <CreateCourseDrawer
                 open={createOpen}
                 onOpenChange={setCreateOpen}
-                defaultSeriesId={seriesId || undefined}
+                defaultLanguageId={languageId}
+                defaultLearningGoalId={goalId}
             />
 
             {/* ── Delete Confirmation ── */}

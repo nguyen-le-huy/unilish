@@ -24,6 +24,8 @@ const NotFoundPage = React.lazy(() => import('@/features/dashboard/not-found/not
 const AIVoicePage = React.lazy(() => import('@/features/dashboard/ai-voice/pages/AIVoice'));
 const ShadowingPage = React.lazy(() => import('@/features/dashboard/shadowing/pages/ShadowingPage/ShadowingPage'));
 const ShadowingPlayerPage = React.lazy(() => import('@/features/dashboard/shadowing/pages/ShadowingPlayerPage/ShadowingPlayerPage'));
+const CourseOverviewPage = React.lazy(() => import('@/features/dashboard/learning/pages/CourseOverviewPage/CourseOverviewPage'));
+const LessonPlayerPage = React.lazy(() => import('@/features/dashboard/learning/pages/LessonPlayerPage/LessonPlayerPage'));
 
 export const router = createBrowserRouter([
     {
@@ -98,14 +100,6 @@ export const router = createBrowserRouter([
                         ),
                     },
                     {
-                        path: 'roadmap',
-                        element: (
-                            <Suspense fallback={<Loading />}>
-                                <DashboardHomePage />
-                            </Suspense>
-                        ),
-                    },
-                    {
                         path: 'goal-selection',
                         element: (
                             <Suspense fallback={<Loading />}>
@@ -162,10 +156,18 @@ export const router = createBrowserRouter([
                         ),
                     },
                     {
-                        path: 'series/:slug',
+                        path: 'course/:slug',
                         element: (
                             <Suspense fallback={<Loading />}>
-                                <RecommendCoursePage />
+                                <CourseOverviewPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'learning/lessons/:lessonId',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <LessonPlayerPage />
                             </Suspense>
                         ),
                     },

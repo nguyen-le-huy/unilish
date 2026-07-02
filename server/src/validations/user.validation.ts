@@ -32,16 +32,8 @@ export const getUsersSchema = z.object({
         page: z.string().optional(),
         limit: z.string().optional(),
         search: z.string().optional(),
-        plan: z.enum(['FREE', 'PREMIUM']).optional(),
         level: z.enum(['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']).optional(),
         role: z.enum(['student', 'admin', 'content_creator']).optional(),
-    }),
-});
-
-export const updateSubscriptionSchema = z.object({
-    body: z.object({
-        plan: z.enum(['FREE', 'PREMIUM']),
-        period: z.enum(['monthly', 'yearly']),
     }),
 });
 

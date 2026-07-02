@@ -52,7 +52,7 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
                         throw new AppError('Email Google chưa được xác minh', 400);
                     }
 
-                    const result = await authService.findOrCreateFromGoogle({
+                    const result = await authService.handleGoogleLogin({
                         googleId: profile.id,
                         email,
                         fullName: profile.displayName,

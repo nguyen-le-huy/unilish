@@ -70,6 +70,12 @@ coverage/
 .cache/
 
 # ============================================
+# MIGRATION ARTIFACTS
+# ============================================
+migration-backups/
+migration-rollback-course-series.json
+
+# ============================================
 # UPLOADS / USER CONTENT (if stored locally)
 # ============================================
 uploads/

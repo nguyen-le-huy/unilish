@@ -1,0 +1,61 @@
+@startuml
+title Register Account with OTP Verification
+
+actor User
+boundary "Register / OTP Form" as Form
+boundary "Client App" as Client
+control "Auth Controller" as Controller
+control "Auth Service" as Service
+entity "User Repository" as Repo
+database "MongoDB" as DB
+database "Redis" as Redis
+participant "Email Service" as Email
+
+User -> Form: Enter registration information
+Form -> Form: Validate input data
+Form -> Client: Submit registration request
+Client -> Controller: POST /auth/register
+Controller -> Service: register(data)
+
+Service -> Repo: Check email
+Repo -> DB: Find user by email
+
+alt Email already exists
+    DB --> Repo: User exists
+    Repo --> Service: Email exists
+    Service --> Controller: Registration error
+    Controller --> Client: Error response
+    Client --> User: Show error message
+else Email is valid
+    Service -> Repo: Create unverified user
+    Repo -> DB: Save user
+    Service -> Redis: Store OTP temporarily
+    Service -> Email: Send OTP code
+    Service --> Controller: Registration successful
+    Controller --> Client: Require OTP verification
+    Client --> User: Navigate to OTP screen
+end
+
+User -> Form: Enter OTP code
+Form -> Client: Submit OTP
+Client -> Controller: POST /auth/verify-otp
+Controller -> Service: verifyOTP(email, otp)
+
+Service -> Repo: Find user by email
+Repo -> DB: Query user
+Service -> Redis: Verify OTP
+
+alt OTP invalid or expired
+    Service --> Controller: OTP verification error
+    Controller --> Client: Error response
+    Client --> User: Show OTP error
+else OTP is valid
+    Service -> Repo: Activate account
+    Repo -> DB: Update isVerified = true
+    Service -> Redis: Delete OTP
+    Service --> Controller: Generate login token
+    Controller --> Client: Return user + access token
+    Client --> User: Registration successful, go to Dashboard
+end
+
+@enduml

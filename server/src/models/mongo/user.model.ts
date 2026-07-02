@@ -42,22 +42,6 @@ export const ESkill = {
     PRONUNCIATION: 'pronunciation',
 } as const;
 
-export const ESubscriptionPlan = {
-    FREE:    'FREE',
-    PREMIUM: 'PREMIUM',
-} as const;
-
-export const ESubscriptionStatus = {
-    ACTIVE:    'active',
-    EXPIRED:   'expired',
-    CANCELLED: 'cancelled',
-} as const;
-
-export const ERenewalType = {
-    MONTHLY: 'MONTHLY',
-    YEARLY:  'YEARLY',
-} as const;
-
 // ============================================================
 // INTERFACE
 // ============================================================
@@ -92,19 +76,6 @@ export interface IUser extends mongoose.Document {
     weakSkills:         (typeof ESkill[keyof typeof ESkill])[];
     placementTestScore: number;
 
-    // --- 5. SUBSCRIPTION ---
-    subscription: {
-        plan:              typeof ESubscriptionPlan[keyof typeof ESubscriptionPlan];
-        renewalType:       typeof ERenewalType[keyof typeof ERenewalType] | null;
-        startDate:         Date | null;
-        endDate:           Date | null;
-        status:            typeof ESubscriptionStatus[keyof typeof ESubscriptionStatus];
-        lastTransactionId: mongoose.Types.ObjectId | null;
-    };
-
-    // --- VIRTUALS ---
-    isPremium: boolean;
-
     createdAt: Date;
     updatedAt: Date;
 }
@@ -127,7 +98,7 @@ const UserSchema = new mongoose.Schema<IUser>(
         googleId: {
             type:   String,
             unique: true,
-            sparse: true, // unique nhưng không conflict với LOCAL users (null != null trong MongoDB)
+            sparse: true,
             index:  true,
         },
         authProvider: {
@@ -137,7 +108,7 @@ const UserSchema = new mongoose.Schema<IUser>(
         },
         password: {
             type:   String,
-            select: false, // không bao giờ trả về trong API response
+            select: false,
         },
         isVerified: {
             type:    Boolean,
@@ -147,15 +118,15 @@ const UserSchema = new mongoose.Schema<IUser>(
             type:    String,
             enum:    Object.values(EUserRole),
             default: EUserRole.STUDENT,
-            index:   true, // query Admin Dashboard
+            index:   true,
         },
         otp: {
             type:   String,
-            select: false, // bảo mật
+            select: false,
         },
         otpExpires: {
             type:   Date,
-            select: false, // bảo mật
+            select: false,
         },
 
         // ── 2. HỒ SƠ CÁ NHÂN ───────────────────────────────────
@@ -186,38 +157,32 @@ const UserSchema = new mongoose.Schema<IUser>(
         lastActiveAt: {
             type:    Date,
             default: Date.now,
-            index:   true, // query user inactive để gửi re-engagement email
+            index:   true,
         },
         lastActiveCourseId: {
             type:    mongoose.Schema.Types.ObjectId,
             ref:     'Course',
-            default: null, // dùng cho nút "Tiếp tục học" ở Home screen
+            default: null,
         },
 
         // ── 4. BỐI CẢNH HỌC TẬP ────────────────────────────────
-
-        // Ngôn ngữ đang theo học (ref Language collection)
         learningLanguageId: {
             type:    mongoose.Schema.Types.ObjectId,
             ref:     'Language',
             default: null,
-            index:   true, // "có bao nhiêu user đang học tiếng Anh?"
+            index:   true,
         },
-
-        // Mục tiêu học tập (ref LearningGoal collection)
-        // populate để lấy systemPrompt + skillWeights cho AI
         learningGoalId: {
             type:    mongoose.Schema.Types.ObjectId,
             ref:     'LearningGoal',
             default: null,
             index:   true,
         },
-
         currentLevel: {
             type:    String,
             enum:    Object.values(ELevel),
             default: ELevel.A0,
-            index:   true, // analytics phân bổ trình độ user
+            index:   true,
         },
         targetLevel: {
             type:    String,
@@ -234,38 +199,6 @@ const UserSchema = new mongoose.Schema<IUser>(
             min:     0,
             max:     100,
         },
-
-        // ── 5. SUBSCRIPTION ─────────────────────────────────────
-        subscription: {
-            plan: {
-                type:    String,
-                enum:    Object.values(ESubscriptionPlan),
-                default: ESubscriptionPlan.FREE,
-            },
-            renewalType: {
-                type:    String,
-                enum:    Object.values(ERenewalType), // null được cho phép vì field không có `required: true`
-                default: null, // null = FREE (không có chu kỳ gia hạn)
-            },
-            startDate: {
-                type:    Date,
-                default: null,
-            },
-            endDate: {
-                type:    Date,
-                default: null,
-            },
-            status: {
-                type:    String,
-                enum:    Object.values(ESubscriptionStatus),
-                default: ESubscriptionStatus.ACTIVE,
-            },
-            lastTransactionId: {
-                type:    mongoose.Schema.Types.ObjectId,
-                ref:     'Transaction',
-                default: null, // audit trail khi user khiếu nại thanh toán
-            },
-        },
     },
     {
         timestamps: true,
@@ -274,36 +207,8 @@ const UserSchema = new mongoose.Schema<IUser>(
     }
 );
 
-// ============================================================
-// INDEXES
-// ============================================================
+// ── INDEXES ─────────────────────────────────
 
-// Freemium analytics: COUNT(*) GROUP BY plan, status
-UserSchema.index({ 'subscription.plan': 1, 'subscription.status': 1 });
-
-// Cron job nhắc gia hạn: tìm PREMIUM sắp hết hạn trong N ngày tới
-UserSchema.index({ 'subscription.endDate': 1, 'subscription.plan': 1 });
-
-// Query user theo trạng thái subscription (vd: tìm tất cả ACTIVE users)
-UserSchema.index({ 'subscription.status': 1 });
-
-// ============================================================
-// VIRTUALS
-// ============================================================
-
-/**
- * isPremium — check nhanh quyền truy cập
- * Dùng trong AuthGuard / FeatureGate mà không cần query thêm collection
- */
-UserSchema.virtual('isPremium').get(function (this: IUser): boolean {
-    if (this.subscription.plan !== ESubscriptionPlan.PREMIUM) return false;
-    if (this.subscription.status !== ESubscriptionStatus.ACTIVE) return false;
-    if (this.subscription.endDate && this.subscription.endDate < new Date()) return false;
-    return true;
-});
-
-// ============================================================
-// MODEL
-// ============================================================
+UserSchema.index({ role: 1, currentLevel: 1 });
 
 export const User = mongoose.model<IUser>('User', UserSchema);

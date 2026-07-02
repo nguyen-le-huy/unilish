@@ -20,12 +20,8 @@
   grid-column: 4;
 }
 
-.upgradeBox {
-  grid-column: 1 / span 2;
-}
-
 .rankBox {
-  grid-column: 3 / span 2;
+  grid-column: 1 / -1;
 }
 
 @media (max-width: 1400px) {
@@ -34,7 +30,6 @@
   }
 
   .currentSeriesBox,
-  .upgradeBox,
   .rankBox {
     grid-column: span 2;
   }
@@ -53,7 +48,6 @@
   .currentSeriesBox,
   .progressBox,
   .streakBox,
-  .upgradeBox,
   .rankBox {
     grid-column: 1;
   }

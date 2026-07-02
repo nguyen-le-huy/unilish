@@ -36,7 +36,9 @@ const envSchema = z.object({
     PINECONE_API_KEY: z.string().min(1, 'Pinecone API Key is required for vector search'),
     PINECONE_ENVIRONMENT: z.string().default('us-east1-gcp'),
     PINECONE_INDEX_NAME: z.string().default('unilish-knowledge'),
+    /** @deprecated Kept for backward compatibility */
     PINECONE_COURSE_SERIES_INDEX_NAME: z.string().default('unilish-course-series'),
+    PINECONE_COURSE_INDEX_NAME: z.string().optional(),
 
     // OpenAI
     OPENAI_API_KEY: z.string().min(1, 'OpenAI API Key is required for embeddings'),
@@ -98,7 +100,12 @@ if (!resolvedMongoUri || resolvedMongoUri.trim().length === 0) {
     process.exit(1);
 }
 
+// Backward compatibility: fallback to the old env var name
+const resolvedCourseIndexName = envServer.data.PINECONE_COURSE_INDEX_NAME
+    ?? envServer.data.PINECONE_COURSE_SERIES_INDEX_NAME;
+
 export const env = {
     ...envServer.data,
     MONGO_URI: resolvedMongoUri,
+    PINECONE_COURSE_INDEX_NAME: resolvedCourseIndexName,
 };

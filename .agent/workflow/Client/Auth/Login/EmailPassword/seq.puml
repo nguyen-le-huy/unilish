@@ -1,0 +1,43 @@
+@startuml
+title Login with Email and Password
+
+actor User
+boundary "Login Form" as Form
+boundary "Client App" as Client
+control "Auth Controller" as Controller
+control "Auth Service" as Service
+entity "User Repository" as Repo
+database "MongoDB" as DB
+database "Redis" as Redis
+participant "Email Service" as Email
+
+User -> Form: Enter email and password
+Form -> Form: Validate input data
+Form -> Client: Submit login request
+Client -> Controller: POST /auth/login
+Controller -> Service: login(data)
+
+Service -> Repo: Find user with password
+Repo -> DB: Query user by email
+
+alt Invalid email or password
+    Repo --> Service: User not found / password mismatch
+    Service --> Controller: Authentication error
+    Controller --> Client: 401 Unauthorized
+    Client --> User: Show login error
+else Account is not verified
+    Service -> Redis: Store new OTP temporarily
+    Service -> Email: Send new OTP code
+    Service --> Controller: Account not verified
+    Controller --> Client: 403 Forbidden
+    Client --> User: Navigate to OTP screen
+else Login successful
+    Service -> Repo: Update last active time
+    Repo -> DB: Save lastActiveAt
+    Service -> Redis: Store refresh token session
+    Service --> Controller: User + tokens
+    Controller --> Client: Set cookie + return access token
+    Client --> User: Go to Dashboard / Onboarding
+end
+
+@enduml

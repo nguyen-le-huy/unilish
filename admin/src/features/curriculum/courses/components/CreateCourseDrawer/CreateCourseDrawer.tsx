@@ -1,14 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import type { Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Loading } from '@/components/common/Loading';
 import {
     Form,
     FormControl,
+    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -29,25 +29,41 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
+import { Textarea } from '@/components/ui/textarea';
 // Cross-feature imports via public barrels (FSD §2)
-import { useSeriesList } from '@/features/curriculum/series';
-import { useCoursesBySeriesId } from '../../hooks/useCourses';
+import { useLanguages } from '@/features/curriculum/languages';
+import { useLearningGoals } from '@/features/curriculum/goals';
+import { useCourses } from '../../hooks/useCourses';
 import { useCreateCourse } from '../../hooks/useCourseMutations';
 import { CEFR_LEVELS } from '../../types/course.types';
 import type { CreateCoursePayload } from '../../types/course.types';
 
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+
+const slugFromName = (name: string): string =>
+    name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
 // ─── Schema ───────────────────────────────────────────────────────────────────
-// Quick-creation schema — finalExamConfig & AI Roadmap are configured
-// post-creation inside the Course Studio, not here.
 
 const createCourseSchema = z.object({
-    seriesId: z.string().min(1, 'Vui lòng chọn một Series'),
+    languageId: z.string().min(1, 'Vui lòng chọn ngôn ngữ'),
+    learningGoalId: z.string().min(1, 'Vui lòng chọn mục tiêu'),
     name: z
         .string()
         .min(3, 'Tên phải có ít nhất 3 ký tự')
         .max(200, 'Tên không được vượt quá 200 ký tự'),
+    slug: z
+        .string()
+        .min(2, 'Slug phải có ít nhất 2 ký tự')
+        .max(100)
+        .regex(/^[a-z0-9-]+$/, 'Slug chỉ được chứa chữ thường, số và dấu gạch ngang'),
+    description: z.string().max(500).optional(),
+    thumbnailUrl: z.string().url('URL không hợp lệ').optional().or(z.literal('')),
     level: z.enum([...CEFR_LEVELS] as [string, ...string[]]),
-    orderInSeries: z.coerce.number().int().min(1, 'Thứ tự phải ≥ 1'),
+    orderIndex: z.coerce.number().int().min(1, 'Thứ tự phải ≥ 1'),
     prerequisiteCourseId: z.string().nullable().optional(),
 });
 
@@ -58,80 +74,145 @@ type CreateCourseFormValues = z.infer<typeof createCourseSchema>;
 interface Props {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    /**
-     * Pre-selected seriesId from the filter bar.
-     * When provided, the Series field is locked (read-only) to prevent
-     * the admin from accidentally creating a course in the wrong series.
-     */
-    defaultSeriesId?: string;
+    defaultLanguageId?: string;
+    defaultLearningGoalId?: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CreateCourseDrawer({ open, onOpenChange, defaultSeriesId }: Props) {
-    // ── Hooks ─────────────────────────────────────────────────────────────────
+export function CreateCourseDrawer({
+    open,
+    onOpenChange,
+    defaultLanguageId,
+    defaultLearningGoalId,
+}: Props) {
     const createMutation = useCreateCourse();
 
     const form = useForm<CreateCourseFormValues, unknown, CreateCourseFormValues>({
-        resolver: zodResolver(createCourseSchema) as Resolver<CreateCourseFormValues, unknown, CreateCourseFormValues>,
+        resolver: zodResolver(createCourseSchema) as Resolver<
+            CreateCourseFormValues,
+            unknown,
+            CreateCourseFormValues
+        >,
         defaultValues: {
-            seriesId: defaultSeriesId ?? '',
+            languageId: defaultLanguageId ?? '',
+            learningGoalId: defaultLearningGoalId ?? '',
             name: '',
+            slug: '',
+            description: '',
+            thumbnailUrl: '',
             level: 'A1',
-            orderInSeries: 1,
+            orderIndex: 1,
             prerequisiteCourseId: null,
         },
     });
 
-    const watchedSeriesId = form.watch('seriesId');
-    const isSeriesLocked = Boolean(defaultSeriesId);
+    const watchedLanguageId = form.watch('languageId');
+    const watchedLearningGoalId = form.watch('learningGoalId');
+    const watchedName = form.watch('name');
+    const isLanguageLocked = Boolean(defaultLanguageId);
+    const isGoalLocked = Boolean(defaultLearningGoalId);
 
-    // Series list — fetched only when the series selector is shown (unlocked)
-    const { data: seriesData, isLoading: isLoadingSeries } = useSeriesList({ limit: 100 });
-    const allSeries = seriesData?.data ?? [];
+    // Language + Goal data
+    const { data: languages = [] } = useLanguages({ isActive: true });
+    const { data: goalsData } = useLearningGoals({ limit: 100, isActive: true });
+    const allGoals = goalsData?.data ?? [];
 
-    // Existing courses in the chosen series → populate the Prerequisite dropdown
-    const { data: existingCourses = [] } = useCoursesBySeriesId(
-        { seriesId: watchedSeriesId },
+    // Goals filtered by selected language (cascade)
+    const filteredGoals = useMemo(
+        () =>
+            watchedLanguageId
+                ? allGoals.filter((g) => g.supportedLanguages.includes(watchedLanguageId))
+                : allGoals,
+        [allGoals, watchedLanguageId],
     );
 
-    // Keep seriesId in sync when the parent filter changes (e.g., user picks a different series
-    // in the filter bar WHILE the drawer is open)
+    // Courses matching the selected language + goal → populate Prerequisite dropdown
+    const { data: courseListData } = useCourses({
+        languageId: watchedLanguageId || undefined,
+        learningGoalId: watchedLearningGoalId || undefined,
+        limit: 100,
+        sort: 'orderIndex',
+        order: 'asc',
+    });
+    const existingCourses = courseListData?.data ?? [];
+
+    // ── Keep pre-selected values in sync ─────────────────────────────────────
     useEffect(() => {
-        form.setValue('seriesId', defaultSeriesId ?? '', { shouldValidate: false });
-    }, [defaultSeriesId, form]);
+        form.setValue('languageId', defaultLanguageId ?? '', { shouldValidate: false });
+    }, [defaultLanguageId, form]);
+
+    useEffect(() => {
+        form.setValue('learningGoalId', defaultLearningGoalId ?? '', { shouldValidate: false });
+    }, [defaultLearningGoalId, form]);
+
+    // Reset when goal is not compatible with new language
+    useEffect(() => {
+        if (watchedLanguageId && watchedLearningGoalId) {
+            const goal = allGoals.find((g) => g._id === watchedLearningGoalId);
+            if (goal && !goal.supportedLanguages.includes(watchedLanguageId)) {
+                form.setValue('learningGoalId', '', { shouldValidate: false });
+            }
+        }
+    }, [watchedLanguageId, watchedLearningGoalId, allGoals, form]);
+
+    // ── Auto-slug from name (only when slug field hasn't been manually edited) ──
+    const slugEditedRef = useRef(false);
+    const slugManualEdit = useCallback(() => {
+        slugEditedRef.current = true;
+    }, []);
+
+    useEffect(() => {
+        if (!slugEditedRef.current && watchedName) {
+            form.setValue('slug', slugFromName(watchedName), { shouldValidate: true });
+        }
+    }, [watchedName, form]);
 
     // Reset to clean state whenever the drawer closes
+    const resetForm = useCallback(() => {
+        form.reset({
+            languageId: defaultLanguageId ?? '',
+            learningGoalId: defaultLearningGoalId ?? '',
+            name: '',
+            slug: '',
+            description: '',
+            thumbnailUrl: '',
+            level: 'A1',
+            orderIndex: 1,
+            prerequisiteCourseId: null,
+        });
+        slugEditedRef.current = false;
+    }, [defaultLanguageId, defaultLearningGoalId, form]);
+
     useEffect(() => {
         if (!open) {
-            form.reset({
-                seriesId: defaultSeriesId ?? '',
-                name: '',
-                level: 'A1',
-                orderInSeries: 1,
-                prerequisiteCourseId: null,
-            });
+            resetForm();
         }
-    }, [open, defaultSeriesId, form]);
+    }, [open, resetForm]);
 
     // ── Handlers ──────────────────────────────────────────────────────────────
     const handleSubmit = form.handleSubmit((values) => {
         const payload: CreateCoursePayload = {
-            seriesId: values.seriesId,
+            languageId: values.languageId,
+            learningGoalId: values.learningGoalId,
+            slug: values.slug,
             name: values.name,
+            description: values.description?.trim() || null,
+            thumbnailUrl: values.thumbnailUrl?.trim() || null,
             level: values.level as CreateCoursePayload['level'],
-            orderInSeries: values.orderInSeries,
+            orderIndex: values.orderIndex,
             prerequisiteCourseId: values.prerequisiteCourseId ?? null,
         };
-        // useCreateCourse.onSuccess already navigates to /curriculum/courses/:id/studio
         createMutation.mutate(payload, {
             onSuccess: () => onOpenChange(false),
         });
     });
 
-    // ── Render ────────────────────────────────────────────────────────────────
-    const lockedSeriesTitle =
-        allSeries.find((s) => s._id === defaultSeriesId)?.title ?? defaultSeriesId;
+    // ── Render helpers ────────────────────────────────────────────────────────
+    const lockedLanguageName =
+        languages.find((l) => l._id === defaultLanguageId)?.name ?? defaultLanguageId;
+    const lockedGoalTitle =
+        allGoals.find((g) => g._id === defaultLearningGoalId)?.title ?? defaultLearningGoalId;
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -156,46 +237,42 @@ export function CreateCourseDrawer({ open, onOpenChange, defaultSeriesId }: Prop
                             onSubmit={handleSubmit}
                             className="space-y-6"
                         >
-                            {/* 1 · Series */}
+                            {/* 1 · Language */}
                             <FormField
                                 control={form.control}
-                                name="seriesId"
+                                name="languageId"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>
-                                            Thuộc Series{' '}
+                                            Ngôn ngữ{' '}
                                             <span className="text-destructive" aria-hidden="true">
                                                 *
                                             </span>
                                         </FormLabel>
-                                        {isLoadingSeries && <Loading size="sm" className="justify-start" />}
-                                        {isSeriesLocked ? (
-                                            // Read-only pill when a series is already chosen
+                                        {isLanguageLocked ? (
                                             <div
                                                 className="rounded-md border bg-muted/60 px-3 py-2 text-sm"
-                                                aria-label={`Series: ${lockedSeriesTitle}`}
+                                                aria-label={`Ngôn ngữ: ${lockedLanguageName}`}
                                             >
-                                                {lockedSeriesTitle}
+                                                {lockedLanguageName}
                                             </div>
                                         ) : (
                                             <Select
                                                 value={field.value}
                                                 onValueChange={(v) => {
                                                     field.onChange(v);
-                                                    // Reset prerequisite when series changes
                                                     form.setValue('prerequisiteCourseId', null);
                                                 }}
-                                                disabled={isLoadingSeries}
                                             >
                                                 <FormControl>
-                                                    <SelectTrigger aria-label="Chọn Series">
-                                                        <SelectValue placeholder="Chọn một Series..." />
+                                                    <SelectTrigger aria-label="Chọn ngôn ngữ">
+                                                        <SelectValue placeholder="Chọn một ngôn ngữ..." />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    {allSeries.map((s) => (
-                                                        <SelectItem key={s._id} value={s._id}>
-                                                            {s.title}
+                                                    {languages.map((lang) => (
+                                                        <SelectItem key={lang._id} value={lang._id}>
+                                                            {lang.name}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
@@ -206,31 +283,114 @@ export function CreateCourseDrawer({ open, onOpenChange, defaultSeriesId }: Prop
                                 )}
                             />
 
-                            {/* 2 · Name */}
+                            {/* 2 · Learning Goal */}
                             <FormField
                                 control={form.control}
-                                name="name"
+                                name="learningGoalId"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>
-                                            Tên Khóa học{' '}
+                                            Mục tiêu{' '}
                                             <span className="text-destructive" aria-hidden="true">
                                                 *
                                             </span>
                                         </FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                placeholder="VD: Level A1 – Nhập môn Sinh tồn"
-                                                autoFocus
-                                                {...field}
-                                            />
-                                        </FormControl>
+                                        {isGoalLocked ? (
+                                            <div
+                                                className="rounded-md border bg-muted/60 px-3 py-2 text-sm"
+                                                aria-label={`Mục tiêu: ${lockedGoalTitle}`}
+                                            >
+                                                {lockedGoalTitle}
+                                            </div>
+                                        ) : (
+                                            <Select
+                                                value={field.value}
+                                                onValueChange={(v) => {
+                                                    field.onChange(v);
+                                                    form.setValue('prerequisiteCourseId', null);
+                                                }}
+                                                disabled={!watchedLanguageId}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger aria-label="Chọn mục tiêu">
+                                                        <SelectValue placeholder="Chọn mục tiêu học tập..." />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {filteredGoals.map((goal) => (
+                                                        <SelectItem key={goal._id} value={goal._id}>
+                                                            {goal.title}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                        {!watchedLanguageId && (
+                                            <FormDescription>
+                                                Chọn Ngôn ngữ trước để lọc mục tiêu phù hợp.
+                                            </FormDescription>
+                                        )}
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
 
-                            {/* 3 · Level + Order (2-column grid) */}
+                            {/* 3 · Name + Slug */}
+                            <div className="space-y-4">
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>
+                                                Tên Khóa học{' '}
+                                                <span className="text-destructive" aria-hidden="true">
+                                                    *
+                                                </span>
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    placeholder="VD: Level A1 – Nhập môn Sinh tồn"
+                                                    autoFocus
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="slug"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>
+                                                Slug{' '}
+                                                <span className="text-destructive" aria-hidden="true">
+                                                    *
+                                                </span>
+                                            </FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    placeholder="level-a1-nhap-mon-sinh-ton"
+                                                    {...field}
+                                                    onChange={(e) => {
+                                                        slugManualEdit();
+                                                        field.onChange(e);
+                                                    }}
+                                                />
+                                            </FormControl>
+                                            <FormDescription>
+                                                Định danh duy nhất cho khóa học (tự động tạo từ tên).
+                                            </FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            {/* 4 · Level + Order (2-column grid) */}
                             <div className="grid grid-cols-2 gap-4">
                                 <FormField
                                     control={form.control}
@@ -267,7 +427,7 @@ export function CreateCourseDrawer({ open, onOpenChange, defaultSeriesId }: Prop
 
                                 <FormField
                                     control={form.control}
-                                    name="orderInSeries"
+                                    name="orderIndex"
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>
@@ -280,7 +440,7 @@ export function CreateCourseDrawer({ open, onOpenChange, defaultSeriesId }: Prop
                                                 <Input
                                                     type="number"
                                                     min={1}
-                                                    aria-label="Thứ tự trong series"
+                                                    aria-label="Thứ tự khóa học"
                                                     {...field}
                                                     onChange={(e) =>
                                                         field.onChange(Number(e.target.value))
@@ -293,7 +453,55 @@ export function CreateCourseDrawer({ open, onOpenChange, defaultSeriesId }: Prop
                                 />
                             </div>
 
-                            {/* 4 · Prerequisite (optional) */}
+                            {/* 5 · Description (optional) */}
+                            <FormField
+                                control={form.control}
+                                name="description"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>
+                                            Mô tả{' '}
+                                            <span className="text-xs font-normal text-muted-foreground">
+                                                (Tùy chọn)
+                                            </span>
+                                        </FormLabel>
+                                        <FormControl>
+                                            <Textarea
+                                                placeholder="Mô tả ngắn về khóa học..."
+                                                rows={3}
+                                                maxLength={500}
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* 6 · Thumbnail URL (optional) */}
+                            <FormField
+                                control={form.control}
+                                name="thumbnailUrl"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>
+                                            URL Thumbnail{' '}
+                                            <span className="text-xs font-normal text-muted-foreground">
+                                                (Tùy chọn)
+                                            </span>
+                                        </FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="https://example.com/thumb.jpg"
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* 7 · Prerequisite (optional) */}
                             <FormField
                                 control={form.control}
                                 name="prerequisiteCourseId"
@@ -311,7 +519,9 @@ export function CreateCourseDrawer({ open, onOpenChange, defaultSeriesId }: Prop
                                                 field.onChange(v === 'none' ? null : v)
                                             }
                                             disabled={
-                                                !watchedSeriesId || existingCourses.length === 0
+                                                !watchedLanguageId ||
+                                                !watchedLearningGoalId ||
+                                                existingCourses.length === 0
                                             }
                                         >
                                             <FormControl>
@@ -331,16 +541,18 @@ export function CreateCourseDrawer({ open, onOpenChange, defaultSeriesId }: Prop
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        {!watchedSeriesId && (
-                                            <p className="text-xs text-muted-foreground">
-                                                Chọn Series trước để xem danh sách.
-                                            </p>
+                                        {(!watchedLanguageId || !watchedLearningGoalId) && (
+                                            <FormDescription>
+                                                Chọn Ngôn ngữ và Mục tiêu trước để xem danh sách.
+                                            </FormDescription>
                                         )}
-                                        {watchedSeriesId && existingCourses.length === 0 && (
-                                            <p className="text-xs text-muted-foreground">
-                                                Series này chưa có khóa học nào.
-                                            </p>
-                                        )}
+                                        {watchedLanguageId &&
+                                            watchedLearningGoalId &&
+                                            existingCourses.length === 0 && (
+                                                <FormDescription>
+                                                    Chưa có khóa học nào cho ngôn ngữ và mục tiêu này.
+                                                </FormDescription>
+                                            )}
                                         <FormMessage />
                                     </FormItem>
                                 )}

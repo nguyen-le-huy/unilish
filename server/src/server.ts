@@ -11,7 +11,6 @@ import { readingTtsWorker } from './jobs/workers/reading-tts.worker.js';
 import { listeningMixSyncWorker } from './jobs/workers/listening-mix-sync.worker.js';
 import { writingGradingWorker } from './jobs/workers/writing-grading.worker.js';
 import { speakingGradingWorker } from './jobs/workers/speaking-grading.worker.js';
-import { vectorSyncWorker } from './jobs/workers/vector-sync.worker.js';
 
 const startServer = async () => {
     // Connect to Databases
@@ -68,9 +67,6 @@ const startServer = async () => {
 
                 await speakingGradingWorker.close();
                 logger.info('Speaking grading worker closed.');
-
-                await vectorSyncWorker.close();
-                logger.info('Vector sync worker closed.');
 
                 process.exit(0);
             } catch (err) {

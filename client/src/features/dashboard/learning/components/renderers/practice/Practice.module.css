@@ -1,0 +1,161 @@
+/* ─── Practice area ────────────────────────────────────────────────────────── */
+
+.practiceArea {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 2px solid var(--grey);
+}
+
+.practiceTitle {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0 0 16px;
+  color: black;
+}
+
+/* ─── Question ─────────────────────────────────────────────────────────────── */
+
+.practiceQuestion {
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid var(--grey);
+  border-radius: 12px;
+  background: white;
+}
+
+.stem {
+  font-size: var(--text-md);
+  color: black;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+/* ─── Options (MC, TF) ─────────────────────────────────────────────────────── */
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--grey);
+  border-radius: 8px;
+  background: white;
+  text-align: left;
+  font-size: var(--text-md);
+  color: black;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.option:hover {
+  background: #f5f5f5;
+}
+
+.optionSelected {
+  background: #e8f0fe;
+  border-color: #1a73e8;
+  color: #1a73e8;
+  font-weight: 450;
+}
+
+/* ─── Input ────────────────────────────────────────────────────────────────── */
+
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--grey);
+  border-radius: 8px;
+  font-size: var(--text-md);
+  color: black;
+  outline: none;
+}
+
+.input:focus {
+  border-color: black;
+}
+
+.inputCorrect {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.inputIncorrect {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+/* ─── Matching ─────────────────────────────────────────────────────────────── */
+
+.matchingGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.matchingColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.matchingItem {
+  padding: 10px 14px;
+  border: 1px solid var(--grey);
+  border-radius: 8px;
+  background: #f9f9f9;
+  font-size: var(--text-md);
+  color: black;
+}
+
+.matchingTarget {
+  padding: 10px 14px;
+  border: 1px solid var(--grey);
+  border-radius: 8px;
+  background: white;
+  font-size: var(--text-md);
+  color: black;
+  cursor: pointer;
+  text-align: left;
+}
+
+.matchingTarget:hover {
+  background: #f5f5f5;
+}
+
+.matchingTargetSelected {
+  background: #e8f0fe;
+  border-color: #1a73e8;
+}
+
+/* ─── Error text ───────────────────────────────────────────────────────────── */
+
+.errorText {
+  font-size: var(--text-md);
+  color: #dc2626;
+  font-style: italic;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: #fef2f2;
+  border-radius: 8px;
+}
+
+/* ─── Feedback ─────────────────────────────────────────────────────────────── */
+
+.feedbackCorrect {
+  margin-top: 8px;
+  font-size: var(--text-sm);
+  color: #16a34a;
+  font-weight: 450;
+}
+
+.feedbackIncorrect {
+  margin-top: 8px;
+  font-size: var(--text-sm);
+  color: #dc2626;
+  font-weight: 450;
+}

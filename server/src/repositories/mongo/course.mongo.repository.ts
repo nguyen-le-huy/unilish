@@ -1,11 +1,32 @@
 import { Course, type ICourse } from '../../models/mongo/course.model.js';
 import { BaseMongoRepository } from '../base/base.mongo.repository.js';
+import mongoose from 'mongoose';
 
-// ─── Filter / Result type definitions ────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface CourseListFilters {
-    seriesId: string;
-    isActive?: boolean;
+    languageId?: string | undefined;
+    learningGoalId?: string | undefined;
+    level?: string | undefined;
+    isActive?: boolean | undefined;
+    search?: string | undefined;
+}
+
+export interface CourseListOptions {
+    page: number;
+    limit: number;
+    sort: 'orderIndex' | 'name' | 'createdAt';
+    order: 'asc' | 'desc';
+}
+
+export interface CourseListResult {
+    courses: ICourse[];
+    pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        pages: number;
+    };
 }
 
 // ─── Repository ───────────────────────────────────────────────────────────────
@@ -16,22 +37,101 @@ export class CourseMongoRepository extends BaseMongoRepository<ICourse> {
     }
 
     /**
-     * Find all courses belonging to a series, ordered by position.
-     * MANDATORY: .lean() + .select() on every read path.
+     * Paginated, filterable, sortable list of courses.
+     * Replaces the old findBySeriesId.
      */
-    async findBySeriesId(filters: CourseListFilters): Promise<ICourse[]> {
-        const query: Record<string, unknown> = { seriesId: filters.seriesId };
+    async findAllWithPagination(
+        filters: CourseListFilters,
+        options: CourseListOptions,
+    ): Promise<CourseListResult> {
+        const { page, limit, sort, order } = options;
+        const skip = (page - 1) * limit;
+        const sortDir = order === 'asc' ? 1 : -1;
+
+        const query: Record<string, unknown> = {};
+
+        // Merge filters from CourseListFilters explicitly to avoid mass assignment
+        if (filters.languageId) {
+            query.languageId = new mongoose.Types.ObjectId(filters.languageId);
+        }
+        if (filters.learningGoalId) {
+            query.learningGoalId = new mongoose.Types.ObjectId(filters.learningGoalId);
+        }
+        if (filters.level) {
+            query.level = filters.level;
+        }
         if (typeof filters.isActive === 'boolean') {
             query.isActive = filters.isActive;
         }
+        if (filters.search) {
+            query.$or = [
+                { name: { $regex: filters.search, $options: 'i' } },
+                { slug: { $regex: filters.search, $options: 'i' } },
+            ];
+        }
 
-        return this.model
-            .find(query)
-            .select('-__v')
-            .sort({ orderInSeries: 1 })
-            .lean()
-            .exec() as Promise<ICourse[]>;
+        const [courses, total] = await Promise.all([
+            this.model
+                .find(query)
+                .select('-__v')
+                .sort({ [sort]: sortDir })
+                .skip(skip)
+                .limit(limit)
+                .lean()
+                .exec() as Promise<ICourse[]>,
+            this.model.countDocuments(query),
+        ]);
+
+        return {
+            courses,
+            pagination: {
+                page,
+                limit,
+                total,
+                pages: Math.ceil(total / limit),
+            },
+        };
     }
+
+    // ── Conflict/Existence checks ──────────────────────────────────────────────
+
+    /**
+     * Check if a slug already exists (optionally excluding a courseId for updates).
+     */
+    async slugExists(slug: string, excludeCourseId?: string): Promise<boolean> {
+        const filter: Record<string, unknown> = { slug };
+        if (excludeCourseId) {
+            filter._id = { $ne: new mongoose.Types.ObjectId(excludeCourseId) };
+        }
+        const count = await this.model.countDocuments(filter);
+        return count > 0;
+    }
+
+    /**
+     * Check if a course already occupies the compound key
+     * (languageId, learningGoalId, level, orderIndex).
+     */
+    async compoundKeyExists(
+        languageId: string,
+        learningGoalId: string,
+        level: string,
+        orderIndex: number,
+        excludeCourseId?: string,
+    ): Promise<boolean> {
+        const filter: Record<string, unknown> = {
+            languageId: new mongoose.Types.ObjectId(languageId),
+            learningGoalId: new mongoose.Types.ObjectId(learningGoalId),
+            level,
+            orderIndex,
+        };
+        if (excludeCourseId) {
+            filter._id = { $ne: new mongoose.Types.ObjectId(excludeCourseId) };
+        }
+        const count = await this.model.countDocuments(filter);
+        return count > 0;
+    }
+
+    // ── Single-read helpers ────────────────────────────────────────────────────
 
     /**
      * Find a single course by its ObjectId with full fields.
@@ -46,17 +146,70 @@ export class CourseMongoRepository extends BaseMongoRepository<ICourse> {
 
     /**
      * Create a new course from a plain object payload.
+     * Maps only allowed fields to prevent mass assignment.
      */
-    async createCourse(data: Partial<ICourse>): Promise<ICourse> {
-        return this.model.create(data);
+    async createCourse(data: Record<string, unknown>): Promise<ICourse> {
+        const doc: Record<string, unknown> = {
+            languageId: new mongoose.Types.ObjectId(data.languageId as string),
+            learningGoalId: new mongoose.Types.ObjectId(data.learningGoalId as string),
+            name: data.name,
+            slug: data.slug,
+            level: data.level,
+            orderIndex: typeof data.orderIndex === 'number' ? data.orderIndex : 1,
+            totalUnits: 0,
+            isActive: true,
+        };
+
+        if (data.description !== undefined) {
+            doc.description = data.description;
+        }
+        if (data.thumbnailUrl !== undefined) {
+            doc.thumbnailUrl = data.thumbnailUrl;
+        }
+        if (typeof data.prerequisiteCourseId === 'string' && data.prerequisiteCourseId.length > 0) {
+            doc.prerequisiteCourseId = new mongoose.Types.ObjectId(data.prerequisiteCourseId as string);
+        }
+        if (data.finalExamConfig) {
+            doc.finalExamConfig = data.finalExamConfig;
+        }
+
+        return this.model.create(doc);
     }
 
     /**
      * Update a course by its ObjectId. Returns updated document.
+     * Maps only allowed fields to prevent mass assignment.
      */
-    async updateById(courseId: string, data: Partial<ICourse>): Promise<ICourse | null> {
+    async updateCourse(
+        courseId: string,
+        data: Record<string, unknown>,
+    ): Promise<ICourse | null> {
+        const update: Record<string, unknown> = {};
+
+        if (typeof data.name === 'string') update.name = data.name;
+        if (typeof data.slug === 'string') update.slug = data.slug;
+        if (typeof data.level === 'string') update.level = data.level;
+        if (typeof data.orderIndex === 'number') update.orderIndex = data.orderIndex;
+        if (data.description !== undefined) update.description = data.description;
+        if (data.thumbnailUrl !== undefined) update.thumbnailUrl = data.thumbnailUrl;
+        if (typeof data.languageId === 'string') {
+            update.languageId = new mongoose.Types.ObjectId(data.languageId);
+        }
+        if (typeof data.learningGoalId === 'string') {
+            update.learningGoalId = new mongoose.Types.ObjectId(data.learningGoalId);
+        }
+        if (data.prerequisiteCourseId !== undefined) {
+            update.prerequisiteCourseId = typeof data.prerequisiteCourseId === 'string'
+                ? new mongoose.Types.ObjectId(data.prerequisiteCourseId)
+                : null;
+        }
+        if (typeof data.finalExamConfig === 'object' && data.finalExamConfig !== null) {
+            update.finalExamConfig = data.finalExamConfig;
+        }
+        if (typeof data.isActive === 'boolean') update.isActive = data.isActive;
+
         return this.model
-            .findByIdAndUpdate(courseId, data, { new: true, runValidators: true })
+            .findByIdAndUpdate(courseId, update, { new: true, runValidators: true })
             .select('-__v')
             .lean()
             .exec() as Promise<ICourse | null>;
@@ -87,23 +240,13 @@ export class CourseMongoRepository extends BaseMongoRepository<ICourse> {
     }
 
     /**
-     * Count courses in a series (used for prerequisite / cascade checks).
-     */
-    async countBySeriesId(seriesId: string): Promise<number> {
-        return this.model.countDocuments({ seriesId }).exec();
-    }
-
-    // ✅ REMOVED: existsBySeriesAndLevel()
-    // Không cần nữa vì giờ cho phép nhiều courses cùng level trong 1 series
-
-    /**
      * Aggregate the full course tree: course → units → lessons.
      * This single query replaces N+1 waterfall calls in the Studio UI.
      */
     async getCourseTree(courseId: string): Promise<ICourse | null> {
         const results = await this.model
             .aggregate([
-                { $match: { _id: new (await import('mongoose')).default.Types.ObjectId(courseId) } },
+                { $match: { _id: new mongoose.Types.ObjectId(courseId) } },
                 {
                     $lookup: {
                         from: 'units',

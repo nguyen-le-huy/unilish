@@ -1,10 +1,6 @@
 import redisClient from '../config/redis.js';
 import { HttpStatus } from '../constants/http-status.js';
-import { CourseSeriesVectorRepository } from '../repositories/vector/course-series.vector.repository.js';
-import {
-    COURSE_SERIES_LEVEL_TO_NUMBER,
-    type CourseSeriesLevel,
-} from '../models/vector/course-series-vector.js';
+import { CourseVectorRepository } from '../repositories/vector/course.vector.repository.js';
 import { EmbeddingService, embeddingService } from './embedding.service.js';
 import { AppError } from '../utils/app-error.js';
 import { logger } from '../utils/logger.js';
@@ -14,13 +10,27 @@ import { LearningGoalMongoRepository } from '../repositories/mongo/learning-goal
 
 const RECOMMENDATION_CACHE_TTL_SECONDS = 86_400;
 const RECOMMENDATION_CACHE_PREFIX = 'recommendations:user';
-const RECOMMENDATION_CACHE_SIGNATURE_VERSION = 'v2';
+// Bump to v3 to invalidate old Series-based cache
+const RECOMMENDATION_CACHE_SIGNATURE_VERSION = 'v3';
 
 interface RecommendationCacheEntry {
     profileSignature: string;
-    data: RecommendedSeriesDto[];
+    data: RecommendedCourseDto[];
 }
 
+/** New Course-based recommendation DTO */
+export interface RecommendedCourseDto {
+    id: string;
+    title: string;
+    slug: string;
+    description: string;
+    thumbnailUrl: string;
+    level: string;
+    totalUnits: number;
+    score: number;
+}
+
+/** @deprecated Kept for backward-compat during migration. Use RecommendedCourseDto. */
 export interface RecommendedSeriesDto {
     id: string;
     title: string;
@@ -72,11 +82,15 @@ export class RecommendationService {
         private readonly userRepo: UserMongoRepository,
         private readonly languageRepo: LanguageMongoRepository,
         private readonly learningGoalRepo: LearningGoalMongoRepository,
-        private readonly seriesVectorRepo: CourseSeriesVectorRepository,
+        private readonly courseVectorRepo: CourseVectorRepository,
         private readonly embeddings: EmbeddingService,
     ) { }
 
-    async getRecommendedSeries(userId: string, topK = 6): Promise<RecommendedSeriesDto[]> {
+    /**
+     * Get recommended Courses for a user.
+     * Uses Course vectors indexed directly in Pinecone.
+     */
+    async getRecommendedCourses(userId: string, topK = 6): Promise<RecommendedCourseDto[]> {
         const user = await this.userRepo.findRecommendationProfileById(userId);
 
         if (!user) {
@@ -88,11 +102,6 @@ export class RecommendationService {
         const learningGoalId = normalizeObjectId(user.learningGoalId);
 
         if (!learningLanguageId || !learningGoalId || !currentLevel || currentLevel === 'A0') {
-            return [];
-        }
-
-        const userLevelNum = COURSE_SERIES_LEVEL_TO_NUMBER[currentLevel as CourseSeriesLevel];
-        if (typeof userLevelNum !== 'number') {
             return [];
         }
 
@@ -117,20 +126,21 @@ export class RecommendationService {
 
         const queryVector = await this.embeddings.embedText(queryText);
 
-        let matches = await this.seriesVectorRepo.findRecommendedSeries(
+        // Try exact level + one above
+        let matches = await this.courseVectorRepo.findRecommendedCourses(
             {
                 languageId: learningLanguageId,
                 learningGoalId,
-                userLevelNum,
+                userLevel: currentLevel,
                 isActive: true,
             },
             queryVector,
             topK,
         );
 
-        // Fallback 1: Keep language + goal, relax level constraints.
+        // Fallback 1: Keep language + goal, relax level constraints
         if (matches.length === 0) {
-            matches = await this.seriesVectorRepo.findRecommendedSeries(
+            matches = await this.courseVectorRepo.findRecommendedCourses(
                 {
                     languageId: learningLanguageId,
                     learningGoalId,
@@ -141,9 +151,9 @@ export class RecommendationService {
             );
         }
 
-        // Fallback 2: Keep only language as hard filter.
+        // Fallback 2: Keep only language as hard filter
         if (matches.length === 0) {
-            matches = await this.seriesVectorRepo.findRecommendedSeries(
+            matches = await this.courseVectorRepo.findRecommendedCourses(
                 {
                     languageId: learningLanguageId,
                     isActive: true,
@@ -160,9 +170,8 @@ export class RecommendationService {
                 slug: match.metadata.slug,
                 description: match.metadata.description,
                 thumbnailUrl: match.metadata.thumbnailUrl,
-                totalCourses: match.metadata.totalCourses,
-                levelMin: match.metadata.levelMin,
-                levelMax: match.metadata.levelMax,
+                level: match.metadata.level,
+                totalUnits: match.metadata.totalUnits,
                 score: match.score,
             }))
             .sort((a, b) => b.score - a.score);
@@ -194,7 +203,7 @@ export class RecommendationService {
         return `${RECOMMENDATION_CACHE_PREFIX}:${userId}`;
     }
 
-    private async getCachedRecommendations(cacheKey: string, signature: string): Promise<RecommendedSeriesDto[] | null> {
+    private async getCachedRecommendations(cacheKey: string, signature: string): Promise<RecommendedCourseDto[] | null> {
         if (!redisClient.isOpen) {
             return null;
         }
@@ -234,6 +243,6 @@ export const recommendationService = new RecommendationService(
     new UserMongoRepository(),
     new LanguageMongoRepository(),
     new LearningGoalMongoRepository(),
-    new CourseSeriesVectorRepository(),
+    new CourseVectorRepository(),
     embeddingService,
 );

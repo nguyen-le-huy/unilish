@@ -9,7 +9,6 @@ import { writingRepo } from '../repositories/mongo/writing.mongo.repository.js';
 import { LessonMongoRepository } from '../repositories/mongo/lesson.mongo.repository.js';
 import { Unit } from '../models/mongo/unit.model.js';
 import { Course } from '../models/mongo/course.model.js';
-import { CourseSeries } from '../models/mongo/course-series.model.js';
 import type {
     WritingContent,
     WritingFormat,
@@ -289,15 +288,8 @@ Scoring rule:
         const unit = await Unit.findById(lesson.unitId).select('contextSeed courseId').lean().exec();
         if (!unit) throw new AppError('Chương học không tồn tại', HttpStatus.NOT_FOUND);
 
-        const course = await Course.findById(unit.courseId).select('seriesId level').lean().exec();
+        const course = await Course.findById(unit.courseId).select('languageId').lean().exec();
         if (!course) throw new AppError('Khóa học không tồn tại', HttpStatus.NOT_FOUND);
-
-        const series = await CourseSeries
-            .findById(course.seriesId)
-            .select('languageId')
-            .lean()
-            .exec();
-        if (!series) throw new AppError('Bộ khóa học không tồn tại', HttpStatus.NOT_FOUND);
 
         return {
             scenario: unit.contextSeed?.scenario ?? '',

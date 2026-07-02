@@ -10,7 +10,7 @@ interface CourseCardProps {
     description?: string;
     imageUrl?: string;
     badge?: string;
-    totalCourses?: number;
+    totalUnits?: number;
     href?: string;
     joinLabel?: string;
     onJoin?: () => void;
@@ -18,10 +18,10 @@ interface CourseCardProps {
 
 const CourseCard = ({
     title = 'Khoá Tiếng Pháp',
-    description = 'Monitor your shipment status in real-time. Stay informed about your delivery’s progress every step of the way.',
+    description = 'Monitor your shipment status in real-time. Stay informed about your delivery\'s progress every step of the way.',
     imageUrl = defaultCourseImage,
     badge,
-    totalCourses,
+    totalUnits,
     href,
     joinLabel = 'Tham Gia',
     onJoin,
@@ -49,11 +49,11 @@ const CourseCard = ({
                 <div className={styles.content}>
                     <h3 className={styles.title}>{title}</h3>
                     <p className={styles.description}>{description}</p>
-                    {(badge || typeof totalCourses === 'number') && (
+                    {(badge || typeof totalUnits === 'number') && (
                         <div className={styles.meta}>
                             {badge && <span className={styles.badge}>{badge}</span>}
-                            {typeof totalCourses === 'number' && (
-                                <span className={styles.totalCourses}>Bao gồm {totalCourses} khoá học</span>
+                            {typeof totalUnits === 'number' && (
+                                <span className={styles.totalCourses}>{totalUnits} bài học</span>
                             )}
                         </div>
                     )}

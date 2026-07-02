@@ -2,8 +2,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 40px;
-  min-height: 534px;
+  gap: 32px;
+  min-height: 300px;
   border: 1px solid var(--dark-grey);
   border-radius: 20px;
   padding: 20px;
@@ -25,20 +25,47 @@
   line-height: 1;
 }
 
+.periodWrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.monthNav {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--dark-grey);
+  display: flex;
+  align-items: center;
+}
+
+.monthNav:hover {
+  color: black;
+}
+
 .periodButton {
-  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   border: 0;
-  background: var(--grey) !important;
+  background: var(--grey);
+  border-radius: 9999px;
+  padding: 6px 12px;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  color: black;
 }
 
 .periodButton:hover {
-  box-shadow: none !important;
+  background: #ddd;
 }
 
 .statsList {
   display: flex;
   flex-direction: column;
-  gap: 25px;
+  gap: 20px;
   list-style: none;
   padding: 0;
   margin: 0;
@@ -48,52 +75,61 @@
 .statItem {
   display: flex;
   align-items: center;
-  gap: 15px;
-  font-size: 18px;
-  line-height: 1;
+  justify-content: space-between;
+  font-size: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--grey);
 }
 
-.statText {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1;
+.statItem:last-child {
+  border-bottom: none;
 }
 
-.clockIcon {
-  width: 20px;
-  height: 20.2px;
+.statLabel {
+  color: var(--dark-grey);
+  font-size: var(--text-md);
 }
 
-.tickIcon {
-  width: 20px;
-  height: 15px;
+.statValue {
+  font-weight: 450;
+  color: black;
+  font-size: var(--text-md);
 }
 
-.bookIcon {
-  width: 20px;
-  height: 28px;
+/* ─── Empty / Error ────────────────────────────────────────────────────────── */
+
+.emptyText {
+  font-size: var(--text-md);
+  color: var(--dark-grey);
+  text-align: center;
+  margin: auto;
 }
 
-.optimisticImage {
-  position: absolute;
-  top: 300px;
-  left: -50px;
-  width: 278px;
-  height: 278px;
-  transform: rotate(13deg);
-  pointer-events: none;
-  user-select: none;
+/* ─── Skeleton ─────────────────────────────────────────────────────────────── */
+
+.skeletonTitle {
+  height: 24px;
+  width: 60px;
+  border-radius: 4px;
+  background: var(--grey);
+}
+
+.skeletonButton {
+  height: 32px;
+  width: 80px;
+  border-radius: 9999px;
+  background: var(--grey);
+}
+
+.skeletonStat {
+  height: 20px;
+  width: 100%;
+  border-radius: 4px;
+  background: var(--grey);
 }
 
 @media (max-width: 900px) {
   .card {
-    min-height: 450px;
-  }
-
-  .optimisticImage {
-    top: 240px;
-    left: -92px;
-    width: 244px;
-    height: 244px;
+    min-height: 250px;
   }
 }

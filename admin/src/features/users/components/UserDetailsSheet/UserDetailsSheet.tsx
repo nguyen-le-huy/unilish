@@ -84,9 +84,6 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                     <Badge variant="outline" className="capitalize">
                                         {displayUser.role}
                                     </Badge>
-                                    <Badge variant={displayUser.subscription.plan === 'PREMIUM' ? 'default' : 'secondary'}>
-                                        {displayUser.subscription.plan}
-                                    </Badge>
                                 </div>
                             </div>
 
@@ -110,7 +107,7 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                         </div>
                     </div>
 
-                    {/* Right Column: Academic, Stats, Subscription */}
+                    {/* Right Column: Academic, Stats, Account */}
                     <div className="md:col-span-2 space-y-8">
                         {/* Stats Cards */}
 
@@ -205,7 +202,7 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                 </div>
                             </div>
 
-                            {/* Subscription & Account */}
+                            {/* Account */}
                             <div className="space-y-4">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
                                     <Shield className="w-5 h-5 text-primary" />
@@ -217,24 +214,6 @@ export function UserDetailsSheet({ user, open, onOpenChange }: UserDetailsSheetP
                                         label="Ngày tham gia"
                                         value={formatDate(displayUser.createdAt)}
                                         className="py-1"
-                                    />
-                                    <Separator />
-                                    <InfoRow
-                                        icon={Shield}
-                                        label="Trạng thái gói"
-                                        className="py-1"
-                                        value={
-                                            <div className="flex flex-col gap-1">
-                                                <Badge variant={displayUser.subscription.status === 'active' ? 'default' : 'destructive'} className="w-fit uppercase text-[10px]">
-                                                    {displayUser.subscription.status}
-                                                </Badge>
-                                                {displayUser.subscription.endDate && (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        Hết hạn: {formatDate(displayUser.subscription.endDate)}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        }
                                     />
                                     <Separator />
                                     <InfoRow

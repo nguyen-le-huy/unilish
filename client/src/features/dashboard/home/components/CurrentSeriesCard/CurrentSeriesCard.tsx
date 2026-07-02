@@ -5,11 +5,11 @@ import styles from './CurrentSeriesCard.module.css';
 
 const courseBannerUrl = 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=2346&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
-interface CurrentSeriesCardProps {
+interface CurrentCourseCardProps {
   className?: string;
 }
 
-export const CurrentSeriesCard = ({ className }: CurrentSeriesCardProps) => {
+export const CurrentCourseCard = ({ className }: CurrentCourseCardProps) => {
   const cardClassName = className ? `${styles.card} ${className}` : styles.card;
 
   return (

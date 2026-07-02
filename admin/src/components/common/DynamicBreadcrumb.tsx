@@ -18,11 +18,6 @@ const routeNameMap: Record<string, string> = {
     news: "Tin tức (News)",
     users: "Học viên",
     staffs: "Phân quyền",
-    plans: "Gói cước",
-    transactions: "Giao dịch",
-    "ai-config": "AI & Prompts",
-    media: "Media / Files",
-    settings: "Cấu hình",
 }
 
 export function DynamicBreadcrumb() {

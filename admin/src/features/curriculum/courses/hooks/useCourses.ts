@@ -3,11 +3,14 @@ import { courseApi } from '../api/course.api';
 import { COURSE_QUERY_KEYS } from '../constants/query-keys';
 import type { CourseListQuery } from '../types/course.types';
 
-export const useCoursesBySeriesId = (query: CourseListQuery) => {
+/**
+ * Paginated, filterable course listing.
+ * Replaces the old `useCoursesBySeriesId` which was series-scoped.
+ */
+export const useCourses = (query: CourseListQuery) => {
     return useQuery({
         queryKey: COURSE_QUERY_KEYS.list(query),
-        queryFn: () => courseApi.getCoursesBySeriesId(query),
-        enabled: !!query.seriesId,
+        queryFn: () => courseApi.getCourses(query),
         staleTime: 2 * 60 * 1000, // 2 minutes
     });
 };

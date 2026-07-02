@@ -1,5 +1,5 @@
 // ─── Queries ──────────────────────────────────────────────────────────────────
-export { useCoursesBySeriesId, useCourseDetail, useCourseTree } from './hooks/useCourses';
+export { useCourses, useCourseDetail, useCourseTree } from './hooks/useCourses';
 
 // ─── Course Mutations ─────────────────────────────────────────────────────────
 export {
@@ -8,6 +8,10 @@ export {
     useToggleCourseStatus,
     useDeleteCourse,
 } from './hooks/useCourseMutations';
+
+// ─── Course Form ──────────────────────────────────────────────────────────────
+export { useCourseForm, courseFormSchema } from './hooks/useCourseForm';
+export type { CourseFormValues } from './hooks/useCourseForm';
 
 // ─── Unit Mutations ───────────────────────────────────────────────────────────
 export {
@@ -39,6 +43,8 @@ export type {
     CEFRLevel,
     LessonType,
     PracticeMode,
+    CourseListQuery,
+    CourseListResponse,
     CreateCoursePayload,
     UpdateCoursePayload,
     CreateUnitPayload,

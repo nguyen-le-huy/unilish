@@ -3,6 +3,7 @@ import type { ApiResponse } from '@/types/api';
 import type {
     Course,
     CourseListQuery,
+    CourseListResponse,
     CourseTreeDTO,
     CreateCoursePayload,
     UpdateCoursePayload,
@@ -11,11 +12,22 @@ import type {
 const BASE_PATH = '/curriculum/courses';
 
 export const courseApi = {
-    getCoursesBySeriesId: async (query: CourseListQuery): Promise<Course[]> => {
+    /**
+     * Paginated & filterable course list.
+     * Replaces the old series-scoped `getCoursesBySeriesId`.
+     *
+     * NOTE: The backend contract (BE-04) specifies:
+     *   PATCH /curriculum/courses/:courseId/status
+     * Currently uses /toggle until BE migrates the route.
+     */
+    getCourses: async (query: CourseListQuery): Promise<CourseListResponse> => {
         const response = await apiClient.get<ApiResponse<Course[]>>(BASE_PATH, {
             params: query,
         });
-        return response.data.data;
+        return {
+            data: response.data.data,
+            meta: response.data.meta ?? { page: 1, limit: response.data.data.length, total: response.data.data.length, pages: 1 },
+        };
     },
 
     getCourseTree: async (courseId: string): Promise<CourseTreeDTO> => {
@@ -45,6 +57,11 @@ export const courseApi = {
         return response.data.data;
     },
 
+    /**
+     * Toggle course active/inactive status.
+     * Contract (BE-04): PATCH /curriculum/courses/:courseId/status
+     * Current backend uses /toggle; update when BE-04 completes.
+     */
     toggleCourseStatus: async (courseId: string): Promise<Course> => {
         const response = await apiClient.patch<ApiResponse<Course>>(
             `${BASE_PATH}/${courseId}/toggle`,

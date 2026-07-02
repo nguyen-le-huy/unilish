@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
-import Dock from './Dock';
 import styles from './Dashboard-Layout.module.css';
 
 interface Props {
@@ -9,13 +8,17 @@ interface Props {
 }
 
 const DashboardLayout = ({ children }: Props) => {
+	const { pathname } = useLocation();
+	const isLessonPlayer = pathname.startsWith('/dashboard/learning/lessons/');
+
 	return (
-		<div className={styles.layout}>
+		<div className={`${styles.layout} ${isLessonPlayer ? styles.lessonLayout : ''}`}>
             <Header />
 			<div className={styles.contentArea}>
-				<main className={styles.main}>{children ?? <Outlet />}</main>
+				<main className={`${styles.main} ${isLessonPlayer ? styles.lessonMain : ''}`}>
+					{children ?? <Outlet />}
+				</main>
 			</div>
-            <Dock />
 		</div>
 	);
 };

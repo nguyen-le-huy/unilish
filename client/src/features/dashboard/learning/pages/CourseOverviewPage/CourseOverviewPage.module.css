@@ -1,0 +1,279 @@
+/* ─── Page layout ─────────────────────────────────────────────────────────── */
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+/* ─── Header ──────────────────────────────────────────────────────────────── */
+
+.headerCard {
+  margin-bottom: 32px;
+}
+
+.headerContent {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.headerThumb {
+  width: 200px;
+  height: 140px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.headerMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 0;
+  color: black;
+}
+
+.subtitle {
+  font-size: var(--text-md);
+  color: var(--dark-grey);
+  margin-top: 4px;
+}
+
+.description {
+  font-size: var(--text-md);
+  color: var(--dark-grey);
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+/* ─── Progress bar ────────────────────────────────────────────────────────── */
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 8px;
+  border-radius: 8px;
+  background: var(--grey);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 8px;
+  background: var(--dark-green);
+  transition: width 0.5s ease;
+}
+
+.progressLabel {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: black;
+  white-space: nowrap;
+}
+
+.ctaButton {
+  margin-top: 12px;
+}
+
+/* ─── Roadmap ─────────────────────────────────────────────────────────────── */
+
+.roadmap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ─── Unit card ───────────────────────────────────────────────────────────── */
+
+.unitCard {
+  border: 1px solid var(--dark-grey);
+  border-radius: 16px;
+  overflow: hidden;
+  background: white;
+}
+
+.unitHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.unitTitleRow {
+  flex: 1;
+  min-width: 0;
+}
+
+.unitTitle {
+  font-size: 18px;
+  font-weight: 500;
+  color: black;
+  display: block;
+}
+
+.unitProgress {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.unitLessonCount {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  white-space: nowrap;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--dark-grey);
+  transition: transform 0.2s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* ─── Lesson list ─────────────────────────────────────────────────────────── */
+
+.lessonList {
+  border-top: 1px solid var(--grey);
+}
+
+.lessonRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--grey);
+  transition: background 0.15s ease;
+}
+
+.lessonRow:last-child {
+  border-bottom: none;
+}
+
+.lessonCurrent {
+  background: #f0f7ff;
+}
+
+.lessonCompleted {
+  opacity: 0.75;
+}
+
+.lessonIcon {
+  font-size: 20px;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.lessonInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.lessonTitle {
+  display: block;
+  font-size: var(--text-md);
+  font-weight: 450;
+  color: black;
+}
+
+.lessonMeta {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+}
+
+.lessonStatus {
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+.lessonAction {
+  flex-shrink: 0;
+}
+
+/* ─── Status classes ──────────────────────────────────────────────────────── */
+
+.statusLocked {
+  color: var(--dark-grey);
+}
+
+.statusAvailable {
+  color: #2563eb;
+}
+
+.statusInProgress {
+  color: #d97706;
+}
+
+.statusCompleted {
+  color: #16a34a;
+}
+
+/* ─── States ──────────────────────────────────────────────────────────────── */
+
+.stateContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 20px;
+  gap: 8px;
+}
+
+.stateTitle {
+  font-size: 20px;
+  font-weight: 500;
+  color: black;
+}
+
+.stateDescription {
+  font-size: var(--text-md);
+  color: var(--dark-grey);
+  max-width: 300px;
+}
+
+/* ─── Skeleton ────────────────────────────────────────────────────────────── */
+
+.skeletonCover {
+  height: 200px;
+  border-radius: 16px;
+  background: linear-gradient(90deg, var(--grey) 25%, #e0e0e0 50%, var(--grey) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  margin-bottom: 24px;
+}
+
+.skeletonBlock {
+  height: 80px;
+  border-radius: 16px;
+  background: linear-gradient(90deg, var(--grey) 25%, #e0e0e0 50%, var(--grey) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}

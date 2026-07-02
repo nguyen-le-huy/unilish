@@ -18,7 +18,7 @@ const router = express.Router();
 router.use(protect);
 
 // ─── Read (all authenticated roles) ─────────────────────────────────────────
-router.get('/', validate(getCoursesListSchema), CourseController.getCoursesBySeriesId);
+router.get('/', validate(getCoursesListSchema), CourseController.getCoursesList);
 router.get('/:courseId/tree', validate(getCourseTreeSchema), CourseController.getCourseTree);
 router.get('/:courseId', validate(getCourseByIdSchema), CourseController.getCourseById);
 
@@ -36,7 +36,7 @@ router.put(
     CourseController.updateCourse,
 );
 router.patch(
-    '/:courseId/toggle',
+    '/:courseId/status',
     restrictTo('admin', 'content_creator'),
     validate(toggleCourseSchema),
     CourseController.toggleCourseStatus,

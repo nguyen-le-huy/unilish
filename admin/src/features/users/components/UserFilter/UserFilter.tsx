@@ -39,22 +39,6 @@ export function UserFilterBar({ filter, onChange }: UserFilterProps) {
 
             <div className="flex gap-2 w-full md:w-auto">
                 <Select
-                    value={filter.plan || "all"}
-                    onValueChange={(value: string) =>
-                        onChange({ ...filter, plan: value === "all" ? undefined : (value as UserFilter["plan"]), page: 1 })
-                    }
-                >
-                    <SelectTrigger className="w-[140px]">
-                        <SelectValue placeholder="Gói cước" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Tất cả gói</SelectItem>
-                        <SelectItem value="FREE">FREE</SelectItem>
-                        <SelectItem value="PREMIUM">PREMIUM</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                <Select
                     value={filter.level || "all"}
                     onValueChange={(value: string) =>
                         onChange({ ...filter, level: value === "all" ? undefined : (value as UserFilter["level"]), page: 1 })

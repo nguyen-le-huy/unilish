@@ -11,22 +11,31 @@ export const ECEFRLevel = {
 } as const;
 
 export interface ICourse extends mongoose.Document {
-    // --- 1. REFERENCES ---
-    seriesId: mongoose.Types.ObjectId;
-    prerequisiteCourseId?: mongoose.Types.ObjectId;
+    // ── 1. REFERENCES ───────────────────────────────────────────────────────
+    /** @deprecated Replaced by languageId. Kept for backward-compat during migration. */
+    seriesId?: mongoose.Types.ObjectId;
+    languageId: mongoose.Types.ObjectId;
+    learningGoalId: mongoose.Types.ObjectId;
+    prerequisiteCourseId?: mongoose.Types.ObjectId | null;
 
-    // --- 2. BASIC INFO ---
-    name: string; // 'Travel English: Beginner A1'
+    // ── 2. BASIC INFO ───────────────────────────────────────────────────────
+    name: string;
+    slug: string;
+    description?: string | null;
+    thumbnailUrl?: string | null;
     level: typeof ECEFRLevel[keyof typeof ECEFRLevel];
-    orderInSeries: number; // 1, 2, 3...
 
-    // --- 3. STATISTICS ---
+    /** @deprecated Replaced by orderIndex. Kept for backward-compat during migration. */
+    orderInSeries?: number;
+    orderIndex: number;
+
+    // ── 3. STATISTICS ───────────────────────────────────────────────────────
     totalUnits: number;
 
-    // --- 4. FINAL EXAM CONFIGURATION ---
+    // ── 4. FINAL EXAM CONFIGURATION ────────────────────────────────────────
     finalExamConfig: {
         durationMinutes: number;
-        passScore: number; // 0-100
+        passScore: number;
         structureMatrix: {
             vocabCount?: number;
             grammarCount?: number;
@@ -41,20 +50,33 @@ export interface ICourse extends mongoose.Document {
         };
     };
 
-    // --- 5. STATUS ---
+    // ── 5. STATUS ──────────────────────────────────────────────────────────
     isActive: boolean;
 
-    // --- 6. METADATA ---
+    // ── 6. METADATA ─────────────────────────────────────────────────────────
     createdAt: Date;
     updatedAt: Date;
 }
 
 const CourseSchema = new mongoose.Schema<ICourse>(
     {
-        // --- 1. REFERENCES ---
+        // ── 1. REFERENCES ───────────────────────────────────────────────────
+        /** @deprecated Replaced by languageId. Kept for backward-compat during migration. */
         seriesId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'CourseSeries',
+            required: false,
+            default: undefined,
+        },
+        languageId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Language',
+            required: true,
+            index: true,
+        },
+        learningGoalId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'LearningGoal',
             required: true,
             index: true,
         },
@@ -64,11 +86,28 @@ const CourseSchema = new mongoose.Schema<ICourse>(
             default: null,
         },
 
-        // --- 2. BASIC INFO ---
+        // ── 2. BASIC INFO ───────────────────────────────────────────────────
         name: {
             type: String,
             required: true,
             trim: true,
+        },
+        slug: {
+            type: String,
+            required: true,
+            unique: true,
+            lowercase: true,
+            trim: true,
+            match: [/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug chỉ được chứa chữ thường, số và dấu gạch ngang'],
+        },
+        description: {
+            type: String,
+            trim: true,
+            default: null,
+        },
+        thumbnailUrl: {
+            type: String,
+            default: null,
         },
         level: {
             type: String,
@@ -76,20 +115,28 @@ const CourseSchema = new mongoose.Schema<ICourse>(
             required: true,
             index: true,
         },
+
+        /** @deprecated Replaced by orderIndex. Kept for backward-compat during migration. */
         orderInSeries: {
+            type: Number,
+            required: false,
+            min: 1,
+            default: undefined,
+        },
+        orderIndex: {
             type: Number,
             required: true,
             min: 1,
         },
 
-        // --- 3. STATISTICS ---
+        // ── 3. STATISTICS ───────────────────────────────────────────────────
         totalUnits: {
             type: Number,
             default: 0,
             min: 0,
         },
 
-        // --- 4. FINAL EXAM CONFIGURATION ---
+        // ── 4. FINAL EXAM CONFIGURATION ─────────────────────────────────────
         finalExamConfig: {
             durationMinutes: {
                 type: Number,
@@ -126,7 +173,7 @@ const CourseSchema = new mongoose.Schema<ICourse>(
             },
         },
 
-        // --- 5. STATUS ---
+        // ── 5. STATUS ───────────────────────────────────────────────────────
         isActive: {
             type: Boolean,
             default: true,
@@ -140,17 +187,34 @@ const CourseSchema = new mongoose.Schema<ICourse>(
     }
 );
 
-// --- INDEXES ---
-// Unique: Một series chỉ có 1 course ở mỗi vị trí (orderInSeries)
-CourseSchema.index({ seriesId: 1, orderInSeries: 1 }, { unique: true });
+// ── INDEXES ─────────────────────────────────────────────────────────────────
 
-// Non-unique: Cho phép nhiều courses cùng level trong 1 series
-// Ví dụ: Series Du lịch có thể có 3 courses A1 khác nhau
-CourseSchema.index({ seriesId: 1, level: 1 });
+// Unique slug (per plan 3.1)
+CourseSchema.index({ slug: 1 }, { unique: true });
+
+// Unique compound: one course per (language, goal, level, position)
+CourseSchema.index(
+    { languageId: 1, learningGoalId: 1, level: 1, orderIndex: 1 },
+    { unique: true },
+);
+
+// Query: list courses for a language+goal (common admin filter)
+CourseSchema.index({ languageId: 1, learningGoalId: 1, isActive: 1, orderIndex: 1 });
+
+// Query: filter by language+level
+CourseSchema.index({ languageId: 1, level: 1 });
+
+// Self-reference for prerequisite lookups
+CourseSchema.index({ prerequisiteCourseId: 1 });
+
+// Keep old indexes during migration window (remove in Phase 4)
+// CourseSchema.index({ seriesId: 1, orderInSeries: 1 }, { unique: true });
+// CourseSchema.index({ seriesId: 1, level: 1 });
 
 CourseSchema.index({ isActive: 1 });
 
-// --- VIRTUALS ---
+// ── VIRTUALS ────────────────────────────────────────────────────────────────
+
 // Virtual: Total exam questions
 CourseSchema.virtual('totalExamQuestions').get(function (this: ICourse) {
     const matrix = this.finalExamConfig.structureMatrix;

@@ -14,6 +14,12 @@
   object-fit: cover;
 }
 
+.coverPlaceholder {
+  width: 100%;
+  height: 266.75px;
+  background: var(--grey);
+}
+
 .content {
   display: flex;
   flex: 1;
@@ -28,6 +34,13 @@
   line-height: 1.2;
 }
 
+.level {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .metaRow {
   display: flex;
   flex-wrap: wrap;
@@ -40,16 +53,6 @@
   gap: 10px;
   color: var(--dark-grey);
   font-size: var(--text-lg);
-}
-
-.clockIcon {
-  width: 20px;
-  height: 20.2px;
-}
-
-.bookIcon {
-  width: 20px;
-  height: 28px;
 }
 
 .progressArea {
@@ -81,12 +84,81 @@
 }
 
 .progressFill {
-  width: 53%;
   height: 100%;
   border-radius: 10px;
   background: var(--dark-green);
+  transition: width 0.5s ease;
 }
 
 .continueButton {
   margin-top: auto;
+}
+
+.stateMessage {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.stateTitle {
+  font-size: 18px;
+  font-weight: 500;
+  color: black;
+}
+
+.stateDescription {
+  font-size: var(--text-md);
+  color: var(--dark-grey);
+  max-width: 280px;
+}
+
+.retryButton {
+  margin-top: 16px;
+}
+
+/* Skeleton */
+.skeletonCover {
+  width: 100%;
+  height: 266.75px;
+  background: linear-gradient(90deg, var(--grey) 25%, #e0e0e0 50%, var(--grey) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeletonTitle {
+  height: 28px;
+  width: 60%;
+  border-radius: 4px;
+  background: var(--grey);
+}
+
+.skeletonMeta {
+  height: 20px;
+  width: 40%;
+  border-radius: 4px;
+  background: var(--grey);
+}
+
+.skeletonProgress {
+  height: 40px;
+  width: 100%;
+  border-radius: 8px;
+  background: var(--grey);
+}
+
+.skeletonButton {
+  height: 48px;
+  width: 100%;
+  border-radius: 9999px;
+  background: var(--grey);
+  margin-top: auto;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }

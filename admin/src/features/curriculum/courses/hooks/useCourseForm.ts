@@ -10,8 +10,17 @@ import { CEFR_LEVELS } from '../types/course.types';
 
 export const courseFormSchema = z.object({
     name: z.string().min(3, 'Tên phải có ít nhất 3 ký tự').max(200),
+    slug: z
+        .string()
+        .min(2, 'Slug phải có ít nhất 2 ký tự')
+        .max(100)
+        .regex(/^[a-z0-9-]+$/, 'Slug chỉ được chứa chữ thường, số và dấu gạch ngang'),
+    languageId: z.string().min(1, 'Vui lòng chọn ngôn ngữ'),
+    learningGoalId: z.string().min(1, 'Vui lòng chọn mục tiêu học tập'),
+    description: z.string().max(500).nullable().optional(),
+    thumbnailUrl: z.string().url('URL không hợp lệ').nullable().optional(),
     level: z.enum([...CEFR_LEVELS] as [string, ...string[]]),
-    orderInSeries: z.coerce.number().int().min(1),
+    orderIndex: z.coerce.number().int().min(1),
     prerequisiteCourseId: z.string().optional().nullable(),
     finalExamConfig: z.object({
         durationMinutes: z.coerce.number().int().min(1),
@@ -40,8 +49,13 @@ export const useCourseForm = ({ course }: UseCourseFormOptions = {}) => {
         resolver: zodResolver(courseFormSchema) as Resolver<CourseFormValues, unknown, CourseFormValues>,
         defaultValues: {
             name: '',
+            slug: '',
+            languageId: '',
+            learningGoalId: '',
+            description: null,
+            thumbnailUrl: null,
             level: 'A1',
-            orderInSeries: 1,
+            orderIndex: 1,
             prerequisiteCourseId: null,
             finalExamConfig: {
                 durationMinutes: 60,
@@ -63,8 +77,13 @@ export const useCourseForm = ({ course }: UseCourseFormOptions = {}) => {
         if (course) {
             form.reset({
                 name: course.name,
+                slug: course.slug,
+                languageId: course.languageId,
+                learningGoalId: course.learningGoalId,
+                description: course.description ?? null,
+                thumbnailUrl: course.thumbnailUrl ?? null,
                 level: course.level,
-                orderInSeries: course.orderInSeries,
+                orderIndex: course.orderIndex,
                 prerequisiteCourseId: course.prerequisiteCourseId ?? null,
                 finalExamConfig: {
                     durationMinutes: course.finalExamConfig.durationMinutes,

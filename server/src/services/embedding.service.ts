@@ -1,6 +1,4 @@
-import type { CourseSeriesLevelRange } from '../models/vector/course-series-vector.js';
-import { parseCourseSeriesLevelRange } from '../models/vector/course-series-vector.js';
-import type { SeriesAIAnalysis } from './ai-analysis.service.js';
+import type { CourseAIAnalysis } from './ai-analysis.service.js';
 import { generateBatchEmbeddings, generateEmbedding, truncateText } from '../utils/embeddings.js';
 
 interface UserRecommendationProfile {
@@ -9,8 +7,9 @@ interface UserRecommendationProfile {
     learningGoalName?: string | null;
 }
 
-interface CourseSeriesEmbeddingInput {
-    title: string;
+interface CourseEmbeddingInput {
+    name: string;
+    level: string;
     description?: string | null;
 }
 
@@ -23,22 +22,6 @@ export class EmbeddingService {
         return generateBatchEmbeddings(texts);
     }
 
-    parseLevelRange(title: string): CourseSeriesLevelRange {
-        return parseCourseSeriesLevelRange(title);
-    }
-
-    buildSeriesEmbedText(series: CourseSeriesEmbeddingInput): string {
-        const { levelMin, levelMax } = this.parseLevelRange(series.title ?? '');
-
-        const parts = [
-            series.title?.trim() ?? '',
-            `Trình độ ${levelMin}-${levelMax}.`,
-            series.description?.trim() ?? '',
-        ].filter((part) => part.length > 0);
-
-        return truncateText(parts.join(' '), 1000);
-    }
-
     buildUserQueryText(user: UserRecommendationProfile): string {
         const parts = [
             user.languageName?.trim() ? `Học ngôn ngữ: ${user.languageName.trim()}.` : '',
@@ -49,20 +32,30 @@ export class EmbeddingService {
         return truncateText(parts.join(' '), 500);
     }
 
-    buildEnrichedEmbedText(series: CourseSeriesEmbeddingInput, aiAnalysis: SeriesAIAnalysis | null): string {
+    buildCourseEmbedText(course: CourseEmbeddingInput): string {
+        const parts = [
+            course.name?.trim() ?? '',
+            `Trình độ ${course.level?.trim() ?? 'A1'}.`,
+            course.description?.trim() ?? '',
+        ].filter((part) => part.length > 0);
+
+        return truncateText(parts.join(' '), 1000);
+    }
+
+    buildEnrichedCourseEmbedText(course: CourseEmbeddingInput, aiAnalysis: CourseAIAnalysis | null): string {
         if (!aiAnalysis) {
-            return this.buildSeriesEmbedText(series);
+            return this.buildCourseEmbedText(course);
         }
 
         const parts = [
-            `${series.title?.trim() ?? ''} (${aiAnalysis.levelMin}-${aiAnalysis.levelMax}).`,
+            `${course.name?.trim() ?? ''} (Trình độ ${course.level?.trim() ?? 'A1'}).`,
             aiAnalysis.summary,
             aiAnalysis.topics.length > 0 ? `Chủ đề: ${aiAnalysis.topics.join(', ')}.` : '',
             aiAnalysis.skills.length > 0 ? `Kỹ năng: ${aiAnalysis.skills.join(', ')}.` : '',
             aiAnalysis.tags.length > 0 ? `Tags: ${aiAnalysis.tags.join(', ')}.` : '',
             aiAnalysis.useCase ? `Ngữ cảnh học tập: ${aiAnalysis.useCase}.` : '',
             aiAnalysis.audience ? `Đối tượng: ${aiAnalysis.audience}.` : '',
-            series.description?.trim() ?? '',
+            course.description?.trim() ?? '',
         ].filter((part) => part.length > 0);
 
         return truncateText(parts.join(' '), 1200);

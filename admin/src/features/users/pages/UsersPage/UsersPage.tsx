@@ -1,7 +1,6 @@
 import { PageHeader } from "@/components/common/PageHeader";
 import { UserFilterBar } from "../../components/UserFilter/UserFilter";
 import { UserTable } from "../../components/UserTable/UserTable";
-import { UserSubscriptionModal } from "../../components/UserSubscriptionModal/UserSubscriptionModal";
 import { UserRoleModal } from "../../components/UserRoleModal/UserRoleModal";
 import { UserDetailsSheet } from "../../components/UserDetailsSheet/UserDetailsSheet";
 import { UserStatsCards } from "../../components/UserStatsCards/UserStatsCards";
@@ -17,17 +16,11 @@ export default function UsersPage() {
         limit: 10,
     });
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
     const { data: userResponse, isLoading } = useUsers(filter);
     const { data: stats } = useUserStats();
-
-    const handleEditSubscription = (user: User) => {
-        setSelectedUser(user);
-        setIsModalOpen(true);
-    };
 
     const handleEditRole = (user: User) => {
         setSelectedUser(user);
@@ -47,7 +40,7 @@ export default function UsersPage() {
         <div className="p-6 space-y-6">
             <PageHeader
                 title="Quản lý học viên"
-                description="Danh sách học viên, quản lý gói cước và phân quyền."
+                description="Danh sách học viên và phân quyền."
             />
 
             {stats && <UserStatsCards stats={stats} />}
@@ -58,7 +51,6 @@ export default function UsersPage() {
             <UserTable
                 users={userResponse?.users || []}
                 loading={isLoading}
-                onEditSubscription={handleEditSubscription}
                 onEditRole={handleEditRole}
                 onViewDetails={handleViewDetails}
             />
@@ -89,12 +81,6 @@ export default function UsersPage() {
                     </Button>
                 </div>
             )}
-
-            <UserSubscriptionModal
-                user={selectedUser}
-                open={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-            />
 
             <UserRoleModal
                 user={selectedUser}

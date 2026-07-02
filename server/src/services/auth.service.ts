@@ -5,10 +5,10 @@ import { logger } from '../utils/logger.js';
 import redisClient from '../config/redis.js';
 import type {
     RegisterInput,
-    LoginInput
+    LoginInput,
 } from '../validations/auth.validation.js';
 import type { IUser } from '../models/mongo/user.model.js';
-import { EUserRole, EAuthProvider, ELevel, ESubscriptionPlan } from '../models/mongo/user.model.js';
+import { EUserRole, EAuthProvider, ELevel } from '../models/mongo/user.model.js';
 import { userService, UserService } from './user.service.js';
 import { otpService, OtpService } from './otp.service.js';
 
@@ -30,7 +30,6 @@ interface AuthenticatedUserResponse {
     currentLevel: IUser['currentLevel'];
     learningGoalId: IUser['learningGoalId'];
     placementTestScore: number;
-    subscription: IUser['subscription'];
     phoneNumber: string | undefined;
     dateOfBirth: Date | undefined;
 }
@@ -43,109 +42,62 @@ export interface GoogleAuthResult {
 }
 
 export class AuthService {
-    private static readonly REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
-
     constructor(
         private readonly userService: UserService,
         private readonly otpService: OtpService,
-    ) { }
+    ) {}
 
-    private generateOtp(): string {
-        return Math.floor(1000 + Math.random() * 9000).toString();
+    private getUserId(userId: IUser['_id']): string {
+        return userId.toString();
+    }
+
+    private signAccessToken(userId: string, role: string): string {
+        const secret = process.env.JWT_SECRET || 'fallback-secret';
+        const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
+        return jwt.sign({ id: userId, role }, secret, { expiresIn } as jwt.SignOptions);
+    }
+
+    private signRefreshToken(userId: string): string {
+        const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'fallback-secret';
+        return jwt.sign({ id: userId, type: 'refresh' }, secret, { expiresIn: '30d' } as jwt.SignOptions);
     }
 
     private calculateOtpExpiry(): Date {
-        return new Date(Date.now() + 10 * 60 * 1000);
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 5);
+        return now;
     }
 
-    private getOtpCacheKey(email: string): string {
-        return `auth:otp:${email.toLowerCase()}`;
-    }
-
-    private async setOtpCache(email: string, hashedOtp: string, otpExpires: Date): Promise<void> {
-        if (!redisClient.isOpen) {
-            return;
-        }
-
-        const ttlSeconds = Math.max(1, Math.floor((otpExpires.getTime() - Date.now()) / 1000));
-
-        try {
-            await redisClient.setEx(this.getOtpCacheKey(email), ttlSeconds, hashedOtp);
-        } catch (error) {
-            logger.warn('Set OTP cache failed', { email, error });
-        }
-    }
-
-    private async getOtpCache(email: string): Promise<string | null> {
-        if (!redisClient.isOpen) {
-            return null;
-        }
-
-        try {
-            return await redisClient.get(this.getOtpCacheKey(email));
-        } catch (error) {
-            logger.warn('Get OTP cache failed', { email, error });
-            return null;
-        }
-    }
-
-    private async deleteOtpCache(email: string): Promise<void> {
-        if (!redisClient.isOpen) {
-            return;
-        }
-
-        try {
-            await redisClient.del(this.getOtpCacheKey(email));
-        } catch (error) {
-            logger.warn('Delete OTP cache failed', { email, error });
-        }
-    }
-
-    private getRefreshTokenCacheKey(userId: string): string {
-        return `refreshToken:${userId}`;
+    private generateOtp(): string {
+        return Math.floor(100000 + Math.random() * 900000).toString();
     }
 
     private async whitelistRefreshToken(userId: string, refreshToken: string): Promise<void> {
-        if (!redisClient.isOpen) {
-            return;
-        }
-
-        try {
-            await redisClient.setEx(
-                this.getRefreshTokenCacheKey(userId),
-                AuthService.REFRESH_TOKEN_TTL_SECONDS,
-                refreshToken,
-            );
-        } catch (error) {
-            logger.warn('Set refresh token whitelist failed', { userId, error });
-        }
+        if (!redisClient.isOpen) return;
+        const key = `refresh:${userId}`;
+        await redisClient.set(key, refreshToken, { EX: 30 * 24 * 60 * 60 });
     }
 
-    private getUserId(rawId: unknown): string {
-        if (typeof rawId === 'string') {
-            return rawId;
-        }
-
-        if (rawId && typeof rawId === 'object' && 'toString' in rawId) {
-            return (rawId as { toString: () => string }).toString();
-        }
-
-        throw new AppError('User ID không hợp lệ', 500);
+    private async setOtpCache(email: string, otp: string, expires: Date): Promise<void> {
+        if (!redisClient.isOpen) return;
+        const ttlSeconds = Math.max(60, Math.floor((expires.getTime() - Date.now()) / 1000));
+        await redisClient.set(`otp:${email}`, otp, { EX: ttlSeconds });
     }
 
     async register(input: RegisterInput) {
         const { email, password, fullName } = input;
 
-        // Check if user exists
-        const emailExists = await this.userService.checkEmailExists(email);
-        if (emailExists) {
-            throw new AppError('Email đã được sử dụng', 409);
+        // Check existing
+        const existingUser = await this.userService.checkEmailExists(email);
+        if (existingUser) {
+            throw new AppError('Email đã được đăng ký', 400);
         }
 
         // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Generate OTP (4 numbers)
+        // Generate OTP
         const otp = this.generateOtp();
         const hashedOtp = await bcrypt.hash(otp, 10);
         const otpExpires = this.calculateOtpExpiry();
@@ -162,14 +114,6 @@ export class AuthService {
             authProvider: EAuthProvider.LOCAL,
             currentLevel: ELevel.A0,
             lastActiveAt: new Date(),
-            subscription: {
-                plan: ESubscriptionPlan.FREE,
-                renewalType: null,
-                startDate: null,
-                endDate: null,
-                status: 'active',
-                lastTransactionId: null,
-            },
         } as Partial<IUser>);
 
         // Optional cache branch in sequence diagram
@@ -181,12 +125,11 @@ export class AuthService {
         return {
             status: 'success',
             message: 'Đăng ký thành công. Vui lòng kiểm tra email để nhập mã xác thực.',
-            email: email, // Use input email directly
+            email: email,
         };
     }
 
     async verifyOTP(email: string, otp: string) {
-        // Find user by email first (sequence: existence -> verification state -> OTP validation)
         const existingUser = await this.userService.findByEmail(email);
 
         if (!existingUser) {
@@ -197,67 +140,78 @@ export class AuthService {
             throw new AppError('Tài khoản đã được xác thực', 400);
         }
 
-        // Retrieve OTP fields for validation
         const userWithOtp = await this.userService.findByEmailWithOTP(email);
 
         if (!userWithOtp || !userWithOtp.otp || !userWithOtp.otpExpires) {
             throw new AppError('Mã xác thực không đúng hoặc đã hết hạn', 400);
         }
 
-        if (new Date(userWithOtp.otpExpires).getTime() < Date.now()) {
-            throw new AppError('Mã xác thực không đúng hoặc đã hết hạn', 400);
+        if (new Date() > userWithOtp.otpExpires) {
+            throw new AppError('Mã xác thực đã hết hạn', 400);
         }
 
-        // Optional cache branch in sequence diagram
-        const cachedHashedOtp = await this.getOtpCache(email);
-        const sourceHashedOtp = cachedHashedOtp ?? userWithOtp.otp;
+        const isOtpValid = await bcrypt.compare(otp, userWithOtp.otp);
 
-        const isMatch = await bcrypt.compare(otp, sourceHashedOtp);
-        if (!isMatch) {
-            throw new AppError('Mã xác thực không đúng hoặc đã hết hạn', 400);
+        if (isOtpValid) {
+            const userId = String(existingUser._id);
+            await this.userService.markVerified(userId);
+            const accessToken = this.signAccessToken(userId, existingUser.role);
+            const refreshToken = this.signRefreshToken(userId);
+            await this.whitelistRefreshToken(userId, refreshToken);
+            return {
+                user: {
+                    _id: existingUser._id,
+                    email: existingUser.email,
+                    fullName: existingUser.fullName,
+                    avatarUrl: existingUser.avatarUrl,
+                    role: existingUser.role,
+                    learningLanguageId: existingUser.learningLanguageId,
+                    currentLevel: existingUser.currentLevel,
+                    learningGoalId: existingUser.learningGoalId,
+                    placementTestScore: existingUser.placementTestScore,
+                    phoneNumber: existingUser.phoneNumber,
+                    dateOfBirth: existingUser.dateOfBirth,
+                },
+                accessToken,
+                refreshToken,
+            };
         }
 
-        const userId = this.getUserId(existingUser._id);
+        throw new AppError('Mã xác thực không đúng', 400);
+    }
 
-        // Mark user as verified and clear OTP fields
-        await this.userService.markVerified(userId);
+    async resendOTP(email: string) {
+        const user = await this.userService.findByEmail(email);
 
-        // Optional cache clean up in sequence diagram
-        await this.deleteOtpCache(email);
+        if (!user) {
+            throw new AppError('Không tìm thấy tài khoản', 404);
+        }
 
-        const accessToken = this.signAccessToken(userId, existingUser.role);
-        const refreshToken = this.signRefreshToken(userId);
-        await this.whitelistRefreshToken(userId, refreshToken);
-        const verifiedUser = await this.userService.findByEmail(email);
+        if (user.isVerified) {
+            throw new AppError('Tài khoản đã được xác thực', 400);
+        }
 
-        const userResponse = verifiedUser ?? {
-            ...existingUser,
-            isVerified: true,
-        };
+        const otp = this.generateOtp();
+        const hashedOtp = await bcrypt.hash(otp, 10);
+        const otpExpires = this.calculateOtpExpiry();
+
+        await this.userService.updateUser(String(user._id), {
+            otp: hashedOtp,
+            otpExpires,
+        });
+
+        await this.setOtpCache(email, hashedOtp, otpExpires);
+        await this.otpService.sendVerificationCode(email, otp, user.fullName);
 
         return {
-            message: 'Xác thực thành công',
-            accessToken,
-            refreshToken,
-            user: {
-                _id: userResponse._id,
-                email: userResponse.email,
-                fullName: userResponse.fullName,
-                avatarUrl: userResponse.avatarUrl,
-                role: userResponse.role,
-                learningLanguageId: userResponse.learningLanguageId,
-                currentLevel: userResponse.currentLevel,
-                learningGoalId: userResponse.learningGoalId,
-                placementTestScore: userResponse.placementTestScore,
-                subscription: userResponse.subscription,
-            }
+            status: 'success',
+            message: 'Mã xác thực mới đã được gửi đến email của bạn.',
         };
     }
 
     async login(input: LoginInput) {
         const { email, password } = input;
 
-        // Find user
         const user = await this.userService.findByEmailWithPassword(email);
         if (!user || !user.password) {
             throw new AppError('Email hoặc mật khẩu không đúng', 401);
@@ -265,39 +219,15 @@ export class AuthService {
 
         const userId = this.getUserId(user._id);
 
-        // Check password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             throw new AppError('Email hoặc mật khẩu không đúng', 401);
         }
 
-        // Check verification
         if (!user.isVerified) {
-            // Regenerate OTP
-            const otp = this.generateOtp();
-            const hashedOtp = await bcrypt.hash(otp, 10);
-            const otpExpires = this.calculateOtpExpiry();
-
-            await this.userService.updateUser(userId, {
-                otp: hashedOtp,
-                otpExpires
-            });
-
-            await this.setOtpCache(email, hashedOtp, otpExpires);
-
-            // Resend Email
-            this.otpService.sendVerificationCode(email, otp, user.fullName)
-                .catch(err => logger.error('Error sending OTP:', err));
-
-            throw new AppError('Tài khoản chưa xác thực. Mã OTP mới đã được gửi đến email của bạn.', 403);
+            throw new AppError('Tài khoản chưa được xác thực. Vui lòng kiểm tra email.', 401);
         }
 
-        // Update last active
-        await this.userService.updateUser(userId, {
-            lastActiveAt: new Date()
-        });
-
-        // Generate dual tokens
         const accessToken = this.signAccessToken(userId, user.role);
         const refreshToken = this.signRefreshToken(userId);
         await this.whitelistRefreshToken(userId, refreshToken);
@@ -313,7 +243,7 @@ export class AuthService {
                 currentLevel: user.currentLevel,
                 learningGoalId: user.learningGoalId,
                 placementTestScore: user.placementTestScore,
-                subscription: user.subscription,
+                phoneNumber: user.phoneNumber,
                 dateOfBirth: user.dateOfBirth,
             },
             accessToken,
@@ -322,99 +252,61 @@ export class AuthService {
     }
 
     async refreshAccessToken(rawRefreshToken: string): Promise<{ accessToken: string }> {
-        // 1. Verify the refresh token signature & expiry
         const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
         if (!secret) throw new AppError('JWT secret is not defined', 500);
 
-        let payload: { id: string };
+        let decoded: { id: string; type?: string };
         try {
-            payload = jwt.verify(rawRefreshToken, secret) as { id: string };
-        } catch {
+            decoded = jwt.verify(rawRefreshToken, secret) as { id: string; type?: string };
+        } catch (error) {
             throw new AppError('Refresh token không hợp lệ hoặc đã hết hạn', 401);
         }
 
-        const userId = payload.id;
-
-        // 2. Check whitelist in Redis (if Redis is available)
-        if (redisClient.isOpen) {
-            try {
-                const stored = await redisClient.get(this.getRefreshTokenCacheKey(userId));
-                if (!stored || stored !== rawRefreshToken) {
-                    throw new AppError('Refresh token đã bị thu hồi', 401);
-                }
-            } catch (err) {
-                if (err instanceof AppError) throw err;
-                logger.warn('Redis whitelist check failed, falling back to JWT-only validation', { userId });
-            }
+        if (decoded.type !== 'refresh') {
+            throw new AppError('Invalid token type', 401);
         }
 
-        // 3. Ensure user still exists
-        const user = await this.userService.findById(userId);
-        if (!user) throw new AppError('Tài khoản không tồn tại', 401);
+        const userId = decoded.id;
+        if (!redisClient.isOpen) {
+            throw new AppError('Service unavailable', 500);
+        }
 
-        // 4. Issue new accessToken
+        const storedRefreshToken = await redisClient.get(`refresh:${userId}`);
+        if (!storedRefreshToken || storedRefreshToken !== rawRefreshToken) {
+            throw new AppError('Refresh token không hợp lệ hoặc đã bị thu hồi', 401);
+        }
+
+        const user = await this.userService.findById(userId);
+        if (!user) {
+            throw new AppError('User not found', 404);
+        }
+
         const accessToken = this.signAccessToken(userId, user.role);
         return { accessToken };
     }
 
-    private signAccessToken(userId: string, role: string) {
-        if (!process.env.JWT_SECRET) {
-            throw new AppError('JWT_SECRET is not defined', 500);
-        }
-        return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
-            expiresIn: process.env.JWT_EXPIRES_IN || '15m',
-        } as jwt.SignOptions);
+    async logout(userId: string): Promise<void> {
+        if (!redisClient.isOpen) return;
+        await redisClient.del(`refresh:${userId}`);
     }
 
-    private signRefreshToken(userId: string) {
-        const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
-        if (!secret) {
-            throw new AppError('JWT secret is not defined', 500);
-        }
-        return jwt.sign({ id: userId }, secret, {
-            expiresIn: '7d',
-        } as jwt.SignOptions);
-    }
-
-    async findOrCreateFromGoogle(profile: GoogleProfileInput): Promise<GoogleAuthResult> {
+    async handleGoogleLogin(profile: GoogleProfileInput): Promise<GoogleAuthResult> {
         const { googleId, email, fullName, avatarUrl, emailVerified } = profile;
 
-        if (!emailVerified) {
-            throw new AppError('Email Google chưa được xác minh', 400);
-        }
-
-        // Find user by googleId or email
         let user = await this.userService.findByGoogleIdOrEmail(googleId, email);
         let isNewUser = false;
 
-        if (user) {
-            const isLocalAccount = user.authProvider === EAuthProvider.LOCAL;
-
-            const updates: Partial<IUser> = {
-                googleId,
-                avatarUrl,
-                lastActiveAt: new Date(),
-                isVerified: true,
-            };
-
-            if (!isLocalAccount) {
-                updates.authProvider = EAuthProvider.GOOGLE;
-                updates.fullName = fullName;
-            }
-
-            const updatedUser = await this.userService.updateUser(this.getUserId(user._id), updates);
-            if (!updatedUser) {
-                throw new AppError('Failed to update existing Google user', 500);
-            }
-            user = updatedUser;
-        } else {
+        if (user && !user.googleId) {
+            // Existing LOCAL user — link Google account
+            user = await this.userService.updateUser(String(user._id), { googleId });
+        } else if (!user) {
+            // New user from Google
             isNewUser = true;
-
             user = await this.userService.createUser({
-                googleId,
                 email,
                 fullName,
-                avatarUrl: avatarUrl || null,
+                avatarUrl,
+                googleId,
                 authProvider: EAuthProvider.GOOGLE,
                 isVerified: true,
                 role: EUserRole.STUDENT,
@@ -422,14 +314,6 @@ export class AuthService {
                 learningGoalId: null,
                 learningLanguageId: null,
                 lastActiveAt: new Date(),
-                subscription: {
-                    plan: ESubscriptionPlan.FREE,
-                    renewalType: null,
-                    startDate: null,
-                    endDate: null,
-                    status: 'active',
-                    lastTransactionId: null,
-                },
             } as Partial<IUser>);
         }
 
@@ -437,7 +321,6 @@ export class AuthService {
             throw new AppError('Failed to process Google login', 500);
         }
 
-        // Generate dual tokens
         const userId = this.getUserId(user._id);
         const accessToken = this.signAccessToken(userId, user.role);
         const refreshToken = this.signRefreshToken(userId);
@@ -454,7 +337,6 @@ export class AuthService {
                 currentLevel: user.currentLevel,
                 learningGoalId: user.learningGoalId,
                 placementTestScore: user.placementTestScore,
-                subscription: user.subscription,
                 phoneNumber: user.phoneNumber,
                 dateOfBirth: user.dateOfBirth,
             },

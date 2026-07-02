@@ -33,12 +33,6 @@ export class UserController {
         sendResponse(res, HttpStatus.OK, 'Lấy thông tin người dùng thành công', user);
     });
 
-    static updateSubscription = catchAsync(async (req: Request, res: Response) => {
-        const { id } = req.params;
-        const user = await userService.updateSubscription(id as string, req.body);
-        sendResponse(res, HttpStatus.OK, 'Cập nhật gói cước thành công', user);
-    });
-
     static updateRole = catchAsync(async (req: Request, res: Response) => {
         const { id } = req.params;
         const user = await userService.updateRole(id as string, req.body.role);

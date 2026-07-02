@@ -18,8 +18,6 @@ import {
   LayoutDashboard,
   BookOpen,
   Users,
-  CreditCard,
-  Settings,
 } from "lucide-react";
 
 /* ==================== TYPE DEFINITIONS ==================== */
@@ -83,8 +81,6 @@ export interface SidebarConfig {
  * - Dashboard (Overview)
  * - Đào tạo (Training/Curriculum) - Hierarchical structure
  * - Người dùng (Users)
- * - Kinh doanh (Business)
- * - Hệ thống (System)
  */
 export const sidebarConfig: SidebarConfig = {
   teams: [
@@ -105,17 +101,16 @@ export const sidebarConfig: SidebarConfig = {
     },
 
     /* ==================== CURRICULUM (ĐÀO TẠO) ==================== */
-    /**
-     * Training & Content Management Module
-     * 
-     * @structure (Hierarchical - follows DB model)
-     * 1. Goals & Strategy → Learning objectives & skill weights
-     * 2. Course Series → Grouping of levels (A1-C2)
-     * 3. Courses → Individual courses with Units & Lessons
-     * 4. Knowledge Graph → Atomic concepts (Grammar, Vocab)
-     * 5. Question Bank → Reusable questions
-     * 6. Resources → External content (News, YouTube)
-     */
+/**
+ * Training & Content Management Module
+ * 
+ * @structure
+ * 1. Languages → Root data: mã ngôn ngữ, TTS provider, voice config
+ * 2. Goals & Strategy → Learning objectives & skill weights
+ * 3. Courses → Directly managed with Language + Learning Goal, Units & Lessons
+ * 4. Question Bank → Reusable questions
+ * 5. Resources → External content (News, YouTube)
+ */
     {
       title: "Đào tạo",
       url: "#",
@@ -132,19 +127,9 @@ export const sidebarConfig: SidebarConfig = {
           description: "Cấu hình Learning Goals & Skill Weights",
         },
         {
-          title: "Bộ khóa học (Series)",
-          url: "/curriculum/series",
-          description: "Quản lý Series (gom nhóm A1-C2)",
-        },
-        {
           title: "Khóa học (Courses)",
           url: "/curriculum/courses",
           description: "Quản lý Course → Unit → Lesson",
-        },
-        {
-          title: "Knowledge Graph",
-          url: "/curriculum/concepts",
-          description: "Quản lý Concept (Grammar, Vocabulary)",
         },
         {
           title: "Ngân hàng Câu hỏi",
@@ -155,16 +140,6 @@ export const sidebarConfig: SidebarConfig = {
           title: "Bài Kiểm tra Đầu vào",
           url: "/placement-tests",
           description: "Quản lý bài kiểm tra xếp lớp theo ngôn ngữ",
-        },
-        {
-          title: "Quản lý Bài Thi",
-          url: "/exam-tests",
-          description: "Đề thi thử TOEIC L&R và IELTS theo chuẩn quốc tế",
-        },
-        {
-          title: "Tài nguyên mở rộng",
-          url: "/curriculum/resources",
-          description: "News (CNN/BBC) & YouTube Gap-Fill",
         },
       ],
     },
@@ -179,54 +154,6 @@ export const sidebarConfig: SidebarConfig = {
           title: "Học viên",
           url: "/users",
           description: "Quản lý user, tiến độ học, phân quyền",
-        },
-      ],
-    },
-
-    /* ==================== BUSINESS ==================== */
-    {
-      title: "Kinh doanh",
-      url: "#",
-      icon: CreditCard,
-      items: [
-        {
-          title: "Gói cước",
-          url: "/plans",
-          description: "Free, Plus, Pro & Enterprise",
-        },
-        {
-          title: "Mã giảm giá",
-          url: "/coupons",
-          description: "Quản lý chiến dịch Voucher/Coupon",
-        },
-        {
-          title: "Giao dịch",
-          url: "/transactions",
-          description: "Lịch sử thanh toán & refund",
-        },
-      ],
-    },
-
-    /* ==================== SYSTEM ==================== */
-    {
-      title: "Hệ thống",
-      url: "#",
-      icon: Settings,
-      items: [
-        {
-          title: "AI & Prompts",
-          url: "/ai-config",
-          description: "Cấu hình Speaking Coach, Feedback AI",
-        },
-        {
-          title: "Media / Files",
-          url: "/media",
-          description: "Quản lý Cloudinary & Cloudflare R2",
-        },
-        {
-          title: "Cấu hình",
-          url: "/settings",
-          description: "SEO, Banner, Thông báo hệ thống",
         },
       ],
     },

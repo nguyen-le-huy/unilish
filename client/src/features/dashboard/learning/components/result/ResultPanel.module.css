@@ -1,0 +1,182 @@
+/* ─── Overlay ──────────────────────────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 24px;
+}
+
+/* ─── Panel ────────────────────────────────────────────────────────────────── */
+
+.panel {
+  max-width: 480px;
+  width: 100%;
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* ─── Section ──────────────────────────────────────────────────────────────── */
+
+.section {
+  margin-bottom: 24px;
+}
+
+.passedSection {
+  color: #16a34a;
+}
+
+.failedSection {
+  color: #dc2626;
+}
+
+/* ─── Big icon for course complete ─────────────────────────────────────────── */
+
+.bigIcon {
+  font-size: 64px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.bigHeading {
+  font-size: 28px;
+  font-weight: 500;
+  margin: 0 0 4px;
+  color: black;
+}
+
+.bigText {
+  font-size: var(--text-md);
+  color: var(--dark-grey);
+  margin: 0;
+}
+
+/* ─── Status ───────────────────────────────────────────────────────────────── */
+
+.statusIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 500;
+  margin: 0 auto 12px;
+  color: white;
+}
+
+.passedSection .statusIcon {
+  background: #16a34a;
+}
+
+.failedSection .statusIcon {
+  background: #dc2626;
+}
+
+.heading {
+  font-size: 22px;
+  font-weight: 500;
+  margin: 0 0 8px;
+  color: black;
+}
+
+/* ─── Score ────────────────────────────────────────────────────────────────── */
+
+.scoreRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.scoreValue {
+  font-size: 36px;
+  font-weight: 500;
+  color: black;
+}
+
+.scoreLabel {
+  font-size: var(--text-md);
+  color: var(--dark-grey);
+}
+
+/* ─── Feedback ─────────────────────────────────────────────────────────────── */
+
+.feedback {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  text-align: left;
+  font-size: var(--text-md);
+  color: black;
+  line-height: 1.5;
+}
+
+.feedbackPre {
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  margin: 0;
+  font-family: inherit;
+}
+
+/* ─── Actions ──────────────────────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.primaryButton {
+  width: 100%;
+  padding: 12px 20px;
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.primaryButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: #333;
+}
+
+.secondaryButton {
+  width: 100%;
+  padding: 12px 20px;
+  background: white;
+  color: black;
+  border: 1px solid var(--grey);
+  border-radius: 9999px;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  background: #f5f5f5;
+}
+
+/* ─── Unit complete ────────────────────────────────────────────────────────── */
+
+.unitComplete {
+  margin-top: 16px;
+  font-size: var(--text-sm);
+  color: #16a34a;
+  font-weight: 450;
+}

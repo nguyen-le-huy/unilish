@@ -1,7 +1,8 @@
 import { HttpStatus } from '../constants/http-status.js';
 import type { ICourse } from '../models/mongo/course.model.js';
 import { CourseMongoRepository } from '../repositories/mongo/course.mongo.repository.js';
-import { CourseSeriesMongoRepository } from '../repositories/mongo/course-series.mongo.repository.js';
+import { LanguageMongoRepository } from '../repositories/mongo/language.mongo.repository.js';
+import { LearningGoalMongoRepository } from '../repositories/mongo/learning-goal.mongo.repository.js';
 import { AppError } from '../utils/app-error.js';
 import { logger } from '../utils/logger.js';
 import type {
@@ -10,22 +11,65 @@ import type {
     UpdateCourseBody,
 } from '../validations/course.validation.js';
 
+// ─── Prerequisite cycle detection ─────────────────────────────────────────────
+
+async function wouldCreatePrerequisiteCycle(
+    courseRepo: CourseMongoRepository,
+    courseId: string,
+    prerequisiteId: string,
+): Promise<boolean> {
+    const visited = new Set<string>();
+    let currentId: string | undefined = prerequisiteId;
+
+    // Walk the prerequisite chain up to a reasonable depth
+    const MAX_DEPTH = 20;
+    for (let i = 0; i < MAX_DEPTH && currentId; i++) {
+        if (currentId === courseId) return true;
+        if (visited.has(currentId)) return true; // existing cycle (shouldn't happen, but safe)
+        visited.add(currentId);
+
+        const course = await courseRepo.findByIdFull(currentId);
+        if (!course || !course.prerequisiteCourseId) break;
+
+        currentId = String(course.prerequisiteCourseId);
+    }
+
+    return false;
+}
+
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 export class CourseService {
     constructor(
         private readonly courseRepo: CourseMongoRepository,
-        private readonly seriesRepo: CourseSeriesMongoRepository,
-    ) {}
+        private readonly languageRepo: LanguageMongoRepository,
+        private readonly learningGoalRepo: LearningGoalMongoRepository,
+    ) { }
 
-    // ─── Read ──────────────────────────────────────────────────────────────
+    // ─── Read list (paginated) ───────────────────────────────────────────────
 
-    async getCoursesBySeriesId(query: GetCoursesListQuery): Promise<ICourse[]> {
-        return this.courseRepo.findBySeriesId({
-            seriesId: query.seriesId,
-            ...(typeof query.isActive === 'boolean' && { isActive: query.isActive }),
-        });
+    async getCoursesList(query: GetCoursesListQuery): Promise<{
+        courses: ICourse[];
+        pagination: { page: number; limit: number; total: number; pages: number };
+    }> {
+        return this.courseRepo.findAllWithPagination(
+            {
+                languageId: query.languageId,
+                learningGoalId: query.learningGoalId,
+                level: query.level,
+                isActive: query.isActive,
+                search: query.search,
+            },
+            {
+                page: query.page,
+                limit: query.limit,
+                sort: query.sort,
+                order: query.order,
+            },
+        );
     }
+
+    // ─── Read single ─────────────────────────────────────────────────────────
 
     async getCourseById(courseId: string): Promise<ICourse> {
         const course = await this.courseRepo.findByIdFull(courseId);
@@ -47,56 +91,181 @@ export class CourseService {
         return tree;
     }
 
-    // ─── Write ─────────────────────────────────────────────────────────────
+    // ─── Create ──────────────────────────────────────────────────────────────
 
     async createCourse(body: CreateCourseBody): Promise<ICourse> {
-        // Validate parent series exists
-        const seriesExists = await this.seriesRepo.findById(body.seriesId);
-        if (!seriesExists) {
-            throw new AppError('Course Series không tồn tại', HttpStatus.NOT_FOUND);
+        // 1. Validate Language exists
+        const language = await this.languageRepo.findById(body.languageId);
+        if (!language) {
+            throw new AppError('Ngôn ngữ không tồn tại', HttpStatus.NOT_FOUND);
         }
 
-        // ✅ REMOVED: Duplicate level validation
-        // Bây giờ cho phép nhiều courses cùng level trong 1 series
-        // Ví dụ: Series "Du lịch" có thể có 3 courses A1 khác nhau
-        // const duplicatedLevel = await this.courseRepo.existsBySeriesAndLevel(body.seriesId, body.level);
-        // if (duplicatedLevel) {
-        //     throw new AppError(
-        //         `Series đã có course cho level ${body.level}. Vui lòng chọn level khác.`,
-        //         HttpStatus.BAD_REQUEST,
-        //     );
-        // }
+        // 2. Validate Learning Goal exists
+        const goal = await this.learningGoalRepo.findById(body.learningGoalId);
+        if (!goal) {
+            throw new AppError('Mục tiêu học tập không tồn tại', HttpStatus.NOT_FOUND);
+        }
 
-        const created = await this.courseRepo.createCourse(body as unknown as Partial<ICourse>);
+        // 3. Check slug uniqueness → 409
+        const slugDuplicate = await this.courseRepo.slugExists(body.slug);
+        if (slugDuplicate) {
+            throw new AppError(
+                `Slug "${body.slug}" đã tồn tại. Vui lòng chọn slug khác.`,
+                HttpStatus.CONFLICT,
+            );
+        }
 
-        // Keep series totalCourses in sync
-        await this.seriesRepo.update(body.seriesId, { $inc: { totalCourses: 1 } } as never);
+        // 4. Check compound-index uniqueness → 409
+        const compoundDuplicate = await this.courseRepo.compoundKeyExists(
+            body.languageId,
+            body.learningGoalId,
+            body.level,
+            body.orderIndex,
+        );
+        if (compoundDuplicate) {
+            throw new AppError(
+                `Đã có khóa học khác ở cùng ngôn ngữ, mục tiêu, level ${body.level} và vị trí ${body.orderIndex}.`,
+                HttpStatus.CONFLICT,
+            );
+        }
 
-        logger.info('Course created', { courseId: String(created._id), seriesId: body.seriesId });
+        // 5. Validate prerequisite Course exists
+        if (body.prerequisiteCourseId) {
+            const prereq = await this.courseRepo.findByIdFull(body.prerequisiteCourseId);
+            if (!prereq) {
+                throw new AppError(
+                    'Khóa học tiên quyết không tồn tại',
+                    HttpStatus.NOT_FOUND,
+                );
+            }
+        }
+
+        const created = await this.courseRepo.createCourse(body as Record<string, unknown>);
+
+        logger.info('Course created', {
+            courseId: String(created._id),
+            languageId: body.languageId,
+            learningGoalId: body.learningGoalId,
+            slug: body.slug,
+        });
         return created;
     }
 
+    // ─── Update ──────────────────────────────────────────────────────────────
+
     async updateCourse(courseId: string, body: UpdateCourseBody): Promise<ICourse> {
-        const updated = await this.courseRepo.updateById(
-            courseId,
-            body as unknown as Partial<ICourse>,
-        );
+        const existing = await this.courseRepo.findByIdFull(courseId);
+        if (!existing) {
+            throw new AppError('Course không tồn tại', HttpStatus.NOT_FOUND);
+        }
+
+        // If languageId or learningGoalId changes, validate existence
+        if (body.languageId) {
+            const language = await this.languageRepo.findById(body.languageId);
+            if (!language) {
+                throw new AppError('Ngôn ngữ không tồn tại', HttpStatus.NOT_FOUND);
+            }
+        }
+
+        if (body.learningGoalId) {
+            const goal = await this.learningGoalRepo.findById(body.learningGoalId);
+            if (!goal) {
+                throw new AppError('Mục tiêu học tập không tồn tại', HttpStatus.NOT_FOUND);
+            }
+        }
+
+        // Slug uniqueness check → 409 (exclude self)
+        if (body.slug && body.slug !== existing.slug) {
+            const slugDuplicate = await this.courseRepo.slugExists(body.slug, courseId);
+            if (slugDuplicate) {
+                throw new AppError(
+                    `Slug "${body.slug}" đã tồn tại. Vui lòng chọn slug khác.`,
+                    HttpStatus.CONFLICT,
+                );
+            }
+        }
+
+        // Compound-index uniqueness check → 409
+        const resolvedLangId = body.languageId ?? String(existing.languageId);
+        const resolvedGoalId = body.learningGoalId ?? String(existing.learningGoalId);
+        const resolvedLevel = body.level ?? existing.level;
+        const resolvedOrder = body.orderIndex ?? existing.orderIndex;
+
+        if (
+            body.languageId ||
+            body.learningGoalId ||
+            body.level !== undefined ||
+            body.orderIndex !== undefined
+        ) {
+            const compoundDuplicate = await this.courseRepo.compoundKeyExists(
+                resolvedLangId,
+                resolvedGoalId,
+                resolvedLevel,
+                resolvedOrder,
+                courseId,
+            );
+            if (compoundDuplicate) {
+                throw new AppError(
+                    `Đã có khóa học khác ở cùng ngôn ngữ, mục tiêu, level ${resolvedLevel} và vị trí ${resolvedOrder}.`,
+                    HttpStatus.CONFLICT,
+                );
+            }
+        }
+
+        // Prerequisite validation
+        if (body.prerequisiteCourseId !== undefined) {
+            if (body.prerequisiteCourseId === courseId) {
+                throw new AppError(
+                    'Khóa học không thể là điều kiện tiên quyết của chính nó',
+                    HttpStatus.BAD_REQUEST,
+                );
+            }
+            if (body.prerequisiteCourseId) {
+                const prereq = await this.courseRepo.findByIdFull(body.prerequisiteCourseId);
+                if (!prereq) {
+                    throw new AppError(
+                        'Khóa học tiên quyết không tồn tại',
+                        HttpStatus.NOT_FOUND,
+                    );
+                }
+                // Cycle detection
+                const cycle = await wouldCreatePrerequisiteCycle(
+                    this.courseRepo,
+                    courseId,
+                    body.prerequisiteCourseId,
+                );
+                if (cycle) {
+                    throw new AppError(
+                        'Không thể thiết lập điều kiện tiên quyết này vì sẽ tạo vòng lặp',
+                        HttpStatus.BAD_REQUEST,
+                    );
+                }
+            }
+        }
+
+        const updated = await this.courseRepo.updateCourse(courseId, body as Record<string, unknown>);
         if (!updated) {
             throw new AppError('Course không tồn tại', HttpStatus.NOT_FOUND);
         }
+
+        logger.info('Course updated', { courseId });
         return updated;
     }
+
+    // ─── Toggle status ───────────────────────────────────────────────────────
 
     async toggleCourseStatus(courseId: string): Promise<ICourse> {
         const current = await this.courseRepo.findByIdFull(courseId);
         if (!current) {
             throw new AppError('Course không tồn tại', HttpStatus.NOT_FOUND);
         }
-        const updated = await this.courseRepo.updateById(courseId, {
+        const updated = await this.courseRepo.updateCourse(courseId, {
             isActive: !current.isActive,
-        } as Partial<ICourse>);
+        });
         return updated!;
     }
+
+    // ─── Delete ──────────────────────────────────────────────────────────────
 
     async deleteCourse(courseId: string): Promise<void> {
         const course = await this.courseRepo.findByIdFull(courseId);
@@ -104,6 +273,7 @@ export class CourseService {
             throw new AppError('Course không tồn tại', HttpStatus.NOT_FOUND);
         }
 
+        // Preserve delete guard: reject when Units exist
         if (course.totalUnits > 0) {
             throw new AppError(
                 `Không thể xóa course "${course.name}" vì còn ${course.totalUnits} unit bên trong. Hãy xóa các unit trước.`,
@@ -113,12 +283,7 @@ export class CourseService {
 
         await this.courseRepo.deleteById(courseId);
 
-        // Keep series totalCourses in sync
-        await this.seriesRepo.update(String(course.seriesId), {
-            $inc: { totalCourses: -1 },
-        } as never);
-
-        logger.info('Course deleted', { courseId, seriesId: String(course.seriesId) });
+        logger.info('Course deleted', { courseId });
     }
 }
 
@@ -126,5 +291,6 @@ export class CourseService {
 
 export const courseService = new CourseService(
     new CourseMongoRepository(),
-    new CourseSeriesMongoRepository(),
+    new LanguageMongoRepository(),
+    new LearningGoalMongoRepository(),
 );

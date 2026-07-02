@@ -13,7 +13,7 @@ export class RecommendationController {
             throw new AppError('Unauthorized', HttpStatus.UNAUTHORIZED);
         }
 
-        const recommendations = await recommendationService.getRecommendedSeries(userId);
+        const recommendations = await recommendationService.getRecommendedCourses(userId);
         sendResponse(res, HttpStatus.OK, 'Get recommendations successfully', recommendations);
     });
 }

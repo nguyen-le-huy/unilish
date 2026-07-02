@@ -3,7 +3,6 @@ import { Question, EQuestionType, EQuestionSkill } from '../models/mongo/questio
 import { Lesson } from '../models/mongo/lesson.model.js';
 import { Unit } from '../models/mongo/unit.model.js';
 import { Course } from '../models/mongo/course.model.js';
-import { CourseSeries } from '../models/mongo/course-series.model.js';
 import { AppError } from '../utils/app-error.js';
 import { HttpStatus } from '../constants/http-status.js';
 import { logger } from '../utils/logger.js';
@@ -96,24 +95,15 @@ export class QuestionGenerationService {
         }
 
         const course = await Course.findById(unit.courseId)
-            .select('seriesId')
+            .select('languageId')
             .lean()
-            .exec() as { seriesId: Types.ObjectId } | null;
+            .exec() as { languageId: Types.ObjectId } | null;
 
         if (!course) {
             throw new AppError('Course not found for this unit', HttpStatus.NOT_FOUND);
         }
 
-        const series = await CourseSeries.findById(course.seriesId)
-            .select('languageId')
-            .lean()
-            .exec() as { languageId: Types.ObjectId } | null;
-
-        if (!series) {
-            throw new AppError('CourseSeries not found', HttpStatus.NOT_FOUND);
-        }
-
-        return series.languageId.toString();
+        return course.languageId.toString();
     }
 
     // ── Public API ─────────────────────────────────────────────────────────────

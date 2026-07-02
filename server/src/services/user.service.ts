@@ -1,6 +1,6 @@
-import { User, ESubscriptionStatus, ESubscriptionPlan } from '../models/mongo/user.model.js';
+import { User } from '../models/mongo/user.model.js';
 import { z } from 'zod';
-import type { updateProfileSchema, getUsersSchema, updateSubscriptionSchema } from '../validations/user.validation.js';
+import type { updateProfileSchema, getUsersSchema } from '../validations/user.validation.js';
 import { AppError } from '../utils/app-error.js';
 import { HttpStatus } from '../constants/http-status.js';
 import { UserMongoRepository } from '../repositories/mongo/user.mongo.repository.js';
@@ -9,11 +9,11 @@ import { LearningGoalMongoRepository } from '../repositories/mongo/learning-goal
 import { PlacementTestAttemptMongoRepository } from '../repositories/mongo/placement-test-attempt.mongo.repository.js';
 import { logger } from '../utils/logger.js';
 import type { IUser } from '../models/mongo/user.model.js';
+import type { UserListResult, UserStats, UserListQuery } from '../repositories/mongo/user.mongo.repository.js';
 import { recommendationService } from './recommendation.service.js';
 
 type UpdateProfileInput = z.infer<typeof updateProfileSchema>['body'];
 type GetUsersQuery = z.infer<typeof getUsersSchema>['query'];
-type UpdateSubscriptionInput = z.infer<typeof updateSubscriptionSchema>['body'];
 
 export class UserService {
     constructor(
@@ -71,7 +71,6 @@ export class UserService {
             if (language) {
                 (data as any).learningLanguageId = language._id;
             }
-            // Remove nativeLanguage from the update payload
             delete (data as any).nativeLanguage;
         }
 
@@ -81,7 +80,6 @@ export class UserService {
             if (goal) {
                 (data as any).learningGoalId = goal._id;
             }
-            // Remove learningGoal from the update payload
             delete (data as any).learningGoal;
         }
 
@@ -120,36 +118,6 @@ export class UserService {
 
     async getUserStats() {
         return this.userRepo.getStats();
-    }
-
-    async updateSubscription(userId: string, data: UpdateSubscriptionInput) {
-        const { plan, period } = data;
-        const now = new Date();
-        const endDate = new Date();
-
-        if (period === 'monthly') {
-            endDate.setDate(endDate.getDate() + 30);
-        } else {
-            endDate.setDate(endDate.getDate() + 365);
-        }
-
-        const user = await this.userRepo.update(userId, {
-            'subscription.plan': plan,
-            'subscription.startDate': now,
-            'subscription.endDate': endDate,
-            'subscription.status': ESubscriptionStatus.ACTIVE,
-            'subscription.autoRenew': false
-        });
-
-        if (!user) {
-            throw new AppError('User not found', HttpStatus.NOT_FOUND);
-        }
-
-        void recommendationService.invalidateRecommendationsByUserId(userId).catch((error: unknown) => {
-            logger.error('Failed to invalidate recommendation cache after level update', { userId, error });
-        });
-
-        return user;
     }
 
     async updateRole(userId: string, role: string) {

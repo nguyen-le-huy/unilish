@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '@/types/common';
 import { useAuthStore } from '@/stores/auth.store';
-import type { RecommendedSeriesDto } from '../types/recommend-course.types';
+import type { RecommendedCourseDto } from '../types/recommend-course.types';
 import { getRecommendations } from '../api/get-recommendations';
 
 const RECOMMENDATIONS_QUERY_KEY = ['dashboard', 'recommendations'] as const;
@@ -15,7 +15,7 @@ export const useRecommendationsQuery = () => {
     const nativeLanguage = useAuthStore((state) => state.user?.nativeLanguage);
     const learningGoal = useAuthStore((state) => state.user?.learningGoal);
 
-    return useQuery<RecommendedSeriesDto[], AxiosError<ApiErrorResponse>>({
+    return useQuery<RecommendedCourseDto[], AxiosError<ApiErrorResponse>>({
         queryKey: [
             ...RECOMMENDATIONS_QUERY_KEY,
             userId,

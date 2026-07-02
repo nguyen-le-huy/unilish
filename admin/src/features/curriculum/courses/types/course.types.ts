@@ -58,10 +58,14 @@ export interface PracticeConfig {
 
 export interface Course {
     _id: string;
-    seriesId: string;
+    languageId: string;
+    learningGoalId: string;
+    slug: string;
     name: string;
+    description?: string | null;
+    thumbnailUrl?: string | null;
     level: CEFRLevel;
-    orderInSeries: number;
+    orderIndex: number;
     totalUnits: number;
     isActive: boolean;
     prerequisiteCourseId?: string | null;
@@ -107,18 +111,27 @@ export interface CourseTreeDTO extends Course {
 // ─── Mutation payloads ────────────────────────────────────────────────────────
 
 export interface CreateCoursePayload {
-    seriesId: string;
+    languageId: string;
+    learningGoalId: string;
+    slug: string;
     name: string;
+    description?: string | null;
+    thumbnailUrl?: string | null;
     level: CEFRLevel;
-    orderInSeries: number;
+    orderIndex: number;
     prerequisiteCourseId?: string | null;
     finalExamConfig?: Partial<FinalExamConfig>;
 }
 
 export interface UpdateCoursePayload {
     name?: string;
+    slug?: string;
+    description?: string | null;
+    thumbnailUrl?: string | null;
     level?: CEFRLevel;
-    orderInSeries?: number;
+    orderIndex?: number;
+    languageId?: string;
+    learningGoalId?: string;
     prerequisiteCourseId?: string | null;
     finalExamConfig?: Partial<FinalExamConfig>;
     isActive?: boolean;
@@ -165,8 +178,25 @@ export interface ReorderLessonsPayload {
 // ─── Query filters ────────────────────────────────────────────────────────────
 
 export interface CourseListQuery {
-    seriesId: string;
+    languageId?: string;
+    learningGoalId?: string;
+    level?: string;
     isActive?: boolean;
+    search?: string;
+    page?: number;
+    limit?: number;
+    sort?: 'orderIndex' | 'name' | 'createdAt';
+    order?: 'asc' | 'desc';
+}
+
+export interface CourseListResponse {
+    data: Course[];
+    meta: {
+        page: number;
+        limit: number;
+        total: number;
+        pages: number;
+    };
 }
 
 // ─── Vocab Content Types ──────────────────────────────────────────────────────

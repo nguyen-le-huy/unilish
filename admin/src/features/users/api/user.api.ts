@@ -1,5 +1,5 @@
 import apiClient from '@/lib/axios';
-import type { UserResponse, UserFilter, UpdateSubscriptionPayload, UpdateRolePayload, UserStatsOverview, User } from '../types/users.types';
+import type { UserResponse, UserFilter, UpdateRolePayload, UserStatsOverview, User } from '../types/users.types';
 
 interface ApiResponse<T> {
     status: string;
@@ -25,11 +25,6 @@ export const userApi = {
 
     getUser: async (id: string): Promise<User> => {
         const response = await apiClient.get<ApiResponse<User>>(`/users/${id}`);
-        return response.data.data;
-    },
-
-    updateSubscription: async (id: string, payload: UpdateSubscriptionPayload): Promise<User> => {
-        const response = await apiClient.patch<ApiResponse<User>>(`/users/${id}/subscription`, payload);
         return response.data.data;
     },
 

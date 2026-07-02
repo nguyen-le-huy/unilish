@@ -91,19 +91,43 @@
   background: var(--green);
 }
 
-.dotMuted {
+.dotLow {
   background: var(--dark-grey);
-  opacity: 0.35;
+  opacity: 0.5;
 }
 
-.mascotImage {
-  position: absolute;
-  left: 50%;
-  bottom: -32px;
-  width: 220px;
-  height: 220px;
-  transform: translateX(-50%);
-  object-fit: cover;
-  pointer-events: none;
-  user-select: none;
+/* ─── Empty / Error ────────────────────────────────────────────────────────── */
+
+.emptyText {
+  font-size: var(--text-md);
+  color: var(--dark-grey);
+  text-align: center;
+  margin: auto;
+}
+
+/* ─── Skeleton ─────────────────────────────────────────────────────────────── */
+
+.skeletonTitle {
+  height: 24px;
+  width: 140px;
+  border-radius: 4px;
+  background: var(--grey);
+}
+
+.skeletonSummary {
+  height: 80px;
+  border-radius: 8px;
+  background: var(--grey);
+}
+
+.skeletonDots {
+  height: 180px;
+  border-radius: 8px;
+  background: var(--grey);
+}
+
+@media (max-width: 900px) {
+  .card {
+    min-height: 450px;
+  }
 }

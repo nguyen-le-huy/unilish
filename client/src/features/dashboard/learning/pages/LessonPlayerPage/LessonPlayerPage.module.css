@@ -1,0 +1,384 @@
+/* ─── Player layout ────────────────────────────────────────────────────────── */
+
+.player {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: calc(100vh - 64px); /* account for top nav */
+  overflow: hidden;
+}
+
+/* ─── Top bar ──────────────────────────────────────────────────────────────── */
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--grey);
+  background: white;
+  flex-shrink: 0;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+  min-width: 0;
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dark-grey);
+  font-size: var(--text-sm);
+  padding: 4px;
+  min-width: 0;
+}
+
+.backButton:hover {
+  color: black;
+}
+
+.breadcrumbText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.breadcrumbSep {
+  color: var(--dark-grey);
+}
+
+.breadcrumbCurrent {
+  color: black;
+  font-weight: 450;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+
+.topRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.saveStatus {
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.savesaving { color: #d97706; }
+.savesaved { color: #16a34a; }
+.saveunsaved { color: var(--dark-grey); }
+.saveconflict { color: #dc2626; }
+
+.roadmapToggle {
+  background: none;
+  border: 1px solid var(--grey);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  color: var(--dark-grey);
+  display: flex;
+  align-items: center;
+}
+
+.roadmapToggle:hover {
+  background: #f0f0f0;
+}
+
+/* ─── Body ─────────────────────────────────────────────────────────────────── */
+
+.body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── Roadmap sidebar ──────────────────────────────────────────────────────── */
+
+.roadmapSidebar {
+  width: 280px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--grey);
+  padding: 16px;
+  background: #fafafa;
+}
+
+.roadmapTitle {
+  font-size: var(--text-md);
+  font-weight: 500;
+  margin: 0 0 16px;
+  color: black;
+}
+
+.roadmapUnit {
+  margin-bottom: 16px;
+}
+
+.roadmapUnitTitle {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: black;
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #f0f0f0;
+}
+
+.roadmapLesson {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 6px;
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+}
+
+.roadmapLesson:hover {
+  background: #f0f0f0;
+}
+
+.roadmapLessonActive {
+  background: #e8f0fe;
+  color: #1a73e8;
+  font-weight: 450;
+}
+
+.lessonBadge {
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.roadmapLessonTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Content area ─────────────────────────────────────────────────────────── */
+
+.contentArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px;
+}
+
+.lessonHeader {
+  margin-bottom: 24px;
+}
+
+.lessonType {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--dark-grey);
+}
+
+.lessonTitle {
+  font-size: 24px;
+  font-weight: 500;
+  margin: 4px 0 0;
+  color: black;
+}
+
+.passingInfo {
+  margin-top: 24px;
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  text-align: center;
+}
+
+/* ─── Bottom bar ───────────────────────────────────────────────────────────── */
+
+.bottomBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid var(--grey);
+  background: white;
+  flex-shrink: 0;
+}
+
+.navButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid var(--grey);
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: black;
+}
+
+.navButton:hover {
+  background: #f0f0f0;
+}
+
+.navButtonDisabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+.saveIndicator {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+}
+
+/* ─── Bottom center ────────────────────────────────────────────────────────── */
+
+.bottomCenter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ─── Submit / Complete button ─────────────────────────────────────────────── */
+
+.submitButton {
+  padding: 10px 24px;
+  background: #16a34a;
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  font-size: var(--text-md);
+  cursor: pointer;
+  font-weight: 450;
+}
+
+.submitButton:hover {
+  background: #15803d;
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.completedBadge {
+  font-size: var(--text-sm);
+  color: #16a34a;
+  font-weight: 450;
+  padding: 4px 12px;
+  border: 1px solid #16a34a;
+  border-radius: 9999px;
+}
+
+/* ─── Submit error ─────────────────────────────────────────────────────────── */
+
+.submitError {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #dc2626;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.submitError p {
+  font-size: var(--text-sm);
+  color: #dc2626;
+  margin: 0;
+}
+
+.retrySubmitButton {
+  background: none;
+  border: 1px solid #dc2626;
+  border-radius: 9999px;
+  padding: 4px 12px;
+  font-size: var(--text-sm);
+  color: #dc2626;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ─── States ───────────────────────────────────────────────────────────────── */
+
+.stateContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  gap: 12px;
+  padding: 40px;
+}
+
+.stateTitle {
+  font-size: 18px;
+  font-weight: 500;
+  color: black;
+}
+
+.stateDescription {
+  font-size: var(--text-md);
+  color: var(--dark-grey);
+  max-width: 300px;
+}
+
+.primaryButton {
+  background: black;
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  padding: 10px 24px;
+  font-size: var(--text-md);
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.primaryButton:hover {
+  background: #333;
+}
+
+/* ─── Skeleton ─────────────────────────────────────────────────────────────── */
+
+.skeletonBar {
+  height: 48px;
+  background: linear-gradient(90deg, var(--grey) 25%, #e0e0e0 50%, var(--grey) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  flex-shrink: 0;
+}
+
+.skeletonContent {
+  flex: 1;
+  margin: 24px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--grey) 25%, #e0e0e0 50%, var(--grey) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}

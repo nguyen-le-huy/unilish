@@ -92,12 +92,9 @@ app.use((req, res, next) => {
 
 import authRouter from './routes/auth.route.js';
 import uploadRouter from './routes/upload.route.js';
-import settingRouter from './routes/system-setting.route.js';
 import userRouter from './routes/user.route.js';
-import couponRouter from './routes/coupon.route.js';
 import learningGoalRouter from './routes/learning-goal.route.js';
 import languageRouter from './routes/language.route.js';
-import courseSeriesRouter from './routes/course-series.route.js';
 import courseRouter from './routes/course.route.js';
 import unitRouter from './routes/unit.route.js';
 import lessonRouter from './routes/lesson.route.js';
@@ -118,18 +115,16 @@ import speakingPipelineRouter from './routes/speaking-pipeline.route.js';
 import aiVoiceRouter from './routes/ai-voice.route.js';
 import recommendationRouter from './routes/recommendation.route.js';
 import shadowingRouter from './routes/shadowing.route.js';
+import learningRouter from './routes/learning.route.js';
 import { streamListeningAudio } from './controllers/listening.controller.js';
 
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/upload', uploadRouter);
-app.use('/api/settings', settingRouter);
 app.use('/api/users', userRouter);
-app.use('/api/coupons', couponRouter);
 app.use('/api/curriculum/goals', learningGoalRouter);
 app.use('/api/curriculum/languages', languageRouter);
-app.use('/api/curriculum/series', courseSeriesRouter);
 app.use('/api/curriculum/courses', courseRouter);
 app.use('/api/curriculum/units', unitRouter);
 // Audio proxy — must be before lessonRouter (which has global protect middleware)
@@ -153,6 +148,7 @@ app.use('/api/v1/speaking', speakingPipelineRouter);
 app.use('/api/v1/ai-voice', aiVoiceRouter);
 app.use('/api/v1/recommendations', recommendationRouter);
 app.use('/api/v1/shadowing', shadowingRouter);
+app.use('/api/learning', learningRouter);
 app.use('/api/shadowing', shadowingRouter);
 
 app.get('/', (req, res) => {

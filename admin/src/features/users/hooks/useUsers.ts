@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '../api/user.api';
-import type { UserFilter, UpdateSubscriptionPayload, UpdateRolePayload } from '../types/users.types';
+import type { UserFilter, UpdateRolePayload } from '../types/users.types';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 
@@ -24,22 +24,6 @@ export const useUser = (id: string) => {
         queryKey: ['users', id],
         queryFn: () => userApi.getUser(id),
         enabled: !!id,
-    });
-};
-
-export const useUpdateSubscription = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: ({ id, payload }: { id: string; payload: UpdateSubscriptionPayload }) =>
-            userApi.updateSubscription(id, payload),
-        onSuccess: () => {
-            toast.success('Cập nhật gói cước thành công');
-            queryClient.invalidateQueries({ queryKey: ['users'] });
-        },
-        onError: (error: AxiosError<{ message?: string }>) => {
-            toast.error(error.response?.data?.message || 'Có lỗi xảy ra');
-        },
     });
 };
 

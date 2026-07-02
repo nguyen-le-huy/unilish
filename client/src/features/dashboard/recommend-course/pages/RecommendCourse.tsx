@@ -4,62 +4,46 @@ import type { AxiosError } from 'axios';
 import { toast } from 'sonner';
 import CourseCard from '@/components/core/CourseCard/CourseCard';
 import { PATHS } from '@/config/paths';
-import { queryClient } from '@/lib/react-query';
 import { useAuthStore } from '@/stores/auth.store';
 import type { ApiErrorResponse } from '@/types/common';
-import { useJoinRecommendedCourseMutation } from '../hooks/use-join-recommended-course-mutation';
 import { useRecommendationsQuery } from '../hooks/use-recommendations-query';
+import { useEnrollCourse } from '../../learning/hooks/use-enroll-course';
 import styles from './RecommendCourse.module.css';
 
 const SKELETON_CARD_COUNT = 4;
 
 const RecommendCourse = () => {
     const navigate = useNavigate();
-    const [joiningSeriesId, setJoiningSeriesId] = useState<string | null>(null);
+    const [joiningCourseId, setJoiningCourseId] = useState<string | null>(null);
     const currentLevel = useAuthStore((state) => state.user?.currentLevel);
-    const user = useAuthStore((state) => state.user);
-    const setUser = useAuthStore((state) => state.setUser);
     const { data, isLoading, isError } = useRecommendationsQuery();
-    const { mutate: joinRecommendedCourse, isPending: isJoining } = useJoinRecommendedCourseMutation();
+    const { mutate: enrollCourse, isPending: isEnrolling } = useEnrollCourse();
 
     const recommendations = data ?? [];
     const shouldShowOnboardingMessage = !currentLevel || currentLevel === 'A0';
     const shouldShowEmpty = !isLoading && !isError && recommendations.length === 0;
 
-    const handleJoinSeries = useCallback((seriesId: string) => {
-        if (isJoining) {
+    const handleJoinCourse = useCallback((courseId: string, slug: string) => {
+        if (isEnrolling) {
             return;
         }
 
-        setJoiningSeriesId(seriesId);
+        setJoiningCourseId(courseId);
 
-        joinRecommendedCourse(seriesId, {
-            onSuccess: (updatedUser) => {
-                const nextUser = user
-                    ? {
-                        ...user,
-                        ...updatedUser,
-                        lastActiveCourseId: updatedUser.lastActiveCourseId ?? seriesId,
-                    }
-                    : {
-                        ...updatedUser,
-                        lastActiveCourseId: updatedUser.lastActiveCourseId ?? seriesId,
-                    };
-
-                setUser(nextUser);
-                queryClient.setQueryData(['auth', 'me'], nextUser);
+        enrollCourse(courseId, {
+            onSuccess: () => {
                 toast.success('Đã tham gia khóa học thành công');
-                navigate(PATHS.DASHBOARD.HOME, { replace: true });
+                navigate(PATHS.COURSE_DETAIL(slug), { replace: true });
             },
             onError: (error: AxiosError<ApiErrorResponse>) => {
                 const message = error.response?.data?.message ?? 'Không thể tham gia khóa học. Vui lòng thử lại.';
                 toast.error(message);
             },
             onSettled: () => {
-                setJoiningSeriesId(null);
+                setJoiningCourseId(null);
             },
         });
-    }, [isJoining, joinRecommendedCourse, navigate, setUser, user]);
+    }, [isEnrolling, enrollCourse, navigate]);
 
     return (
         <section className={styles.recommendCourse}>
@@ -96,16 +80,16 @@ const RecommendCourse = () => {
 
             {!isLoading && !isError && recommendations.length > 0 && (
                 <div className={styles.courseGrid}>
-                    {recommendations.map((series) => (
+                    {recommendations.map((course) => (
                         <CourseCard
-                            key={series.id}
-                            title={series.title}
-                            description={series.description}
-                            imageUrl={series.thumbnailUrl}
-                            badge={[series.levelMin, series.levelMax].join(' → ')}
-                            totalCourses={series.totalCourses}
-                            onJoin={() => handleJoinSeries(series.id)}
-                            joinLabel={isJoining && joiningSeriesId === series.id ? 'Đang tham gia...' : 'Tham gia'}
+                            key={course.id}
+                            title={course.title}
+                            description={course.description}
+                            imageUrl={course.thumbnailUrl}
+                            badge={course.level}
+                            totalUnits={course.totalUnits}
+                            onJoin={() => handleJoinCourse(course.id, course.slug)}
+                            joinLabel={isEnrolling && joiningCourseId === course.id ? 'Đang tham gia...' : 'Tham gia'}
                         />
                     ))}
                 </div>

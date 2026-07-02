@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { env } from '../config/env.js';
-import { COURSE_SERIES_LEVEL_TO_NUMBER } from '../models/vector/course-series-vector.js';
+import { COURSE_LEVEL_TO_NUMBER } from '../models/vector/course-vector.js';
 import { logger } from '../utils/logger.js';
 
 const openaiClient = new OpenAI({ apiKey: env.OPENAI_API_KEY });
@@ -20,6 +20,9 @@ const SeriesAIAnalysisSchema = z.object({
 });
 
 export type SeriesAIAnalysis = z.infer<typeof SeriesAIAnalysisSchema>;
+
+/** Course analysis uses the same schema as Series during migration window */
+export type CourseAIAnalysis = SeriesAIAnalysis;
 
 export interface AnalyzeBatchOptions {
     concurrency?: number;
@@ -55,6 +58,15 @@ export const createSeriesContentHash = (title: string, description?: string | nu
 
 export class AIAnalysisService {
     async analyzeCourseSeries(title: string, description: string): Promise<SeriesAIAnalysis> {
+        return this.analyze(title, description);
+    }
+
+    /** Analyze a single Course — same AI pipeline, keeps levelMin/levelMax for metadata */
+    async analyzeCourse(title: string, description: string): Promise<CourseAIAnalysis> {
+        return this.analyze(title, description);
+    }
+
+    private async analyze(title: string, description: string): Promise<SeriesAIAnalysis> {
         const completion = await openaiClient.chat.completions.create({
             model: env.OPENAI_MODEL,
             response_format: { type: 'json_object' },
@@ -172,8 +184,8 @@ export class AIAnalysisService {
         };
 
         const validated = SeriesAIAnalysisSchema.parse(normalizedCandidate);
-        const levelMinNum = COURSE_SERIES_LEVEL_TO_NUMBER[validated.levelMin];
-        const levelMaxNum = COURSE_SERIES_LEVEL_TO_NUMBER[validated.levelMax];
+        const levelMinNum = COURSE_LEVEL_TO_NUMBER[validated.levelMin];
+        const levelMaxNum = COURSE_LEVEL_TO_NUMBER[validated.levelMax];
 
         const normalizedLevels = levelMinNum <= levelMaxNum
             ? { levelMin: validated.levelMin, levelMax: validated.levelMax }

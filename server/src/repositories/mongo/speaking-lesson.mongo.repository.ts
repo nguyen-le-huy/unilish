@@ -35,12 +35,8 @@ interface PopulatedLanguageShape {
     code?: string;
 }
 
-interface PopulatedSeriesShape {
-    languageId?: PopulatedLanguageShape | string;
-}
-
 interface PopulatedCourseShape {
-    seriesId?: PopulatedSeriesShape | string;
+    languageId?: PopulatedLanguageShape | string;
 }
 
 interface PopulatedUnitShape {
@@ -96,14 +92,10 @@ export class SpeakingLessonMongoRepository {
                 select: 'courseId',
                 populate: {
                     path: 'courseId',
-                    select: 'seriesId',
+                    select: 'languageId',
                     populate: {
-                        path: 'seriesId',
-                        select: 'languageId',
-                        populate: {
-                            path: 'languageId',
-                            select: 'code',
-                        },
+                        path: 'languageId',
+                        select: 'code',
                     },
                 },
             })
@@ -118,8 +110,7 @@ export class SpeakingLessonMongoRepository {
 
         const unit = lesson.unitId && typeof lesson.unitId !== 'string' ? lesson.unitId : undefined;
         const course = unit?.courseId && typeof unit.courseId !== 'string' ? unit.courseId : undefined;
-        const series = course?.seriesId && typeof course.seriesId !== 'string' ? course.seriesId : undefined;
-        const language = series?.languageId && typeof series.languageId !== 'string' ? series.languageId : undefined;
+        const language = course?.languageId && typeof course.languageId !== 'string' ? course.languageId : undefined;
 
         const targetLanguage = normalizeLanguageCode(language?.code);
 
