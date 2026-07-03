@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { env } from '@/config/env';
 import type { LearnerVocabContent } from './renderer.types';
+import { getPlayableAudioSources } from './audio-url';
 import styles from './Renderer.module.css';
 
 interface VocabRendererProps {
@@ -17,67 +17,8 @@ const VocabRenderer = ({ content }: VocabRendererProps) => {
         };
     }, []);
 
-    const getAudioSources = (rawUrl: string | null | undefined): string[] => {
-        const trimmed = rawUrl?.trim();
-        if (!trimmed) {
-            return [];
-        }
-
-        const sources: string[] = [];
-        const pushUnique = (value: string) => {
-            if (!sources.includes(value)) {
-                sources.push(value);
-            }
-        };
-
-        const normalizedApiBase = env.API_URL.replace(/\/+$/, '');
-        const appBase = normalizedApiBase.replace(/\/api$/, '');
-
-        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-            try {
-                const parsed = new URL(trimmed);
-                const key = parsed.pathname.replace(/^\/+/, '');
-                const isR2PublicHost =
-                    parsed.hostname.endsWith('r2.dev')
-                    || parsed.hostname.includes('r2.cloudflarestorage.com');
-
-                if (key) {
-                    pushUnique(`${normalizedApiBase}/audio/${key}`);
-                }
-
-                if (!isR2PublicHost) {
-                    pushUnique(trimmed);
-                }
-            } catch {
-                pushUnique(trimmed);
-            }
-
-            return sources;
-        }
-
-        if (trimmed.startsWith('/')) {
-            const noLeadingSlash = trimmed.replace(/^\/+/, '');
-
-            if (noLeadingSlash.startsWith('api/audio/')) {
-                pushUnique(`${appBase}/${noLeadingSlash}`);
-            } else if (noLeadingSlash.startsWith('audio/')) {
-                pushUnique(`${normalizedApiBase}/${noLeadingSlash}`);
-            } else {
-                pushUnique(`${normalizedApiBase}/audio/${noLeadingSlash}`);
-            }
-
-            return sources;
-        }
-
-        const key = trimmed.replace(/^\/+/, '');
-        pushUnique(`${normalizedApiBase}/audio/${key}`);
-        pushUnique(`${appBase}/${key}`);
-
-        return sources;
-    };
-
     const playAudio = (rawUrl: string | null | undefined) => {
-        const audioSources = getAudioSources(rawUrl);
+        const audioSources = getPlayableAudioSources(rawUrl);
 
         audioRef.current?.pause();
         audioRef.current?.removeAttribute('src');

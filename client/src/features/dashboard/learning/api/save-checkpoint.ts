@@ -1,14 +1,18 @@
 import { apiPatchUnwrappedEnvelope } from '@/lib/axios';
+import type { ExerciseCheckpointKind } from '../types/learning.types';
 
 export interface CheckpointPayload {
     version: number;
-    checkpoint: Record<string, unknown>;
+    checkpoint: ExerciseCheckpointKind;
     activeSecondsDelta: number;
+    conflictStrategy?: 'STRICT' | 'LAST_WRITE_WINS';
 }
 
 export interface CheckpointResult {
-    version: number;
-    totalTimeSeconds: number;
+    progressId: string;
+    checkpointVersion: number;
+    timeSpentSeconds: number;
+    status: string;
 }
 
 export const saveCheckpoint = async (

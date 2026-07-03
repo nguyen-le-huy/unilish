@@ -1,4 +1,5 @@
 import type { LearnerMCQuestion } from './practice.types';
+import StemMedia from './StemMedia';
 import styles from './Practice.module.css';
 
 interface MultipleChoiceProps {
@@ -6,23 +7,26 @@ interface MultipleChoiceProps {
     selectedId: string | null;
     onSelect: (id: string) => void;
     feedback?: { correct: boolean; explanation?: string } | null;
+    typeLabel?: string;
 }
 
-const MultipleChoice = ({ question, selectedId, onSelect, feedback }: MultipleChoiceProps) => {
+const MultipleChoice = ({ question, selectedId, onSelect, feedback, typeLabel }: MultipleChoiceProps) => {
     return (
-        <div className={styles.practiceQuestion}>
-            {question.stem.text && <p className={styles.stem}>{question.stem.text}</p>}
-            <div className={styles.options}>
+        <div className={styles.practiceQuestion} data-question-heading>
+            {typeLabel && <span className={styles.typeBadge}>{typeLabel}</span>}
+            <StemMedia stem={question.stem} />
+            <div className={styles.options} role="radiogroup" aria-label={typeLabel || 'Chọn đáp án'}>
                 {question.options.map((option) => {
                     const isSelected = selectedId === option.id;
                     return (
                         <button
                             key={option.id}
                             type="button"
+                            role="radio"
+                            aria-checked={isSelected}
                             className={`${styles.option} ${isSelected ? styles.optionSelected : ''}`}
                             onClick={() => !feedback && onSelect(option.id)}
                             disabled={!!feedback}
-                            aria-pressed={isSelected}
                         >
                             {option.text}
                         </button>

@@ -57,6 +57,15 @@ export class LearningController {
         sendResponse(res, HttpStatus.OK, 'Bắt đầu bài học', result);
     });
 
+    // ─── Restart Lesson ────────────────────────────────────────────────────
+    static restartLesson = catchAsync(async (req: Request, res: Response) => {
+        const userId = (req as any).user._id as string;
+        const lessonId = req.params['lessonId']!;
+
+        const result = await learningService.restartLesson(userId, lessonId);
+        sendResponse(res, HttpStatus.OK, 'Bắt đầu làm lại bài học', result);
+    });
+
     // ─── Read Lesson ───────────────────────────────────────────────────────
     static getLearnerLesson = catchAsync(async (req: Request, res: Response) => {
         const userId = (req as any).user._id as string;
@@ -70,10 +79,11 @@ export class LearningController {
     static saveCheckpoint = catchAsync(async (req: Request, res: Response) => {
         const userId = (req as any).user._id as string;
         const lessonId = req.params['lessonId']!;
-        const { version, checkpoint, activeSecondsDelta } = req.body as {
+        const { version, checkpoint, activeSecondsDelta, conflictStrategy } = req.body as {
             version: number;
             checkpoint: unknown;
             activeSecondsDelta: number;
+            conflictStrategy: 'STRICT' | 'LAST_WRITE_WINS';
         };
 
         const result = await learningService.saveCheckpoint(
@@ -82,6 +92,7 @@ export class LearningController {
             version,
             checkpoint,
             activeSecondsDelta,
+            conflictStrategy,
         );
         sendResponse(res, HttpStatus.OK, 'Lưu tiến trình thành công', result);
     });
@@ -90,9 +101,9 @@ export class LearningController {
     static submitLesson = catchAsync(async (req: Request, res: Response) => {
         const userId = (req as any).user._id as string;
         const lessonId = req.params['lessonId']!;
-        const { clientAttemptId, responses, durationSeconds } = req.body as {
+        const { clientAttemptId, submission, durationSeconds } = req.body as {
             clientAttemptId: string;
-            responses: unknown;
+            submission: unknown;
             durationSeconds: number;
         };
 
@@ -100,9 +111,18 @@ export class LearningController {
             userId,
             lessonId,
             clientAttemptId,
-            responses,
+            submission as any,
             durationSeconds,
         );
         sendResponse(res, HttpStatus.OK, 'Nộp bài thành công', result);
+    });
+
+    // ─── Get Attempt ─────────────────────────────────────────────────────────
+    static getAttempt = catchAsync(async (req: Request, res: Response) => {
+        const userId = (req as any).user._id as string;
+        const attemptId = req.params['attemptId']!;
+
+        const result = await learningService.getAttempt(userId, attemptId);
+        sendResponse(res, HttpStatus.OK, 'Lấy thông tin bài nộp', result);
     });
 }

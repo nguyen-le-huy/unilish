@@ -18,6 +18,14 @@ export type {
     LearningDashboardDto,
     LearningStatus,
     LessonType,
+    LearnerExerciseDto,
+    LearnerPracticeQuestionDto,
+    LearnerStem,
+    ObjectiveAnswer,
+    LessonSubmissionKind,
+    ExerciseCheckpointKind,
+    LessonQuestionFeedback,
+    LessonSubmissionResult,
 } from './types/learning.types';
 
 export { LESSON_TYPES } from './types/learning.types';

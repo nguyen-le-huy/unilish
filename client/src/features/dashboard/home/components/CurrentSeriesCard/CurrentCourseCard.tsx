@@ -135,7 +135,7 @@ export const CurrentCourseCard = ({ className }: CurrentCourseCardProps) => {
 
         <div className={styles.metaRow}>
           <div className={styles.metaItem}>
-            <span>{course.totalUnits} bài học</span>
+            <span>{course.totalLessons} bài học</span>
           </div>
           <div className={styles.metaItem}>
             <span>{formatDuration(course.timeSpentSeconds)}</span>

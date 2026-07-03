@@ -1,21 +1,26 @@
 import { HttpStatus } from '../constants/http-status.js';
 import { Course } from '../models/mongo/course.model.js';
-import { CourseEnrollment, EEnrollmentStatus } from '../models/mongo/course-enrollment.model.js';
+import { CourseEnrollment, EEnrollmentStatus, type ICourseEnrollment } from '../models/mongo/course-enrollment.model.js';
 import { CourseEnrollmentMongoRepository } from '../repositories/mongo/course-enrollment.mongo.repository.js';
 import { LearnerLessonProgress, ELessonProgressStatus } from '../models/mongo/learner-lesson-progress.model.js';
 import { LearnerLessonProgressMongoRepository } from '../repositories/mongo/learner-lesson-progress.mongo.repository.js';
 import { Unit } from '../models/mongo/unit.model.js';
-import { Lesson, ELessonType } from '../models/mongo/lesson.model.js';
+import { Lesson, ELessonType, EPracticeMode } from '../models/mongo/lesson.model.js';
 import { Language } from '../models/mongo/language.model.js';
 import { LearningGoal } from '../models/mongo/learning-goal.model.js';
 import { sanitizeLessonContent, validateLessonContent } from './lesson-sanitizer.service.js';
 import { gradeResponses, gradeSubjectivePass } from './lesson-grader.service.js';
+import type { GradingResult } from './lesson-grader.service.js';
+import { buildLearnerExercise, determineExerciseKind, loadLessonQuestionMap } from './learner-exercise.service.js';
+import type { LearnerExerciseDto, LearnerPracticeQuestionDto, ExerciseKind, LessonType } from './learner-exercise.service.js';
 import { AppError } from '../utils/app-error.js';
 import { logger } from '../utils/logger.js';
 import mongoose from 'mongoose';
 import { User } from '../models/mongo/user.model.js';
-import { LearnerLessonAttempt } from '../models/mongo/learner-lesson-attempt.model.js';
+import { LearnerLessonAttempt, type ILearnerLessonAttempt } from '../models/mongo/learner-lesson-attempt.model.js';
 import { LearnerLessonAttemptMongoRepository } from '../repositories/mongo/learner-lesson-attempt.mongo.repository.js';
+import type { LessonSubmission, ObjectiveAnswer } from '../validations/learning.validation.js';
+import { resolveEffectivePracticeConfig } from '../utils/lesson-practice-config.js';
 
 // ─── Service ──────────────────────────────────────────────────────────────────
 
@@ -302,7 +307,7 @@ export class LearningService {
             status: EEnrollmentStatus.ACTIVE,
         }).exec();
 
-        // 9. Compute activity days for the requested month (Phase 6: BE-11)
+        // 9. Compute activity days for the requested month (Phase 6: BE-14)
         const activityDays = _period === 'month' && _month
             ? await this.getMonthlyActivity(userId, _month)
             : [];
@@ -800,12 +805,15 @@ export class LearningService {
     /**
      * Save a checkpoint for a lesson.
      *
-     * Uses optimistic concurrency via checkpointVersion.
-     * Returns 409 with latest state for stale versions.
-     * Bounds activeSecondsDelta to max 300 seconds (validated at route level).
-     * Updates enrollment lastLessonId and accumulates time safely.
+     * - Validates checkpoint kind matches Lesson exercise kind (BE-09).
+     * - For OBJECTIVE checkpoints, validates question IDs/types/versions.
+     * - Uses optimistic concurrency via checkpointVersion.
+     * - Returns 409 CHECKPOINT_CONFLICT with latest checkpoint and version for reconciliation.
+     * - Bounds activeSecondsDelta to max 300 seconds.
+     * - Duplicate version delivery is prevented by the version check (each save increments version).
+     * - Updates enrollment lastLessonId and accumulates time safely.
      *
-     * Implements FR-10, AC-11, AC-12, NFR-02, NFR-03.
+     * Implements FR-10, AC-10, AC-11, AC-12, NFR-02, NFR-03.
      */
     async saveCheckpoint(
         userId: string,
@@ -813,37 +821,14 @@ export class LearningService {
         version: number,
         checkpoint: unknown,
         activeSecondsDelta: number,
+        conflictStrategy: 'STRICT' | 'LAST_WRITE_WINS' = 'STRICT',
     ): Promise<{
         progressId: string;
         checkpointVersion: number;
         timeSpentSeconds: number;
         status: string;
     }> {
-        // 1. Find progress record
-        const progress = await this.progressRepo.findByUserAndLesson(userId, lessonId);
-
-        if (!progress) {
-            throw new AppError(
-                'Bạn cần bắt đầu bài học trước khi lưu tiến trình.',
-                HttpStatus.FORBIDDEN,
-            );
-        }
-
-        // 2. Version check — 409 if stale
-        if (progress.checkpointVersion !== version) {
-            logger.warn('checkpoint.conflict', {
-                userId,
-                lessonId,
-                expectedVersion: version,
-                actualVersion: progress.checkpointVersion,
-            });
-            throw new AppError(
-                'Phiên bản tiến trình không đồng bộ. Vui lòng tải lại.',
-                HttpStatus.CONFLICT,
-            );
-        }
-
-        // 3. Validate checkpoint payload size (max 100KB)
+        // 0. Serialize checkpoint for size validation before any DB reads
         const checkpointStr = JSON.stringify(checkpoint ?? {});
         const MAX_CHECKPOINT_SIZE = 100 * 1024; // 100KB
         if (checkpointStr.length > MAX_CHECKPOINT_SIZE) {
@@ -853,32 +838,137 @@ export class LearningService {
             );
         }
 
-        // 4. Bounded time delta (validated at route level, but double-check)
-        const boundedDelta = Math.min(activeSecondsDelta, 300);
+        const parsedCheckpoint = checkpoint as { kind: string } | null;
+        const checkpointKind = parsedCheckpoint?.kind;
 
-        // 5. Update checkpoint with optimistic concurrency
-        const updated = await this.progressRepo.updateCheckpoint(
-            String(progress._id),
-            userId,
-            version,
-            checkpoint,
-            boundedDelta,
+        // 1. Load lesson to validate checkpoint kind against exercise kind
+        //    Also load question data for OBJECTIVE checkpoint validation
+        const lesson = await Lesson.findById(lessonId)
+            .select('_id type content practiceConfig')
+            .lean()
+            .exec() as {
+                _id: unknown;
+                type: string;
+                content?: Record<string, unknown>;
+                practiceConfig: {
+                    mode: string;
+                    questionIds: mongoose.Types.ObjectId[];
+                    passingScore: number;
+                };
+            } | null;
+
+        if (!lesson) {
+            throw new AppError('Bài học không tồn tại', HttpStatus.NOT_FOUND);
+        }
+
+        const lessonType = lesson.type as LessonType;
+        const effectivePracticeConfig = resolveEffectivePracticeConfig({
+            practiceConfig: lesson.practiceConfig,
+            content: lesson.content,
+        });
+        const practiceMode = effectivePracticeConfig.mode;
+        const questionMap = await loadLessonQuestionMap(effectivePracticeConfig.questionIds);
+
+        // 2. Validate checkpoint kind against lesson exercise kind
+        await this.validateCheckpointKind(
+            lessonType,
+            practiceMode,
+            questionMap.size,
+            checkpointKind,
         );
 
+        // 3. For OBJECTIVE checkpoints, validate each answer's questionId, type, and version
+        if (checkpointKind === 'OBJECTIVE') {
+            const objectiveCheckpoint = checkpoint as {
+                kind: 'OBJECTIVE';
+                answers: Array<{
+                    questionId: string;
+                    questionVersion: number;
+                    type: string;
+                    answer: unknown;
+                }>;
+            };
+
+            for (const answer of objectiveCheckpoint.answers) {
+                this.validateCheckpointAnswer(answer, questionMap);
+            }
+        }
+
+        // 4. Find progress record
+        const progress = await this.progressRepo.findByUserAndLesson(userId, lessonId);
+
+        if (!progress) {
+            throw new AppError(
+                'Bạn cần bắt đầu bài học trước khi lưu tiến trình.',
+                HttpStatus.FORBIDDEN,
+            );
+        }
+
+        // 5. Version check — 409 if stale, include latest checkpoint/version for reconciliation
+        if (progress.checkpointVersion !== version && conflictStrategy === 'STRICT') {
+            logger.warn('checkpoint.conflict', {
+                userId,
+                lessonId,
+                expectedVersion: version,
+                actualVersion: progress.checkpointVersion,
+            });
+
+            throw new AppError(
+                'Phiên bản tiến trình không đồng bộ. Vui lòng tải lại.',
+                HttpStatus.CONFLICT,
+                {
+                    latestCheckpoint: progress.checkpoint,
+                    latestVersion: progress.checkpointVersion,
+                },
+            );
+        }
+
+        // 6. Bounded time delta (validated at route level, but double-check)
+        //    Duplicate delivery protection: each successful save increments the version,
+        //    so replaying the exact same request (same version + same checkpoint) will
+        //    fail the version check (version already incremented). This prevents
+        //    double-counting of activeSecondsDelta. (NFR-02, AC-11)
+        const boundedDelta = Math.min(activeSecondsDelta, 300);
+
+        // 7. Update checkpoint with optimistic concurrency
+        const updated = conflictStrategy === 'LAST_WRITE_WINS'
+            ? await this.progressRepo.updateCheckpointLatest(
+                String(progress._id),
+                userId,
+                checkpoint,
+                boundedDelta,
+            )
+            : await this.progressRepo.updateCheckpoint(
+                String(progress._id),
+                userId,
+                version,
+                checkpoint,
+                boundedDelta,
+            );
+
         if (!updated) {
+            // Optimistic lock failure — another request advanced the version first
+            // Fetch latest checkpoint data for the conflict response
+            const latestProgress = await this.progressRepo.findByUserAndLesson(userId, lessonId);
+
             logger.warn('checkpoint.save_conflict', {
                 userId,
                 lessonId,
                 version,
                 progressId: String(progress._id),
             });
+
             throw new AppError(
                 'Phiên bản tiến trình không đồng bộ. Vui lòng tải lại.',
                 HttpStatus.CONFLICT,
+                {
+                    latestCheckpoint: latestProgress?.checkpoint ?? null,
+                    latestVersion: latestProgress?.checkpointVersion ?? 0,
+                },
             );
         }
 
-        // 6. Update enrollment lastLessonId
+        // 8. Update enrollment lastLessonId
         await CourseEnrollment.findByIdAndUpdate(progress.enrollmentId, {
             lastLessonId: new mongoose.Types.ObjectId(lessonId),
         }).exec();
@@ -897,6 +987,116 @@ export class LearningService {
             timeSpentSeconds: updated.timeSpentSeconds,
             status: updated.status,
         };
+    }
+
+    /**
+     * Validate that the checkpoint kind is allowed for the given lesson type.
+     *
+     * Rules (from exercise-spec.md and api-contract.md):
+     * - OBJECTIVE checkpoint → only for OBJECTIVE exercise lessons with valid questions
+     * - WRITING checkpoint → only for WRITING lessons
+     * - SPEAKING checkpoint → only for SPEAKING lessons
+     * - COMPLETION checkpoint → only for COMPLETION exercise lessons (non-assessed content)
+     * - Any kind → rejected for DYNAMIC mode lessons
+     *
+     * Throws 400 or 422 on mismatch.
+     *
+     * Implements BE-09 (checkpoint kind validation).
+     */
+    private async validateCheckpointKind(
+        lessonType: LessonType,
+        practiceMode: string | undefined,
+        validQuestionCount: number,
+        checkpointKind: string | undefined,
+    ): Promise<void> {
+        if (!checkpointKind) {
+            throw new AppError(
+                'Thiếu loại checkpoint.',
+                HttpStatus.BAD_REQUEST,
+            );
+        }
+
+        const isDynamic = practiceMode === EPracticeMode.DYNAMIC;
+
+        if (isDynamic) {
+            throw new AppError(
+                'Bài học sử dụng bài tập động chưa được hỗ trợ.',
+                HttpStatus.UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        let expectedKind: string;
+        try {
+            const result = determineExerciseKind(
+                lessonType,
+                practiceMode,
+                validQuestionCount,
+            );
+            expectedKind = result.kind;
+        } catch {
+            // If determineExerciseKind throws (e.g. UNIT_TEST with no questions),
+            // the lesson should have returned 422 at read time. But validate anyway.
+            throw new AppError(
+                'Loại bài học không hỗ trợ checkpoint.',
+                HttpStatus.UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        // Map exercise kind to allowed checkpoint kinds
+        const allowedCheckpointKinds: Record<string, string[]> = {
+            'OBJECTIVE': ['OBJECTIVE'],
+            'SPEAKING': ['SPEAKING'],
+            'WRITING': ['WRITING'],
+            'COMPLETION': ['COMPLETION'],
+        };
+
+        const allowed = allowedCheckpointKinds[expectedKind];
+        if (!allowed || !allowed.includes(checkpointKind)) {
+            throw new AppError(
+                `Loại checkpoint không phù hợp với bài học này.`,
+                HttpStatus.BAD_REQUEST,
+            );
+        }
+    }
+
+    /**
+     * Validate a single checkpoint answer against the lesson's question set.
+     *
+     * Checks:
+     * - questionId exists in the lesson's question set
+     * - questionVersion matches the current published version
+     * - type matches the question type
+     *
+     * Throws 400 on any mismatch.
+     *
+     * Implements BE-09 (reject unknown question IDs/types/versions).
+     */
+    private validateCheckpointAnswer(
+        answer: { questionId: string; questionVersion: number; type: string },
+        questionMap: Map<string, { type: string; version: number }>,
+    ): void {
+        const questionInfo = questionMap.get(answer.questionId);
+
+        if (!questionInfo) {
+            throw new AppError(
+                `Câu hỏi không hợp lệ hoặc không thuộc bài học này.`,
+                HttpStatus.BAD_REQUEST,
+            );
+        }
+
+        if (questionInfo.version !== answer.questionVersion) {
+            throw new AppError(
+                `Phiên bản câu hỏi đã thay đổi. Vui lòng tải lại bài học.`,
+                HttpStatus.CONFLICT,
+            );
+        }
+
+        if (questionInfo.type !== answer.type) {
+            throw new AppError(
+                `Loại câu hỏi không khớp.`,
+                HttpStatus.BAD_REQUEST,
+            );
+        }
     }
 
     /**
@@ -1048,12 +1248,69 @@ export class LearningService {
     }
 
     /**
-     * Read a lesson for the learner with sanitized content.
+     * Restart a completed lesson for retry.
+     *
+     * Resets checkpoint and sets progress back to IN_PROGRESS,
+     * while preserving bestScore, attemptsCount, and completion history.
+     * The learner can then re-submit new answers for a fresh attempt.
+     *
+     * Implements FR-13 (Retry), AC-32 (Retry Preserves Best Score).
+     */
+    async restartLesson(
+        userId: string,
+        lessonId: string,
+    ): Promise<{
+        progressId: string;
+        status: string;
+        checkpointVersion: number;
+    }> {
+        // 1. Find existing progress
+        const progress = await this.progressRepo.findByUserAndLesson(userId, lessonId);
+
+        if (!progress) {
+            throw new AppError(
+                'Bạn cần bắt đầu bài học trước khi làm lại.',
+                HttpStatus.FORBIDDEN,
+            );
+        }
+
+        if (progress.status !== ELessonProgressStatus.COMPLETED) {
+            // Not completed — nothing to restart, just return current state
+            return {
+                progressId: String(progress._id),
+                status: progress.status,
+                checkpointVersion: progress.checkpointVersion,
+            };
+        }
+
+        // 2. Reset checkpoint, set to IN_PROGRESS, preserve best score
+        await LearnerLessonProgress.findByIdAndUpdate(progress._id, {
+            status: ELessonProgressStatus.IN_PROGRESS,
+            checkpoint: null,
+            checkpointVersion: 0,
+            lastAccessedAt: new Date(),
+        }).exec();
+
+        logger.info('lesson.restarted', {
+            userId,
+            lessonId,
+            progressId: String(progress._id),
+        });
+
+        return {
+            progressId: String(progress._id),
+            status: ELessonProgressStatus.IN_PROGRESS,
+            checkpointVersion: 0,
+        };
+    }
+
+    /**
+     * Read a lesson for the learner with sanitized content and exercise DTO.
      *
      * Validates enrollment and Lesson -> Unit -> Course ancestry.
-     * Returns sanitized content, progress, and navigation context.
+     * Returns sanitized content, exercise, progress, and navigation context.
      *
-     * Implements FR-05, FR-06, AC-09, AC-10, AC-19.
+     * Implements FR-05, FR-06, FR-17, AC-09, AC-10, AC-19, AC-23, AC-31, NFR-11.
      */
     async getLearnerLesson(
         userId: string,
@@ -1068,6 +1325,7 @@ export class LearningService {
             orderIndex: number;
             content: Record<string, unknown>;
             passingScore: number | null;
+            exercise: LearnerExerciseDto;
         };
         progress: {
             status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
@@ -1091,7 +1349,11 @@ export class LearningService {
                 type: string;
                 orderIndex: number;
                 content: unknown;
-                practiceConfig: { passingScore: number };
+                practiceConfig: {
+                    mode: string;
+                    questionIds: mongoose.Types.ObjectId[];
+                    passingScore: number;
+                };
             } | null;
 
         if (!lesson) {
@@ -1157,7 +1419,25 @@ export class LearningService {
             lesson.content,
         );
 
-        // 6. Find or create progress record
+        // 6. Build learner exercise DTO (FR-17, NFR-11, AC-23, AC-31)
+        const lessonType = lesson.type as any;
+        const effectivePracticeConfig = resolveEffectivePracticeConfig({
+            practiceConfig: lesson.practiceConfig,
+            content: lesson.content as Record<string, unknown> | undefined,
+        });
+        const practiceMode = effectivePracticeConfig.mode;
+        const questionIds = effectivePracticeConfig.questionIds;
+        const passingScore = effectivePracticeConfig.passingScore ?? 80;
+
+        const exercise = await buildLearnerExercise(
+            lessonType,
+            practiceMode,
+            questionIds,
+            passingScore,
+            lesson.content as Record<string, unknown> | undefined,
+        );
+
+        // 7. Find or create progress record
         let progress = await this.progressRepo.findByUserAndLesson(userId, lessonId);
 
         if (!progress) {
@@ -1176,11 +1456,11 @@ export class LearningService {
             } as any);
         }
 
-        // 7. Build progress DTO
+        // 8. Build progress DTO
         const progressStatus = progress.status as 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
         const bestScore = progress.bestScore >= 0 ? progress.bestScore : null;
 
-        // 8. Navigation context
+        // 9. Navigation context
         const nav = await this.getNavigation(
             courseId,
             String(enrollment._id),
@@ -1205,7 +1485,8 @@ export class LearningService {
                 type: lesson.type,
                 orderIndex: lesson.orderIndex,
                 content: safeContent,
-                passingScore: lesson.practiceConfig?.passingScore ?? null,
+                passingScore: effectivePracticeConfig.passingScore ?? null,
+                exercise,
             },
             progress: {
                 status: progressStatus,
@@ -1220,7 +1501,11 @@ export class LearningService {
     /**
      * Submit a lesson for grading.
      *
-     * - Validates enrollment and ancestry.
+     * - Validates enrollment, ancestry, and submission kind.
+     * - BE-10: Validates objective answers: question membership, versions,
+     *   types, completeness (exactly one answer per question).
+     * - BE-11: Validates Speaking session ownership, Writing word count,
+     *   COMPLETION eligibility.
      * - Checks for duplicate clientAttemptId (idempotency).
      * - Grades objective question types server-side.
      * - Speaking/Writing auto-pass with placeholder feedback.
@@ -1228,18 +1513,21 @@ export class LearningService {
      * - Updates progress and enrollment.
      * - Supports unlimited retries with latest/best score tracking.
      *
-     * Implements FR-08, FR-10, FR-13, AC-13, AC-14, AC-21.
+     * Implements FR-08, FR-10, FR-13, FR-19, AC-13, AC-14, AC-21,
+     * AC-26, AC-27, AC-28, AC-29, AC-30, NFR-11.
      */
     async submitLesson(
         userId: string,
         lessonId: string,
         clientAttemptId: string,
-        responses: unknown,
+        submission: LessonSubmission,
         durationSeconds: number,
     ): Promise<{
         attemptId: string;
         score: number | null;
         passed: boolean;
+        latestScore: number | null;
+        bestScore: number | null;
         feedback: unknown;
         progress: {
             lessonStatus: 'IN_PROGRESS' | 'COMPLETED';
@@ -1249,9 +1537,9 @@ export class LearningService {
         };
         nextLessonId: string | null;
     }> {
-        // 1. Find lesson with practice config
+        // 1. Find lesson with practice config + content (for word count, etc.)
         const lesson = await Lesson.findById(lessonId)
-            .select('_id unitId title type orderIndex practiceConfig')
+            .select('_id unitId title type orderIndex practiceConfig content')
             .lean()
             .exec() as {
                 _id: unknown;
@@ -1259,6 +1547,7 @@ export class LearningService {
                 title: string;
                 type: string;
                 orderIndex: number;
+                content: Record<string, unknown>;
                 practiceConfig: {
                     mode: string;
                     questionIds: mongoose.Types.ObjectId[];
@@ -1312,7 +1601,37 @@ export class LearningService {
             );
         }
 
-        // 5. Check for duplicate clientAttemptId (idempotency)
+        // 5. Validate submission kind matches lesson exercise kind (BE-11)
+        const lessonType = lesson.type;
+        const effectivePracticeConfig = resolveEffectivePracticeConfig({
+            practiceConfig: lesson.practiceConfig,
+            content: lesson.content,
+        });
+        const practiceMode = effectivePracticeConfig.mode;
+        const submissionKind = submission.kind;
+        const questionIds = effectivePracticeConfig.questionIds.map((id) => String(id));
+        const passingScore = effectivePracticeConfig.passingScore ?? 80;
+
+        await this.validateSubmissionKind(
+            lessonType as any,
+            practiceMode,
+            submissionKind,
+            questionIds,
+            submission,
+            userId,
+            lesson,
+            lessonId,
+        );
+
+        // 6. For OBJECTIVE submissions: pre-validate answers against question set (BE-10)
+        if (submissionKind === 'OBJECTIVE') {
+            await this.validateObjectiveSubmission(
+                submission as Extract<LessonSubmission, { kind: 'OBJECTIVE' }>,
+                questionIds,
+            );
+        }
+
+        // 7. Check for duplicate clientAttemptId (idempotency)
         const existingAttempt = await this.attemptRepo.findByClientAttemptId(
             userId,
             clientAttemptId,
@@ -1320,31 +1639,17 @@ export class LearningService {
 
         if (existingAttempt) {
             // Return existing result — idempotent
-            const lessonProgress = await this.progressRepo.findByUserAndLesson(userId, lessonId);
-            const unitStatus = await this.computeUnitStatus(
-                String(unit._id),
-                String(enrollment._id),
+            return this.buildSubmitResultFromAttempt(
+                existingAttempt,
+                enrollment,
+                lessonId,
+                courseId,
+                unit,
+                userId,
             );
-            const courseStatus = enrollment.status as string;
-
-            return {
-                attemptId: String(existingAttempt._id),
-                score: existingAttempt.score,
-                passed: existingAttempt.passed,
-                feedback: existingAttempt.feedback,
-                progress: {
-                    lessonStatus: lessonProgress?.status === 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS',
-                    unitStatus,
-                    courseStatus,
-                    courseProgressPercent: enrollment.totalRequiredLessonCount > 0
-                        ? Math.round((enrollment.completedLessonCount / enrollment.totalRequiredLessonCount) * 100)
-                        : 0,
-                },
-                nextLessonId: await this.findNextLesson(courseId, String(enrollment._id), userId),
-            };
         }
 
-        // 6. Find or create progress record
+        // 8. Find or create progress record
         let progress = await this.progressRepo.findByUserAndLesson(userId, lessonId);
 
         if (!progress) {
@@ -1363,50 +1668,102 @@ export class LearningService {
             } as any);
         }
 
-        // 7. Grade the submission
-        const isSubjective = lesson.type === 'SPEAKING' || lesson.type === 'WRITING';
-        const passingScore = lesson.practiceConfig?.passingScore ?? 80;
-        const questionIds = lesson.practiceConfig?.questionIds?.map((id) => String(id)) ?? [];
+        // 9. Grade the submission based on kind
+        let gradingResult: GradingResult;
 
-        let gradingResult: { score: number; maxScore: number; passed: boolean; feedback: unknown };
+        switch (submission.kind) {
+            case 'OBJECTIVE': {
+                // Convert answers array to Record<questionId, answer> for the grader
+                const responsesMap: Record<string, unknown> = {};
+                for (const answer of submission.answers) {
+                    responsesMap[answer.questionId] = answer.answer;
+                }
+                gradingResult = await gradeResponses(
+                    questionIds,
+                    responsesMap,
+                    passingScore,
+                );
+                break;
+            }
 
-        if (isSubjective) {
-            // Speaking/Writing: auto-pass with placeholder feedback (AC-21)
-            gradingResult = gradeSubjectivePass();
-        } else if (questionIds.length > 0) {
-            // Objective grading (FR-08)
-            gradingResult = await gradeResponses(
-                questionIds,
-                (responses ?? {}) as Record<string, unknown>,
-                passingScore,
-            );
-        } else {
-            // No questions — non-assessed lesson, auto-complete
-            gradingResult = {
-                score: 100,
-                maxScore: 100,
-                passed: true,
-                feedback: { message: 'Lesson completed successfully.' },
-            };
+            case 'SPEAKING':
+            case 'WRITING':
+                // Subjective: auto-pass with placeholder feedback (AC-21)
+                gradingResult = gradeSubjectivePass();
+                break;
+
+            case 'COMPLETION':
+                // Non-assessed: auto-complete
+                gradingResult = {
+                    score: 100,
+                    maxScore: 100,
+                    passed: true,
+                    summary: 'Bài học đã được hoàn thành.',
+                    questions: [],
+                };
+                break;
         }
 
-        // 8. Create immutable attempt record
-        const attempt = await this.attemptRepo.createAttempt({
-            clientAttemptId,
-            userId,
-            enrollmentId: String(enrollment._id),
-            lessonId,
-            submittedAnswers: responses,
-            score: gradingResult.score,
-            passed: gradingResult.passed,
-            feedback: gradingResult.feedback,
-            durationSeconds: Math.min(durationSeconds, 86400), // Cap at 24 hours
-        });
+        // 10. Create immutable attempt record
+        //     Handle concurrent duplicate clientAttemptId (E11000) as
+        //     409 ATTEMPT_IN_PROGRESS per api-contract.md (BE-04)
+        let attempt: ILearnerLessonAttempt;
+        try {
+            attempt = await this.attemptRepo.createAttempt({
+                clientAttemptId,
+                userId,
+                enrollmentId: String(enrollment._id),
+                lessonId,
+                submissionKind: submission.kind,
+                submittedAnswers: submission,
+                score: gradingResult.score,
+                passed: gradingResult.passed,
+                feedback: {
+                    summary: gradingResult.summary,
+                    questions: gradingResult.questions,
+                },
+                durationSeconds: Math.min(durationSeconds, 86400), // Cap at 24 hours
+            });
+        } catch (err: unknown) {
+            // MongoDB duplicate key error (E11000) — another request with same
+            // clientAttemptId was processed concurrently
+            if (
+                err &&
+                typeof err === 'object' &&
+                'code' in err &&
+                (err as Record<string, unknown>).code === 11000
+            ) {
+                logger.warn('submission.duplicate_attempt', {
+                    userId,
+                    lessonId,
+                    clientAttemptId,
+                });
 
-        // 9. Capture pre-completion status for duplicate prevention
+                // Fetch the existing attempt created by the concurrent request
+                const existing = await this.attemptRepo.findByClientAttemptId(userId, clientAttemptId);
+                if (existing) {
+                    return this.buildSubmitResultFromAttempt(
+                        existing,
+                        enrollment,
+                        lessonId,
+                        courseId,
+                        unit,
+                        userId,
+                    );
+                }
+
+                throw new AppError(
+                    'Yêu cầu đang được xử lý. Vui lòng thử lại với cùng mã.',
+                    HttpStatus.CONFLICT,
+                );
+            }
+            throw err; // Re-throw if not a duplicate key error
+        }
+
+        // 11. Capture pre-completion status for duplicate prevention
         const wasAlreadyCompleted = progress.status === ELessonProgressStatus.COMPLETED;
 
-        // 10. Update progress
+        // 12. Update progress
         if (gradingResult.passed) {
             await this.progressRepo.completeLesson(
                 String(progress._id),
@@ -1423,7 +1780,7 @@ export class LearningService {
             }).exec();
         }
 
-        // 11. If passed and was NOT already completed, update enrollment counters
+        // 13. If passed and was NOT already completed, update enrollment counters
         if (gradingResult.passed && !wasAlreadyCompleted) {
             await this.updateEnrollmentProgress(
                 String(enrollment._id),
@@ -1433,7 +1790,7 @@ export class LearningService {
             );
         }
 
-        // 12. Structured events
+        // 14. Structured events
         if (gradingResult.passed) {
             logger.info('submission.passed', {
                 userId,
@@ -1455,7 +1812,7 @@ export class LearningService {
             });
         }
 
-        // 13. Build result
+        // 15. Build result
         const lessonProgressAfter = await this.progressRepo.findByUserAndLesson(userId, lessonId);
         const unitStatus = await this.computeUnitStatus(
             String(unit._id),
@@ -1473,7 +1830,12 @@ export class LearningService {
             attemptId: String(attempt._id),
             score: gradingResult.score,
             passed: gradingResult.passed,
-            feedback: gradingResult.feedback,
+            latestScore: gradingResult.score,
+            bestScore: lessonProgressAfter?.bestScore ?? gradingResult.score,
+            feedback: {
+                summary: gradingResult.summary,
+                questions: gradingResult.questions,
+            },
             progress: {
                 lessonStatus: lessonProgressAfter?.status === 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS',
                 unitStatus,
@@ -1484,6 +1846,355 @@ export class LearningService {
             },
             nextLessonId: await this.findNextLesson(courseId, String(enrollment._id), userId),
         };
+    }
+
+    /**
+     * Build a submit result from an existing attempt (idempotent return).
+     *
+     * Used when a duplicate clientAttemptId is detected — either from the
+     * pre-creation check (BE-04) or from a concurrent E11000 duplicate key
+     * error during attempt creation.
+     */
+    private async buildSubmitResultFromAttempt(
+        existingAttempt: ILearnerLessonAttempt,
+        enrollment: ICourseEnrollment,
+        lessonId: string,
+        courseId: string,
+        unit: { _id: unknown },
+        userId: string,
+    ): Promise<{
+        attemptId: string;
+        score: number | null;
+        passed: boolean;
+        latestScore: number | null;
+        bestScore: number | null;
+        feedback: unknown;
+        progress: {
+            lessonStatus: 'IN_PROGRESS' | 'COMPLETED';
+            unitStatus: string;
+            courseStatus: string;
+            courseProgressPercent: number;
+        };
+        nextLessonId: string | null;
+    }> {
+        const lessonProgress = await this.progressRepo.findByUserAndLesson(userId, lessonId);
+        const unitStatus = await this.computeUnitStatus(
+            String(unit._id),
+            String(enrollment._id),
+        );
+        const courseStatus = enrollment.status as string;
+
+        return {
+            attemptId: String(existingAttempt._id),
+            score: existingAttempt.score,
+            passed: existingAttempt.passed,
+            latestScore: existingAttempt.score,
+            bestScore: lessonProgress?.bestScore ?? existingAttempt.score,
+            feedback: existingAttempt.feedback,
+            progress: {
+                lessonStatus: lessonProgress?.status === 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS',
+                unitStatus,
+                courseStatus,
+                courseProgressPercent: enrollment.totalRequiredLessonCount > 0
+                    ? Math.round((enrollment.completedLessonCount / enrollment.totalRequiredLessonCount) * 100)
+                    : 0,
+            },
+            nextLessonId: await this.findNextLesson(courseId, String(enrollment._id), userId),
+        };
+    }
+
+    /**
+     * Get a specific attempt by ID.
+     *
+     * Returns the attempt result with full feedback for review.
+     * Verifies the attempt belongs to the authenticated learner.
+     *
+     * Implements AC-17 (Review Completed Lesson), AC-28 (Post-Submit Feedback).
+     */
+    async getAttempt(
+        userId: string,
+        attemptId: string,
+    ): Promise<{
+        attemptId: string;
+        lessonId: string;
+        score: number | null;
+        passed: boolean;
+        submissionKind: string;
+        feedback: unknown;
+        submittedAt: Date;
+    }> {
+        const attempt = await this.attemptRepo.findByIdSecure(attemptId, userId);
+
+        if (!attempt) {
+            throw new AppError(
+                'Bài nộp không tồn tại.',
+                HttpStatus.NOT_FOUND,
+            );
+        }
+
+        logger.info('attempt.retrieved', {
+            userId,
+            attemptId,
+            lessonId: String(attempt.lessonId),
+            submissionKind: attempt.submissionKind,
+        });
+
+        return {
+            attemptId: String(attempt._id),
+            lessonId: String(attempt.lessonId),
+            score: attempt.score,
+            passed: attempt.passed,
+            submissionKind: attempt.submissionKind,
+            feedback: attempt.feedback,
+            submittedAt: attempt.submittedAt,
+        };
+    }
+
+    /**
+     * Pre-validate an OBJECTIVE submission against the lesson's question set.
+     *
+     * Checks:
+     * - Every submitted questionId exists in the lesson's questionIds
+     * - Every submitted questionVersion matches the current published version
+     * - Every submitted type matches the question type
+     * - Exactly one answer per question (no missing, no duplicates, no extras)
+     *
+     * Throws 400 INCOMPLETE_ATTEMPT or 409 QUESTION_SET_CHANGED.
+     *
+     * Implements FR-19, AC-25, AC-26, AC-27.
+     */
+    private async validateObjectiveSubmission(
+        submission: Extract<LessonSubmission, { kind: 'OBJECTIVE' }>,
+        lessonQuestionIds: string[],
+    ): Promise<void> {
+        if (lessonQuestionIds.length === 0) {
+            throw new AppError(
+                'Bài học này không có câu hỏi để nộp.',
+                HttpStatus.BAD_REQUEST,
+            );
+        }
+
+        // Load current question metadata
+        const questionMap = await loadLessonQuestionMap(
+            lessonQuestionIds.map((id) => new mongoose.Types.ObjectId(id)),
+        );
+
+        // Check for extra/unknown questions
+        const submittedIds = new Set<string>();
+        for (const answer of submission.answers) {
+            if (submittedIds.has(answer.questionId)) {
+                throw new AppError(
+                    `Câu hỏi ${answer.questionId} đã được trả lời hai lần.`,
+                    HttpStatus.BAD_REQUEST,
+                );
+            }
+            submittedIds.add(answer.questionId);
+
+            const questionInfo = questionMap.get(answer.questionId);
+            if (!questionInfo) {
+                throw new AppError(
+                    `Câu hỏi không hợp lệ hoặc không thuộc bài học này.`,
+                    HttpStatus.BAD_REQUEST,
+                );
+            }
+
+            if (questionInfo.version !== answer.questionVersion) {
+                throw new AppError(
+                    `Phiên bản câu hỏi đã thay đổi. Vui lòng tải lại bài học.`,
+                    HttpStatus.CONFLICT,
+                );
+            }
+
+            if (questionInfo.type !== answer.type) {
+                throw new AppError(
+                    `Loại câu hỏi không khớp.`,
+                    HttpStatus.BAD_REQUEST,
+                );
+            }
+        }
+
+        // Check for missing questions
+        const expectedQuestionIds = new Set(lessonQuestionIds);
+        for (const submittedId of submittedIds) {
+            expectedQuestionIds.delete(submittedId);
+        }
+
+        if (expectedQuestionIds.size > 0) {
+            const missingIds = Array.from(expectedQuestionIds).join(', ');
+            throw new AppError(
+                `Bạn cần trả lời tất cả các câu hỏi. Còn ${expectedQuestionIds.size} câu hỏi chưa được trả lời.`,
+                HttpStatus.BAD_REQUEST,
+            );
+        }
+    }
+
+    /**
+     * Validate that the submission kind matches the lesson exercise kind
+     * and perform type-specific validation (Speaking session ownership,
+     * Writing word count, COMPLETION eligibility).
+     *
+     * Throws AppError on mismatch.
+     *
+     * Implements NFR-11, AC-21, AC-29, AC-30, AC-31, BE-11.
+     */
+    private async validateSubmissionKind(
+        lessonType: string,
+        practiceMode: string | undefined,
+        submissionKind: string,
+        questionIds: string[],
+        submission: LessonSubmission,
+        userId: string,
+        lesson: {
+            type: string;
+            content: Record<string, unknown>;
+            practiceConfig: { mode: string; questionIds: mongoose.Types.ObjectId[]; passingScore: number };
+        },
+        lessonId: string,
+    ): Promise<void> {
+        const isDynamic = practiceMode === EPracticeMode.DYNAMIC;
+
+        // Dynamic mode is never acceptable
+        if (isDynamic) {
+            throw new AppError(
+                'Bài học sử dụng bài tập động chưa được hỗ trợ.',
+                HttpStatus.UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        // Load valid published question count for consistent validation
+        // with getLearnerLesson/buildLearnerExercise.
+        // Raw questionIds.length can include unpublished/deleted questions,
+        // causing mismatch between exercise kind shown to learner and
+        // submission kind validation. (Fixes the 400 error)
+        const questionMap = await loadLessonQuestionMap(
+            resolveEffectivePracticeConfig({
+                practiceConfig: lesson.practiceConfig,
+                content: lesson.content,
+            }).questionIds,
+        );
+        const validPublishedCount = questionMap.size;
+
+        switch (lessonType) {
+            case 'VOCAB':
+            case 'GRAMMAR':
+            case 'READING':
+            case 'LISTENING': {
+                // These can be OBJECTIVE (if has published questions) or COMPLETION (if no questions)
+                const hasValidQuestions = validPublishedCount > 0;
+                if (hasValidQuestions && submissionKind !== 'OBJECTIVE') {
+                    throw new AppError(
+                        'Loại bài nộp không phù hợp. Bài học này yêu cầu nộp câu trả lời.',
+                        HttpStatus.BAD_REQUEST,
+                    );
+                }
+                if (!hasValidQuestions && submissionKind !== 'COMPLETION') {
+                    throw new AppError(
+                        'Loại bài nộp không phù hợp. Bài học này không có câu hỏi.',
+                        HttpStatus.BAD_REQUEST,
+                    );
+                }
+                break;
+            }
+
+            case 'SPEAKING': {
+                if (submissionKind !== 'SPEAKING') {
+                    throw new AppError(
+                        'Loại bài nộp không phù hợp. Bài học này yêu cầu nộp bài nói.',
+                        HttpStatus.BAD_REQUEST,
+                    );
+                }
+                // BE-11: Validate sessionId belongs to authenticated learner + current lesson
+                if (submission.kind === 'SPEAKING') {
+                    const sessionId = submission.sessionId;
+                    if (!sessionId) {
+                        throw new AppError(
+                            'Session ID không hợp lệ.',
+                            HttpStatus.BAD_REQUEST,
+                        );
+                    }
+                    // Verify the speaking session exists and belongs to this user/lesson
+                    // by querying UserLessonProgress (the existing speaking-specific progress)
+                    const { UserLessonProgress } = await import('../models/mongo/user-lesson-progress.model.js');
+                    const speakingSession = await UserLessonProgress.findOne({
+                        _id: new mongoose.Types.ObjectId(sessionId),
+                        userId: new mongoose.Types.ObjectId(userId),
+                        lessonId: new mongoose.Types.ObjectId(lessonId),
+                    }).lean().exec();
+
+                    if (!speakingSession) {
+                        throw new AppError(
+                            'Phiên nói không hợp lệ hoặc không thuộc về bạn.',
+                            HttpStatus.FORBIDDEN,
+                        );
+                    }
+                }
+                break;
+            }
+
+            case 'WRITING': {
+                if (submissionKind !== 'WRITING') {
+                    throw new AppError(
+                        'Loại bài nộp không phù hợp. Bài học này yêu cầu nộp bài viết.',
+                        HttpStatus.BAD_REQUEST,
+                    );
+                }
+                // BE-11: Validate word count from lesson content config
+                if (submission.kind === 'WRITING') {
+                    const text = submission.text.trim();
+                    if (text.length === 0) {
+                        throw new AppError(
+                            'Nội dung bài viết không được để trống.',
+                            HttpStatus.BAD_REQUEST,
+                        );
+                    }
+                    // Get authored word count boundaries from lesson content
+                    const config = lesson.content?.['config'] as
+                        | { minWords?: number; maxWords?: number }
+                        | undefined;
+                    const minWords = config?.minWords ?? 0;
+                    const maxWords = config?.maxWords ?? Number.MAX_SAFE_INTEGER;
+
+                    // Count words (split by whitespace)
+                    const wordCount = text.split(/\s+/).filter(Boolean).length;
+
+                    if (wordCount < minWords) {
+                        throw new AppError(
+                            `Bài viết cần ít nhất ${minWords} từ. Bạn đã viết ${wordCount} từ.`,
+                            HttpStatus.BAD_REQUEST,
+                        );
+                    }
+                    if (wordCount > maxWords) {
+                        throw new AppError(
+                            `Bài viết không được vượt quá ${maxWords} từ. Bạn đã viết ${wordCount} từ.`,
+                            HttpStatus.BAD_REQUEST,
+                        );
+                    }
+                }
+                break;
+            }
+
+            case 'UNIT_TEST': {
+                if (submissionKind !== 'OBJECTIVE') {
+                    throw new AppError(
+                        'Bài kiểm tra yêu cầu nộp câu trả lời.',
+                        HttpStatus.BAD_REQUEST,
+                    );
+                }
+                if (validPublishedCount === 0) {
+                    throw new AppError(
+                        'Bài kiểm tra hiện không có câu hỏi hợp lệ.',
+                        HttpStatus.UNPROCESSABLE_ENTITY,
+                    );
+                }
+                break;
+            }
+
+            default:
+                throw new AppError(
+                    'Loại bài học không được hỗ trợ.',
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                );
+        }
     }
 
     /**

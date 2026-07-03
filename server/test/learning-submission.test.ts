@@ -109,11 +109,11 @@ class TestableSubmissionService {
         userId: string,
         lessonId: string,
         clientAttemptId: string,
-        responses: unknown,
+        submission: any,
         durationSeconds: number,
     ): Promise<any> {
         const lesson = await mockLessonModel.findById(lessonId)
-            .select('_id unitId title type orderIndex practiceConfig')
+            .select('_id unitId title type orderIndex practiceConfig content')
             .lean()
             .exec() as any | null;
 
@@ -153,6 +153,8 @@ class TestableSubmissionService {
                 attemptId: String(existingAttempt._id),
                 score: existingAttempt.score,
                 passed: existingAttempt.passed,
+                latestScore: existingAttempt.score,
+                bestScore: existingAttempt.score,
                 feedback: existingAttempt.feedback,
                 progress: { lessonStatus: 'COMPLETED', unitStatus: 'COMPLETED', courseStatus: 'ACTIVE', courseProgressPercent: 50 },
                 nextLessonId: null,
@@ -164,24 +166,42 @@ class TestableSubmissionService {
             progress = { _id: 'progress1', status: 'IN_PROGRESS' } as any;
         }
 
-        const isSubjective = lesson.type === 'SPEAKING' || lesson.type === 'WRITING';
-        const passingScore = lesson.practiceConfig?.passingScore ?? 80;
         const questionIds = lesson.practiceConfig?.questionIds?.map((id: any) => String(id)) ?? [];
 
         let gradingResult: any;
 
-        if (isSubjective) {
-            gradingResult = { score: 100, maxScore: 100, passed: true, feedback: { message: 'Submission received.' } };
-        } else if (questionIds.length > 0) {
-            gradingResult = await mockGrader.gradeResponses(questionIds, (responses ?? {}) as Record<string, unknown>, passingScore);
-        } else {
-            gradingResult = { score: 100, maxScore: 100, passed: true, feedback: { message: 'Completed.' } };
+        // Match submission kind
+        switch (submission.kind) {
+            case 'OBJECTIVE': {
+                if (questionIds.length > 0) {
+                    const responsesMap: Record<string, unknown> = {};
+                    for (const answer of submission.answers) {
+                        responsesMap[answer.questionId] = answer.answer;
+                    }
+                    gradingResult = await mockGrader.gradeResponses(questionIds, responsesMap, lesson.practiceConfig?.passingScore ?? 80);
+                } else {
+                    gradingResult = { score: 0, maxScore: 0, passed: true, summary: 'No questions', questions: [] };
+                }
+                break;
+            }
+            case 'SPEAKING':
+            case 'WRITING':
+                gradingResult = { score: 100, maxScore: 100, passed: true, summary: 'Submitted', questions: [] };
+                break;
+            case 'COMPLETION':
+                gradingResult = { score: 100, maxScore: 100, passed: true, summary: 'Completed', questions: [] };
+                break;
+            default:
+                gradingResult = { score: 0, maxScore: 0, passed: false, summary: 'Invalid', questions: [] };
         }
 
         const attempt = await this.attemptRepo.createAttempt({
             clientAttemptId, userId, enrollmentId: String(enrollment._id), lessonId,
-            submittedAnswers: responses, score: gradingResult.score, passed: gradingResult.passed,
-            feedback: gradingResult.feedback, durationSeconds: Math.min(durationSeconds, 86400),
+            submissionKind: submission.kind,
+            submittedAnswers: submission,
+            score: gradingResult.score, passed: gradingResult.passed,
+            feedback: { summary: gradingResult.summary, questions: gradingResult.questions },
+            durationSeconds: Math.min(durationSeconds, 86400),
         });
 
         if (gradingResult.passed) {
@@ -192,7 +212,9 @@ class TestableSubmissionService {
             attemptId: String(attempt._id),
             score: gradingResult.score,
             passed: gradingResult.passed,
-            feedback: gradingResult.feedback,
+            latestScore: gradingResult.score,
+            bestScore: gradingResult.score,
+            feedback: { summary: gradingResult.summary, questions: gradingResult.questions },
             progress: { lessonStatus: gradingResult.passed ? 'COMPLETED' : 'IN_PROGRESS', unitStatus: 'IN_PROGRESS', courseStatus: 'ACTIVE', courseProgressPercent: 50 },
             nextLessonId: 'next-lesson-id',
         };
@@ -287,7 +309,7 @@ describe('LearningService.submitLesson', () => {
         mockLessonModel.findById.mock.mockImplementation(() => mockChain(null));
 
         await assert.rejects(
-            () => service.submitLesson('user1', 'bad-id', 'uuid-1', {}, 60),
+            () => service.submitLesson('user1', 'bad-id', 'uuid-1', { kind: 'COMPLETION', acknowledged: true }, 60),
             (err: AppError) => {
                 assert.equal(err.statusCode, HttpStatus.NOT_FOUND);
                 return true;
@@ -297,7 +319,7 @@ describe('LearningService.submitLesson', () => {
 
     it('throws 403 when not enrolled', async () => {
         mockLessonModel.findById.mock.mockImplementation(() =>
-            mockChain({ _id: 'lesson1', unitId: 'unit1', type: 'VOCAB', practiceConfig: {} }),
+            mockChain({ _id: 'lesson1', unitId: 'unit1', type: 'VOCAB', practiceConfig: {}, content: {} }),
         );
         mockUnitModel.findById.mock.mockImplementation(() =>
             mockChain({ _id: 'unit1', courseId: 'course1' }),
@@ -305,7 +327,7 @@ describe('LearningService.submitLesson', () => {
         mockEnrollmentRepo.findByUserAndCourse.mock.mockImplementation(() => Promise.resolve(null));
 
         await assert.rejects(
-            () => service.submitLesson('user1', 'lesson1', 'uuid-1', {}, 60),
+            () => service.submitLesson('user1', 'lesson1', 'uuid-1', { kind: 'COMPLETION', acknowledged: true }, 60),
             (err: AppError) => {
                 assert.equal(err.statusCode, HttpStatus.FORBIDDEN);
                 return true;
@@ -315,7 +337,7 @@ describe('LearningService.submitLesson', () => {
 
     it('returns existing attempt idempotently (AC-14)', async () => {
         mockLessonModel.findById.mock.mockImplementation(() =>
-            mockChain({ _id: 'lesson1', unitId: 'unit1', type: 'VOCAB', practiceConfig: { passingScore: 80, questionIds: [] } }),
+            mockChain({ _id: 'lesson1', unitId: 'unit1', type: 'VOCAB', practiceConfig: { passingScore: 80, questionIds: [] }, content: {} }),
         );
         mockUnitModel.findById.mock.mockImplementation(() =>
             mockChain({ _id: 'unit1', courseId: 'course1' }),
@@ -331,11 +353,11 @@ describe('LearningService.submitLesson', () => {
                 _id: 'attempt1',
                 score: 90,
                 passed: true,
-                feedback: { message: 'Great job!' },
+                feedback: { summary: 'Great job!', questions: [] },
             }),
         );
 
-        const result = await service.submitLesson('user1', 'lesson1', 'same-uuid', {}, 60);
+        const result = await service.submitLesson('user1', 'lesson1', 'same-uuid', { kind: 'COMPLETION', acknowledged: true }, 60);
         assert.equal(result.attemptId, 'attempt1');
         assert.equal(result.score, 90);
         assert.equal(result.passed, true);
@@ -347,6 +369,7 @@ describe('LearningService.submitLesson', () => {
                 _id: 'lesson1',
                 unitId: 'unit1',
                 type: 'GRAMMAR',
+                content: {},
                 practiceConfig: {
                     passingScore: 80,
                     questionIds: ['q1', 'q2'],
@@ -367,13 +390,19 @@ describe('LearningService.submitLesson', () => {
             Promise.resolve({ _id: 'progress1', status: 'IN_PROGRESS' }),
         );
         mockGrader.gradeResponses.mock.mockImplementation(() =>
-            Promise.resolve({ score: 50, maxScore: 100, passed: false, feedback: { perQuestion: {} } }),
+            Promise.resolve({ score: 50, maxScore: 100, passed: false, summary: '2/4 correct', questions: [] }),
         );
         mockAttemptRepo.createAttempt.mock.mockImplementation(() =>
             Promise.resolve({ _id: 'attempt-new' }),
         );
 
-        const result = await service.submitLesson('user1', 'lesson1', 'uuid-2', { q1: 'A', q2: 'B' }, 120);
+        const result = await service.submitLesson('user1', 'lesson1', 'uuid-2', {
+            kind: 'OBJECTIVE',
+            answers: [
+                { questionId: 'q1', questionVersion: 1, type: 'MULTIPLE_CHOICE', answer: { selectedOptionId: 'a' } },
+                { questionId: 'q2', questionVersion: 1, type: 'MULTIPLE_CHOICE', answer: { selectedOptionId: 'b' } },
+            ],
+        }, 120);
         assert.equal(result.score, 50);
         assert.equal(result.passed, false);
         assert.equal(result.progress.lessonStatus, 'IN_PROGRESS');
@@ -385,6 +414,7 @@ describe('LearningService.submitLesson', () => {
                 _id: 'lesson1',
                 unitId: 'unit1',
                 type: 'SPEAKING',
+                content: {},
                 practiceConfig: { passingScore: 80, questionIds: [] },
             }),
         );
@@ -405,18 +435,19 @@ describe('LearningService.submitLesson', () => {
             Promise.resolve({ _id: 'attempt-speak' }),
         );
 
-        const result = await service.submitLesson('user1', 'lesson1', 'uuid-3', { audioUrl: '...' }, 180);
+        const result = await service.submitLesson('user1', 'lesson1', 'uuid-3', { kind: 'SPEAKING', sessionId: 'session-1' }, 180);
         assert.equal(result.passed, true);
         assert.equal(result.score, 100);
         assert.equal(result.progress.lessonStatus, 'COMPLETED');
     });
 
-    it('completes non-assessed lessons with no questions', async () => {
+    it('completes non-assessed lessons with no questions (COMPLETION)', async () => {
         mockLessonModel.findById.mock.mockImplementation(() =>
             mockChain({
                 _id: 'lesson1',
                 unitId: 'unit1',
                 type: 'VOCAB',
+                content: {},
                 practiceConfig: { passingScore: 80, questionIds: [] },
             }),
         );
@@ -437,7 +468,7 @@ describe('LearningService.submitLesson', () => {
             Promise.resolve({ _id: 'attempt-vocab' }),
         );
 
-        const result = await service.submitLesson('user1', 'lesson1', 'uuid-4', {}, 60);
+        const result = await service.submitLesson('user1', 'lesson1', 'uuid-4', { kind: 'COMPLETION', acknowledged: true }, 60);
         assert.equal(result.passed, true);
         assert.equal(result.score, 100);
     });

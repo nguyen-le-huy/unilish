@@ -10,7 +10,12 @@ import { LessonMongoRepository } from '../repositories/mongo/lesson.mongo.reposi
 import { QuestionGenerationService } from './question-generation.service.js';
 import { Unit } from '../models/mongo/unit.model.js';
 import { Course } from '../models/mongo/course.model.js';
-import { Question, EQuestionType, EQuestionSkill } from '../models/mongo/question.model.js';
+import {
+    Question,
+    EQuestionType,
+    EQuestionSkill,
+    EQuestionStatus,
+} from '../models/mongo/question.model.js';
 import { Concept, EConceptType } from '../models/mongo/concept.model.js';
 import { grammarTtsQueue } from '../jobs/queues/grammar-tts.queue.js';
 import { ContextAlignmentService } from './context-alignment.service.js';
@@ -302,6 +307,7 @@ export class GrammarService {
             generated.map((question) => ({
                 ...question,
                 skill: EQuestionSkill.GRAMMAR,
+                status: EQuestionStatus.PUBLISHED,
             })),
         );
         const questionIds = inserted.map((item) => item._id.toString());
@@ -348,6 +354,7 @@ export class GrammarService {
                 $match: {
                     testedConcept: existing.testedConcept,
                     type: existing.type,
+                    status: EQuestionStatus.PUBLISHED,
                     _id: { $ne: existing._id },
                 },
             },

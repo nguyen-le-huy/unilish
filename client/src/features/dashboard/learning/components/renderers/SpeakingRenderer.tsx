@@ -1,22 +1,38 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { LearnerSpeakingContent } from './renderer.types';
+import type { LearnerExerciseDto } from '../../types/learning.types';
 import styles from './Renderer.module.css';
 
 interface SpeakingRendererProps {
     content: LearnerSpeakingContent;
+    /** Current speaking session ID (controlled by parent). */
+    sessionId?: string | null;
+    /** Called when the session state changes. */
+    onSessionChange?: (sessionId: string | null) => void;
+    /** Exercise DTO for submission config. */
+    exercise?: LearnerExerciseDto;
 }
 
-const SpeakingRenderer = ({ content }: SpeakingRendererProps) => {
+const SpeakingRenderer = ({
+    content,
+    sessionId,
+    onSessionChange,
+}: SpeakingRendererProps) => {
     const [recording, setRecording] = useState(false);
 
-    const handleStartRecording = () => {
+    const handleStartRecording = useCallback(() => {
         // In production: request microphone, start recording via existing useAudioRecorder
         setRecording(true);
-    };
+        // Simulate a session being created; actual implementation will get a real sessionId
+        // from the server via startLesson or a dedicated session endpoint
+        onSessionChange?.('speaking-session-pending');
+    }, [onSessionChange]);
 
-    const handleStopRecording = () => {
+    const handleStopRecording = useCallback(() => {
         setRecording(false);
-    };
+        // In production: finalize the session and get a real sessionId from the server
+        onSessionChange?.('speaking-session-completed');
+    }, [onSessionChange]);
 
     return (
         <div className={styles.renderer}>
@@ -35,11 +51,14 @@ const SpeakingRenderer = ({ content }: SpeakingRendererProps) => {
                         type="button"
                         className={styles.recordButton}
                         onClick={handleStartRecording}
+                        disabled={!!sessionId && sessionId !== 'speaking-session-pending'}
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <circle cx="12" cy="12" r="6" />
                         </svg>
-                        Bắt đầu ghi âm
+                        {sessionId && sessionId !== 'speaking-session-pending'
+                            ? 'Đã ghi âm'
+                            : 'Bắt đầu ghi âm'}
                     </button>
                 ) : (
                     <button
@@ -52,6 +71,14 @@ const SpeakingRenderer = ({ content }: SpeakingRendererProps) => {
                         </svg>
                         Dừng ghi âm
                     </button>
+                )}
+
+                {/* Session status */}
+                {sessionId && sessionId === 'speaking-session-pending' && (
+                    <p className={styles.recordingHint}>Đang ghi âm...</p>
+                )}
+                {sessionId && sessionId !== 'speaking-session-pending' && (
+                    <p className={styles.recordingDone}>Đã hoàn thành ghi âm</p>
                 )}
             </div>
 

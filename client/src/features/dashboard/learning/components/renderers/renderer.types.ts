@@ -1,4 +1,7 @@
-// ─── Learner-safe content types (no answer-bearing fields) ────────────────────
+// ─── Canonical learner-safe content DTOs (no answer-bearing fields) ──────────
+// These map from the authored Admin content to learner-safe renderer props.
+
+import type { LearnerLessonDto, LearnerExerciseDto, LearnerPracticeQuestionDto } from '../../types/learning.types';
 
 // VOCAB
 export interface LearnerVocabItem {
@@ -165,3 +168,120 @@ export type LearnerContent =
     | LearnerSpeakingContent
     | LearnerWritingContent
     | LearnerUnitTestContent;
+
+// ─── Exercise adapter ─────────────────────────────────────────────────────────
+// Maps from the Lesson DTO into structured renderer props.
+// Do NOT infer exercise kind from `passingScore` alone (per FE-07 spec);
+// always use the `exercise` DTO.
+
+export interface ExerciseSectionProps {
+    /** The exercise kind from the server DTO. */
+    kind: LearnerExerciseDto['kind'];
+    /** Where the exercise is in its lifecycle. */
+    state: 'AVAILABLE' | 'UNAVAILABLE' | 'UNSUPPORTED';
+    /**
+     * Objective questions, populated only when kind === 'OBJECTIVE' and state === 'AVAILABLE'.
+     * These are learner-safe (no answers/explanations).
+     */
+    questions?: LearnerPracticeQuestionDto[];
+    /** Passing score for objective exercises. */
+    passingScore?: number;
+    /** Minimum word count for writing. */
+    minWords?: number;
+    /** Maximum word count for writing. */
+    maxWords?: number;
+}
+
+/**
+ * Adapter that takes the full LearnerLessonDto and returns renderer-friendly
+ * content and exercise props. Handles unavailable/unsupported exercise states.
+ */
+export function adaptLessonToProps(lesson: LearnerLessonDto): {
+    content: LearnerContent | null;
+    exercise: ExerciseSectionProps | null;
+} {
+    const { exercise } = lesson.lesson;
+    const content = lesson.lesson.content as LearnerContent | null;
+
+    if (!exercise) {
+        return { content, exercise: null };
+    }
+
+    switch (exercise.kind) {
+        case 'OBJECTIVE': {
+            // OBJECTIVE with no valid questions and UNIT_TEST → unavailable
+            // OBJECTIVE with no valid questions and content Lesson → completion
+            if (exercise.mode !== 'FIXED') {
+                return {
+                    content,
+                    exercise: {
+                        kind: 'OBJECTIVE',
+                        state: 'UNSUPPORTED',
+                    },
+                };
+            }
+
+            if (exercise.questions.length === 0) {
+                // For UNIT_TEST, no valid questions means unavailable
+                // For other content Lessons, it means non-assessed completion
+                // We let the content Lesson fall through to exercise-less rendering
+                if (content?.type === 'UNIT_TEST') {
+                    return {
+                        content,
+                        exercise: {
+                            kind: 'OBJECTIVE',
+                            state: 'UNAVAILABLE',
+                        },
+                    };
+                }
+                // Non-UNIT_TEST without questions → no practice needed
+                return { content, exercise: null };
+            }
+
+            return {
+                content,
+                exercise: {
+                    kind: 'OBJECTIVE',
+                    state: 'AVAILABLE',
+                    questions: exercise.questions,
+                    passingScore: exercise.passingScore,
+                },
+            };
+        }
+
+        case 'SPEAKING':
+            return {
+                content,
+                exercise: {
+                    kind: 'SPEAKING',
+                    state: 'AVAILABLE',
+                },
+            };
+
+        case 'WRITING':
+            return {
+                content,
+                exercise: {
+                    kind: 'WRITING',
+                    state: 'AVAILABLE',
+                    minWords: exercise.minWords,
+                    maxWords: exercise.maxWords,
+                },
+            };
+
+        case 'COMPLETION':
+            return {
+                content,
+                exercise: null, // No exercise section needed for explicit completion
+            };
+
+        default:
+            return {
+                content,
+                exercise: {
+                    kind: 'OBJECTIVE',
+                    state: 'UNSUPPORTED',
+                },
+            };
+    }
+}

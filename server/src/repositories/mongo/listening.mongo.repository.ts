@@ -56,7 +56,14 @@ export class ListeningMongoRepository {
         const updated = await Lesson
             .findByIdAndUpdate(
                 lessonId,
-                { $set: { content } },
+                {
+                    $set: {
+                        content,
+                        'practiceConfig.mode': content.practiceConfig.mode,
+                        'practiceConfig.questionIds': content.practiceConfig.questionIds,
+                        'practiceConfig.passingScore': content.practiceConfig.passingScore,
+                    },
+                },
                 { new: true, runValidators: false },
             )
             .select('content')
@@ -142,7 +149,13 @@ export class ListeningMongoRepository {
         const result = await Lesson
             .findByIdAndUpdate(
                 lessonId,
-                { $set: { 'content.practiceConfig.questionIds': questionIds } },
+                {
+                    $set: {
+                        'content.practiceConfig.questionIds': questionIds,
+                        'practiceConfig.mode': 'FIXED',
+                        'practiceConfig.questionIds': questionIds,
+                    },
+                },
                 { new: false },
             )
             .select('_id')

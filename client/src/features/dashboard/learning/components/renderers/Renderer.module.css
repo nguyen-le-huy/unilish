@@ -1,12 +1,16 @@
 /* ─── Common ───────────────────────────────────────────────────────────────── */
 
 .renderer {
-  max-width: 760px;
+  max-width: 900px;
   margin: 0 auto;
 }
 
 .lessonContent {
   padding: 0;
+}
+
+.renderer > :first-child {
+  margin-top: 0;
 }
 
 .unsupported {
@@ -37,12 +41,14 @@
 }
 
 .itemList {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 22px;
+  align-items: stretch;
 }
 
 .vocabCard {
+  height: 100%;
   border: 1px solid var(--grey);
   border-radius: 10px;
   padding: 16px 18px 18px;
@@ -258,6 +264,12 @@
   color: var(--body);
 }
 
+@media (max-width: 767px) {
+  .itemList {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 900px) {
   .vocabMain {
     grid-template-columns: minmax(0, 1fr);
@@ -286,9 +298,10 @@
 
 .grammarHero {
   margin-bottom: 32px;
-  padding: 20px;
-  background: #f9f9f9;
-  border-radius: 12px;
+  padding: 22px 24px;
+  background: linear-gradient(135deg, #f3f8f4, #f8fbf8);
+  border: 1px solid #dfe9e0;
+  border-radius: 14px;
 }
 
 .heroHook {
@@ -317,7 +330,8 @@
 }
 
 .explanationBlock {
-  padding: 0;
+  padding: 0 0 22px;
+  border-bottom: 1px solid #edf0ed;
 }
 
 .blockHeading {
@@ -351,9 +365,10 @@
 }
 
 .examplePair {
-  padding: 8px 12px;
-  background: #f9f9f9;
-  border-radius: 8px;
+  padding: 12px 14px;
+  background: #f7f9f7;
+  border: 1px solid #e8ece8;
+  border-radius: 10px;
 }
 
 .exampleEn {
@@ -429,10 +444,10 @@
 /* ─── READING ──────────────────────────────────────────────────────────────── */
 
 .readingText {
-  font-size: var(--text-md);
-  line-height: 1.7;
-  color: black;
-  margin-bottom: 24px;
+  font-size: 17px;
+  line-height: 1.85;
+  color: #273029;
+  margin-bottom: 28px;
 }
 
 .readingText p {
@@ -501,6 +516,23 @@
 
 /* ─── LISTENING ────────────────────────────────────────────────────────────── */
 
+.mediaPlayerRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 30px;
+  padding: 16px 18px;
+  border: 1px solid #dfe8e0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f7faf7, #eef6ef);
+}
+
+.audioPlayer {
+  width: min(100%, 650px);
+  height: 42px;
+  accent-color: #245c32;
+}
+
 .accent {
   font-size: var(--text-sm);
   color: var(--dark-grey);
@@ -508,51 +540,98 @@
 }
 
 .transcript {
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .sectionTitle {
-  font-size: 18px;
-  font-weight: 500;
-  margin: 0 0 12px;
-  color: black;
+  font-size: 13px;
+  font-weight: 750;
+  margin: 0 0 14px;
+  color: #667168;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .transcriptLine {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--grey);
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  column-gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e9ede9;
+  border-left: 3px solid transparent;
+  border-radius: 9px;
+  transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.transcriptLineActive {
+  background: #eef6ef;
+  border-left-color: #2f7840;
+  transform: translateX(3px);
+  box-shadow: 0 5px 16px rgba(36, 92, 50, 0.08);
+}
+
+.transcriptLineActive .speaker {
+  color: #245c32;
+}
+
+.transcriptLineActive .transcriptText {
+  font-weight: 600;
 }
 
 .speaker {
-  font-weight: 500;
-  font-size: var(--text-sm);
-  color: black;
+  grid-row: 1 / span 2;
+  padding-top: 2px;
+  font-weight: 700;
+  font-size: 13px;
+  color: #364239;
 }
 
 .transcriptText {
-  font-size: var(--text-md);
-  color: black;
-  margin: 2px 0;
+  font-size: 16px;
+  line-height: 1.55;
+  color: #202822;
+  margin: 0;
 }
 
 .transcriptTranslation {
-  font-size: var(--text-sm);
-  color: var(--dark-grey);
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #7a847c;
   font-style: italic;
 }
 
 .interactiveInfo {
-  padding: 12px 16px;
-  background: #f9f9f9;
-  border-radius: 8px;
+  padding: 11px 14px;
+  background: #f7f9f7;
+  border: 1px solid #e7ece7;
+  border-radius: 10px;
 }
 
 .interactiveMode {
   font-size: var(--text-sm);
   color: var(--dark-grey);
   margin: 0;
+}
+
+@media (max-width: 640px) {
+  .mediaPlayerRow {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 14px;
+  }
+
+  .audioPlayer { width: 100%; }
+
+  .transcriptLine {
+    grid-template-columns: 1fr;
+    padding: 13px 12px;
+  }
+
+  .speaker {
+    grid-row: auto;
+    margin-bottom: 3px;
+  }
 }
 
 /* ─── SPEAKING ─────────────────────────────────────────────────────────────── */
@@ -782,4 +861,31 @@
   font-size: var(--text-md);
   color: var(--dark-grey);
   font-style: italic;
+}
+
+/* ─── Exercise / Practice section ─────────────────────────────────────────── */
+
+.practiceSection {
+  padding: 48px 0 0;
+  border-top: 1px solid var(--grey);
+  margin-top: 48px;
+}
+
+.practiceSectionTitle {
+  font-size: var(--text-xl);
+  font-weight: 500;
+  color: black;
+  margin: 0 0 4px;
+}
+
+.practiceSectionHint {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  margin: 0 0 24px;
+}
+
+.unsupportedHint {
+  font-size: var(--text-sm);
+  color: var(--dark-grey);
+  margin: 8px 0 0;
 }

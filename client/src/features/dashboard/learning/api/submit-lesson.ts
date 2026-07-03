@@ -1,8 +1,9 @@
 import { apiPostUnwrappedEnvelope } from '@/lib/axios';
+import type { LessonSubmissionKind, LessonQuestionFeedback } from '../types/learning.types';
 
 export interface SubmissionPayload {
     clientAttemptId: string;
-    responses: Record<string, unknown>;
+    submission: LessonSubmissionKind;
     durationSeconds: number;
 }
 
@@ -10,7 +11,12 @@ export interface SubmissionResult {
     attemptId: string;
     score: number | null;
     passed: boolean;
-    feedback: unknown;
+    latestScore: number | null;
+    bestScore: number | null;
+    feedback: {
+        summary: string | null;
+        questions: LessonQuestionFeedback[];
+    } | null;
     progress: {
         lessonStatus: 'IN_PROGRESS' | 'COMPLETED';
         unitStatus: string;

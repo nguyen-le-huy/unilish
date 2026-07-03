@@ -1,20 +1,26 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import type { LearnerWritingContent } from './renderer.types';
+import type { LearnerExerciseDto } from '../../types/learning.types';
 import styles from './Renderer.module.css';
 
 interface WritingRendererProps {
     content: LearnerWritingContent;
+    /** Current writing text (controlled by parent). */
+    text: string;
+    /** Called when the text changes. */
+    onTextChange?: (text: string) => void;
+    /** Exercise DTO for submission config. */
+    exercise?: LearnerExerciseDto;
 }
 
-const WritingRenderer = ({ content }: WritingRendererProps) => {
-    const [text, setText] = useState('');
-
+const WritingRenderer = ({ content, text, onTextChange }: WritingRendererProps) => {
     const wordCount = useMemo(() => {
         const trimmed = text.trim();
         return trimmed ? trimmed.split(/\s+/).length : 0;
     }, [text]);
 
-    const isWithinRange = wordCount >= content.config.minWords && wordCount <= content.config.maxWords;
+    const isWithinRange =
+        wordCount >= content.config.minWords && wordCount <= content.config.maxWords;
 
     return (
         <div className={styles.renderer}>
@@ -45,7 +51,7 @@ const WritingRenderer = ({ content }: WritingRendererProps) => {
                             key={i}
                             type="button"
                             className={styles.starterChip}
-                            onClick={() => setText((prev) => prev + starter + ' ')}
+                            onClick={() => onTextChange?.(text + starter + ' ')}
                         >
                             {starter}
                         </button>
@@ -58,12 +64,14 @@ const WritingRenderer = ({ content }: WritingRendererProps) => {
                 <textarea
                     className={styles.editor}
                     value={text}
-                    onChange={(e) => setText(e.target.value)}
+                    onChange={(e) => onTextChange?.(e.target.value)}
                     placeholder="Viết câu trả lời của bạn..."
                     rows={10}
                     aria-label="Câu trả lời"
                 />
-                <div className={`${styles.wordCount} ${!isWithinRange ? styles.wordCountWarning : ''}`}>
+                <div
+                    className={`${styles.wordCount} ${!isWithinRange ? styles.wordCountWarning : ''}`}
+                >
                     {wordCount} / {content.config.minWords}–{content.config.maxWords} từ
                 </div>
             </div>

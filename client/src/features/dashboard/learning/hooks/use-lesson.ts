@@ -3,6 +3,7 @@ import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '@/types/common';
 import { getLesson } from '../api/get-lesson';
 import { startLesson } from '../api/start-lesson';
+import { restartLesson } from '../api/restart-lesson';
 import { saveCheckpoint, type CheckpointPayload } from '../api/save-checkpoint';
 import { submitLesson, type SubmissionPayload, type SubmissionResult } from '../api/submit-lesson';
 import type { LearnerLessonDto } from '../types/learning.types';
@@ -40,8 +41,20 @@ export const useSaveCheckpoint = () => {
     return useMutation({
         mutationFn: ({ lessonId, payload }: { lessonId: string; payload: CheckpointPayload }) =>
             saveCheckpoint(lessonId, payload),
-        onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: [...LESSON_QUERY_KEY, variables.lessonId] });
+        onSuccess: (result, variables) => {
+            queryClient.setQueryData<LearnerLessonDto>(
+                [...LESSON_QUERY_KEY, variables.lessonId],
+                (current) => current
+                    ? {
+                        ...current,
+                        progress: {
+                            ...current.progress,
+                            checkpoint: variables.payload.checkpoint,
+                            checkpointVersion: result.checkpointVersion,
+                        },
+                    }
+                    : current,
+            );
         },
     });
 };
@@ -53,6 +66,19 @@ export const useSubmitLesson = () => {
         mutationFn: ({ lessonId, payload }) => submitLesson(lessonId, payload),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: [...LESSON_QUERY_KEY, variables.lessonId] });
+            queryClient.invalidateQueries({ queryKey: ['learning', 'dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['learning', 'roadmap'] });
+        },
+    });
+};
+
+export const useRestartLesson = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (lessonId: string) => restartLesson(lessonId),
+        onSuccess: (_, lessonId) => {
+            queryClient.invalidateQueries({ queryKey: [...LESSON_QUERY_KEY, lessonId] });
             queryClient.invalidateQueries({ queryKey: ['learning', 'dashboard'] });
             queryClient.invalidateQueries({ queryKey: ['learning', 'roadmap'] });
         },

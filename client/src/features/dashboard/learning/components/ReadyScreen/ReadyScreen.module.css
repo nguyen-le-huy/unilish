@@ -1,0 +1,86 @@
+/* ─── READY screen ──────────────────────────────────────────────────────────── */
+
+.readyScreen {
+  display: flex;
+  justify-content: center;
+  padding: 64px 24px;
+}
+
+.card {
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  padding: 40px 32px;
+  border: 1px solid #e7e5e4;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.iconWrapper {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.heading {
+  font-size: 22px;
+  font-weight: 500;
+  color: #292524;
+  margin: 0 0 16px;
+  outline: none;
+}
+
+.heading:focus {
+  text-decoration: underline;
+  text-decoration-color: #a8a29e;
+}
+
+.info {
+  font-size: 16px;
+  color: #4e4e4e;
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+
+.infoNumber {
+  font-weight: 600;
+  color: #292524;
+}
+
+.checkpointInfo {
+  font-size: 15px;
+  color: #292524;
+  margin: 12px 0 0;
+  font-weight: 450;
+}
+
+.staleInfo {
+  font-size: 14px;
+  color: #dc2626;
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  background: #fef2f2;
+  border-radius: 8px;
+}
+
+.startButton {
+  margin-top: 24px;
+  padding: 12px 32px;
+  background: #292524;
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.startButton:hover {
+  background: #0c0a09;
+}
+
+.startButton:focus-visible {
+  outline: 2px solid #292524;
+  outline-offset: 2px;
+}

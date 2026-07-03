@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { LearnerReadingContent } from './renderer.types';
+import { getPlayableAudioSources } from './audio-url';
 import styles from './Renderer.module.css';
 
 interface ReadingRendererProps {
@@ -9,14 +10,15 @@ interface ReadingRendererProps {
 const ReadingRenderer = ({ content }: ReadingRendererProps) => {
     const [showTranslation, setShowTranslation] = useState(false);
     const [showGlossary, setShowGlossary] = useState(false);
+    const audioSrc = getPlayableAudioSources(content.media.audioUrl)[0];
 
     return (
         <div className={styles.renderer}>
             {/* Audio */}
-            {content.media.audioUrl && (
-                <div className={styles.audioRow}>
+            {audioSrc && (
+                <div className={styles.mediaPlayerRow}>
                     <audio
-                        src={content.media.audioUrl}
+                        src={audioSrc}
                         controls
                         className={styles.audioPlayer}
                         preload="none"

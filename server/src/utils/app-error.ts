@@ -4,12 +4,18 @@ export class AppError extends Error {
     public statusCode: number;
     public status: string;
     public isOperational: boolean;
+    public data: Record<string, unknown> | null;
 
-    constructor(message: string, statusCode: number = HttpStatus.INTERNAL_SERVER_ERROR) {
+    constructor(
+        message: string,
+        statusCode: number = HttpStatus.INTERNAL_SERVER_ERROR,
+        data: Record<string, unknown> | null = null,
+    ) {
         super(message);
         this.statusCode = statusCode;
         this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
         this.isOperational = true;
+        this.data = data;
 
         Error.captureStackTrace(this, this.constructor);
     }

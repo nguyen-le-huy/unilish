@@ -4,16 +4,21 @@ import { logger } from '../utils/logger.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export interface PerQuestionFeedback {
+    questionId: string;
+    correct: boolean;
+    maxScore: number;
+    learnerAnswer: unknown;
+    correctAnswer: unknown;
+    explanation: string | null;
+}
+
 export interface GradingResult {
     score: number;
     maxScore: number;
     passed: boolean;
-    feedback: Record<string, unknown>;
-}
-
-interface QuestionAnswer {
-    questionId: string;
-    answer: unknown;
+    summary: string | null;
+    questions: PerQuestionFeedback[];
 }
 
 interface QuestionDoc {
@@ -42,7 +47,57 @@ export function normalizeAnswer(text: string): string {
         .replace(/[.!?]+$/g, '');
 }
 
+// ─── Correct answer extractors ────────────────────────────────────────────────
+
+function getCorrectAnswerMC(question: QuestionDoc): unknown {
+    const content = question.content as Record<string, unknown>;
+    const options = content['options'] as Array<Record<string, unknown>> | undefined;
+    if (!Array.isArray(options)) return null;
+    const correctOption = options.find((opt) => opt['isCorrect'] === true);
+    return correctOption ? String(correctOption['id']) : null;
+}
+
+function getCorrectAnswerFill(question: QuestionDoc): unknown {
+    const content = question.content as Record<string, unknown>;
+    const correctAnswers = content['correctAnswers'] as string[] | undefined;
+    return Array.isArray(correctAnswers) && correctAnswers.length > 0
+        ? correctAnswers[0]!
+        : null;
+}
+
+function getCorrectAnswerTF(question: QuestionDoc): unknown {
+    const content = question.content as Record<string, unknown>;
+    return content['isTrue'] as boolean ?? null;
+}
+
+function getCorrectAnswerMatching(question: QuestionDoc): unknown {
+    const content = question.content as Record<string, unknown>;
+    const pairs = content['pairs'] as Array<Record<string, unknown>> | undefined;
+    if (!Array.isArray(pairs)) return null;
+    const correctMap: Record<string, string> = {};
+    for (const pair of pairs) {
+        const leftId = String(pair['leftId'] ?? pair['id'] ?? '');
+        const rightId = String(pair['rightId'] ?? pair['matchId'] ?? '');
+        if (leftId && rightId) {
+            correctMap[leftId] = rightId;
+        }
+    }
+    return correctMap;
+}
+
+function getCorrectAnswerError(question: QuestionDoc): unknown {
+    const content = question.content as Record<string, unknown>;
+    return content['correctText'] as string ?? null;
+}
+
 // ─── Type-specific graders ────────────────────────────────────────────────────
+
+interface GradeResult {
+    correct: boolean;
+    maxScore: number;
+    correctCount?: number;
+    totalPairs?: number;
+}
 
 /**
  * Grade a MULTIPLE_CHOICE question.
@@ -51,7 +106,7 @@ export function normalizeAnswer(text: string): string {
 function gradeMultipleChoice(
     question: QuestionDoc,
     studentAnswer: unknown,
-): { correct: boolean; maxScore: number } {
+): GradeResult {
     const content = question.content as Record<string, unknown>;
     const options = content['options'] as Array<Record<string, unknown>> | undefined;
 
@@ -75,7 +130,7 @@ function gradeMultipleChoice(
 function gradeFillInBlank(
     question: QuestionDoc,
     studentAnswer: unknown,
-): { correct: boolean; maxScore: number } {
+): GradeResult {
     const content = question.content as Record<string, unknown>;
     const correctAnswers = content['correctAnswers'] as string[] | undefined;
 
@@ -98,7 +153,7 @@ function gradeFillInBlank(
 function gradeTrueFalse(
     question: QuestionDoc,
     studentAnswer: unknown,
-): { correct: boolean; maxScore: number } {
+): GradeResult {
     const content = question.content as Record<string, unknown>;
     const isTrue = content['isTrue'] as boolean | undefined;
 
@@ -117,7 +172,7 @@ function gradeTrueFalse(
 function gradeErrorCorrection(
     question: QuestionDoc,
     studentAnswer: unknown,
-): { correct: boolean; maxScore: number } {
+): GradeResult {
     const content = question.content as Record<string, unknown>;
     const correctText = content['correctText'] as string | undefined;
 
@@ -140,7 +195,7 @@ function gradeErrorCorrection(
 function gradeMatching(
     question: QuestionDoc,
     studentAnswer: unknown,
-): { correct: boolean; maxScore: number; correctCount: number; totalPairs: number } {
+): GradeResult {
     const content = question.content as Record<string, unknown>;
     const pairs = content['pairs'] as Array<Record<string, unknown>> | undefined;
 
@@ -177,10 +232,13 @@ function gradeMatching(
  * Grade a set of student responses against the authored questions.
  *
  * Loads question definitions from the database, grades each response,
- * and returns aggregate score, pass/fail, and per-question feedback.
+ * and returns aggregate score, pass/fail, and per-question feedback with
+ * correct answers and explanations (post-submit only).
  *
- * For non-objective types (ESSAY, PRONUNCIATION), returns null score
- * with a feedback placeholder — actual evaluation happens asynchronously.
+ * For non-objective types (ESSAY, PRONUNCIATION), returns 0 score
+ * with the feedback indicating the question was not gradable.
+ *
+ * Implements FR-08, AC-26, AC-28.
  */
 export async function gradeResponses(
     questionIds: string[],
@@ -191,12 +249,13 @@ export async function gradeResponses(
         return {
             score: 0,
             maxScore: 0,
-            passed: true, // No questions = auto-pass
-            feedback: { message: 'No questions to grade' },
+            passed: true,
+            summary: 'No questions to grade',
+            questions: [],
         };
     }
 
-    // Load all questions
+    // Load all questions from authoritative source
     const questions = await Question.find({
         _id: { $in: questionIds.map((id) => new mongoose.Types.ObjectId(id)) },
     })
@@ -209,7 +268,8 @@ export async function gradeResponses(
             score: 0,
             maxScore: 0,
             passed: false,
-            feedback: { message: 'No valid questions found' },
+            summary: 'No valid questions found',
+            questions: [],
         };
     }
 
@@ -220,7 +280,7 @@ export async function gradeResponses(
 
     let totalScore = 0;
     let maxTotalScore = 0;
-    const perQuestionFeedback: Record<string, unknown> = {};
+    const perQuestionFeedback: PerQuestionFeedback[] = [];
 
     for (const qId of questionIds) {
         const question = questionMap.get(qId);
@@ -232,76 +292,85 @@ export async function gradeResponses(
         const studentAnswer = responses[qId];
         const questionType = question.type;
 
-        let result: { correct: boolean; maxScore: number; [key: string]: unknown };
+        let result: GradeResult;
+        let correctAnswer: unknown;
 
         switch (questionType) {
             case 'MULTIPLE_CHOICE':
                 result = gradeMultipleChoice(question, studentAnswer);
+                correctAnswer = getCorrectAnswerMC(question);
                 break;
             case 'FILL_IN_BLANK':
                 result = gradeFillInBlank(question, studentAnswer);
+                correctAnswer = getCorrectAnswerFill(question);
                 break;
             case 'TRUE_FALSE':
                 result = gradeTrueFalse(question, studentAnswer);
+                correctAnswer = getCorrectAnswerTF(question);
                 break;
             case 'ERROR_CORRECTION':
                 result = gradeErrorCorrection(question, studentAnswer);
+                correctAnswer = getCorrectAnswerError(question);
                 break;
             case 'MATCHING':
                 result = gradeMatching(question, studentAnswer);
+                correctAnswer = getCorrectAnswerMatching(question);
                 break;
             case 'ESSAY':
             case 'PRONUNCIATION':
                 // Non-objective: mark as ungraded
                 result = { correct: false, maxScore: 1 };
+                correctAnswer = null;
                 break;
             default:
                 logger.warn('Unknown question type for grading', { type: questionType });
                 result = { correct: false, maxScore: 1 };
+                correctAnswer = null;
         }
 
         totalScore += result.correct ? result.maxScore : 0;
         maxTotalScore += result.maxScore;
 
-        perQuestionFeedback[qId] = {
+        perQuestionFeedback.push({
+            questionId: qId,
             correct: result.correct,
             maxScore: result.maxScore,
-            ...(result as any).correctCount !== undefined
-                ? { correctCount: (result as any).correctCount, totalPairs: (result as any).totalPairs }
-                : {},
+            learnerAnswer: studentAnswer ?? null,
+            correctAnswer,
             explanation: question.explanation ?? null,
-        };
+            ...(result.correctCount !== undefined
+                ? { correctCount: result.correctCount, totalPairs: result.totalPairs }
+                : {}),
+        } as PerQuestionFeedback & { correctCount?: number; totalPairs?: number });
     }
 
     const score = maxTotalScore > 0
         ? Math.round((totalScore / maxTotalScore) * 100)
         : 0;
 
+    const failedCount = perQuestionFeedback.filter((q) => !q.correct).length;
+
     return {
         score,
         maxScore: maxTotalScore,
         passed: score >= passingScore,
-        feedback: {
-            totalScore,
-            maxTotalScore,
-            percentage: score,
-            perQuestion: perQuestionFeedback,
-        },
+        summary: failedCount > 0
+            ? `Bạn đã trả lời đúng ${totalScore}/${maxTotalScore} câu.`
+            : 'Chúc mừng! Bạn đã trả lời đúng tất cả các câu hỏi.',
+        questions: perQuestionFeedback,
     };
 }
 
 /**
  * Grade Speaking/Writing — always passes with evaluation-as-feedback.
- * Objective questions embedded in these lessons are graded normally;
- * the subjective evaluation is placeholder until AI grading completes.
+ * The subjective evaluation is placeholder until AI grading completes.
  */
 export function gradeSubjectivePass(): GradingResult {
     return {
         score: 100,
         maxScore: 100,
         passed: true,
-        feedback: {
-            message: 'Submission received. Evaluation pending.',
-        },
+        summary: 'Bài nói/bài viết của bạn đã được ghi nhận.',
+        questions: [],
     };
 }

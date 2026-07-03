@@ -1,384 +1,286 @@
-/* ─── Player layout ────────────────────────────────────────────────────────── */
-
 .player {
+  --learning-green: #245c32;
+  --learning-green-dark: #174523;
+  --learning-green-soft: #eef6ef;
+  --learning-ink: #17211a;
+  --learning-muted: #667168;
+  --learning-line: #e2e8e2;
   display: flex;
+  position: relative;
   flex-direction: column;
   height: 100%;
-  max-height: calc(100vh - 64px); /* account for top nav */
+  max-height: calc(100vh - 64px);
   overflow: hidden;
+  color: var(--learning-ink);
+  background: #f5f7f5;
 }
 
-/* ─── Top bar ──────────────────────────────────────────────────────────────── */
-
 .topBar {
+  min-height: 58px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--grey);
-  background: white;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--learning-line);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
   flex-shrink: 0;
+  z-index: 4;
 }
 
-.breadcrumb {
+.breadcrumb,
+.topRight,
+.backButton,
+.roadmapToggle,
+.bottomBar,
+.navButton,
+.bottomCenter,
+.questionNav,
+.courseProgressMeta,
+.roadmapOverviewTop,
+.lessonHeaderMeta {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: var(--text-sm);
-  min-width: 0;
 }
+
+.breadcrumb { gap: 10px; min-width: 0; font-size: 13px; }
+.topRight { gap: 12px; flex-shrink: 0; }
 
 .backButton {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--dark-grey);
-  font-size: var(--text-sm);
-  padding: 4px;
+  gap: 8px;
   min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--learning-muted);
+  cursor: pointer;
+  padding: 7px 9px;
+  border-radius: 8px;
+  font: inherit;
+  transition: color 160ms ease, background 160ms ease;
 }
 
-.backButton:hover {
-  color: black;
-}
+.backButton:hover { color: var(--learning-green); background: var(--learning-green-soft); }
+.breadcrumbText { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.breadcrumbSep { color: #b4bcb5; }
+.breadcrumbCurrent { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--learning-ink); font-weight: 600; }
 
-.breadcrumbText {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 200px;
-}
-
-.breadcrumbSep {
-  color: var(--dark-grey);
-}
-
-.breadcrumbCurrent {
-  color: black;
-  font-weight: 450;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 300px;
-}
-
-.topRight {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.saveStatus {
-  font-size: var(--text-sm);
-  white-space: nowrap;
-}
-
-.savesaving { color: #d97706; }
-.savesaved { color: #16a34a; }
-.saveunsaved { color: var(--dark-grey); }
-.saveconflict { color: #dc2626; }
+.saveStatus { font-size: 13px; white-space: nowrap; }
+.savesaving { color: #b45309; }
+.savesaved { color: #15803d; }
+.saveunsaved { color: var(--learning-muted); }
+.saveconflict, .savepermissionDenied { color: #dc2626; }
 
 .roadmapToggle {
-  background: none;
-  border: 1px solid var(--grey);
-  border-radius: 8px;
-  padding: 6px;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--learning-green);
+  background: #fff;
+  border: 1px solid var(--learning-line);
+  border-radius: 10px;
   cursor: pointer;
-  color: var(--dark-grey);
-  display: flex;
-  align-items: center;
+  box-shadow: 0 1px 2px rgba(20, 49, 27, 0.05);
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
-.roadmapToggle:hover {
-  background: #f0f0f0;
-}
+.roadmapToggle:hover { background: var(--learning-green-soft); border-color: #bfd5c2; transform: translateY(-1px); }
 
-/* ─── Body ─────────────────────────────────────────────────────────────────── */
-
-.body {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-/* ─── Roadmap sidebar ──────────────────────────────────────────────────────── */
+.body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 
 .roadmapSidebar {
-  width: 280px;
+  width: 310px;
   flex-shrink: 0;
   overflow-y: auto;
-  border-right: 1px solid var(--grey);
+  border-right: 1px solid var(--learning-line);
+  padding: 22px 18px 28px;
+  background: #fff;
+  scrollbar-width: thin;
+  scrollbar-color: #ccd5cd transparent;
+}
+
+.roadmapOverview {
   padding: 16px;
-  background: #fafafa;
+  margin-bottom: 22px;
+  border: 1px solid #dfe9e0;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #f8fbf8 0%, #edf6ef 100%);
 }
 
-.roadmapTitle {
-  font-size: var(--text-md);
-  font-weight: 500;
-  margin: 0 0 16px;
-  color: black;
-}
-
-.roadmapUnit {
-  margin-bottom: 16px;
-}
-
-.roadmapUnitTitle {
-  display: block;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: black;
-  margin-bottom: 4px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: #f0f0f0;
-}
+.roadmapOverviewTop { justify-content: space-between; gap: 12px; align-items: flex-start; }
+.roadmapEyebrow { display: block; margin-bottom: 5px; color: var(--learning-muted); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.roadmapTitle { margin: 0; color: var(--learning-ink); font-size: 15px; line-height: 1.35; font-weight: 700; }
+.levelPill { flex: none; padding: 4px 8px; border-radius: 999px; background: var(--learning-green); color: #fff; font-size: 11px; font-weight: 700; }
+.courseProgressMeta { justify-content: space-between; margin-top: 16px; color: var(--learning-muted); font-size: 12px; }
+.courseProgressMeta strong { color: var(--learning-green); font-size: 12px; }
+.courseProgressTrack { height: 6px; margin-top: 7px; overflow: hidden; border-radius: 999px; background: #dce7dd; }
+.courseProgressTrack span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4f915d, var(--learning-green)); transition: width 300ms ease; }
+.roadmapSectionLabel { margin: 0 8px 14px; color: #8a938b; font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+.roadmapUnit { margin-bottom: 18px; }
+.roadmapUnitTitle { display: block; padding: 0 9px 7px; color: #4c574e; font-size: 12px; font-weight: 700; line-height: 1.4; }
 
 .roadmapLesson {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 8px;
-  border: none;
-  background: none;
+  gap: 10px;
+  padding: 9px 10px;
+  margin: 2px 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--learning-muted);
   cursor: pointer;
   text-align: left;
-  border-radius: 6px;
-  font-size: var(--text-sm);
-  color: var(--dark-grey);
+  font-size: 13px;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
 }
 
-.roadmapLesson:hover {
-  background: #f0f0f0;
-}
-
-.roadmapLessonActive {
-  background: #e8f0fe;
-  color: #1a73e8;
-  font-weight: 450;
-}
-
-.lessonBadge {
-  width: 16px;
-  text-align: center;
-  flex-shrink: 0;
-  font-size: 12px;
-}
-
-.roadmapLessonTitle {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ─── Content area ─────────────────────────────────────────────────────────── */
+.roadmapLesson:hover { color: var(--learning-ink); background: #f5f8f5; }
+.roadmapLessonActive { color: var(--learning-green-dark); background: var(--learning-green-soft); border-color: #d1e4d4; font-weight: 650; }
+.lessonBadge { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex: none; border: 1px solid #d5ddd6; border-radius: 50%; background: #fff; color: var(--learning-green); font-size: 10px; }
+.roadmapLessonActive .lessonBadge { border-color: var(--learning-green); background: var(--learning-green); color: #fff; }
+.roadmapLessonTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .contentArea {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 32px;
+  padding: 34px clamp(24px, 4vw, 64px) 48px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(49, 112, 63, 0.07), transparent 30%),
+    #f5f7f5;
 }
 
-.lessonHeader {
-  margin-bottom: 24px;
+.lessonSurface {
+  width: min(100%, 1080px);
+  min-height: calc(100% - 4px);
+  margin: 0 auto;
+  padding: clamp(24px, 4vw, 48px);
+  border: 1px solid var(--learning-line);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 14px 45px rgba(32, 62, 39, 0.07), 0 2px 8px rgba(32, 62, 39, 0.04);
 }
 
-.lessonType {
-  font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--dark-grey);
-}
-
-.lessonTitle {
-  font-size: 24px;
-  font-weight: 500;
-  margin: 4px 0 0;
-  color: black;
-}
-
-.passingInfo {
-  margin-top: 24px;
-  font-size: var(--text-sm);
-  color: var(--dark-grey);
-  text-align: center;
-}
-
-/* ─── Bottom bar ───────────────────────────────────────────────────────────── */
+.lessonHeader { padding-bottom: 24px; margin-bottom: 30px; border-bottom: 1px solid #edf0ed; }
+.lessonHeaderMeta { justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.lessonType { display: inline-flex; align-items: center; gap: 8px; color: var(--learning-green); font-size: 12px; font-weight: 750; letter-spacing: 0.09em; text-transform: uppercase; }
+.lessonTypeDot { width: 7px; height: 7px; border-radius: 50%; background: #4f915d; box-shadow: 0 0 0 4px #e7f2e9; }
+.lessonOrder { color: #8a938b; font-size: 12px; font-weight: 600; }
+.lessonTitle { margin: 0; color: var(--learning-ink); font-size: clamp(28px, 3vw, 40px); font-weight: 700; letter-spacing: -0.035em; line-height: 1.15; }
+.lessonSubtitle { margin: 10px 0 0; color: var(--learning-muted); font-size: 15px; }
+.passingInfo { margin-top: 24px; color: var(--learning-muted); font-size: 13px; text-align: center; }
 
 .bottomBar {
-  display: flex;
-  align-items: center;
+  min-height: 66px;
   justify-content: space-between;
-  padding: 12px 16px;
-  border-top: 1px solid var(--grey);
-  background: white;
+  padding: 10px 24px;
+  border-top: 1px solid var(--learning-line);
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(12px);
   flex-shrink: 0;
+  z-index: 3;
 }
 
 .navButton {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: none;
-  border: 1px solid var(--grey);
-  border-radius: 8px;
-  padding: 8px 16px;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #d8dfd9;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--learning-ink);
   cursor: pointer;
-  font-size: var(--text-sm);
-  color: black;
+  font-size: 13px;
+  font-weight: 600;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
 
-.navButton:hover {
-  background: #f0f0f0;
-}
+.navButton:hover { color: var(--learning-green); border-color: #adc9b2; background: var(--learning-green-soft); transform: translateY(-1px); }
+.navButtonDisabled { opacity: 0.38; cursor: default; pointer-events: none; }
+.bottomCenter { gap: 10px; }
+.saveIndicator, .answeredCount { color: var(--learning-muted); font-size: 13px; }
 
-.navButtonDisabled {
-  opacity: 0.4;
-  cursor: default;
-  pointer-events: none;
-}
-
-.saveIndicator {
-  font-size: var(--text-sm);
-  color: var(--dark-grey);
-}
-
-/* ─── Bottom center ────────────────────────────────────────────────────────── */
-
-.bottomCenter {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* ─── Submit / Complete button ─────────────────────────────────────────────── */
-
-.submitButton {
-  padding: 10px 24px;
-  background: #16a34a;
-  color: white;
-  border: none;
-  border-radius: 9999px;
-  font-size: var(--text-md);
+.submitButton,
+.primaryButton {
+  min-height: 42px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--learning-green);
+  color: #fff;
   cursor: pointer;
-  font-weight: 450;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 5px 14px rgba(36, 92, 50, 0.2);
+  transition: background 150ms ease, transform 150ms ease, box-shadow 150ms ease;
 }
 
-.submitButton:hover {
-  background: #15803d;
-}
+.submitButton:hover, .primaryButton:hover { background: var(--learning-green-dark); transform: translateY(-1px); box-shadow: 0 7px 18px rgba(36, 92, 50, 0.25); }
+.submitButton:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
+.completedBadge { padding: 6px 11px; border: 1px solid #b9d7bf; border-radius: 999px; color: var(--learning-green); background: var(--learning-green-soft); font-size: 12px; font-weight: 700; }
+.retryButton { min-height: 36px; padding: 0 14px; border: 1px solid #b8cdbb; border-radius: 9px; background: #fff; color: var(--learning-green); cursor: pointer; font-size: 12px; font-weight: 650; }
+.retryButton:hover { background: var(--learning-green-soft); }
+.retryButton:disabled { opacity: 0.5; cursor: default; }
 
-.submitButton:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
+.questionNav, .submitRow { justify-content: space-between; gap: 16px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--learning-line); }
+.questionNavCenter { display: flex; flex-direction: column; gap: 3px; }
+.submitRow { display: flex; justify-content: flex-end; }
+.submittingOverlay { display: flex; justify-content: center; padding: 54px 24px; }
+.submittingText { color: var(--learning-muted); font-size: 16px; font-weight: 600; }
 
-.completedBadge {
-  font-size: var(--text-sm);
-  color: #16a34a;
-  font-weight: 450;
-  padding: 4px 12px;
-  border: 1px solid #16a34a;
-  border-radius: 9999px;
-}
-
-/* ─── Submit error ─────────────────────────────────────────────────────────── */
-
-.submitError {
-  margin-top: 16px;
-  padding: 12px 16px;
-  background: #fef2f2;
-  border: 1px solid #dc2626;
-  border-radius: 8px;
+.submitError,
+.conflictBanner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 11px;
 }
 
-.submitError p {
-  font-size: var(--text-sm);
-  color: #dc2626;
-  margin: 0;
+.submitError { border: 1px solid #fecaca; background: #fff5f5; }
+.submitError p { margin: 0; color: #b91c1c; font-size: 13px; }
+.retrySubmitButton { padding: 5px 11px; border: 1px solid #ef4444; border-radius: 8px; background: #fff; color: #b91c1c; cursor: pointer; }
+.conflictBanner { align-items: flex-start; border: 1px solid #f1d397; background: #fffaf0; }
+.conflictBannerContent { flex: 1; min-width: 0; }
+.conflictBannerTitle { margin: 0 0 4px; color: #92400e; font-size: 14px; font-weight: 700; }
+.conflictBannerText { margin: 0; color: #a16207; font-size: 13px; line-height: 1.45; }
+.conflictLoadButton { padding: 7px 13px; border: 0; border-radius: 8px; background: #78350f; color: #fff; cursor: pointer; font-size: 12px; }
+
+.stateContainer { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 48px; text-align: center; }
+.stateTitle { margin: 0; color: var(--learning-ink); font-size: 20px; font-weight: 700; }
+.stateDescription { max-width: 420px; margin: 0; color: var(--learning-muted); font-size: 14px; line-height: 1.6; }
+.primaryButton { margin-top: 6px; }
+
+.skeletonBar, .skeletonContent { background: linear-gradient(90deg, #edf1ed 25%, #e2e8e3 50%, #edf1ed 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+.skeletonBar { height: 58px; flex-shrink: 0; }
+.skeletonContent { flex: 1; margin: 32px; border-radius: 20px; }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+@media (max-width: 980px) {
+  .roadmapSidebar { width: 270px; }
+  .contentArea { padding: 24px; }
+  .lessonSurface { padding: 28px; }
 }
 
-.retrySubmitButton {
-  background: none;
-  border: 1px solid #dc2626;
-  border-radius: 9999px;
-  padding: 4px 12px;
-  font-size: var(--text-sm);
-  color: #dc2626;
-  cursor: pointer;
-  white-space: nowrap;
+@media (max-width: 760px) {
+  .player { max-height: none; min-height: calc(100vh - 64px); overflow: visible; }
+  .body { overflow: visible; }
+  .roadmapSidebar { position: absolute; inset: 58px auto 66px 0; width: min(86vw, 320px); z-index: 10; box-shadow: 18px 0 35px rgba(23, 69, 35, 0.14); }
+  .contentArea { overflow: visible; padding: 14px; }
+  .lessonSurface { min-height: 0; padding: 22px 18px; border-radius: 14px; }
+  .topBar { padding: 0 14px; }
+  .breadcrumbSep, .breadcrumbCurrent { display: none; }
+  .breadcrumbText { max-width: 190px; }
+  .bottomBar { position: sticky; bottom: 0; padding: 9px 12px; }
+  .navButton { padding: 0 11px; }
+  .lessonTitle { font-size: 28px; }
 }
 
-/* ─── States ───────────────────────────────────────────────────────────────── */
-
-.stateContainer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  height: 100%;
-  gap: 12px;
-  padding: 40px;
-}
-
-.stateTitle {
-  font-size: 18px;
-  font-weight: 500;
-  color: black;
-}
-
-.stateDescription {
-  font-size: var(--text-md);
-  color: var(--dark-grey);
-  max-width: 300px;
-}
-
-.primaryButton {
-  background: black;
-  color: white;
-  border: none;
-  border-radius: 9999px;
-  padding: 10px 24px;
-  font-size: var(--text-md);
-  cursor: pointer;
-  margin-top: 8px;
-}
-
-.primaryButton:hover {
-  background: #333;
-}
-
-/* ─── Skeleton ─────────────────────────────────────────────────────────────── */
-
-.skeletonBar {
-  height: 48px;
-  background: linear-gradient(90deg, var(--grey) 25%, #e0e0e0 50%, var(--grey) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  flex-shrink: 0;
-}
-
-.skeletonContent {
-  flex: 1;
-  margin: 24px;
-  border-radius: 12px;
-  background: linear-gradient(90deg, var(--grey) 25%, #e0e0e0 50%, var(--grey) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+@media (max-width: 460px) {
+  .breadcrumbText { max-width: 130px; }
+  .navButton { font-size: 0; width: 42px; justify-content: center; padding: 0; }
+  .navButton svg { width: 18px; height: 18px; }
 }

@@ -137,10 +137,13 @@ const CourseOverviewPage = () => {
                             />
                         )}
                         <div className={styles.headerMeta}>
+                            <span className={styles.heroEyebrow}>Tổng quan khóa học</span>
                             <h1 className={styles.title}>{course.name}</h1>
-                            <p className={styles.subtitle}>
-                                {course.language.name} · {course.level} · {course.learningGoal.title}
-                            </p>
+                            <div className={styles.courseBadges}>
+                                <span>{course.language.name}</span>
+                                <span>{course.level}</span>
+                                <span>{course.learningGoal.title}</span>
+                            </div>
                             {course.description && (
                                 <p className={styles.description}>{course.description}</p>
                             )}
@@ -171,13 +174,20 @@ const CourseOverviewPage = () => {
                         />
                     )}
                     <div className={styles.headerMeta}>
+                        <span className={styles.heroEyebrow}>Tổng quan khóa học</span>
                         <h1 className={styles.title}>{course.name}</h1>
-                        <p className={styles.subtitle}>
-                            {course.language.name} · {course.level} · {course.learningGoal.title}
-                        </p>
+                        <div className={styles.courseBadges}>
+                            <span>{course.language.name}</span>
+                            <span>{course.level}</span>
+                            <span>{course.learningGoal.title}</span>
+                        </div>
                         {course.description && (
                             <p className={styles.description}>{course.description}</p>
                         )}
+                        <div className={styles.progressHeading}>
+                            <span>Tiến độ khóa học</span>
+                            <strong>{progressPercent}%</strong>
+                        </div>
                         <div className={styles.progressRow}>
                             <div className={styles.progressTrack}>
                                 <div
@@ -185,7 +195,6 @@ const CourseOverviewPage = () => {
                                     style={{ width: `${progressPercent}%` }}
                                 />
                             </div>
-                            <span className={styles.progressLabel}>{progressPercent}%</span>
                         </div>
                         {(enrollment.status === 'ACTIVE' || enrollment.status === 'COMPLETED') && (
                             <Button
@@ -206,6 +215,13 @@ const CourseOverviewPage = () => {
 
             {/* Roadmap */}
             <div className={styles.roadmap}>
+                <div className={styles.roadmapHeading}>
+                    <div>
+                        <span className={styles.roadmapEyebrow}>Lộ trình học tập</span>
+                        <h2>Nội dung khóa học</h2>
+                    </div>
+                    <span className={styles.unitCount}>{units.length} chương</span>
+                </div>
                 {units.map((unit) => {
                     const isExpanded = expandedUnits.has(unit.id) || unit.lessons.some((l) => l.status === 'IN_PROGRESS');
                     return (
@@ -218,11 +234,16 @@ const CourseOverviewPage = () => {
                             >
                                 <div className={styles.unitTitleRow}>
                                     <span className={styles.unitTitle}>
-                                        Bài {unit.orderIndex}: {unit.title}
+                                        Chương {unit.orderIndex}: {unit.title}
                                     </span>
-                                    <span className={`${styles.unitProgress} ${STATUS_CLASS[unit.status]}`}>
-                                        {formatUnitProgress(unit.progressPercent)}
-                                    </span>
+                                    <div className={styles.unitProgressArea}>
+                                        <div className={styles.unitProgressTrack}>
+                                            <span style={{ width: `${unit.progressPercent}%` }} />
+                                        </div>
+                                        <span className={`${styles.unitProgress} ${STATUS_CLASS[unit.status]}`}>
+                                            {formatUnitProgress(unit.progressPercent)}
+                                        </span>
+                                    </div>
                                 </div>
                                 <span className={styles.unitLessonCount}>
                                     {unit.lessons.length} bài học

@@ -1,108 +1,34 @@
 .card {
   display: flex;
   flex-direction: column;
-  min-height: 534px;
-  border: 1px solid var(--dark-grey);
+  min-height: 430px;
+  padding: 24px 26px;
+  border: 1px solid #e0e7e1;
   border-radius: 20px;
-  background: white;
-  padding: 20px;
+  background: #fff;
+  box-shadow: 0 10px 32px rgba(31, 65, 39, 0.06);
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
+.header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid #edf0ed; }
+.title { margin: 0; color: #17211a; font-size: 20px; font-weight: 700; letter-spacing: -0.015em; }
+.viewAllButton { padding: 7px 11px; border: 1px solid #dbe5dd; border-radius: 9px; background: #f8faf8; color: #245c32; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
+.viewAllButton:hover { background: #eef6ef; border-color: #bdd3c1; }
+.rankList { display: flex; flex: 1; flex-direction: column; padding: 0; margin: 7px 0 0; list-style: none; }
+.rankItem { min-height: 70px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(100px, 0.35fr) 48px; align-items: center; gap: 20px; padding: 9px 10px; border-bottom: 1px solid #edf0ed; border-radius: 9px; transition: background 140ms ease; }
+.rankItem:hover { background: #f8faf8; }
+.rankItem:last-child { border-bottom-color: transparent; }
+.userInfo { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.avatar { width: 42px; height: 42px; flex: none; border: 2px solid #eef2ee; border-radius: 50%; object-fit: cover; }
+.name { overflow: hidden; color: #263029; font-size: 14px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.score { justify-self: start; color: #687269; font-size: 13px; font-weight: 650; }
+.rankBadge { width: 44px; display: flex; align-items: center; justify-content: center; }
+.topBadgeImage { width: 31px; max-width: none; }
+.topBadgeSecond { width: 31px; object-fit: contain; }
+.rankNumber { width: 27px; height: 27px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #eef2ee; color: #536057; font-size: 12px; font-weight: 750; }
 
-.title {
-  font-size: 24px;
-  font-weight: 500;
-  line-height: 1.2;
-}
-
-.viewAllButton {
-  border: 0;
-  background: transparent;
-  color: var(--dark-grey);
-  font-size: 18px;
-  font-family: var(--font-family);
-  line-height: 1.2;
-  cursor: pointer;
-}
-
-.viewAllButton:hover {
-  text-decoration: underline;
-}
-
-.rankList {
-  margin-top: 20px;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  list-style: none;
-}
-
-.rankItem {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr) 50px;
-  align-items: center;
-  gap: 20px;
-  border-bottom: 1px solid var(--grey);
-  padding: 10px 0;
-  min-height: 84px;
-}
-
-.rankItem:last-child {
-  border-bottom: none;
-}
-
-.userInfo {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.avatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.name,
-.score {
-  font-size: var(--text-lg);
-  font-weight: 500;
-  line-height: 1.2;
-}
-
-.score {
-  justify-self: start;
-}
-
-.rankBadge {
-  width: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.topBadgeImage {
-  width: 35px;
-  max-width: none;
-}
-
-.topBadgeSecond {
-  width: 35px;
-  object-fit: contain;
-}
-
-.rankNumber {
-  width: 20px;
-  text-align: center;
-  font-size: var(--text-lg);
-  font-weight: 500;
-  line-height: 1.2;
+@media (max-width: 560px) {
+  .card { min-height: 0; padding: 20px 16px; }
+  .rankItem { grid-template-columns: minmax(0, 1fr) 66px 34px; gap: 8px; padding-inline: 4px; }
+  .avatar { width: 36px; height: 36px; }
+  .title { font-size: 17px; }
 }

@@ -90,6 +90,40 @@ export class LearnerLessonProgressMongoRepository extends BaseMongoRepository<IL
     }
 
     /**
+     * Atomically save the latest checkpoint without requiring the caller to
+     * already know the current version. Intended for learner autosave where
+     * the latest local edit should win over an older in-flight request.
+     */
+    async updateCheckpointLatest(
+        progressId: string,
+        userId: string,
+        checkpoint: unknown,
+        timeDeltaSeconds: number,
+    ): Promise<ILearnerLessonProgress | null> {
+        const doc = await this.model
+            .findOneAndUpdate(
+                {
+                    _id: new mongoose.Types.ObjectId(progressId),
+                    userId: new mongoose.Types.ObjectId(userId),
+                    status: { $ne: ELessonProgressStatus.COMPLETED },
+                },
+                {
+                    $inc: { checkpointVersion: 1, timeSpentSeconds: timeDeltaSeconds },
+                    $set: {
+                        checkpoint,
+                        lastAccessedAt: new Date(),
+                        status: ELessonProgressStatus.IN_PROGRESS,
+                    },
+                },
+                { new: true },
+            )
+            .lean()
+            .exec();
+
+        return doc as unknown as ILearnerLessonProgress | null;
+    }
+
+    /**
      * Mark a lesson as COMPLETED with score.
      */
     async completeLesson(

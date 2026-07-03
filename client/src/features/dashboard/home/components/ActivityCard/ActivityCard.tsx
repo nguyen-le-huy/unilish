@@ -107,7 +107,7 @@ export const ActivityCard = ({ className }: ActivityCardProps) => {
                         <span className={styles.daysValue}>{totalActiveDays}</span>
                         <span className={styles.daysLabel}>Ngày</span>
                     </p>
-                    <p className={styles.time}>{formatDuration(totalMinutes)}</p>
+                    <p className={styles.time}>{formatDuration(totalMinutes * 60)} học tập</p>
                 </div>
 
                 <div className={styles.monthArea}>

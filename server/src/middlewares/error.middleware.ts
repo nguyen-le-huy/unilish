@@ -22,14 +22,19 @@ export const errorConverter = (err: any, req: Request, res: Response, next: Next
 };
 
 export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-    const { statusCode, message } = err;
+    const { statusCode, message, data } = err;
 
-    const response = {
+    const response: Record<string, unknown> = {
         status: 'error',
         code: statusCode,
         message,
         ...(env.NODE_ENV === 'development' && { stack: err.stack }),
     };
+
+    // Include extra data when available (e.g. latest checkpoint in 409 conflicts)
+    if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+        response.data = data;
+    }
 
     res.status(statusCode).json(response);
 };

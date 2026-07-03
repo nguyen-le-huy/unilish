@@ -9,7 +9,12 @@ import { LessonMongoRepository } from '../repositories/mongo/lesson.mongo.reposi
 import { Unit } from '../models/mongo/unit.model.js';
 import { Course } from '../models/mongo/course.model.js';
 import { Concept } from '../models/mongo/concept.model.js';
-import { Question, EQuestionType, EQuestionSkill } from '../models/mongo/question.model.js';
+import {
+    Question,
+    EQuestionType,
+    EQuestionSkill,
+    EQuestionStatus,
+} from '../models/mongo/question.model.js';
 import { QuestionGenerationService } from './question-generation.service.js';
 import { ContextAlignmentService } from './context-alignment.service.js';
 import type { ListeningContent } from '../types/lesson-content.types.js';
@@ -231,6 +236,7 @@ export class ListeningService {
                 content: q.content,
                 explanation: q.explanation,
                 tags: ['listening', 'ai-generated'],
+                status: EQuestionStatus.PUBLISHED,
             })),
         );
 
@@ -265,6 +271,7 @@ export class ListeningService {
                 $match: {
                     testedConcept: existing.testedConcept,
                     type: existing.type,
+                    status: EQuestionStatus.PUBLISHED,
                     _id: { $ne: existing._id },
                 },
             },

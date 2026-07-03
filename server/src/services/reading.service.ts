@@ -10,7 +10,12 @@ import { LessonMongoRepository } from '../repositories/mongo/lesson.mongo.reposi
 import { QuestionGenerationService } from './question-generation.service.js';
 import { Unit } from '../models/mongo/unit.model.js';
 import { Course } from '../models/mongo/course.model.js';
-import { Question, EQuestionType, EQuestionSkill } from '../models/mongo/question.model.js';
+import {
+    Question,
+    EQuestionType,
+    EQuestionSkill,
+    EQuestionStatus,
+} from '../models/mongo/question.model.js';
 import { Concept, EConceptType } from '../models/mongo/concept.model.js';
 import { readingTtsQueue } from '../jobs/queues/reading-tts.queue.js';
 import { ContextAlignmentService } from './context-alignment.service.js';
@@ -332,6 +337,7 @@ ${missing.map(([k, v]) => `"${k}": { "word": "${v.word}", "type": "${v.type}" }`
             questions.map((question) => ({
                 ...question,
                 skill: EQuestionSkill.READING,
+                status: EQuestionStatus.PUBLISHED,
             })),
         );
         const questionIds = inserted.map((q) => q._id.toString());
@@ -360,6 +366,7 @@ ${missing.map(([k, v]) => `"${k}": { "word": "${v.word}", "type": "${v.type}" }`
                 $match: {
                     testedConcept: existing.testedConcept,
                     type: existing.type,
+                    status: EQuestionStatus.PUBLISHED,
                     _id: { $ne: existing._id },
                 },
             },

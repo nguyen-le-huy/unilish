@@ -35,6 +35,20 @@ export class LearnerLessonAttemptMongoRepository extends BaseMongoRepository<ILe
     }
 
     /**
+     * Find an attempt by ID and verify ownership.
+     * Returns null if not found or not owned by the user.
+     */
+    async findByIdSecure(attemptId: string, userId: string): Promise<ILearnerLessonAttempt | null> {
+        return this.model
+            .findOne({
+                _id: new mongoose.Types.ObjectId(attemptId),
+                userId: new mongoose.Types.ObjectId(userId),
+            })
+            .lean()
+            .exec() as Promise<ILearnerLessonAttempt | null>;
+    }
+
+    /**
      * Create an immutable attempt record.
      */
     async createAttempt(data: {
@@ -42,6 +56,7 @@ export class LearnerLessonAttemptMongoRepository extends BaseMongoRepository<ILe
         userId: string;
         enrollmentId: string;
         lessonId: string;
+        submissionKind: string;
         submittedAnswers: unknown;
         score: number;
         passed: boolean;
@@ -53,6 +68,7 @@ export class LearnerLessonAttemptMongoRepository extends BaseMongoRepository<ILe
             userId: new mongoose.Types.ObjectId(data.userId),
             enrollmentId: new mongoose.Types.ObjectId(data.enrollmentId),
             lessonId: new mongoose.Types.ObjectId(data.lessonId),
+            submissionKind: data.submissionKind,
             submittedAnswers: data.submittedAnswers as any,
             score: data.score,
             passed: data.passed,

@@ -11,6 +11,7 @@ import {
     getLearnerLessonSchema,
     saveCheckpointSchema,
     submitLessonSchema,
+    getAttemptSchema,
 } from '../validations/learning.validation.js';
 
 const router = express.Router();
@@ -45,11 +46,17 @@ router.get(
     LearningController.roadmap,
 );
 
-// ─── Lesson Start & Read ─────────────────────────────────────────────────────
+// ─── Lesson Start, Restart & Read ────────────────────────────────────────────
 router.post(
     '/lessons/:lessonId/start',
     validate(startLessonSchema),
     LearningController.startLesson,
+);
+
+router.post(
+    '/lessons/:lessonId/restart',
+    validate(startLessonSchema),
+    LearningController.restartLesson,
 );
 
 router.get(
@@ -70,6 +77,13 @@ router.post(
     '/lessons/:lessonId/submit',
     validate(submitLessonSchema),
     LearningController.submitLesson,
+);
+
+// ─── Attempt Review ──────────────────────────────────────────────────────────
+router.get(
+    '/attempts/:attemptId',
+    validate(getAttemptSchema),
+    LearningController.getAttempt,
 );
 
 export default router;

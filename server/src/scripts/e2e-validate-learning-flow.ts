@@ -37,6 +37,7 @@ import { CourseEnrollmentMongoRepository } from '../repositories/mongo/course-en
 import { LearnerLessonProgressMongoRepository } from '../repositories/mongo/learner-lesson-progress.mongo.repository.js';
 import { LearnerLessonAttemptMongoRepository } from '../repositories/mongo/learner-lesson-attempt.mongo.repository.js';
 import { LearningService } from '../services/learning.service.js';
+import type { LessonSubmission } from '../validations/learning.validation.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -381,21 +382,23 @@ async function runValidation(
     assert(!contentStr.includes('"correct"') || !contentStr.includes('"isCorrect"'), 'Content is sanitized (AC-09)');
 
     heading('6. Submit First Lesson');
+    // The first lesson is GRAMMAR type with no questions (see seed content)
+    // So it must be COMPLETION submission
     const submitResult = await service.submitLesson(
         userId, firstLessonId,
         crypto.randomUUID(),
-        { gq1: 'drinks' }, // Correct answer for grammar quiz
+        { kind: 'COMPLETION', acknowledged: true } as LessonSubmission,
         60,
     );
     assert(!!submitResult, 'Submit returned a result');
-    assert(submitResult.passed === true, 'Lesson passed (correct answer or auto-pass)');
+    assert(submitResult.passed === true, 'Lesson passed (auto-complete for non-assessed)');
     assert(submitResult.score !== null && submitResult.score >= 60, `Score (${submitResult.score}) >= passing score`);
 
     // Idempotent submit
     const submitAgain = await service.submitLesson(
         userId, firstLessonId,
         crypto.randomUUID(), // Different attempt ID
-        { gq1: 'drinks' },
+        { kind: 'COMPLETION', acknowledged: true } as LessonSubmission,
         60,
     );
     assert(!!submitAgain, 'Second submit also returns a result');
@@ -423,11 +426,11 @@ async function runValidation(
             // May already have version > 0 if restarted
         }
 
-        // Submit
+        // Submit — use COMPLETION for content lessons without questions
         const subResult = await service.submitLesson(
             userId, lid,
             crypto.randomUUID(),
-            {},
+            { kind: 'COMPLETION', acknowledged: true } as LessonSubmission,
             30,
         );
 
@@ -470,7 +473,7 @@ async function runValidation(
 
     // Re-submit should not increment counter (AC-17)
     const completedBefore = finalEnrollment?.completedLessonCount ?? 0;
-    await service.submitLesson(userId, firstLessonId, crypto.randomUUID(), { gq1: 'drinks' }, 10);
+    await service.submitLesson(userId, firstLessonId, crypto.randomUUID(), { kind: 'COMPLETION', acknowledged: true } as LessonSubmission, 10);
     const enrollmentAfterRetry = await CourseEnrollment.findOne({
         userId: new mongoose.Types.ObjectId(userId),
         courseId: new mongoose.Types.ObjectId(courseId),

@@ -5,6 +5,7 @@ export interface ILearnerLessonAttempt extends mongoose.Document {
     userId: mongoose.Types.ObjectId;
     enrollmentId: mongoose.Types.ObjectId;
     lessonId: mongoose.Types.ObjectId;
+    submissionKind: string; // 'OBJECTIVE' | 'SPEAKING' | 'WRITING' | 'COMPLETION'
     submittedAnswers: mongoose.Schema.Types.Mixed;
     score: number;
     passed: boolean;
@@ -35,6 +36,11 @@ const LearnerLessonAttemptSchema = new mongoose.Schema<ILearnerLessonAttempt>(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Lesson',
             required: true,
+        },
+        submissionKind: {
+            type: String,
+            required: true,
+            enum: ['OBJECTIVE', 'SPEAKING', 'WRITING', 'COMPLETION'],
         },
         submittedAnswers: {
             type: mongoose.Schema.Types.Mixed,

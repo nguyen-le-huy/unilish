@@ -22,12 +22,13 @@ interface SidebarItem {
 }
 
 const primaryItems: SidebarItem[] = [
-  { label: 'Home', path: PATHS.DASHBOARD.HOME, icon: businessIcon, match: (pathname) => pathname === PATHS.DASHBOARD.HOME },
-  { label: 'AI Voice', path: '/dashboard/ai-voice', icon: micIcon },
-  { label: 'Shadowing', path: '/dashboard/shadowing', icon: waveIcon, badge: 'New' },
-  { label: 'Recommend Course', path: PATHS.DASHBOARD.RECOMMEND_COURSE, icon: starIcon },
+  { label: 'Trang chủ', path: PATHS.DASHBOARD.HOME, icon: businessIcon, match: (pathname) => pathname === PATHS.DASHBOARD.HOME },
+  { label: 'Giọng nói AI', path: '/dashboard/ai-voice', icon: micIcon },
+  { label: 'Luyện nói đuổi', path: '/dashboard/shadowing', icon: waveIcon, badge: 'Mới' },
+  { label: 'Khóa học đề xuất', path: PATHS.DASHBOARD.RECOMMEND_COURSE, icon: starIcon },
+  { label: 'Tất cả khóa học', path: PATHS.DASHBOARD.ALL_COURSES, icon: businessIcon },
   {
-    label: 'Placement Test',
+    label: 'Kiểm tra trình độ',
     path: PATHS.DASHBOARD.PLACEMENT_TEST.LISTENING,
     icon: penIcon,
     match: (pathname) => pathname.startsWith(PATHS.DASHBOARD.PLACEMENT_TEST.ROOT),
@@ -35,17 +36,18 @@ const primaryItems: SidebarItem[] = [
 ];
 
 const pageTitles: Array<{ match: (pathname: string) => boolean; label: string }> = [
-  { match: (pathname) => pathname === PATHS.DASHBOARD.HOME, label: 'Home' },
-  { match: (pathname) => pathname.startsWith('/dashboard/ai-voice'), label: 'AI Voice' },
-  { match: (pathname) => pathname.startsWith('/dashboard/shadowing'), label: 'Shadowing' },
-  { match: (pathname) => pathname.startsWith(PATHS.DASHBOARD.PLACEMENT_TEST.ROOT), label: 'Placement Test' },
-  { match: (pathname) => pathname === PATHS.DASHBOARD.RECOMMEND_COURSE, label: 'Recommend Course' },
-  { match: (pathname) => pathname === PATHS.DASHBOARD.GOAL_SELECTION, label: 'Learning Goal' },
-  { match: (pathname) => pathname === PATHS.DASHBOARD.LANGUAGE_SELECTION, label: 'Language' },
-  { match: (pathname) => pathname === PATHS.DASHBOARD.LEVEL_SELECTION, label: 'Level' },
+  { match: (pathname) => pathname === PATHS.DASHBOARD.HOME, label: 'Trang chủ' },
+  { match: (pathname) => pathname.startsWith('/dashboard/ai-voice'), label: 'Giọng nói AI' },
+  { match: (pathname) => pathname.startsWith('/dashboard/shadowing'), label: 'Luyện nói đuổi' },
+  { match: (pathname) => pathname.startsWith(PATHS.DASHBOARD.PLACEMENT_TEST.ROOT), label: 'Kiểm tra trình độ' },
+  { match: (pathname) => pathname === PATHS.DASHBOARD.RECOMMEND_COURSE, label: 'Khóa học đề xuất' },
+  { match: (pathname) => pathname === PATHS.DASHBOARD.ALL_COURSES, label: 'Tất cả khóa học' },
+  { match: (pathname) => pathname === PATHS.DASHBOARD.GOAL_SELECTION, label: 'Mục tiêu học tập' },
+  { match: (pathname) => pathname === PATHS.DASHBOARD.LANGUAGE_SELECTION, label: 'Ngôn ngữ' },
+  { match: (pathname) => pathname === PATHS.DASHBOARD.LEVEL_SELECTION, label: 'Trình độ' },
 ];
 
-const getPageTitle = (pathname: string) => pageTitles.find((item) => item.match(pathname))?.label ?? 'Dashboard';
+const getPageTitle = (pathname: string) => pageTitles.find((item) => item.match(pathname))?.label ?? 'Bảng điều khiển';
 
 const Header = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -104,7 +106,7 @@ const Header = () => {
   return (
     <>
       <aside className={styles.sidebar}>
-        <Link to={PATHS.DASHBOARD.HOME} className={styles.logoLink} aria-label="Go to dashboard home">
+        <Link to={PATHS.DASHBOARD.HOME} className={styles.logoLink} aria-label="Đi tới trang chủ">
           <img src={unilishLogo} alt="Unilish logo" className={styles.logo} />
         </Link>
 
@@ -114,7 +116,7 @@ const Header = () => {
           <span className={styles.workspaceChevron} aria-hidden="true">v</span>
         </div>
 
-        <nav className={styles.sidebarNav} aria-label="Dashboard navigation">
+        <nav className={styles.sidebarNav} aria-label="Điều hướng bảng điều khiển">
           <div className={styles.navGroup}>
             {primaryItems.map((item) => (
               <NavLink
@@ -136,13 +138,13 @@ const Header = () => {
 
         <div className={styles.sidebarCard}>
           <span className={styles.sidebarCardIcon} aria-hidden="true">+</span>
-          <p className={styles.sidebarCardTitle}>Invite team members</p>
-          <p className={styles.sidebarCardText}>Bring your team in to learn, practice, and review progress together.</p>
+          <p className={styles.sidebarCardTitle}>Mời thành viên</p>
+          <p className={styles.sidebarCardText}>Mời nhóm của bạn cùng học, luyện tập và theo dõi tiến độ.</p>
         </div>
 
         <button type="button" className={styles.upgradeButton}>
           <span className={styles.upgradeDot} aria-hidden="true" />
-          Upgrade
+          Nâng cấp
         </button>
       </aside>
 

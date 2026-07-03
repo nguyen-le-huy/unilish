@@ -1,4 +1,6 @@
 // ─── Learner-safe practice question types (no answer-bearing fields) ─────────
+// These match the LearnerPracticeQuestionDto API contract exactly.
+// `explanation` must NOT appear pre-submit (NFR-04).
 
 export interface LearnerQuestionStem {
     text?: string;
@@ -12,41 +14,41 @@ export interface LearnerMCOption {
 }
 
 export interface LearnerMCQuestion {
-    _id: string;
+    id: string;
+    version: number;
     type: 'MULTIPLE_CHOICE';
     stem: LearnerQuestionStem;
     options: LearnerMCOption[];
-    explanation?: string;
 }
 
 export interface LearnerFillQuestion {
-    _id: string;
+    id: string;
+    version: number;
     type: 'FILL_IN_BLANK';
     stem: LearnerQuestionStem;
-    explanation?: string;
 }
 
 export interface LearnerMatchingQuestion {
-    _id: string;
+    id: string;
+    version: number;
     type: 'MATCHING';
     stem: LearnerQuestionStem;
     items: Array<{ id: string; text: string }>;
     targets: Array<{ id: string; text: string }>;
-    explanation?: string;
 }
 
 export interface LearnerTrueFalseQuestion {
-    _id: string;
+    id: string;
+    version: number;
     type: 'TRUE_FALSE';
     stem: LearnerQuestionStem;
-    explanation?: string;
 }
 
 export interface LearnerErrorCorrectionQuestion {
-    _id: string;
+    id: string;
+    version: number;
     type: 'ERROR_CORRECTION';
     stem: LearnerQuestionStem & { text: string };
-    explanation?: string;
 }
 
 export type LearnerPracticeQuestion =
@@ -56,6 +58,40 @@ export type LearnerPracticeQuestion =
     | LearnerTrueFalseQuestion
     | LearnerErrorCorrectionQuestion;
 
-// ─── Response types (what the learner submits) ───────────────────────────────
+// ─── Answer state for practice components ────────────────────────────────────
 
-export type QuestionResponse = Record<string, unknown>;
+export interface MCQAnswer {
+    selectedOptionId: string;
+}
+
+export interface FillAnswer {
+    text: string;
+}
+
+export interface TFAnswer {
+    value: boolean;
+}
+
+export interface MatchAnswer {
+    pairs: Record<string, string>;
+}
+
+export interface ErrorCorrectionAnswer {
+    text: string;
+}
+
+export type PracticeAnswer =
+    | MCQAnswer
+    | FillAnswer
+    | TFAnswer
+    | MatchAnswer
+    | ErrorCorrectionAnswer;
+
+// ─── Question feedback (post-submit only) ────────────────────────────────────
+
+export interface QuestionFeedback {
+    correct: boolean;
+    learnerAnswer: unknown;
+    correctAnswer: unknown;
+    explanation: string | null;
+}

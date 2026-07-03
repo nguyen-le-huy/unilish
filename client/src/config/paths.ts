@@ -21,6 +21,7 @@ export const PATHS = {
         LEARNING: '/dashboard/learning',
         ROADMAP: '/dashboard/roadmap',
         RECOMMEND_COURSE: '/dashboard/reccourse',
+        ALL_COURSES: '/dashboard/courses',
         GOAL_SELECTION: '/dashboard/goal-selection',
         LANGUAGE_SELECTION: '/dashboard/language-selection',
         LEVEL_SELECTION: '/dashboard/level-selection',

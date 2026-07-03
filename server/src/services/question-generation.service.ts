@@ -1,5 +1,10 @@
 import { Types } from 'mongoose';
-import { Question, EQuestionType, EQuestionSkill } from '../models/mongo/question.model.js';
+import {
+    Question,
+    EQuestionType,
+    EQuestionSkill,
+    EQuestionStatus,
+} from '../models/mongo/question.model.js';
 import { Lesson } from '../models/mongo/lesson.model.js';
 import { Unit } from '../models/mongo/unit.model.js';
 import { Course } from '../models/mongo/course.model.js';
@@ -223,6 +228,7 @@ export class QuestionGenerationService {
                     content: { options },
                     explanation: `"${item.word}" − ${item.definitionNative || item.definitionEn}`,
                     tags: ['vocab', 'audio-matching'],
+                    status: EQuestionStatus.PUBLISHED,
                 });
                 createdIds.push((q._id as Types.ObjectId));
             }
@@ -251,6 +257,7 @@ export class QuestionGenerationService {
                 },
                 explanation: `"${item.word}" nghĩa là: ${item.definitionNative || item.definitionEn}. Dịch: ${item.exampleTranslation}`,
                 tags: ['vocab', 'fill-in-blank'],
+                status: EQuestionStatus.PUBLISHED,
             });
             createdIds.push(q._id as Types.ObjectId);
         }
@@ -284,6 +291,7 @@ export class QuestionGenerationService {
                 content: { pairs },
                 explanation: 'Kiểm tra khả năng nhận biết từ vựng và định nghĩa.',
                 tags: ['vocab', 'matching'],
+                status: EQuestionStatus.PUBLISHED,
             });
             createdIds.push(q._id as Types.ObjectId);
         }
@@ -317,6 +325,7 @@ export class QuestionGenerationService {
                 $match: {
                     testedConcept: existing.testedConcept,
                     type: existing.type,
+                    status: EQuestionStatus.PUBLISHED,
                     _id: { $ne: existing._id },
                 },
             },

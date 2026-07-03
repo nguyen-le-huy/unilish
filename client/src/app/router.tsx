@@ -20,6 +20,7 @@ const WritingPage = React.lazy(() => import('@/features/dashboard/placement-test
 const SpeakingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Speaking/Speaking'));
 const ResultPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Result/Result'));
 const RecommendCoursePage = React.lazy(() => import('@/features/dashboard/recommend-course/pages/RecommendCourse'));
+const AllCoursesPage = React.lazy(() => import('@/features/dashboard/all-courses/pages/AllCoursesPage'));
 const NotFoundPage = React.lazy(() => import('@/features/dashboard/not-found/not-found-page'));
 const AIVoicePage = React.lazy(() => import('@/features/dashboard/ai-voice/pages/AIVoice'));
 const ShadowingPage = React.lazy(() => import('@/features/dashboard/shadowing/pages/ShadowingPage/ShadowingPage'));
@@ -152,6 +153,14 @@ export const router = createBrowserRouter([
                         element: (
                             <Suspense fallback={<Loading />}>
                                 <RecommendCoursePage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: PATHS.DASHBOARD.ALL_COURSES.replace('/dashboard/', ''),
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <AllCoursesPage />
                             </Suspense>
                         ),
                     },

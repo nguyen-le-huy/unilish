@@ -68,6 +68,108 @@ export const LESSON_TYPES = [
 
 export type LessonType = (typeof LESSON_TYPES)[number];
 
+// ─── Exercise / Objective Question DTOs ──────────────────────────────────────
+
+export interface LearnerStem {
+    text?: string;
+    audioUrl?: string;
+    imageUrl?: string;
+}
+
+export type LearnerPracticeQuestionDto =
+    | {
+          id: string;
+          version: number;
+          type: 'MULTIPLE_CHOICE';
+          stem: LearnerStem;
+          options: Array<{ id: string; text: string }>;
+      }
+    | {
+          id: string;
+          version: number;
+          type: 'FILL_IN_BLANK';
+          stem: LearnerStem;
+      }
+    | {
+          id: string;
+          version: number;
+          type: 'TRUE_FALSE';
+          stem: LearnerStem;
+      }
+    | {
+          id: string;
+          version: number;
+          type: 'MATCHING';
+          stem: LearnerStem;
+          items: Array<{ id: string; text: string }>;
+          targets: Array<{ id: string; text: string }>;
+      }
+    | {
+          id: string;
+          version: number;
+          type: 'ERROR_CORRECTION';
+          stem: LearnerStem & { text: string };
+      };
+
+export type LearnerExerciseDto =
+    | {
+          kind: 'OBJECTIVE';
+          mode: 'FIXED';
+          passingScore: number;
+          questions: LearnerPracticeQuestionDto[];
+      }
+    | { kind: 'SPEAKING'; sessionRequired: true }
+    | { kind: 'WRITING'; minWords: number; maxWords: number }
+    | { kind: 'COMPLETION' };
+
+// ─── Answer / Submission / Checkpoint DTOs ────────────────────────────────────
+
+export type ObjectiveAnswer =
+    | {
+          questionId: string;
+          questionVersion: number;
+          type: 'MULTIPLE_CHOICE';
+          answer: { selectedOptionId: string };
+      }
+    | {
+          questionId: string;
+          questionVersion: number;
+          type: 'FILL_IN_BLANK';
+          answer: { text: string };
+      }
+    | {
+          questionId: string;
+          questionVersion: number;
+          type: 'TRUE_FALSE';
+          answer: { value: boolean };
+      }
+    | {
+          questionId: string;
+          questionVersion: number;
+          type: 'MATCHING';
+          answer: { pairs: Record<string, string> };
+      }
+    | {
+          questionId: string;
+          questionVersion: number;
+          type: 'ERROR_CORRECTION';
+          answer: { text: string };
+      };
+
+export type LessonSubmissionKind =
+    | { kind: 'OBJECTIVE'; answers: ObjectiveAnswer[] }
+    | { kind: 'SPEAKING'; sessionId: string }
+    | { kind: 'WRITING'; text: string; warmupAnswers?: Record<string, string> }
+    | { kind: 'COMPLETION'; acknowledged: true };
+
+export type ExerciseCheckpointKind =
+    | { kind: 'OBJECTIVE'; answers: ObjectiveAnswer[]; currentQuestionIndex: number }
+    | { kind: 'WRITING'; text: string; warmupAnswers: Record<string, string> }
+    | { kind: 'SPEAKING'; sessionId: string | null }
+    | { kind: 'COMPLETION'; acknowledged: boolean };
+
+// ─── Lesson DTO ───────────────────────────────────────────────────────────────
+
 export interface LearnerLessonDto {
     course: { id: string; slug: string; name: string };
     unit: { id: string; title: string; orderIndex: number };
@@ -78,6 +180,7 @@ export interface LearnerLessonDto {
         orderIndex: number;
         content: unknown;
         passingScore: number | null;
+        exercise: LearnerExerciseDto;
     };
     progress: {
         status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
@@ -114,4 +217,33 @@ export interface LearningDashboardDto {
         activeCourses: number;
     };
     activityDays: Array<{ date: string; minutes: number }>;
+}
+
+// ─── Lesson Submission Result ─────────────────────────────────────────────────
+
+export interface LessonQuestionFeedback {
+    questionId: string;
+    correct: boolean;
+    learnerAnswer: unknown;
+    correctAnswer: unknown;
+    explanation: string | null;
+}
+
+export interface LessonSubmissionResult {
+    attemptId: string;
+    score: number | null;
+    passed: boolean;
+    latestScore: number | null;
+    bestScore: number | null;
+    feedback: {
+        summary: string | null;
+        questions: LessonQuestionFeedback[];
+    } | null;
+    progress: {
+        lessonStatus: 'IN_PROGRESS' | 'COMPLETED';
+        unitStatus: LearningStatus;
+        courseStatus: 'ACTIVE' | 'COMPLETED';
+        courseProgressPercent: number;
+    };
+    nextLessonId: string | null;
 }
