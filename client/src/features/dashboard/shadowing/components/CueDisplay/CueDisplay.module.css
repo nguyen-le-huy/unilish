@@ -1,70 +1,87 @@
 .cueContainer {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border-top: 0.0625rem solid var(--grey);
-  background: var(--surface-color);
-}
-
-.cueMeta {
-  margin: 0;
-  font-family: var(--font-family);
-  font-size: var(--text-sm);
-  color: var(--text-muted);
+  gap: 12px;
+  margin: 0 16px 16px;
+  padding: 15px 17px;
+  border: 1px solid #e0e6e1;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fafcfb 0%, #f4f8f5 100%);
+  flex: 0 0 auto;
 }
 
 .cueMetaRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: 12px;
+}
+
+.cueLabel {
+  display: block;
+  margin-bottom: 3px;
+  color: #245c32;
+  font-family: var(--font-family);
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.cueMeta {
+  margin: 0;
+  color: #858d87;
+  font-family: var(--font-family);
+  font-size: 12px;
 }
 
 .cueScoreBadge {
+  min-width: 42px;
+  min-height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.5rem;
-  padding: 0.2rem 0.6rem;
+  padding: 0 10px;
+  border: 1px solid currentColor;
   border-radius: 999px;
-  border: 0.0625rem solid currentColor;
   font-family: var(--font-family);
-  font-size: var(--text-sm);
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 730;
 }
 
 .cueText {
   margin: 0;
+  color: #1d2a20;
   font-family: var(--font-family);
-  font-size: 20px;
-  line-height: var(--line-height-lg);
-  color: var(--text-color);
+  font-size: clamp(22px, 2.2vw, 30px);
+  font-weight: 560;
+  letter-spacing: -0.015em;
+  line-height: 1.4;
 }
 
 .cueTextHidden {
-  filter: blur(0.25rem);
+  filter: blur(4px);
   user-select: none;
 }
 
 .wordStrong {
-  color: var(--score-green);
-  font-weight: 600;
+  color: #2e7d32;
+  font-weight: 680;
 }
 
 .wordAverage {
-  color: var(--score-yellow);
-  font-weight: 600;
+  color: #b98215;
+  font-weight: 680;
 }
 
 .wordWeak {
-  color: var(--score-red);
-  font-weight: 600;
+  color: #c43f3f;
+  font-weight: 680;
 }
 
 .cueWarning {
   margin: 0;
+  color: #9b761f;
   font-family: var(--font-family);
-  font-size: var(--text-xs);
-  color: var(--score-yellow);
+  font-size: 12px;
 }

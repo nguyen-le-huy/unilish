@@ -43,18 +43,22 @@ const CourseCard = ({
         <article className={styles.courseCard}>
             <div className={styles.innerCard}>
                 <div className={styles.imageWrapper}>
-                    <img src={imageUrl} alt={title} className={styles.image} />
+                    <img src={imageUrl} alt={title} className={styles.image} loading="lazy" />
+                    {badge && <span className={styles.imageBadge}>{badge}</span>}
                 </div>
 
                 <div className={styles.content}>
                     <h3 className={styles.title}>{title}</h3>
                     <p className={styles.description}>{description}</p>
-                    {(badge || typeof totalUnits === 'number') && (
+                    {typeof totalUnits === 'number' && (
                         <div className={styles.meta}>
-                            {badge && <span className={styles.badge}>{badge}</span>}
-                            {typeof totalUnits === 'number' && (
-                                <span className={styles.totalCourses}>{totalUnits} bài học</span>
-                            )}
+                            <span className={styles.lessonIcon} aria-hidden="true">
+                                <svg viewBox="0 0 20 20" fill="none">
+                                    <path d="M4.25 3.75h8.5a2 2 0 0 1 2 2v10.5h-8.5a2 2 0 0 1-2-2V3.75Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                                    <path d="M6.25 16.25a2 2 0 0 1 2-2h6.5M7.25 7h4.5M7.25 10h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                                </svg>
+                            </span>
+                            <span className={styles.totalCourses}>{totalUnits} bài học</span>
                         </div>
                     )}
 
@@ -68,6 +72,12 @@ const CourseCard = ({
                             className={styles.joinButton}
                             onClick={handleJoin}
                             disabled={isJoinDisabled}
+                            rightIcon={(
+                                <svg className={styles.arrowIcon} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                    <path d="M4.5 10h10M10.75 5.75 15 10l-4.25 4.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            )}
+                            iconWidth={18}
                         >
                             {joinLabel}
                         </Button>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useLesson, useStartLesson, useSaveCheckpoint, useSubmitLesson, useRestartLesson } from '../../hooks/use-lesson';
+import { useLesson, useStartLesson, useSaveCheckpoint, useSubmitLesson, useRestartLesson, useCompleteLesson } from '../../hooks/use-lesson';
 import { useCourseRoadmap } from '../../hooks/use-course-roadmap';
 import { useExerciseState } from '../../hooks/use-exercise-state';
 import { useAutosave } from '../../hooks/use-autosave';
@@ -40,6 +40,7 @@ const LessonPlayerPage = () => {
     const saveCheckpointMutation = useSaveCheckpoint();
     const submitMutation = useSubmitLesson();
     const restartMutation = useRestartLesson();
+    const completeLessonMutation = useCompleteLesson();
     const startedLessonIdRef = useRef<string | null>(null);
 
     const courseSlug = lessonData?.course.slug;
@@ -125,6 +126,7 @@ const LessonPlayerPage = () => {
     const [validationError, setValidationError] = useState<string | null>(null);
     const [isStale, setIsStale] = useState(false);
     const [restartingLesson, setRestartingLesson] = useState(false);
+    const [completeError, setCompleteError] = useState<string | null>(null);
 
     const currentSubmissionResult =
         submissionState && submissionState.lessonId === lessonId
@@ -167,6 +169,7 @@ const LessonPlayerPage = () => {
         setSubmitError(null);
         setValidationError(null);
         setRestartingLesson(false);
+        setCompleteError(null);
         setIsStale(false);
     }, [lessonId]);
 
@@ -550,6 +553,17 @@ const LessonPlayerPage = () => {
         else navigate(PATHS.DASHBOARD.HOME);
     }, [courseSlug, navigate, autosave, usesAutosave]);
 
+    const handleCompleteLesson = useCallback(async () => {
+        if (!lessonId || completeLessonMutation.isPending) return;
+        setCompleteError(null);
+        try {
+            await completeLessonMutation.mutateAsync(lessonId);
+            await refetch();
+        } catch {
+            setCompleteError('Không thể đánh dấu hoàn thành. Vui lòng thử lại.');
+        }
+    }, [lessonId, completeLessonMutation, refetch]);
+
     // ── Route guard — unsaved changes ─────────────────────────────────
     useEffect(() => {
         const handler = (e: BeforeUnloadEvent) => {
@@ -874,6 +888,18 @@ const LessonPlayerPage = () => {
                 </button>
 
                 <div className={styles.bottomCenter}>
+                    {lessonData.progress.status === 'COMPLETED' ? (
+                        <span className={styles.completedBadge}>✓ Đã hoàn thành</span>
+                    ) : (
+                        <button
+                            type="button"
+                            className={styles.completeButton}
+                            onClick={handleCompleteLesson}
+                            disabled={completeLessonMutation.isPending}
+                        >
+                            {completeLessonMutation.isPending ? 'Đang cập nhật...' : '✓ Đánh dấu hoàn thành'}
+                        </button>
+                    )}
                     {isReviewPhase && (
                         <>
                             <span className={styles.completedBadge}>✓ Đã hoàn thành</span>
@@ -902,6 +928,12 @@ const LessonPlayerPage = () => {
                     </svg>
                 </button>
             </div>
+
+            {completeError && (
+                <div className={styles.completeToast} role="alert">
+                    {completeError}
+                </div>
+            )}
 
             {/* ── Result overlay ── */}
             {displayedSubmissionResult && phase !== 'STALE' && (

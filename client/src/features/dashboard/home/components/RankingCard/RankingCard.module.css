@@ -10,8 +10,8 @@
 }
 
 .header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid #edf0ed; }
-.title { margin: 0; color: #17211a; font-size: 20px; font-weight: 700; letter-spacing: -0.015em; }
-.viewAllButton { padding: 7px 11px; border: 1px solid #dbe5dd; border-radius: 9px; background: #f8faf8; color: #245c32; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
+.title { margin: 0; color: #17211a; font-size: 23px; font-weight: 700; letter-spacing: -0.015em; }
+.viewAllButton { padding: 7px 11px; border: 1px solid #dbe5dd; border-radius: 9px; background: #f8faf8; color: #245c32; cursor: pointer; font: inherit; font-size: 14px; font-weight: 700; }
 .viewAllButton:hover { background: #eef6ef; border-color: #bdd3c1; }
 .rankList { display: flex; flex: 1; flex-direction: column; padding: 0; margin: 7px 0 0; list-style: none; }
 .rankItem { min-height: 70px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(100px, 0.35fr) 48px; align-items: center; gap: 20px; padding: 9px 10px; border-bottom: 1px solid #edf0ed; border-radius: 9px; transition: background 140ms ease; }
@@ -19,16 +19,16 @@
 .rankItem:last-child { border-bottom-color: transparent; }
 .userInfo { display: flex; align-items: center; gap: 13px; min-width: 0; }
 .avatar { width: 42px; height: 42px; flex: none; border: 2px solid #eef2ee; border-radius: 50%; object-fit: cover; }
-.name { overflow: hidden; color: #263029; font-size: 14px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.score { justify-self: start; color: #687269; font-size: 13px; font-weight: 650; }
+.name { overflow: hidden; color: #263029; font-size: 16px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.score { justify-self: start; color: #687269; font-size: 15px; font-weight: 650; }
 .rankBadge { width: 44px; display: flex; align-items: center; justify-content: center; }
 .topBadgeImage { width: 31px; max-width: none; }
 .topBadgeSecond { width: 31px; object-fit: contain; }
-.rankNumber { width: 27px; height: 27px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #eef2ee; color: #536057; font-size: 12px; font-weight: 750; }
+.rankNumber { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #eef2ee; color: #536057; font-size: 14px; font-weight: 750; }
 
 @media (max-width: 560px) {
   .card { min-height: 0; padding: 20px 16px; }
   .rankItem { grid-template-columns: minmax(0, 1fr) 66px 34px; gap: 8px; padding-inline: 4px; }
   .avatar { width: 36px; height: 36px; }
-  .title { font-size: 17px; }
+  .title { font-size: 20px; }
 }

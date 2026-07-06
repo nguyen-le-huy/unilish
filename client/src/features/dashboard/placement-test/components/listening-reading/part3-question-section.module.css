@@ -1,15 +1,17 @@
 .section {
     display: flex;
     flex-direction: column;
-    gap: 36px;
+    gap: 16px;
 }
 
 .group {
     display: flex;
     align-items: flex-start;
-    gap: 28px;
-    border-bottom: 1px solid var(--dark-grey);
-    padding-bottom: 32px;
+    gap: 22px;
+    padding: 20px;
+    border: 1px solid #e0e6e1;
+    border-radius: 14px;
+    background: #fff;
 }
 
 .groupNoImage {
@@ -17,12 +19,12 @@
 }
 
 .groupNoImage .questionsWrap {
-    width: 50%;
+    width: 100%;
     flex: none;
 }
 
 .groupImageWrap {
-    flex: 0 0 45%;
+    flex: 0 0 42%;
     overflow: hidden;
     display: flex;
     align-items: stretch;

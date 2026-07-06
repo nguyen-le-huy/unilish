@@ -43,4 +43,9 @@
     .container {
         display: flex;
     }
+
+    /* Auth flows are responsive and remain available on mobile. */
+    .container:has(~ [data-auth-page]) {
+        display: none;
+    }
 }

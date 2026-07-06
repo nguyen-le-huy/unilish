@@ -1,26 +1,40 @@
 .container {
     display: flex;
-    gap: 10px;
+    width: 100%;
+    gap: 12px;
     align-items: center;
     justify-content: center;
 }
 
 .input {
-    width: 60px;
-    height: 60px;
-    border: 1px solid var(--dark-grey);
+    width: 64px;
+    height: 64px;
+    border: 1px solid #d6ddd4;
     border-radius: 12px;
     text-align: center;
     font-size: 24px;
     font-weight: 700;
     outline: none;
-    background: transparent;
+    background: rgba(255, 255, 255, 0.82);
     font-family: var(--font-family);
 }
 
 .input:focus,
 .input:not(:placeholder-shown) {
-    border: 2px solid black;
+    border-color: #3e7139;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(62, 113, 57, 0.11);
+}
+
+@media (max-width: 420px) {
+    .container {
+        gap: 8px;
+    }
+
+    .input {
+        width: min(64px, 18vw);
+        height: min(64px, 18vw);
+    }
 }
 
 /* Remove spinner for number input */

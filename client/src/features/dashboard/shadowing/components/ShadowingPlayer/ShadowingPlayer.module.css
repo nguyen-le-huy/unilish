@@ -1,85 +1,189 @@
 .playerRoot {
+  --shadow-green: #245c32;
+  --shadow-green-dark: #173f22;
+  --shadow-green-soft: #edf5ee;
+  --shadow-ink: #17211a;
+  --shadow-muted: #717a73;
+  --shadow-line: #dde5de;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  width: 100%;
-  background: var(--surface-color);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.playerRoot:fullscreen {
+  width: 100vw;
+  height: 100dvh;
+  border-radius: 0;
+  background: #f5f7f5;
 }
 
 .playerHeader {
+  min-height: 70px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 0.0625rem solid var(--grey);
+  gap: 24px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--shadow-line);
+  background: #fff;
+}
+
+.modeSection {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.modeLabel {
+  color: #7b847d;
+  font-size: 13px;
+  font-weight: 650;
 }
 
 .modeToggle {
   display: inline-flex;
-  gap: var(--space-2);
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #e0e6e1;
+  border-radius: 11px;
+  background: #f5f7f5;
 }
 
 .modeButton {
-  border: 0.0625rem solid var(--grey);
-  border-radius: 999px;
-  background: var(--surface-color);
-  color: var(--text-color);
-  padding: var(--space-2) var(--space-3);
+  min-height: 34px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #707971;
   font-family: var(--font-family);
-  font-size: var(--text-sm);
+  font-size: 14px;
+  font-weight: 650;
   cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.modeButton:hover {
+  color: var(--shadow-ink);
 }
 
 .modeButtonActive {
-  border-color: var(--primary);
-  background: var(--primary-subtle);
+  background: #fff;
+  color: var(--shadow-green);
+  box-shadow: 0 2px 8px rgba(24, 54, 31, 0.1);
+}
+
+.cueProgress {
+  width: min(220px, 28vw);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fullscreenButton {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid #dce3dd;
+  border-radius: 9px;
+  background: #fff;
+  color: #526057;
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 680;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.fullscreenButton:hover {
+  border-color: #9fb2a3;
+  background: #f4f8f5;
+  color: var(--shadow-green);
+}
+
+.cueProgressMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+  color: var(--shadow-muted);
+  font-size: 12px;
+  font-weight: 680;
 }
 
 .cueCounter {
   margin: 0;
   font-family: var(--font-family);
-  font-size: var(--text-sm);
-  color: var(--text-muted);
+}
+
+.cueProgressMeta > span {
+  color: var(--shadow-green);
+}
+
+.progressTrack {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e9eeea;
+}
+
+.progressTrack span {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4e8a5d, var(--shadow-green));
+  transition: width 260ms ease;
 }
 
 .contentGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
-  gap: var(--space-3);
-  flex: 1;
   min-height: 0;
-  padding: var(--space-3);
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(320px, 0.82fr);
+  gap: 12px;
+  flex: 1;
+  padding: 12px;
+  background: #f5f7f5;
 }
 
 .leftColumn,
 .rightColumn {
-  border: 0.0625rem solid var(--grey);
-  border-radius: var(--radius-lg);
+  min-height: 0;
   overflow: hidden;
-  background: var(--surface-color);
+  border: 1px solid var(--shadow-line);
+  border-radius: 14px;
+  background: #fff;
 }
 
 .leftColumn {
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .rightColumn {
-  min-height: 0;
+  box-shadow: 0 6px 18px rgba(24, 54, 31, 0.035);
 }
 
 .playerFrame {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
-  max-height: 22rem;
-  background: var(--black-color);
-  flex-shrink: 0;
+  min-height: 160px;
+  flex: 1 1 auto;
   overflow: hidden;
+  background: #0f1510;
 }
 
 .youtubeMount {
@@ -97,57 +201,57 @@
 }
 
 .statusRow {
+  min-height: 39px;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4) 0;
-}
-
-.statusActionRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4) 0;
-  margin-bottom: 10px;
+  gap: 8px;
+  padding: 8px 16px 0;
+  flex: 0 0 auto;
 }
 
 .statusDot {
-  width: 0.625rem;
-  height: 0.625rem;
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
   border-radius: 50%;
-  background: var(--green);
+  background: #4ea765;
+  box-shadow: 0 0 0 4px rgba(78, 167, 101, 0.11);
 }
 
 .statusText {
   margin: 0;
+  color: var(--shadow-muted);
   font-family: var(--font-family);
-  font-size: var(--text-sm);
-  color: var(--text-muted);
+  font-size: 14px;
 }
 
-.controlsRow {
+.controlsRow,
+.statusActionRow {
+  min-height: 51px;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 0.0625rem solid var(--grey);
-  min-height: 3.5rem;
+  gap: 9px;
+  padding: 7px 16px 11px;
+  flex: 0 0 auto;
 }
 
 .primaryButton,
 .ghostButton,
 .dangerButton {
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  border-radius: 999px;
-  padding: var(--space-2) var(--space-4);
-  border: 0.0625rem solid var(--grey);
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--shadow-line);
+  border-radius: 9px;
   font-family: var(--font-family);
-  font-size: var(--text-sm);
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
-
 
 .primaryButton:disabled,
 .ghostButton:disabled,
@@ -157,62 +261,96 @@
 }
 
 .buttonIcon {
-  height: 1.2em;
-  width: auto;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
 }
 
 .primaryButton {
-  background: var(--dark-green);
-  color: var(--white-color);
-  border-color: var(--dark-green);
+  border-color: var(--shadow-green);
+  background: var(--shadow-green);
+  color: #fff;
+  box-shadow: 0 6px 15px rgba(36, 92, 50, 0.16);
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--shadow-green-dark);
+  transform: translateY(-1px);
 }
 
 .ghostButton {
-  background: var(--surface-color);
-  color: var(--text-color);
+  background: #fff;
+  color: #536058;
+}
+
+.ghostButton:hover:not(:disabled) {
+  border-color: #afc0b3;
+  background: #f7f9f7;
 }
 
 .dangerButton {
-  background: var(--score-red);
-  color: var(--white-color);
-  border-color: var(--score-red);
+  border-color: #c54b4b;
+  background: #c54b4b;
+  color: #fff;
 }
 
 .timerText {
-  font-family: var(--font-family);
-  font-size: var(--text-base);
-  color: var(--text-color);
+  color: #b43e3e;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .errorText {
-  margin: var(--space-3) var(--space-4);
+  margin: 10px 16px;
+  color: #c43f3f;
   font-family: var(--font-family);
-  font-size: var(--text-sm);
-  color: var(--score-red);
+  font-size: 13px;
 }
 
 .donePanel {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-top: 0.0625rem solid var(--grey);
+  gap: 16px;
+  margin: 0 16px 16px;
+  padding: 14px;
+  border: 1px solid #cfe0d2;
+  border-radius: 12px;
+  background: var(--shadow-green-soft);
 }
 
 .doneText {
   margin: 0;
+  color: var(--shadow-green);
   font-family: var(--font-family);
-  font-size: var(--text-base);
-  color: var(--text-color);
+  font-size: 14px;
+  font-weight: 680;
 }
 
 .playerReadyText {
-  margin: 0;
-  padding: var(--space-2) var(--space-4) var(--space-3);
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 16px 8px;
+  color: #8a928c;
   font-family: var(--font-family);
-  font-size: var(--text-xs);
-  color: var(--text-muted);
+  font-size: 11px;
+  background: #fff;
+  flex: 0 0 auto;
+}
+
+.readyDot,
+.loadingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ea765;
+}
+
+.loadingDot {
+  background: #c4a64d;
 }
 
 .emptyState {
@@ -221,37 +359,86 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 0.0625rem solid var(--grey);
-  border-radius: var(--radius-lg);
-  background: var(--surface-color);
+  border: 1px solid var(--shadow-line);
+  border-radius: 14px;
+  background: #fff;
 }
 
 .emptyStateText {
   margin: 0;
+  color: var(--shadow-muted);
   font-family: var(--font-family);
-  font-size: var(--text-base);
-  color: var(--text-muted);
+  font-size: 14px;
 }
 
-@media (max-width: 64rem) {
+.modeButton:focus-visible,
+.fullscreenButton:focus-visible,
+.primaryButton:focus-visible,
+.ghostButton:focus-visible,
+.dangerButton:focus-visible {
+  outline: 3px solid rgba(36, 92, 50, 0.18);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1050px) {
   .contentGrid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 1fr;
+    overflow-y: auto;
   }
 
-  .leftColumn {
-    max-height: 100%;
-  }
-
-  .playerFrame {
-    max-height: 16rem;
+  .leftColumn,
+  .rightColumn {
+    overflow: visible;
   }
 
   .rightColumn {
-    min-height: 16rem;
+    min-height: 400px;
+  }
+}
+
+@media (max-width: 680px) {
+  .playerHeader,
+  .modeSection {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .playerHeader {
+    gap: 12px;
+  }
+
+  .cueProgress {
+    width: 100%;
+  }
+
+  .headerActions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fullscreenButton {
+    width: 100%;
+  }
+
+  .modeLabel {
+    display: none;
+  }
+
+  .modeToggle {
+    width: 100%;
+  }
+
+  .modeButton {
+    flex: 1;
+  }
+
+  .contentGrid {
+    padding: 8px;
   }
 
   .donePanel {
+    align-items: stretch;
     flex-direction: column;
-    align-items: flex-start;
   }
 }

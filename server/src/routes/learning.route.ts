@@ -59,6 +59,12 @@ router.post(
     LearningController.restartLesson,
 );
 
+router.post(
+    '/lessons/:lessonId/complete',
+    validate(startLessonSchema),
+    LearningController.completeLesson,
+);
+
 router.get(
     '/lessons/:lessonId',
     validate(getLearnerLessonSchema),

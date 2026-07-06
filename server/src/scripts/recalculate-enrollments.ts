@@ -22,6 +22,8 @@ import mongoose from 'mongoose';
 import { createInterface } from 'node:readline';
 import { CourseEnrollment, EEnrollmentStatus } from '../models/mongo/course-enrollment.model.js';
 import { LearnerLessonProgress, ELessonProgressStatus } from '../models/mongo/learner-lesson-progress.model.js';
+import '../models/mongo/unit.model.js';
+import '../models/mongo/lesson.model.js';
 import { env } from '../config/env.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────

@@ -1,15 +1,11 @@
-import styles from './RegisterPage.module.css';
-import Right from '../../components/right/Right';
 import RegisterForm from '../../components/form/RegisterForm';
+import AuthLayout from '../../components/layout/AuthLayout';
 
 const RegisterPage = () => {
     return (
-        <div className={styles.container}>
-            <div className={styles.left}>
-                <RegisterForm />
-            </div>
-            <Right />
-        </div>
+        <AuthLayout>
+            <RegisterForm />
+        </AuthLayout>
     );
 };
 

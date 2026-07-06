@@ -25,21 +25,9 @@ interface ChecklistItem {
 const MODULES: ModuleRow[] = [
 	{
 		number: 1,
-		name: 'TOEIC Thu Gọn',
+		name: 'Nghe & Đọc',
 		content: 'Nghe & Đọc hiểu (77 câu trắc nghiệm)',
 		duration: '60 phút',
-	},
-	{
-		number: 2,
-		name: 'IELTS Writing',
-		content: 'Bài luận tiếng Anh (≥150 từ)',
-		duration: '30 phút',
-	},
-	{
-		number: 3,
-		name: 'IELTS Speaking',
-		content: 'Phỏng vấn 1:1 với AI Examiner',
-		duration: '15 phút',
 	},
 ];
 
@@ -106,11 +94,10 @@ const PlacementTestIntroModal = ({ onClose }: Props) => {
 						className={styles.oupLogo}
 					/>
 					<h2 id="pt-modal-title" className={styles.title}>
-						Bài Kiểm Tra Đầu Vào
+						Xác định trình độ tiếng Anh của bạn
 					</h2>
 					<p className={styles.subtitle}>
-						Chúng tôi sẽ đánh giá kỹ năng Listening và Reading của bạn để tạo lộ trình
-						học cá nhân hóa chính xác nhất.
+						Hoàn thành bài kiểm tra Nghe &amp; Đọc để nhận trình độ CEFR và lộ trình học phù hợp.
 					</p>
 				</div>
 

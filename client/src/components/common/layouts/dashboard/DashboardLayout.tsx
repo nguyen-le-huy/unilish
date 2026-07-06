@@ -10,12 +10,14 @@ interface Props {
 const DashboardLayout = ({ children }: Props) => {
 	const { pathname } = useLocation();
 	const isLessonPlayer = pathname.startsWith('/dashboard/learning/lessons/');
+	const isIeltsTest = /^\/dashboard\/ielts-practice\/(listening|reading|writing)\/[^/]+$/.test(pathname);
+	const isFocusedWorkspace = isLessonPlayer || isIeltsTest;
 
 	return (
-		<div className={`${styles.layout} ${isLessonPlayer ? styles.lessonLayout : ''}`}>
+		<div className={`${styles.layout} ${isFocusedWorkspace ? styles.focusedLayout : ''}`}>
             <Header />
 			<div className={styles.contentArea}>
-				<main className={`${styles.main} ${isLessonPlayer ? styles.lessonMain : ''}`}>
+				<main className={`${styles.main} ${isLessonPlayer ? styles.lessonMain : ''} ${isIeltsTest ? styles.examMain : ''}`}>
 					{children ?? <Outlet />}
 				</main>
 			</div>

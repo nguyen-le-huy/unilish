@@ -18,17 +18,12 @@ import { useAnswerState } from '../../hooks/use-answer-state';
 import { useAutosave } from '../../hooks/use-autosave';
 import { useCreatePlacementAttemptMutation } from '../../hooks/use-create-placement-attempt-mutation';
 import { useSavePlacementAnswersMutation } from '../../hooks/use-save-placement-answers-mutation';
-import { useCreatePlacementSessionMutation } from '../../hooks/use-create-placement-session-mutation';
 import { useSubmitPlacementAttemptMutation } from '../../hooks/use-submit-placement-attempt-mutation';
 import { useTestTimer } from '../../hooks/use-test-timer';
 import { mapAttemptToParts } from '../../utils/question-mapper';
 import { formatCountdownLabel } from '../../utils/timer';
 import { SubmissionSuccessCard } from '@/components/core/SubmissionSuccessCard';
-import {
-    usePlacementTestStore,
-    type IModuleEssay,
-    type IModuleSpeaking,
-} from '@/stores/placement-test.store';
+import { usePlacementTestStore } from '@/stores/placement-test.store';
 
 const getErrorStatus = (error: unknown): number | undefined => {
     if (!isAxiosError<ApiErrorResponse>(error)) {
@@ -46,94 +41,17 @@ interface SubmissionSummary {
     completedMinutes: number | null;
     submittedQuestions: number;
     totalQuestions: number;
+    score: number;
+    currentLevel: string;
 }
-
-interface RuntimeEssayModuleCandidate {
-    type: string;
-    timeLimitMinutes?: number;
-    promptImageUrl?: string;
-    aiModel?: string;
-    topicsByLevel?: {
-        low?: string[];
-        mid?: string[];
-        high?: string[];
-    };
-    wordLimits?: {
-        low?: number;
-        mid?: number;
-        high?: number;
-    };
-}
-
-interface RuntimeSpeakingModuleCandidate {
-    type: string;
-    config?: {
-        ttsModel?: string;
-        ttsVoice?: string;
-        gradingModel?: string;
-        silenceThreshold?: number;
-    };
-    parts?: {
-        part1?: {
-            questions?: string[];
-            questionsRange?: { min?: number; max?: number };
-        };
-        part2?: {
-            topics?: string[];
-            questionsRange?: { min?: number; max?: number };
-        };
-        part3?: {
-            questions?: string[];
-            questionsRange?: { min?: number; max?: number };
-        };
-    };
-}
-
-const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
-    return typeof value === 'object' && value !== null;
-};
-
-const toEssayModule = (value: unknown): IModuleEssay | null => {
-    if (!isObjectRecord(value)) {
-        return null;
-    }
-
-    const candidate = value as unknown as RuntimeEssayModuleCandidate;
-    if (candidate.type !== 'essay') {
-        return null;
-    }
-
-    return {
-        type: 'essay',
-        timeLimitMinutes: candidate.timeLimitMinutes,
-        promptImageUrl: candidate.promptImageUrl,
-        aiModel: candidate.aiModel,
-        topicsByLevel: candidate.topicsByLevel,
-        wordLimits: candidate.wordLimits,
-    };
-};
-
-const toSpeakingModule = (value: unknown): IModuleSpeaking | null => {
-    if (!isObjectRecord(value)) {
-        return null;
-    }
-
-    const candidate = value as unknown as RuntimeSpeakingModuleCandidate;
-    if (candidate.type !== 'speaking') {
-        return null;
-    }
-
-    return {
-        type: 'speaking',
-        config: candidate.config,
-        parts: candidate.parts,
-    };
-};
 
 const buildSubmissionSummary = (attemptData: {
     durationSeconds?: number | null;
     answerSheet: Array<{ selectedOption?: AnswerOption | null }>;
     totalQuestions: number;
+}, profileUpdate: {
+    placementTestScore: number;
+    currentLevel: string;
 }): SubmissionSummary => {
     const submittedQuestions = attemptData.answerSheet.filter((item) => Boolean(item.selectedOption)).length;
     const completedMinutes = typeof attemptData.durationSeconds === 'number'
@@ -144,6 +62,8 @@ const buildSubmissionSummary = (attemptData: {
         completedMinutes,
         submittedQuestions,
         totalQuestions: attemptData.totalQuestions,
+        score: profileUpdate.placementTestScore,
+        currentLevel: profileUpdate.currentLevel,
     };
 };
 
@@ -162,9 +82,7 @@ const ListeningReading = () => {
     const [activePart, setActivePart] = useState<ToeicPart>(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submissionSummary, setSubmissionSummary] = useState<SubmissionSummary | null>(null);
-    const setTestConfig = usePlacementTestStore((state) => state.setTestConfig);
     const setAttemptId = usePlacementTestStore((state) => state.setAttemptId);
-    const setSessionId = usePlacementTestStore((state) => state.setSessionId);
     const setLrRawScore = usePlacementTestStore((state) => state.setLrRawScore);
     const setCurrentModule = usePlacementTestStore((state) => state.setCurrentModule);
 
@@ -181,7 +99,6 @@ const ListeningReading = () => {
     const attemptError = createAttemptMutation.error;
 
     const saveAnswersMutation = useSavePlacementAnswersMutation();
-    const createPlacementSessionMutation = useCreatePlacementSessionMutation();
     const submitAttemptMutation = useSubmitPlacementAttemptMutation();
     const { queueSave, flushPendingChanges, cancelScheduledSaves } = useAutosave({
         attemptId: attempt?.attemptId,
@@ -221,25 +138,6 @@ const ListeningReading = () => {
             setActivePart(firstPart);
         }
     }, [mapped.partInfos]);
-
-    useEffect(() => {
-        const modules = Array.isArray(activeTest?.modules) ? activeTest.modules : [];
-        const essayModule = toEssayModule(activeTest?.essayModule)
-            ?? modules.map(toEssayModule).find((module): module is IModuleEssay => module !== null);
-        const speakingModule = toSpeakingModule(activeTest?.speakingModule)
-            ?? modules.map(toSpeakingModule).find((module): module is IModuleSpeaking => module !== null);
-
-        if (!activeTest?._id || !essayModule || !speakingModule) {
-            return;
-        }
-
-        setTestConfig({
-            placementTestId: activeTest.placementTestId ?? activeTest._id,
-            essayModule,
-            speakingModule,
-            cefrMapping: activeTest.cefrMapping,
-        });
-    }, [activeTest?.cefrMapping, activeTest?._id, activeTest?.essayModule, activeTest?.modules, activeTest?.placementTestId, activeTest?.speakingModule, setTestConfig]);
 
     useEffect(() => {
         // 401 is handled by the render guard after logout updates auth state.
@@ -284,16 +182,6 @@ const ListeningReading = () => {
                 ? Math.round(result.attempt.scoring.mcqScoreNormalized * 100)
                 : result.profileUpdate.placementTestScore;
 
-            const sessionResult = await createPlacementSessionMutation.mutateAsync({
-                lrAttemptId: attempt.attemptId,
-                lrRawScore,
-            });
-
-            if (!sessionResult.sessionId) {
-                toast.error(PT_MESSAGES.submitError);
-                return;
-            }
-
             // Update user profile with placement test results
             const currentUser = useAuthStore.getState().user;
             if (currentUser && result.profileUpdate) {
@@ -306,10 +194,8 @@ const ListeningReading = () => {
 
             setAttemptId(attempt.attemptId);
             setLrRawScore(lrRawScore);
-            setSessionId(sessionResult.sessionId);
-
-            setCurrentModule('writing');
-            setSubmissionSummary(buildSubmissionSummary(result.attempt));
+            setCurrentModule('result');
+            setSubmissionSummary(buildSubmissionSummary(result.attempt, result.profileUpdate));
         } catch {
             toast.error(PT_MESSAGES.submitError);
         } finally {
@@ -318,13 +204,11 @@ const ListeningReading = () => {
     }, [
         attempt?.attemptId,
         cancelScheduledSaves,
-        createPlacementSessionMutation,
         flushPendingChanges,
         isSubmitting,
         setAttemptId,
         setCurrentModule,
         setLrRawScore,
-        setSessionId,
         submitAttemptMutation,
     ]);
 
@@ -371,14 +255,19 @@ const ListeningReading = () => {
         <>
             <div className={styles.container}>
                 <header className={styles.header}>
-                    <h3 className={styles.title}>Bài thi đầu vào - Phần kỹ năng nghe và đọc</h3>
+                    <div className={styles.headerCopy}>
+                        <span className={styles.eyebrow}>Bài đánh giá năng lực CEFR</span>
+                        <h1 className={styles.title}>Kiểm tra kỹ năng Nghe &amp; Đọc</h1>
+                        <p>Hoàn thành từng phần để hệ thống xác định trình độ phù hợp nhất với bạn.</p>
+                    </div>
                     <Button
                         type="button"
                         padding="B"
                         variant="outline"
+                        className={styles.exitButton}
                         onClick={() => navigate(PATHS.DASHBOARD.HOME)}
                     >
-                        Thoát
+                        ← Thoát bài kiểm tra
                     </Button>
                 </header>
                 <div className={styles.main}>
@@ -414,12 +303,14 @@ const ListeningReading = () => {
                 <div className={styles.overlay} role="dialog" aria-modal="true">
                     <SubmissionSuccessCard
                         stats={[
+                            { label: 'Trình độ CEFR', value: submissionSummary.currentLevel },
+                            { label: 'Điểm tổng', value: `${submissionSummary.score}%` },
                             { label: 'Thời gian hoàn thành', value: submissionSummary.completedMinutes ? `${submissionSummary.completedMinutes}p` : '--' },
                             { label: 'Số câu đã nộp', value: `${submissionSummary.submittedQuestions}/${submissionSummary.totalQuestions}` },
                         ]}
-                        onContinue={() => navigate(PATHS.DASHBOARD.PLACEMENT_TEST.WRITING)}
-                        description={"Bạn đã nộp thành công phần Listening và Reading.\nVui lòng chuẩn bị cho các phần tiếp theo."}
-                        continueLabel="Tiếp tục phần Writing"
+                        onContinue={() => navigate(PATHS.DASHBOARD.RECOMMEND_COURSE)}
+                        description={"Bạn đã hoàn thành bài kiểm tra đầu vào.\nHệ thống đã cập nhật trình độ và sẵn sàng đề xuất lộ trình phù hợp."}
+                        continueLabel="Xem khóa học phù hợp"
                     />
                 </div>
             )}

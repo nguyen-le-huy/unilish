@@ -6,11 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LearnerLessonDto } from '../../types/learning.types';
 import LessonPlayerPage from './LessonPlayerPage';
 
-const { startLessonMock, submitLessonMock, saveCheckpointMock, restartLessonMock, refetchMock } = vi.hoisted(() => ({
+const { startLessonMock, submitLessonMock, saveCheckpointMock, restartLessonMock, completeLessonMock, refetchMock } = vi.hoisted(() => ({
     startLessonMock: vi.fn(),
     submitLessonMock: vi.fn(),
     saveCheckpointMock: vi.fn(),
     restartLessonMock: vi.fn(),
+    completeLessonMock: vi.fn(),
     refetchMock: vi.fn(),
 }));
 
@@ -51,6 +52,7 @@ vi.mock('../../hooks/use-lesson', () => ({
     useSaveCheckpoint: () => ({ mutateAsync: saveCheckpointMock }),
     useSubmitLesson: () => ({ mutate: submitLessonMock }),
     useRestartLesson: () => ({ mutateAsync: restartLessonMock, isPending: false }),
+    useCompleteLesson: () => ({ mutateAsync: completeLessonMock, isPending: false }),
 }));
 
 vi.mock('../../hooks/use-course-roadmap', () => ({
@@ -101,6 +103,13 @@ describe('LessonPlayerPage', () => {
             progressId: 'progress-1',
             status: 'IN_PROGRESS',
             checkpointVersion: 0,
+        });
+        completeLessonMock.mockResolvedValue({
+            lessonStatus: 'COMPLETED',
+            unitStatus: 'COMPLETED',
+            courseStatus: 'ACTIVE',
+            courseProgressPercent: 50,
+            nextLessonId: null,
         });
         lessonData = {
             course: { id: 'course-1', slug: 'travel-a1', name: 'Travel A1' },
@@ -179,5 +188,20 @@ describe('LessonPlayerPage', () => {
         expect(screen.queryByText('Lesson result')).toBeNull();
         expect(screen.queryByText('Grammar content')).not.toBeNull();
         expect(restartLessonMock).not.toHaveBeenCalled();
+    });
+
+    it('marks the lesson as completed when learner clicks the completion button', async () => {
+        render(
+            <MemoryRouter initialEntries={['/dashboard/learning/lessons/lesson-grammar']}>
+                <Routes>
+                    <Route path="/dashboard/learning/lessons/:lessonId" element={<LessonPlayerPage />} />
+                </Routes>
+            </MemoryRouter>,
+        );
+
+        screen.getByRole('button', { name: /đánh dấu hoàn thành/i }).click();
+
+        await waitFor(() => expect(completeLessonMock).toHaveBeenCalledWith('lesson-grammar'));
+        await waitFor(() => expect(refetchMock).toHaveBeenCalled());
     });
 });

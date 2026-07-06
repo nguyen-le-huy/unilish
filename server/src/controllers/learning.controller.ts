@@ -66,6 +66,15 @@ export class LearningController {
         sendResponse(res, HttpStatus.OK, 'Bắt đầu làm lại bài học', result);
     });
 
+    // ─── Mark Lesson Complete ──────────────────────────────────────────────
+    static completeLesson = catchAsync(async (req: Request, res: Response) => {
+        const userId = (req as any).user._id as string;
+        const lessonId = req.params['lessonId']!;
+
+        const result = await learningService.completeLesson(userId, lessonId);
+        sendResponse(res, HttpStatus.OK, 'Đã hoàn thành bài học', result);
+    });
+
     // ─── Read Lesson ───────────────────────────────────────────────────────
     static getLearnerLesson = catchAsync(async (req: Request, res: Response) => {
         const userId = (req as any).user._id as string;

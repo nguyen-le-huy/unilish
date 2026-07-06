@@ -23,6 +23,13 @@ export interface User {
     currentLevel?: string;
     lastActiveCourseId?: string | null;
     placementTestScore?: number;
+    targetLevel?: string;
+    weakSkills?: string[];
+    gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+    isVerified?: boolean;
+    authProvider?: 'local' | 'google';
+    createdAt?: string;
+    updatedAt?: string;
     stats?: UserStats;
     subscription?: unknown;
     phoneNumber?: string;

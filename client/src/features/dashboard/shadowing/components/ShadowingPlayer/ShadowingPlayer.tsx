@@ -35,6 +35,16 @@ const formatRecordingTime = (seconds: number): string => {
     return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 };
 
+const STATE_LABELS: Record<string, string> = {
+    idle: 'Sẵn sàng',
+    playing: 'Đang phát câu mẫu',
+    waiting: 'Đến lượt bạn nói',
+    recording: 'Đang ghi âm',
+    scoring: 'Đang chấm phát âm',
+    result: 'Đã có kết quả',
+    done: 'Hoàn thành',
+};
+
 const mergeVocabulary = (cues: ShadowingVideo['cues']): CueVocabularyItem[] => {
     const uniqueByKey = new Map<string, CueVocabularyItem>();
     cues.forEach((cue) => {
@@ -59,6 +69,7 @@ const mergeTranslation = (cues: ShadowingVideo['cues']): string | null => {
 };
 
 const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, saveError }: ShadowingPlayerProps) => {
+    const playerRootRef = useRef<HTMLElement | null>(null);
     const onCueEndRef = useRef<(() => void) | null>(null);
     const hasAutoPlayedRef = useRef(false);
     const lastScoringRef = useRef<{ cueId: string; blobSize: number; blobType: string } | null>(null);
@@ -71,6 +82,7 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
     const [draftText, setDraftText] = useState('');
     const [isDirty, setIsDirty] = useState(false);
     const [editorError, setEditorError] = useState<string | null>(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     const ytPlayer = useYtPlayer('yt-player-container', video.videoId, () => {
         onCueEndRef.current?.();
@@ -90,23 +102,37 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
     const { scoreBlob, isScoring, error: scoringError, clearError } = useAzurePronunciation();
 
     const currentCue = machine.currentCue;
+    const {
+        audioBlob: machineAudioBlob,
+        onScoreComplete,
+        onScoreFailed,
+        state: machineState,
+    } = machine;
 
     const cueCounterLabel = useMemo(() => {
-        return `Cue ${Math.min(machine.currentCueIndex + 1, editableCues.length)}/${editableCues.length}`;
+        return `Câu ${Math.min(machine.currentCueIndex + 1, editableCues.length)} / ${editableCues.length}`;
     }, [machine.currentCueIndex, editableCues.length]);
 
-    useEffect(() => {
-        setEditableCues(video.cues);
-        setSelectedCueIds(new Set());
-        setEditingCueId(null);
-        setDraftText('');
-        setIsDirty(false);
-        setEditorError(null);
-    }, [video.videoId, video.cues]);
+    const cueProgressPercent = useMemo(() => {
+        if (editableCues.length === 0) {
+            return 0;
+        }
+
+        return Math.round(((machine.currentCueIndex + 1) / editableCues.length) * 100);
+    }, [editableCues.length, machine.currentCueIndex]);
 
     useEffect(() => {
         hasAutoPlayedRef.current = false;
     }, [video.videoId]);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(document.fullscreenElement === playerRootRef.current);
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
 
     useEffect(() => {
         if (!ytPlayer.isReady || machine.state !== 'idle' || machine.currentCueIndex !== 0 || hasAutoPlayedRef.current) {
@@ -132,9 +158,9 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
     }, [machine.state]);
 
     useEffect(() => {
-        const audioBlob = machine.audioBlob;
+        const audioBlob = machineAudioBlob;
 
-        if (machine.state !== 'scoring' || !audioBlob || !currentCue) {
+        if (machineState !== 'scoring' || !audioBlob || !currentCue) {
             return;
         }
 
@@ -164,13 +190,13 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
                     return;
                 }
 
-                machine.onScoreComplete(result);
+                onScoreComplete(result);
             } catch {
                 if (isCancelled) {
                     return;
                 }
 
-                machine.onScoreFailed();
+                onScoreFailed();
             }
         };
 
@@ -179,13 +205,13 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
         return () => {
             isCancelled = true;
         };
-    }, [currentCue, machine.audioBlob, machine.onScoreComplete, machine.onScoreFailed, machine.state, scoreBlob]);
+    }, [currentCue, machineAudioBlob, machineState, onScoreComplete, onScoreFailed, scoreBlob]);
 
     useEffect(() => {
-        if (machine.state !== 'scoring') {
+        if (machineState !== 'scoring') {
             lastScoringRef.current = null;
         }
-    }, [machine.state]);
+    }, [machineState]);
 
     const handlePlayCurrent = useCallback(() => {
         clearError();
@@ -242,6 +268,19 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
         setRecordingSeconds(0);
         machine.restart();
     }, [clearError, machine]);
+
+    const handleToggleFullscreen = useCallback(async () => {
+        try {
+            if (document.fullscreenElement === playerRootRef.current) {
+                await document.exitFullscreen();
+                return;
+            }
+
+            await playerRootRef.current?.requestFullscreen();
+        } catch {
+            setRecorderError('Trình duyệt không thể mở chế độ toàn màn hình.');
+        }
+    }, []);
 
     const handleCueClick = useCallback((index: number) => {
         ytPlayer.pausePlayer();
@@ -472,31 +511,55 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
     if (!currentCue) {
         return (
             <div className={styles.emptyState}>
-                <p className={styles.emptyStateText}>No cues available for this video.</p>
+                <p className={styles.emptyStateText}>Video này chưa có câu luyện tập.</p>
             </div>
         );
     }
 
     return (
-        <section className={styles.playerRoot}>
+        <section ref={playerRootRef} className={styles.playerRoot}>
             <div className={styles.playerHeader}>
-                <div className={styles.modeToggle}>
+                <div className={styles.modeSection}>
+                    <span className={styles.modeLabel}>Chế độ luyện</span>
+                    <div className={styles.modeToggle}>
                     <button
                         className={`${styles.modeButton} ${mode === 'with-transcript' ? styles.modeButtonActive : ''}`.trim()}
+                        type="button"
                         onClick={() => onModeChange('with-transcript')}
-                        aria-label="Show transcript mode"
+                        aria-label="Hiện transcript khi luyện"
                     >
-                        With Transcript
+                        Có transcript
                     </button>
                     <button
                         className={`${styles.modeButton} ${mode === 'without-transcript' ? styles.modeButtonActive : ''}`.trim()}
+                        type="button"
                         onClick={() => onModeChange('without-transcript')}
-                        aria-label="Hide transcript while playing"
+                        aria-label="Ẩn transcript khi nghe"
                     >
-                        Without Transcript
+                        Thử thách nghe
+                    </button>
+                    </div>
+                </div>
+                <div className={styles.headerActions}>
+                    <div className={styles.cueProgress}>
+                        <div className={styles.cueProgressMeta}>
+                            <p className={styles.cueCounter}>{cueCounterLabel}</p>
+                            <span>{cueProgressPercent}%</span>
+                        </div>
+                        <div className={styles.progressTrack}>
+                            <span style={{ width: `${cueProgressPercent}%` }} />
+                        </div>
+                    </div>
+                    <button
+                        className={styles.fullscreenButton}
+                        type="button"
+                        onClick={() => void handleToggleFullscreen()}
+                        aria-label={isFullscreen ? 'Thoát toàn màn hình' : 'Mở toàn màn hình'}
+                    >
+                        <span aria-hidden="true">{isFullscreen ? '↙' : '↗'}</span>
+                        {isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}
                     </button>
                 </div>
-                <p className={styles.cueCounter}>{cueCounterLabel}</p>
             </div>
 
             <div className={styles.contentGrid}>
@@ -508,25 +571,27 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
 
                     <div className={styles.statusRow}>
                         <span className={styles.statusDot} aria-hidden="true" />
-                        <span className={styles.statusText}>State: {machine.state}</span>
+                        <span className={styles.statusText}>{STATE_LABELS[machine.state] ?? machine.state}</span>
                     </div>
 
                     {machine.state === 'result' && (
                         <div className={styles.statusActionRow}>
                             <button
                                 className={styles.ghostButton + ' ' + styles.retryButton}
+                                type="button"
                                 onClick={handleRetry}
-                                aria-label="Replay current cue"
+                                aria-label="Luyện lại câu hiện tại"
                             >
                                 <img src={retryIcon} alt="" className={styles.buttonIcon} />
-                                <span>Retry</span>
+                                <span>Luyện lại</span>
                             </button>
                             <button
                                 className={styles.ghostButton}
+                                type="button"
                                 onClick={handleNext}
-                                aria-label="Go to next cue"
+                                aria-label="Chuyển đến câu tiếp theo"
                             >
-                                <span>Next</span>
+                                <span>Câu tiếp theo →</span>
                             </button>
                         </div>
                     )}
@@ -534,39 +599,39 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
                     {machine.state !== 'result' && machine.state !== 'done' && (
                         <div className={styles.controlsRow}>
                             {machine.state === 'idle' && (
-                                <button className={styles.primaryButton} onClick={handlePlayCurrent} aria-label="Play current cue">
-                                    ▶ Play cue
+                                <button className={styles.primaryButton} type="button" onClick={handlePlayCurrent} aria-label="Phát câu hiện tại">
+                                    ▶ Nghe câu mẫu
                                 </button>
                             )}
 
                             {machine.state === 'waiting' && (
                                 <>
-                                    <button className={styles.primaryButton} onClick={() => void handleStartRecording()} aria-label="Start recording">
+                                    <button className={styles.primaryButton} type="button" onClick={() => void handleStartRecording()} aria-label="Bắt đầu ghi âm">
                                         <img src={micIcon} alt="" className={styles.buttonIcon} />
-                                        <span>Ready to record</span>
+                                        <span>Bắt đầu nói</span>
                                     </button>
-                                    <button className={styles.ghostButton} onClick={handleRetry} aria-label="Replay current cue">
+                                    <button className={styles.ghostButton} type="button" onClick={handleRetry} aria-label="Nghe lại câu hiện tại">
                                         <img src={retryIcon} alt="" className={styles.buttonIcon} />
-                                        <span>Replay</span>
+                                        <span>Nghe lại</span>
                                     </button>
                                 </>
                             )}
 
                             {machine.state === 'recording' && (
                                 <>
-                                    <button className={styles.dangerButton} onClick={() => void handleStopRecording()} aria-label="Stop recording">
-                                        ⏹ Finish
+                                    <button className={styles.dangerButton} type="button" onClick={() => void handleStopRecording()} aria-label="Dừng ghi âm">
+                                        ⏹ Hoàn tất
                                     </button>
                                     <span className={styles.timerText}>{formatRecordingTime(recordingSeconds)}</span>
                                 </>
                             )}
 
                             {machine.state === 'scoring' && (
-                                <p className={styles.statusText}>{isScoring ? 'Scoring pronunciation...' : 'Preparing score...'}</p>
+                                <p className={styles.statusText}>{isScoring ? 'Đang phân tích phát âm...' : 'Đang chuẩn bị kết quả...'}</p>
                             )}
 
                             {machine.state === 'playing' && (
-                                <p className={styles.statusText}>Playing cue...</p>
+                                <p className={styles.statusText}>Hãy nghe kỹ và ghi nhớ cách phát âm.</p>
                             )}
                         </div>
                     )}
@@ -580,9 +645,9 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
 
                     {machine.state === 'done' && (
                         <div className={styles.donePanel}>
-                            <p className={styles.doneText}>Exercise complete.</p>
-                            <button className={styles.primaryButton} onClick={handleRestart} aria-label="Restart from first cue">
-                                Review from start
+                            <p className={styles.doneText}>Bạn đã hoàn thành toàn bộ bài luyện.</p>
+                            <button className={styles.primaryButton} type="button" onClick={handleRestart} aria-label="Luyện lại từ câu đầu tiên">
+                                Luyện lại từ đầu
                             </button>
                         </div>
                     )}
@@ -599,7 +664,6 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
                         cues={editableCues}
                         activeCueIndex={machine.currentCueIndex}
                         mode={mode}
-                        state={machine.state}
                         onCueClick={handleCueClick}
                         isEditable={isEditable}
                         selectedCueIds={selectedCueIds}
@@ -624,8 +688,9 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
             </div>
 
             <div className={styles.playerReadyText}>
-                {ytPlayer.isReady ? 'Player ready' : 'Loading player...'}
-                {isRecording ? ' · Recording' : ''}
+                <span className={ytPlayer.isReady ? styles.readyDot : styles.loadingDot} />
+                {ytPlayer.isReady ? 'Trình phát đã sẵn sàng' : 'Đang tải trình phát...'}
+                {isRecording ? ' · Đang ghi âm' : ''}
             </div>
         </section>
     );

@@ -1,15 +1,11 @@
-import styles from './LoginPage.module.css';
-import Right from '../../components/right/Right';
 import LoginForm from '../../components/form/LoginForm';
+import AuthLayout from '../../components/layout/AuthLayout';
 
 const LoginPage = () => {
     return (
-        <div className={styles.container}>
-            <div className={styles.left}>
-                <LoginForm />
-            </div>
-            <Right />
-        </div>
+        <AuthLayout>
+            <LoginForm />
+        </AuthLayout>
     );
 };
 

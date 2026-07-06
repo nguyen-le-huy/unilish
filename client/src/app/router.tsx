@@ -16,17 +16,21 @@ const MarketingHomePage = React.lazy(() => import('@/features/marketing/pages/ho
 const OTPPage = React.lazy(() => import('@/features/auth/pages/OTPVerifyPage/OTPVerifyPage'));
 const ListeningReadingPage = React.lazy(() => import('@/features/dashboard/placement-test'));
 const AuthSuccessPage = React.lazy(() => import('@/features/auth/pages/AuthSuccessPage/AuthSuccessPage'));
-const WritingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Writing/Writing'));
-const SpeakingPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Speaking/Speaking'));
-const ResultPage = React.lazy(() => import('@/features/dashboard/placement-test/pages/Result/Result'));
 const RecommendCoursePage = React.lazy(() => import('@/features/dashboard/recommend-course/pages/RecommendCourse'));
 const AllCoursesPage = React.lazy(() => import('@/features/dashboard/all-courses/pages/AllCoursesPage'));
 const NotFoundPage = React.lazy(() => import('@/features/dashboard/not-found/not-found-page'));
 const AIVoicePage = React.lazy(() => import('@/features/dashboard/ai-voice/pages/AIVoice'));
 const ShadowingPage = React.lazy(() => import('@/features/dashboard/shadowing/pages/ShadowingPage/ShadowingPage'));
 const ShadowingPlayerPage = React.lazy(() => import('@/features/dashboard/shadowing/pages/ShadowingPlayerPage/ShadowingPlayerPage'));
+const DictationPage = React.lazy(() => import('@/features/dashboard/shadowing/pages/DictationPage/DictationPage'));
 const CourseOverviewPage = React.lazy(() => import('@/features/dashboard/learning/pages/CourseOverviewPage/CourseOverviewPage'));
 const LessonPlayerPage = React.lazy(() => import('@/features/dashboard/learning/pages/LessonPlayerPage/LessonPlayerPage'));
+const ProfilePage = React.lazy(() => import('@/features/dashboard/profile'));
+const IeltsPracticePage = React.lazy(() => import('@/features/dashboard/ielts-practice'));
+const IeltsSkillPage = React.lazy(() => import('@/features/dashboard/ielts-practice/pages/IeltsSkillPage'));
+const IeltsListeningTestPage = React.lazy(() => import('@/features/dashboard/ielts-practice/pages/IeltsListeningTestPage'));
+const IeltsReadingTestPage = React.lazy(() => import('@/features/dashboard/ielts-practice/pages/IeltsReadingTestPage'));
+const IeltsWritingTestPage = React.lazy(() => import('@/features/dashboard/ielts-practice/pages/IeltsWritingTestPage'));
 
 export const router = createBrowserRouter([
     {
@@ -125,30 +129,6 @@ export const router = createBrowserRouter([
                         ),
                     },
                     {
-                        path: 'placement-test/writing',
-                        element: (
-                            <Suspense fallback={<Loading />}>
-                                <WritingPage />
-                            </Suspense>
-                        ),
-                    },
-                    {
-                        path: 'placement-test/speaking',
-                        element: (
-                            <Suspense fallback={<Loading />}>
-                                <SpeakingPage />
-                            </Suspense>
-                        ),
-                    },
-                    {
-                        path: 'placement-test/result',
-                        element: (
-                            <Suspense fallback={<Loading />}>
-                                <ResultPage />
-                            </Suspense>
-                        ),
-                    },
-                    {
                         path: PATHS.DASHBOARD.RECOMMEND_COURSE.replace('/dashboard/', ''),
                         element: (
                             <Suspense fallback={<Loading />}>
@@ -201,6 +181,62 @@ export const router = createBrowserRouter([
                         element: (
                             <Suspense fallback={<Loading />}>
                                 <ShadowingPlayerPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'dictation/:videoId',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <DictationPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: PATHS.DASHBOARD.PROFILE.replace('/dashboard/', ''),
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <ProfilePage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: PATHS.DASHBOARD.IELTS_PRACTICE.replace('/dashboard/', ''),
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <IeltsPracticePage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: `${PATHS.DASHBOARD.IELTS_PRACTICE.replace('/dashboard/', '')}/:skill`,
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <IeltsSkillPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'ielts-practice/listening/:testId',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <IeltsListeningTestPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'ielts-practice/reading/:testId',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <IeltsReadingTestPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'ielts-practice/writing/:testId',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <IeltsWritingTestPage />
                             </Suspense>
                         ),
                     },

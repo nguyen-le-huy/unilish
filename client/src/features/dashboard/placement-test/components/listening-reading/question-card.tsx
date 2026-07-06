@@ -66,12 +66,12 @@ export const QuestionCard = ({ question, onAnswer, onFlag, layout = 'default', d
             <div className={styles.content}>
                 <div className={styles.header}>
                     <span className={styles.questionLabel}>
-                        Question {question.questionNumber}
+                        Câu {question.questionNumber}
                     </span>
                     <button
                         type="button"
                         className={`${styles.flagBtn} ${question.flagged ? styles.flagged : ''}`}
-                        aria-label={question.flagged ? 'Unflag question' : 'Flag question'}
+                    aria-label={question.flagged ? 'Bỏ đánh dấu câu hỏi' : 'Đánh dấu câu hỏi'}
                         aria-pressed={question.flagged}
                         onClick={() => onFlag(question.id)}
                     >
@@ -80,7 +80,7 @@ export const QuestionCard = ({ question, onAnswer, onFlag, layout = 'default', d
                 </div>
                 {questionText && <p className={`${styles.questionText} ${isPart5 ? styles.questionTextPart5 : ''} ${isGrouped ? styles.questionTextGrouped : ''}`}>{questionText}</p>}
 
-                <div className={styles.options} role="radiogroup" aria-label={`Options for question ${question.questionNumber}`}>
+                <div className={styles.options} role="radiogroup" aria-label={`Đáp án cho câu ${question.questionNumber}`}>
                     {options.map((opt, idx) => {
                         const isSelected = question.selectedAnswer === opt;
                         const optionText = question.optionsText?.[idx];

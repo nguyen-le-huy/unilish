@@ -48,8 +48,27 @@ const RecommendCourse = () => {
     return (
         <section className={styles.recommendCourse}>
             <div className={styles.header}>
-                <h1 className={styles.title}>KHOÁ HỌC ĐỀ XUẤT</h1>
-                <p className={styles.description}>Khám phá các khoá học được thiết kế riêng cho bạn</p>
+                <div className={styles.headingCopy}>
+                    <span className={styles.eyebrow}>Lộ trình dành riêng cho bạn</span>
+                    <h1 className={styles.title}>Khóa học đề xuất</h1>
+                    <p className={styles.description}>
+                        Những khóa học phù hợp với trình độ và mục tiêu của bạn, được chọn lọc để bạn tiến bộ nhanh hơn.
+                    </p>
+                </div>
+
+                {!isLoading && !isError && recommendations.length > 0 && (
+                    <div className={styles.summary} aria-label="Tóm tắt đề xuất">
+                        <div className={styles.summaryItem}>
+                            <span className={styles.summaryValue}>{recommendations.length}</span>
+                            <span className={styles.summaryLabel}>Khóa học phù hợp</span>
+                        </div>
+                        <span className={styles.summaryDivider} aria-hidden="true" />
+                        <div className={styles.summaryItem}>
+                            <span className={styles.summaryValue}>{currentLevel || '—'}</span>
+                            <span className={styles.summaryLabel}>Trình độ hiện tại</span>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {isLoading && (
@@ -62,6 +81,7 @@ const RecommendCourse = () => {
 
             {isError && (
                 <div className={styles.stateWrapper}>
+                    <span className={styles.stateIcon} aria-hidden="true">!</span>
                     <p className={[styles.stateMessage, styles.errorMessage].join(' ')}>
                         Không thể tải khoá học đề xuất. Vui lòng thử lại sau.
                     </p>
@@ -70,6 +90,7 @@ const RecommendCourse = () => {
 
             {!isLoading && !isError && shouldShowEmpty && (
                 <div className={styles.stateWrapper}>
+                    <span className={styles.stateIcon} aria-hidden="true">✦</span>
                     <p className={styles.stateMessage}>
                         {shouldShowOnboardingMessage
                             ? 'Hoàn thành bài kiểm tra để nhận đề xuất khoá học phù hợp.'

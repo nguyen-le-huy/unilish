@@ -1,63 +1,161 @@
 .container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(420px, 1.2fr);
+  gap: clamp(24px, 4vw, 64px);
   align-items: center;
   position: relative;
-  flex-shrink: 0;
+  width: 100%;
+  padding: 24px 28px;
+  border: 1px solid #dde5de;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(24, 54, 31, 0.05);
+}
+
+.intro {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.icon {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: #edf5ee;
+  color: #245c32;
+}
+
+.icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: #245c32;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.intro h2,
+.intro p {
+  margin: 0;
+}
+
+.intro h2 {
+  color: #17211a;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.intro p {
+  margin-top: 5px;
+  color: #717a73;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.formArea {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .inputWrapper {
-  background-color: white;
-  border: 1px solid #848484;
+  min-width: 0;
+  flex: 1;
+}
+
+.inputShell {
+  min-height: 48px;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 10px;
-  border-radius: 20px;
-  width: 800px;
-  max-width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 0 15px;
+  border: 1px solid #d7ded8;
+  border-radius: 11px;
+  background: #fafcfb;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.inputShell:focus-within {
+  border-color: #699174;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(36, 92, 50, 0.09);
+}
+
+.inputShell svg {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  color: #879189;
 }
 
 .input {
   width: 100%;
-  font-family: 'Google Sans', sans-serif;
+  min-width: 0;
+  font-family: var(--font-family);
   font-weight: 400;
-  font-size: 18px;
-  color: black;
+  font-size: 14px;
+  color: #17211a;
   border: none;
   outline: none;
   background: transparent;
-  padding: 10px;
+  padding: 13px 0;
 }
 
-.button {
-  background-color: #204E1E;
+.input::placeholder {
+  color: #999f9b;
+}
+
+.submitButton,
+.retryButton {
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 20px;
-  border-radius: 10px;
+  gap: 10px;
+  padding: 0 18px;
+  border: 1px solid #245c32;
+  border-radius: 11px;
+  background: #245c32;
   border: none;
   cursor: pointer;
-  color: white;
-  font-family: 'Google Sans', sans-serif;
-  font-weight: 500;
-  font-size: 18px;
+  color: #fff;
+  font-family: var(--font-family);
+  font-weight: 700;
+  font-size: 14px;
   white-space: nowrap;
-  transition: opacity 0.2s ease;
+  box-shadow: 0 7px 18px rgba(36, 92, 50, 0.18);
+  transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 
-.button:hover {
-  opacity: 0.9;
+.submitButton:hover:not(:disabled),
+.retryButton:hover {
+  background: #173f22;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(36, 92, 50, 0.24);
+}
+
+.submitButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .errorText {
-  margin: var(--space-2) 0 0;
+  margin: 7px 2px 0;
   font-family: var(--font-family);
-  font-size: var(--text-sm);
-  color: var(--dark-grey);
+  font-size: 12px;
+  color: #c43f3f;
 }
 
 .processingScreen {
@@ -66,6 +164,10 @@
   align-items: center;
   gap: var(--space-3);
   width: 100%;
+  padding: 36px;
+  border: 1px solid #dde5de;
+  border-radius: 18px;
+  background: #fff;
 }
 
 .processingTitle {
@@ -80,4 +182,26 @@
   font-family: var(--font-family);
   font-size: var(--text-base);
   color: var(--dark-grey);
+}
+
+@media (max-width: 1000px) {
+  .container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 20px;
+  }
+
+  .formArea {
+    flex-direction: column;
+  }
+
+  .inputWrapper,
+  .submitButton {
+    width: 100%;
+  }
 }

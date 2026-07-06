@@ -18,6 +18,10 @@ const mocks = vi.hoisted(() => ({
     }),
     startLesson: vi.fn(),
     restartLesson: vi.fn().mockResolvedValue({ progressId: 'p2', status: 'IN_PROGRESS', checkpointVersion: 0 }),
+    completeLesson: vi.fn().mockResolvedValue({
+        lessonStatus: 'COMPLETED', unitStatus: 'COMPLETED', courseStatus: 'ACTIVE',
+        courseProgressPercent: 50, nextLessonId: 'l2',
+    }),
     refetch: vi.fn(),
 }));
 
@@ -50,6 +54,7 @@ vi.mock('../../hooks/use-lesson', () => ({
     useSaveCheckpoint: () => ({ mutateAsync: mocks.saveCheckpoint }),
     useSubmitLesson: () => ({ mutate: mocks.submitLesson }),
     useRestartLesson: () => ({ mutateAsync: mocks.restartLesson, isPending: false }),
+    useCompleteLesson: () => ({ mutateAsync: mocks.completeLesson, isPending: false }),
 }));
 
 vi.mock('../../hooks/use-course-roadmap', () => ({

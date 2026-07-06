@@ -2,80 +2,216 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 40px;
-    padding: 20px;
+    gap: 36px;
+    max-width: 1480px;
+    margin: 0 auto;
+}
+
+.header {
+    position: relative;
+    isolation: isolate;
+    min-height: 250px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 48px;
+    overflow: hidden;
+    padding: 44px 48px;
+    border: 1px solid var(--editorial-hairline);
+    border-radius: 24px;
+    background:
+        radial-gradient(circle at 84% 16%, color-mix(in srgb, var(--editorial-gradient-lavender) 78%, transparent) 0, transparent 29%),
+        radial-gradient(circle at 70% 105%, color-mix(in srgb, var(--editorial-gradient-mint) 72%, transparent) 0, transparent 36%),
+        var(--editorial-canvas-soft);
+}
+
+.header::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    top: -70px;
+    right: 8%;
+    width: 230px;
+    height: 230px;
+    border: 1px solid rgba(255, 255, 255, 0.68);
+    border-radius: 50%;
+}
+
+.headingCopy {
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.eyebrow {
+    margin-bottom: 14px;
+    color: var(--editorial-body-strong);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }
 
 .title {
     margin: 0;
-    font-family: var(--font-family);
-    font-size: 24px;
+    color: var(--editorial-ink);
+    font-size: clamp(38px, 4vw, 56px);
     font-weight: 500;
-    line-height: normal;
-    color: #000;
-    text-transform: uppercase;
-    text-align: center;
+    line-height: 1.05;
+    letter-spacing: -0.04em;
 }
 
-.header {
+.description {
+    max-width: 620px;
+    margin: 18px 0 0;
+    color: var(--editorial-body);
+    font-size: 16px;
+    line-height: 1.55;
+}
+
+.summary {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: stretch;
+    gap: 20px;
+    padding: 18px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.74);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 10px 30px rgba(41, 37, 36, 0.06);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+.summaryItem {
+    min-width: 108px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 5px;
+}
+
+.summaryValue {
+    color: var(--editorial-ink);
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.summaryLabel {
+    color: var(--editorial-muted);
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+.summaryDivider {
+    width: 1px;
+    background: rgba(41, 37, 36, 0.12);
 }
 
 .courseGrid {
     width: 100%;
-    max-width: 1728px;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 20px;
-    padding: 20px;
-}
-
-@media (max-width: 1280px) {
-    .courseGrid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 1024px) {
-    .courseGrid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-.description {
-    font-size: 18px;
-}
-
-@media (max-width: 900px) {
-    .courseGrid {
-        grid-template-columns: 1fr;
-    }
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+    gap: 24px;
 }
 
 .stateWrapper {
     width: 100%;
-    padding: 20px;
+    min-height: 260px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 36px;
+    border: 1px dashed var(--editorial-hairline-strong);
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--editorial-surface-card) 72%, transparent);
 }
 
 .stateMessage {
-    font-size: 20px;
+    max-width: 520px;
+    margin: 0;
+    color: var(--editorial-body);
+    font-size: 16px;
+    line-height: 1.55;
     text-align: center;
 }
 
+.stateIcon {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--editorial-hairline);
+    border-radius: 50%;
+    background: var(--editorial-surface-card);
+    color: var(--editorial-body-strong);
+    font-size: 18px;
+}
+
 .errorMessage {
-    color: #dc2626;
+    color: var(--editorial-error);
 }
 
 .skeletonCard {
-    border-radius: 20px;
-    min-height: 420px;
-    border: 1px solid var(--grey);
-    background: linear-gradient(90deg, #f6f6f6 25%, #eeeeee 37%, #f6f6f6 63%);
+    min-height: 460px;
+    border: 1px solid var(--editorial-hairline);
+    border-radius: 18px;
+    background: linear-gradient(90deg, #fafafa 25%, #f0efed 37%, #fafafa 63%);
     background-size: 400% 100%;
     animation: shimmer 1.4s ease infinite;
+}
+
+@media (min-width: 1280px) {
+    .courseGrid > * {
+        max-width: 430px;
+    }
+}
+
+@media (max-width: 980px) {
+    .header {
+        min-height: 0;
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 36px;
+    }
+}
+
+@media (max-width: 620px) {
+    .recommendCourse {
+        gap: 24px;
+    }
+
+    .header {
+        gap: 28px;
+        padding: 28px 24px;
+        border-radius: 18px;
+    }
+
+    .title {
+        font-size: 36px;
+    }
+
+    .description {
+        font-size: 15px;
+    }
+
+    .summary {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .summaryItem {
+        min-width: 0;
+    }
+
+    .courseGrid {
+        gap: 18px;
+    }
 }
 
 @keyframes shimmer {

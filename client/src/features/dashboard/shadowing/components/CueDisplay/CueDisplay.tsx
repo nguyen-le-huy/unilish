@@ -62,11 +62,14 @@ const CueDisplay = ({ cue, mode, state, pronunciationResult }: CueDisplayProps) 
     const tokens = showScores ? buildScoredTokens(cue.text, pronunciationResult) : null;
 
     return (
-        <section className={styles.cueContainer} aria-label="Current cue">
+        <section className={styles.cueContainer} aria-label="Câu đang luyện">
             <div className={styles.cueMetaRow}>
-                <p className={styles.cueMeta}>
-                    #{cue.id} · {formatCueTime(cue.startMs)} → {formatCueTime(cue.endMs)}
-                </p>
+                <div>
+                    <span className={styles.cueLabel}>Câu đang luyện</span>
+                    <p className={styles.cueMeta}>
+                        {formatCueTime(cue.startMs)} → {formatCueTime(cue.endMs)}
+                    </p>
+                </div>
                 {showScores && (
                     <span className={`${styles.cueScoreBadge} ${getScoreClassName(pronunciationResult.overallScore)}`.trim()}>
                         {Math.round(pronunciationResult.overallScore)}
@@ -84,7 +87,7 @@ const CueDisplay = ({ cue, mode, state, pronunciationResult }: CueDisplayProps) 
             </p>
             {cue.text.length > 200 && (
                 <p className={styles.cueWarning} role="note">
-                    ⚠ This segment is long — take it slowly.
+                    ⚠ Câu này khá dài — hãy luyện chậm từng cụm từ.
                 </p>
             )}
         </section>

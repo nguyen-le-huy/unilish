@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import happyImage from '@/assets/images/happy.svg';
 import { Loading } from '@/components/common/Loading/Loading';
@@ -13,10 +13,10 @@ import TopicSelector from '../components/topic-selector/topic-selector';
 import styles from './AIVoice.module.css';
 
 const TOPIC_OPTIONS = [
-	{ id: 'free-talk', label: 'Tự do' },
-	{ id: 'ielts-speaking', label: 'IELTS Speaking' },
-	{ id: 'travel', label: 'Du lịch' },
-	{ id: 'office', label: 'Công sở' },
+	{ id: 'free-talk', label: 'Trò chuyện tự do', description: 'Nói về bất kỳ điều gì bạn thích', icon: '✦' },
+	{ id: 'ielts-speaking', label: 'IELTS Speaking', description: 'Luyện phản xạ theo chủ đề IELTS', icon: '◎' },
+	{ id: 'travel', label: 'Du lịch', description: 'Giao tiếp trong các chuyến đi', icon: '⌖' },
+	{ id: 'office', label: 'Công sở', description: 'Tình huống chuyên nghiệp hằng ngày', icon: '▣' },
 ];
 
 const LEVEL_OPTIONS = [
@@ -92,21 +92,21 @@ const AIVoice = () => {
 		);
 	}, [generateScenarios]);
 
-	useEffect(() => {
-		if (selectedTopicId && selectedLevelId) {
-			runGenerateScenarios(selectedTopicId, selectedLevelId);
-		}
-	}, [runGenerateScenarios, selectedLevelId, selectedTopicId]);
-
 	const selectedScenario = generatedScenarios.find((scenario) => scenario.id === selectedScenarioId) ?? null;
 	const canStartConversation = Boolean(selectedTopicId && selectedLevelId && selectedScenarioId && scenarioState === 'ready');
 
 	const handleSelectTopic = (topicId: string) => {
 		setSelectedTopicId(topicId);
+		if (selectedLevelId) {
+			runGenerateScenarios(topicId, selectedLevelId);
+		}
 	};
 
 	const handleSelectLevel = (levelId: string) => {
 		setSelectedLevelId(levelId);
+		if (selectedTopicId) {
+			runGenerateScenarios(selectedTopicId, levelId);
+		}
 	};
 
 	const handleRetryGenerateScenarios = () => {
@@ -135,13 +135,48 @@ const AIVoice = () => {
 				{!isChatWindowVisible && (
 					<>
 						<div className={styles.heroSection}>
-							<img src={happyImage} alt="Happy mascot" className={styles.mascotImage} />
-							<p className={styles.greeting}>
-								Hey <span className={styles.userName}>{userDisplayName}</span>, vào đây nói chuyện một chút cho vui nè 😆
-							</p>
+							<div className={styles.heroCopy}>
+								<span className={styles.eyebrow}>AI Speaking Coach</span>
+								<h1>Luyện nói tự nhiên,<br />tự tin hơn mỗi ngày.</h1>
+								<p className={styles.greeting}>
+									Chào <span className={styles.userName}>{userDisplayName}</span>, hãy chọn một tình huống và bắt đầu cuộc hội thoại bằng tiếng Anh.
+								</p>
+								<div className={styles.heroBenefits}>
+									<span><i>✓</i> Hội thoại theo trình độ</span>
+									<span><i>✓</i> Phản hồi tức thì</span>
+									<span><i>✓</i> Luyện tập không giới hạn</span>
+								</div>
+							</div>
+
+							<div className={styles.coachCard}>
+								<div className={styles.coachTop}>
+									<span className={styles.onlineDot} />
+									<span>AI Coach đang sẵn sàng</span>
+								</div>
+								<img src={happyImage} alt="Trợ lý luyện nói AI" className={styles.mascotImage} />
+								<div className={styles.coachMessage}>
+									<span className={styles.quoteMark}>“</span>
+									<p>Let&apos;s practice together.<br />You&apos;ve got this!</p>
+								</div>
+							</div>
 						</div>
 
 						<div className={styles.selectionPanel}>
+							<header className={styles.panelHeader}>
+								<div>
+									<span className={styles.panelKicker}>Thiết lập buổi luyện</span>
+									<h2>Tạo cuộc hội thoại phù hợp với bạn</h2>
+								</div>
+								<div className={styles.setupProgress} aria-label="Tiến trình thiết lập">
+									<span className={selectedTopicId ? styles.stepDone : styles.stepActive}>1</span>
+									<i />
+									<span className={selectedLevelId ? styles.stepDone : selectedTopicId ? styles.stepActive : ''}>2</span>
+									<i />
+									<span className={selectedScenarioId ? styles.stepDone : selectedLevelId ? styles.stepActive : ''}>3</span>
+								</div>
+							</header>
+
+							<div className={styles.selectorGrid}>
 							<TopicSelector
 								options={TOPIC_OPTIONS}
 								selectedTopicId={selectedTopicId}
@@ -152,6 +187,7 @@ const AIVoice = () => {
 								selectedLevelId={selectedLevelId}
 								onSelectLevel={handleSelectLevel}
 							/>
+							</div>
 							{scenarioState === 'ready' && (
 								<ScenarioSelector
 									options={generatedScenarios}
@@ -162,10 +198,22 @@ const AIVoice = () => {
 
 							{scenarioState !== 'ready' && (
 								<section className={styles.scenarioSection} aria-live="polite">
-									<h2 className={styles.scenarioSectionTitle}>Các tình huống tạo bởi bởi AI:</h2>
+									<div className={styles.scenarioHeading}>
+										<span className={styles.sectionNumber}>3</span>
+										<div>
+											<h2 className={styles.scenarioSectionTitle}>Chọn tình huống hội thoại</h2>
+											<p>AI sẽ tạo các ngữ cảnh phù hợp với lựa chọn của bạn.</p>
+										</div>
+									</div>
 
 									{scenarioState === 'idle' && (
-										<p className={styles.scenarioHint}>Hãy chọn chủ đề và level để AI tự động sinh tình huống</p>
+										<div className={styles.scenarioPlaceholder}>
+											<span aria-hidden="true">✦</span>
+											<div>
+												<strong>Tình huống sẽ xuất hiện tại đây</strong>
+												<p className={styles.scenarioHint}>Hoàn thành chủ đề và trình độ để AI bắt đầu đề xuất.</p>
+											</div>
+										</div>
 									)}
 
 									{scenarioState === 'loading' && (
@@ -193,6 +241,10 @@ const AIVoice = () => {
 							)}
 
 							<div className={styles.actionRow}>
+								<div className={styles.actionHint}>
+									<span aria-hidden="true">◉</span>
+									Cuộc hội thoại sử dụng micro và kéo dài khoảng 5–10 phút
+								</div>
 								<Button
 									type="button"
 									variant="primary"
@@ -201,7 +253,7 @@ const AIVoice = () => {
 									disabled={!canStartConversation}
 									onClick={handleStartConversation}
 								>
-									Bắt đầu luyện nói
+									Bắt đầu luyện nói <span aria-hidden="true">→</span>
 								</Button>
 							</div>
 						</div>

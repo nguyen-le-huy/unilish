@@ -6,6 +6,8 @@ import micIcon from '@/assets/icons/mic.svg';
 import penIcon from '@/assets/icons/pen.svg';
 import starIcon from '@/assets/icons/star.svg';
 import waveIcon from '@/assets/icons/wave.svg';
+import globeIcon from '@/assets/icons/globe.svg';
+import examIcon from '@/assets/icons/exam.svg';
 import NotiIcon from '@/features/dashboard/notification/components/Icon/NotiIcon';
 import HeaderAvatar from '@/features/dashboard/user/components/HeaderAvatar/HeaderAvatar';
 import { useAuthStore } from '@/stores/auth.store';
@@ -22,9 +24,21 @@ interface SidebarItem {
 }
 
 const primaryItems: SidebarItem[] = [
-  { label: 'Trang chủ', path: PATHS.DASHBOARD.HOME, icon: businessIcon, match: (pathname) => pathname === PATHS.DASHBOARD.HOME },
+  { label: 'Trang chủ', path: PATHS.DASHBOARD.HOME, icon: globeIcon, match: (pathname) => pathname === PATHS.DASHBOARD.HOME },
   { label: 'Giọng nói AI', path: '/dashboard/ai-voice', icon: micIcon },
-  { label: 'Luyện nói đuổi', path: '/dashboard/shadowing', icon: waveIcon, badge: 'Mới' },
+  {
+    label: 'Luyện nghe & nói',
+    path: '/dashboard/shadowing',
+    icon: waveIcon,
+    badge: 'Mới',
+    match: (pathname) => pathname.startsWith('/dashboard/shadowing') || pathname.startsWith('/dashboard/dictation'),
+  },
+  {
+    label: 'Luyện đề IELTS',
+    path: PATHS.DASHBOARD.IELTS_PRACTICE,
+    icon: examIcon,
+    match: (pathname) => pathname.startsWith(PATHS.DASHBOARD.IELTS_PRACTICE),
+  },
   { label: 'Khóa học đề xuất', path: PATHS.DASHBOARD.RECOMMEND_COURSE, icon: starIcon },
   { label: 'Tất cả khóa học', path: PATHS.DASHBOARD.ALL_COURSES, icon: businessIcon },
   {
@@ -38,10 +52,13 @@ const primaryItems: SidebarItem[] = [
 const pageTitles: Array<{ match: (pathname: string) => boolean; label: string }> = [
   { match: (pathname) => pathname === PATHS.DASHBOARD.HOME, label: 'Trang chủ' },
   { match: (pathname) => pathname.startsWith('/dashboard/ai-voice'), label: 'Giọng nói AI' },
-  { match: (pathname) => pathname.startsWith('/dashboard/shadowing'), label: 'Luyện nói đuổi' },
+  { match: (pathname) => pathname.startsWith('/dashboard/shadowing'), label: 'Luyện nghe & nói' },
+  { match: (pathname) => pathname.startsWith('/dashboard/dictation'), label: 'Chép chính tả' },
+  { match: (pathname) => pathname.startsWith(PATHS.DASHBOARD.IELTS_PRACTICE), label: 'Luyện đề IELTS' },
   { match: (pathname) => pathname.startsWith(PATHS.DASHBOARD.PLACEMENT_TEST.ROOT), label: 'Kiểm tra trình độ' },
   { match: (pathname) => pathname === PATHS.DASHBOARD.RECOMMEND_COURSE, label: 'Khóa học đề xuất' },
   { match: (pathname) => pathname === PATHS.DASHBOARD.ALL_COURSES, label: 'Tất cả khóa học' },
+  { match: (pathname) => pathname === PATHS.DASHBOARD.PROFILE, label: 'Trang cá nhân' },
   { match: (pathname) => pathname === PATHS.DASHBOARD.GOAL_SELECTION, label: 'Mục tiêu học tập' },
   { match: (pathname) => pathname === PATHS.DASHBOARD.LANGUAGE_SELECTION, label: 'Ngôn ngữ' },
   { match: (pathname) => pathname === PATHS.DASHBOARD.LEVEL_SELECTION, label: 'Trình độ' },
@@ -113,7 +130,6 @@ const Header = () => {
         <div className={styles.workspaceSwitch}>
           <span className={styles.workspaceMark} aria-hidden="true" />
           <span className={styles.workspaceName}>Unilish Studio</span>
-          <span className={styles.workspaceChevron} aria-hidden="true">v</span>
         </div>
 
         <nav className={styles.sidebarNav} aria-label="Điều hướng bảng điều khiển">

@@ -13,6 +13,8 @@ export const getAllCourses = async (
 
     if (filters.search?.trim()) params.set('search', filters.search.trim());
     if (filters.level) params.set('level', filters.level);
+    if (filters.languageId) params.set('languageId', filters.languageId);
+    if (filters.learningGoalId) params.set('learningGoalId', filters.learningGoalId);
 
     return apiGetUnwrappedEnvelope<CourseCatalogItem[]>(
         `/curriculum/courses?${params.toString()}`,

@@ -30,7 +30,7 @@
 .title {
   margin: 0;
   color: #17211a;
-  font-size: clamp(23px, 2vw, 30px);
+  font-size: clamp(26px, 2.2vw, 34px);
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.025em;
@@ -43,17 +43,17 @@
   border-radius: 999px;
   background: #eef6ef;
   color: #245c32;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 750;
   letter-spacing: 0.08em;
 }
 
 .metaRow { display: flex; flex-wrap: wrap; gap: 18px; }
-.metaItem { display: flex; align-items: center; gap: 8px; color: #687269; font-size: 13px; }
+.metaItem { display: flex; align-items: center; gap: 8px; color: #687269; font-size: 15px; }
 .metaItem::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #8eb597; }
 .progressArea { display: flex; flex-direction: column; gap: 9px; }
-.progressLabel { display: flex; align-items: center; justify-content: space-between; color: #687269; font-size: 13px; }
-.progressLabel strong { color: #245c32; font-size: 14px; font-weight: 750; }
+.progressLabel { display: flex; align-items: center; justify-content: space-between; color: #687269; font-size: 15px; }
+.progressLabel strong { color: #245c32; font-size: 16px; font-weight: 750; }
 .progressTrack { width: 100%; height: 8px; overflow: hidden; border-radius: 999px; background: #e5ece6; }
 .progressFill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4e915d, #245c32); transition: width 0.5s ease; }
 
@@ -65,7 +65,7 @@
   border-radius: 11px !important;
   background: #245c32 !important;
   color: #fff !important;
-  font-size: 14px !important;
+  font-size: 16px !important;
   font-weight: 700 !important;
   box-shadow: 0 6px 16px rgba(36, 92, 50, 0.18);
 }
@@ -73,8 +73,8 @@
 .continueButton:hover,
 .retryButton:hover { background: #174523 !important; }
 .stateMessage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; text-align: center; }
-.stateTitle { margin: 0; color: #17211a; font-size: 20px; font-weight: 700; }
-.stateDescription { max-width: 330px; margin: 0; color: #687269; font-size: 14px; line-height: 1.55; }
+.stateTitle { margin: 0; color: #17211a; font-size: 22px; font-weight: 700; }
+.stateDescription { max-width: 330px; margin: 0; color: #687269; font-size: 16px; line-height: 1.55; }
 
 .skeletonCover { background: linear-gradient(90deg, #edf1ed 25%, #e2e8e3 50%, #edf1ed 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
 .skeletonTitle, .skeletonMeta, .skeletonProgress, .skeletonButton { border-radius: 8px; background: #edf1ed; }

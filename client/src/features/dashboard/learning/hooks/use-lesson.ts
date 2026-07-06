@@ -6,6 +6,7 @@ import { startLesson } from '../api/start-lesson';
 import { restartLesson } from '../api/restart-lesson';
 import { saveCheckpoint, type CheckpointPayload } from '../api/save-checkpoint';
 import { submitLesson, type SubmissionPayload, type SubmissionResult } from '../api/submit-lesson';
+import { completeLesson } from '../api/complete-lesson';
 import type { LearnerLessonDto } from '../types/learning.types';
 
 const LESSON_QUERY_KEY = ['learning', 'lesson'] as const;
@@ -77,6 +78,19 @@ export const useRestartLesson = () => {
 
     return useMutation({
         mutationFn: (lessonId: string) => restartLesson(lessonId),
+        onSuccess: (_, lessonId) => {
+            queryClient.invalidateQueries({ queryKey: [...LESSON_QUERY_KEY, lessonId] });
+            queryClient.invalidateQueries({ queryKey: ['learning', 'dashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['learning', 'roadmap'] });
+        },
+    });
+};
+
+export const useCompleteLesson = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (lessonId: string) => completeLesson(lessonId),
         onSuccess: (_, lessonId) => {
             queryClient.invalidateQueries({ queryKey: [...LESSON_QUERY_KEY, lessonId] });
             queryClient.invalidateQueries({ queryKey: ['learning', 'dashboard'] });

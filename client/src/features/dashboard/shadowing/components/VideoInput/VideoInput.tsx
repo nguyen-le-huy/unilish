@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Button } from '@/components/core/Button/Button';
 import { Loading } from '@/components/common/Loading/Loading';
 import styles from './VideoInput.module.css';
 import { useSubmitVideo } from '../../hooks/use-submit-video';
@@ -67,7 +66,7 @@ const VideoInput = () => {
                 <p className={styles.processingTitle} role="alert">
                     {errorMessage}
                 </p>
-                <Button type="button" onClick={clearProcessingVideoId}>Thử lại</Button>
+                <button className={styles.retryButton} type="button" onClick={clearProcessingVideoId}>Thử lại</button>
             </div>
         );
     }
@@ -79,7 +78,7 @@ const VideoInput = () => {
         return (
             <div className={styles.processingScreen} role="status" aria-live="polite">
                 <Loading variant="inline" size="md" />
-                <p className={styles.processingTitle}>Processing video...</p>
+                <p className={styles.processingTitle}>Đang chuẩn bị bài luyện...</p>
                 <p className={styles.processingHint}>Hệ thống đang tách audio và tạo transcript.</p>
             </div>
         );
@@ -87,25 +86,50 @@ const VideoInput = () => {
 
     return (
         <form className={styles.container} onSubmit={handleSubmit(onSubmit)}>
-            <div className={styles.inputWrapper}>
-                <input
-                    type="text"
-                    className={styles.input}
-                    aria-label="YouTube video URL"
-                    placeholder="Nhập URL video Youtube mà bạn muốn shadowing"
-                    disabled={isPending}
-                    {...register('url')}
-                />
-                {errors.url && <p className={styles.errorText} role="alert">{errors.url.message}</p>}
-                {submitError && (
-                    <p className={styles.errorText} role="alert">
-                        {submitError.response?.data.message ?? 'Không thể gửi video. Vui lòng thử lại.'}
-                    </p>
-                )}
+            <div className={styles.intro}>
+                <span className={styles.icon} aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M8 5.5v13l11-6.5L8 5.5Z" fill="currentColor" />
+                    </svg>
+                </span>
+                <div>
+                    <span className={styles.kicker}>Tạo bài luyện riêng</span>
+                    <h2>Luyện với video bạn yêu thích</h2>
+                    <p>Dán liên kết YouTube, hệ thống sẽ tự tạo transcript theo từng câu.</p>
+                </div>
             </div>
-            <Button type="submit" disabled={isPending}>
-                {isPending ? <Loading variant="inline" size="sm" /> : 'Thêm Video'}
-            </Button>
+
+            <div className={styles.formArea}>
+                <div className={styles.inputWrapper}>
+                    <div className={styles.inputShell}>
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M10.5 13.5 13.5 10.5M8 16l-1.5 1.5a3.54 3.54 0 0 1-5-5L5 9a3.54 3.54 0 0 1 5 0M16 8l1.5-1.5a3.54 3.54 0 0 1 5 5L19 15a3.54 3.54 0 0 1-5 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                        </svg>
+                        <input
+                            type="text"
+                            className={styles.input}
+                            aria-label="Đường dẫn video YouTube"
+                            placeholder="Dán đường dẫn YouTube tại đây..."
+                            disabled={isPending}
+                            {...register('url')}
+                        />
+                    </div>
+                    {errors.url && <p className={styles.errorText} role="alert">{errors.url.message}</p>}
+                    {submitError && (
+                        <p className={styles.errorText} role="alert">
+                            {submitError.response?.data.message ?? 'Không thể gửi video. Vui lòng thử lại.'}
+                        </p>
+                    )}
+                </div>
+                <button className={styles.submitButton} type="submit" disabled={isPending}>
+                    {isPending ? <Loading variant="inline" size="sm" /> : (
+                        <>
+                            Tạo bài luyện
+                            <span aria-hidden="true">→</span>
+                        </>
+                    )}
+                </button>
+            </div>
         </form>
     );
 };

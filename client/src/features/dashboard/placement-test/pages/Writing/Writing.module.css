@@ -1,8 +1,88 @@
-.writing {
+.page {
+    --writing-green: #245c32;
+    --writing-green-dark: #173f22;
+    --writing-green-soft: #edf5ee;
+    --writing-ink: #17211a;
+    --writing-muted: #6e7871;
+    --writing-line: #dde5de;
+    width: 100%;
+    min-height: calc(100dvh - 120px);
+    overflow: hidden;
+    border: 1px solid var(--writing-line);
+    border-radius: 20px;
+    background: #f5f7f5;
+    box-shadow: 0 14px 42px rgba(24, 54, 31, 0.055);
+}
+
+.pageHeader {
+    min-height: 116px;
     display: flex;
-    gap: 20px;
-    padding: 20px;
-    justify-content: center;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 22px 28px;
+    border-bottom: 1px solid var(--writing-line);
+    background:
+        radial-gradient(circle at 88% 0%, rgba(152, 204, 167, 0.22), transparent 34%),
+        #fff;
+}
+
+.headerCopy {
+    min-width: 0;
+}
+
+.eyebrow {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--writing-green);
+    font-size: 12px;
+    font-weight: 760;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+.headerCopy h1 {
+    margin: 0;
+    color: var(--writing-ink);
+    font-size: clamp(26px, 2.8vw, 36px);
+    font-weight: 740;
+    letter-spacing: -.035em;
+}
+
+.headerCopy p {
+    margin: 7px 0 0;
+    color: var(--writing-muted);
+    font-size: 14px;
+}
+
+.moduleProgress {
+    min-width: 132px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 12px 16px;
+    border: 1px solid #d5e3d8;
+    border-radius: 12px;
+    color: var(--writing-green);
+    background: var(--writing-green-soft);
+    text-align: right;
+}
+
+.moduleProgress span {
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.moduleProgress strong {
+    font-size: 16px;
+}
+
+.writing {
+    display: grid;
+    grid-template-columns: minmax(360px, .92fr) minmax(460px, 1.08fr);
+    align-items: stretch;
+    gap: 14px;
+    padding: 14px;
 }
 
 .errorState {
@@ -20,4 +100,35 @@
     font-size: var(--text-base);
     font-weight: 500;
     text-align: center;
+}
+
+@media (max-width: 1050px) {
+    .page {
+        overflow: visible;
+    }
+
+    .writing {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+    .page {
+        border-radius: 16px;
+    }
+
+    .pageHeader {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 20px;
+    }
+
+    .moduleProgress {
+        width: 100%;
+        text-align: left;
+    }
+
+    .writing {
+        padding: 8px;
+    }
 }

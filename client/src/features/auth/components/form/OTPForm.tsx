@@ -15,13 +15,9 @@ const OTPForm = () => {
     const [otp, setOtp] = useState('');
     const { mutate: verify, isPending } = useVerifyOTP();
 
-    if (!email) {
-        return <Navigate to={PATHS.AUTH.LOGIN} replace />;
-    }
-
     const handleSubmit = useCallback((e?: FormEvent) => {
         e?.preventDefault();
-        if (isPending) {
+        if (isPending || !email) {
             return;
         }
 
@@ -30,12 +26,19 @@ const OTPForm = () => {
         }
     }, [otp, email, verify, isPending]);
 
+    if (!email) {
+        return <Navigate to={PATHS.AUTH.LOGIN} replace />;
+    }
+
     return (
         <div className={styles.content}>
-            <img src={Logo} alt="Unilish" />
+            <Link to={PATHS.HOME} className={styles.logoLink} aria-label="Về trang chủ Unilish">
+                <img className={styles.logo} src={Logo} alt="Unilish" />
+            </Link>
             <div className={styles.title}>
-                <h3>Xác nhận email của bạn</h3>
-                <p>Chúng tôi đã gửi mã xác thực tới {email}</p>
+                <span className={styles.eyebrow}>Chỉ còn một bước</span>
+                <h1>Xác nhận email của bạn</h1>
+                <p>Nhập mã gồm 4 chữ số đã được gửi tới <strong>{email}</strong></p>
             </div>
             <form onSubmit={handleSubmit} className={styles.form}>
                 <OTPInput length={4} onComplete={setOtp} />
@@ -49,7 +52,7 @@ const OTPForm = () => {
                     {isPending ? <Loading variant="inline" size="sm" /> : 'Xác thực tài khoản'}
                 </Button>
             </form>
-            <p className={styles.resetPassword}>Chưa có tài khoản? <span><Link to={PATHS.AUTH.REGISTER}>Đăng ký ngay</Link></span></p>
+            <p className={styles.authSwitch}>Sai địa chỉ email? <Link to={PATHS.AUTH.REGISTER}>Đăng ký lại</Link></p>
         </div>
     );
 };

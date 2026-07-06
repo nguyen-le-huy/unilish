@@ -12,4 +12,6 @@ export interface CourseCatalogItem {
 export interface CourseCatalogFilters {
     search?: string;
     level?: CourseCatalogItem['level'];
+    languageId?: string;
+    learningGoalId?: string;
 }

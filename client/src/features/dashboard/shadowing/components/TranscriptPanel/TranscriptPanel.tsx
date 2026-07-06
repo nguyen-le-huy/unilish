@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './TranscriptPanel.module.css';
-import type { ShadowingState } from '../../hooks/use-shadowing-machine';
 import type { Cue } from '../../types/shadowing.types';
 
 interface TranscriptPanelProps {
     cues: Cue[];
     activeCueIndex: number;
     mode: 'with-transcript' | 'without-transcript';
-    state: ShadowingState;
     onCueClick?: (index: number) => void;
     isEditable: boolean;
     selectedCueIds: Set<string>;
@@ -33,11 +31,14 @@ const formatTimeRange = (cue: Cue): string => {
     return `${(cue.startMs / 1000).toFixed(1)}s → ${(cue.endMs / 1000).toFixed(1)}s`;
 };
 
+const maskTranscriptText = (text: string): string => {
+    return text.replace(/\S/g, '*');
+};
+
 const TranscriptPanel = ({
     cues,
     activeCueIndex,
     mode,
-    state,
     onCueClick,
     isEditable,
     selectedCueIds,
@@ -72,16 +73,19 @@ const TranscriptPanel = ({
     const canEdit = isEditable && !isSaving;
     const toolbarLabel = useMemo(() => {
         if (!isEditable) {
-            return 'Editing disabled while playing.';
+            return 'Tạm khóa chỉnh sửa khi đang luyện.';
         }
 
-        return 'Edit transcript cues.';
+        return 'Chỉnh sửa các câu transcript.';
     }, [isEditable]);
 
     return (
         <aside className={styles.panel} aria-label="Transcript panel">
             <header className={styles.panelHeader} aria-label={toolbarLabel}>
-                <div className={styles.panelTitle}>Transcript</div>
+                <div className={styles.panelTitle}>
+                    <strong>Transcript</strong>
+                    <span>{cues.length} câu hội thoại</span>
+                </div>
                 <div className={styles.panelActions}>
                     <button
                         className={styles.toolbarButton}
@@ -89,7 +93,7 @@ const TranscriptPanel = ({
                         onClick={onMergeSelected}
                         disabled={!canEdit || !isMergeable}
                     >
-                        Merge selected
+                        Gộp câu
                     </button>
                     <button
                         className={styles.toolbarButton}
@@ -97,7 +101,7 @@ const TranscriptPanel = ({
                         onClick={onResetEdits}
                         disabled={!canEdit || !isDirty}
                     >
-                        Reset
+                        Đặt lại
                     </button>
                     <button
                         className={styles.primaryToolbarButton}
@@ -105,7 +109,7 @@ const TranscriptPanel = ({
                         onClick={onSaveAll}
                         disabled={!canEdit || !isDirty}
                     >
-                        {isSaving ? 'Saving...' : 'Save'}
+                        {isSaving ? 'Đang lưu...' : 'Lưu'}
                     </button>
                 </div>
             </header>
@@ -118,7 +122,7 @@ const TranscriptPanel = ({
 
             {cues.map((cue, index) => {
                 const isActive = index === activeCueIndex;
-                const hideText = mode === 'without-transcript' && state === 'playing';
+                const hideText = mode === 'without-transcript';
                 const isSelected = selectedCueIds.has(cue.id);
                 const isEditing = editingCueId === cue.id;
                 const translation = cue.translationVi?.trim();
@@ -182,7 +186,7 @@ const TranscriptPanel = ({
                                     onClick={(event) => event.stopPropagation()}
                                     onChange={() => onToggleSelect(cue.id)}
                                 />
-                                <span className={styles.cueIndex}>#cue-{index + 1} · {formatTimeRange(cue)}</span>
+                                <span className={styles.cueIndex}>Câu {String(index + 1).padStart(2, '0')} · {formatTimeRange(cue)}</span>
                             </label>
                             <button
                                 className={styles.cueAction}
@@ -193,7 +197,7 @@ const TranscriptPanel = ({
                                     onStartEdit(cue.id);
                                 }}
                             >
-                                Edit
+                                Sửa
                             </button>
                         </div>
 
@@ -216,14 +220,14 @@ const TranscriptPanel = ({
                                             onSplitCue(cue.id, draftText, cursor);
                                         }}
                                     >
-                                        Split at cursor
+                                        Tách tại con trỏ
                                     </button>
                                     <button
                                         className={styles.toolbarButton}
                                         type="button"
                                         onClick={onCancelEdit}
                                     >
-                                        Cancel
+                                        Hủy
                                     </button>
                                     <button
                                         className={styles.primaryToolbarButton}
@@ -231,14 +235,14 @@ const TranscriptPanel = ({
                                         disabled={!canEdit}
                                         onClick={() => onSaveEdit(cue.id, draftText)}
                                     >
-                                        Save cue
+                                        Lưu câu
                                     </button>
                                 </div>
                             </div>
                         ) : (
                             <div className={styles.cueTextBlock}>
                                 <p className={`${styles.cueText} ${hideText ? styles.cueTextHidden : ''}`.trim()}>
-                                    {hideText ? '••••••••••••••••••' : cue.text}
+                                    {hideText ? maskTranscriptText(cue.text) : cue.text}
                                 </p>
                                 {!hideText && translation && (
                                     <p className={styles.cueTranslation}>{translation}</p>
@@ -247,7 +251,7 @@ const TranscriptPanel = ({
                                     <div className={styles.cueExtras}>
                                         {vocabulary.length > 0 && (
                                             <div className={styles.cueSection}>
-                                                <p className={styles.cueSectionTitle}>Vocabulary</p>
+                                                <p className={styles.cueSectionTitle}>Từ vựng</p>
                                                 <ul className={styles.cueList}>
                                                     {vocabulary.map((item) => (
                                                         <li key={`${cue.id}-${item.word}-${item.ipa}`} className={styles.cueListItem}>

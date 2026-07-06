@@ -219,7 +219,19 @@ export class LearningService {
         activityDays: Array<{ date: string; minutes: number }>;
     }> {
         // 1. Find active enrollment
-        const enrollment = await this.enrollmentRepo.findActiveByUser(userId);
+        let enrollment = await this.enrollmentRepo.findActiveByUser(userId);
+
+        // If there is no active course, keep the most recently completed course
+        // visible on Home so learners can review it and see 100% progress.
+        if (!enrollment) {
+            enrollment = await CourseEnrollment.findOne({
+                userId: new mongoose.Types.ObjectId(userId),
+                status: EEnrollmentStatus.COMPLETED,
+            })
+                .sort({ completedAt: -1, updatedAt: -1 })
+                .lean()
+                .exec() as ICourseEnrollment | null;
+        }
 
         if (!enrollment) {
             // AC-04: No active enrollment — return null activeCourse with zero summary
@@ -253,9 +265,17 @@ export class LearningService {
             };
         }
 
-        // 3. Get progress summary from LearnerLessonProgress
+        // 3. Reconcile cached enrollment counters with the current curriculum.
+        // Courses may have lessons added/removed after enrollment was created.
+        const synchronized = await this.synchronizeEnrollmentProgress(
+            String(enrollment._id),
+            String(enrollment.courseId),
+        );
+
+        // 4. Get progress summary from current curriculum lessons only.
         const progressRecords = await LearnerLessonProgress.find({
             enrollmentId: enrollment._id,
+            lessonId: { $in: synchronized.lessonIds },
         })
             .select('status timeSpentSeconds')
             .lean()
@@ -270,8 +290,7 @@ export class LearningService {
             0,
         );
 
-        // 4. Total required lessons from enrollment (authoritative source)
-        const totalLessons = enrollment.totalRequiredLessonCount;
+        const totalLessons = synchronized.totalRequiredLessonCount;
 
         // 5. Progress percentage: (completed / total) * 100, rounded to nearest integer
         const progressPercent =
@@ -281,7 +300,7 @@ export class LearningService {
 
         // 6. Determine enrollment-based course status
         let courseStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
-        if (enrollment.status === EEnrollmentStatus.COMPLETED) {
+        if (synchronized.status === EEnrollmentStatus.COMPLETED) {
             courseStatus = 'COMPLETED';
         } else if (completedLessons > 0) {
             courseStatus = 'IN_PROGRESS';
@@ -803,6 +822,85 @@ export class LearningService {
     }
 
     /**
+     * Resolve the active lessons that currently contribute to course progress.
+     */
+    private async getRequiredLessonIds(courseId: string): Promise<mongoose.Types.ObjectId[]> {
+        const units = await Unit.find({
+            courseId: new mongoose.Types.ObjectId(courseId),
+            isActive: { $ne: false },
+        })
+            .select('_id')
+            .lean()
+            .exec() as Array<{ _id: mongoose.Types.ObjectId }>;
+
+        if (units.length === 0) {
+            return [];
+        }
+
+        const lessons = await Lesson.find({
+            unitId: { $in: units.map((unit) => unit._id) },
+            isActive: { $ne: false },
+        })
+            .select('_id')
+            .lean()
+            .exec() as Array<{ _id: mongoose.Types.ObjectId }>;
+
+        return lessons.map((lesson) => lesson._id);
+    }
+
+    /**
+     * Keep enrollment counters and status aligned with the current curriculum.
+     * This also repairs enrollments created before lessons were removed or added.
+     */
+    private async synchronizeEnrollmentProgress(
+        enrollmentId: string,
+        courseId: string,
+    ): Promise<{
+        lessonIds: mongoose.Types.ObjectId[];
+        completedLessonCount: number;
+        totalRequiredLessonCount: number;
+        status: string;
+    }> {
+        const lessonIds = await this.getRequiredLessonIds(courseId);
+        const completedLessonCount = lessonIds.length > 0
+            ? await LearnerLessonProgress.countDocuments({
+                enrollmentId: new mongoose.Types.ObjectId(enrollmentId),
+                lessonId: { $in: lessonIds },
+                status: ELessonProgressStatus.COMPLETED,
+            }).exec()
+            : 0;
+        const totalRequiredLessonCount = lessonIds.length;
+        const current = await CourseEnrollment.findById(enrollmentId)
+            .select('status completedAt')
+            .lean()
+            .exec() as { status: string; completedAt: Date | null } | null;
+
+        const isCompleted = totalRequiredLessonCount > 0
+            && completedLessonCount >= totalRequiredLessonCount;
+        const status = isCompleted
+            ? EEnrollmentStatus.COMPLETED
+            : current?.status === EEnrollmentStatus.COMPLETED
+                ? EEnrollmentStatus.ACTIVE
+                : current?.status ?? EEnrollmentStatus.ACTIVE;
+
+        await CourseEnrollment.findByIdAndUpdate(enrollmentId, {
+            $set: {
+                completedLessonCount,
+                totalRequiredLessonCount,
+                status,
+                completedAt: isCompleted ? current?.completedAt ?? new Date() : null,
+            },
+        }).exec();
+
+        return {
+            lessonIds,
+            completedLessonCount,
+            totalRequiredLessonCount,
+            status,
+        };
+    }
+
+    /**
      * Save a checkpoint for a lesson.
      *
      * - Validates checkpoint kind matches Lesson exercise kind (BE-09).
@@ -1244,6 +1342,107 @@ export class LearningService {
             checkpointVersion: 0,
             startedAt: now,
             navigation: nav,
+        };
+    }
+
+    /**
+     * Mark a content lesson as completed without exercise grading.
+     * The status transition is atomic so repeated clicks cannot increment
+     * enrollment completion counters more than once.
+     */
+    async completeLesson(
+        userId: string,
+        lessonId: string,
+    ): Promise<{
+        lessonStatus: 'COMPLETED';
+        unitStatus: string;
+        courseStatus: string;
+        courseProgressPercent: number;
+        nextLessonId: string | null;
+    }> {
+        const lesson = await Lesson.findById(lessonId)
+            .select('_id unitId')
+            .lean()
+            .exec() as { _id: unknown; unitId: unknown } | null;
+        if (!lesson) {
+            throw new AppError('Bài học không tồn tại', HttpStatus.NOT_FOUND);
+        }
+
+        const unit = await Unit.findById(lesson.unitId)
+            .select('_id courseId')
+            .lean()
+            .exec() as { _id: unknown; courseId: unknown } | null;
+        if (!unit) {
+            throw new AppError('Đơn vị bài học không tồn tại', HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        const courseId = String(unit.courseId);
+        const enrollment = await this.enrollmentRepo.findByUserAndCourse(userId, courseId);
+        if (!enrollment) {
+            throw new AppError('Bạn chưa ghi danh khóa học này.', HttpStatus.FORBIDDEN);
+        }
+        if (
+            enrollment.status !== EEnrollmentStatus.ACTIVE
+            && enrollment.status !== EEnrollmentStatus.COMPLETED
+        ) {
+            throw new AppError('Khóa học không ở trạng thái hoạt động.', HttpStatus.FORBIDDEN);
+        }
+
+        let progress = await this.progressRepo.findByUserAndLesson(userId, lessonId);
+        if (!progress) {
+            progress = await LearnerLessonProgress.create({
+                userId: new mongoose.Types.ObjectId(userId),
+                enrollmentId: new mongoose.Types.ObjectId(String(enrollment._id)),
+                courseId: new mongoose.Types.ObjectId(courseId),
+                unitId: new mongoose.Types.ObjectId(String(unit._id)),
+                lessonId: new mongoose.Types.ObjectId(lessonId),
+                status: ELessonProgressStatus.NOT_STARTED,
+                checkpointVersion: 0,
+                checkpoint: null,
+                timeSpentSeconds: 0,
+                lastAccessedAt: new Date(),
+            } as any);
+        }
+
+        const transitioned = await LearnerLessonProgress.findOneAndUpdate(
+            {
+                _id: progress._id,
+                userId: new mongoose.Types.ObjectId(userId),
+                status: { $ne: ELessonProgressStatus.COMPLETED },
+            },
+            {
+                $set: {
+                    status: ELessonProgressStatus.COMPLETED,
+                    completedAt: new Date(),
+                    lastAccessedAt: new Date(),
+                },
+            },
+            { new: true },
+        ).lean().exec();
+
+        const synchronized = await this.synchronizeEnrollmentProgress(
+            String(enrollment._id),
+            courseId,
+        );
+
+        const completedCount = synchronized.completedLessonCount;
+        const totalRequired = synchronized.totalRequiredLessonCount;
+
+        logger.info('lesson.manually_completed', {
+            userId,
+            lessonId,
+            enrollmentId: String(enrollment._id),
+            newlyCompleted: Boolean(transitioned),
+        });
+
+        return {
+            lessonStatus: 'COMPLETED',
+            unitStatus: await this.computeUnitStatus(String(unit._id), String(enrollment._id)),
+            courseStatus: synchronized.status,
+            courseProgressPercent: totalRequired > 0
+                ? Math.round((completedCount / totalRequired) * 100)
+                : 0,
+            nextLessonId: await this.findNextLesson(courseId, String(enrollment._id), userId),
         };
     }
 

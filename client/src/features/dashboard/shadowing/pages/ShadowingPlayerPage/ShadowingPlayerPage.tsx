@@ -62,7 +62,7 @@ const ShadowingPlayerPage = () => {
         return (
             <div className={styles.statusWrapper}>
                 <p className={styles.errorText} role="alert">
-                    {error.response?.data.message ?? 'Unable to load shadowing video.'}
+                    {error.response?.data.message ?? 'Không thể tải video luyện nói.'}
                 </p>
             </div>
         );
@@ -79,11 +79,28 @@ const ShadowingPlayerPage = () => {
     return (
         <div className={styles.container}>
             <header className={styles.header}>
-                <p className={styles.breadcrumb}>Shadowing &gt; {video.title}</p>
+                <button
+                    className={styles.backButton}
+                    type="button"
+                    onClick={() => navigate(SHADOWING_LIBRARY_PATH)}
+                    aria-label="Quay lại thư viện luyện nói"
+                >
+                    ←
+                </button>
+                <div className={styles.titleBlock}>
+                    <p className={styles.breadcrumb}>Luyện nói đuổi / Đang luyện tập</p>
+                    <h1>{video.title}</h1>
+                </div>
+                <div className={styles.videoMeta}>
+                    <span>{video.cues.length} câu</span>
+                    <i aria-hidden="true" />
+                    <span>{Math.max(1, Math.ceil(video.durationSeconds / 60))} phút</span>
+                </div>
             </header>
 
             <main className={styles.mainLayout}>
                 <ShadowingPlayer
+                    key={video.videoId}
                     video={video}
                     mode={mode}
                     onModeChange={setMode}

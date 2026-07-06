@@ -219,6 +219,34 @@
 .submitButton:hover, .primaryButton:hover { background: var(--learning-green-dark); transform: translateY(-1px); box-shadow: 0 7px 18px rgba(36, 92, 50, 0.25); }
 .submitButton:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
 .completedBadge { padding: 6px 11px; border: 1px solid #b9d7bf; border-radius: 999px; color: var(--learning-green); background: var(--learning-green-soft); font-size: 12px; font-weight: 700; }
+.completeButton {
+  min-height: 40px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--learning-green);
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 5px 14px rgba(36, 92, 50, 0.2);
+}
+.completeButton:hover { background: var(--learning-green-dark); }
+.completeButton:disabled { opacity: 0.55; cursor: default; }
+.completeToast {
+  position: fixed;
+  right: 22px;
+  bottom: 82px;
+  z-index: 30;
+  max-width: 360px;
+  padding: 12px 15px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fff5f5;
+  color: #b91c1c;
+  font-size: 13px;
+  box-shadow: 0 10px 28px rgba(80, 20, 20, 0.12);
+}
 .retryButton { min-height: 36px; padding: 0 14px; border: 1px solid #b8cdbb; border-radius: 9px; background: #fff; color: var(--learning-green); cursor: pointer; font-size: 12px; font-weight: 650; }
 .retryButton:hover { background: var(--learning-green-soft); }
 .retryButton:disabled { opacity: 0.5; cursor: default; }

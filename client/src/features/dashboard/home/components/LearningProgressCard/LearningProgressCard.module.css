@@ -12,16 +12,16 @@
 }
 
 .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.title { margin: 0; color: #17211a; font-size: 19px; font-weight: 700; letter-spacing: -0.015em; }
+.title { margin: 0; color: #17211a; font-size: 22px; font-weight: 700; letter-spacing: -0.015em; }
 .periodWrapper { display: flex; align-items: center; gap: 3px; padding: 3px; border: 1px solid #e1e7e2; border-radius: 10px; background: #f8faf8; }
 .monthNav { width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 7px; background: transparent; color: #748077; cursor: pointer; }
 .monthNav:hover { color: #245c32; background: #eef6ef; }
-.periodButton { display: flex; align-items: center; gap: 5px; padding: 5px 7px; border: 0; background: transparent; color: #344038; cursor: pointer; font-size: 12px; font-weight: 650; }
+.periodButton { display: flex; align-items: center; gap: 5px; padding: 5px 7px; border: 0; background: transparent; color: #344038; cursor: pointer; font-size: 14px; font-weight: 650; }
 .statsList { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 0; margin: 0; list-style: none; }
 .statItem { min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 13px; border: 1px solid #e7ece8; border-radius: 12px; background: #f8faf8; }
-.statLabel { color: #748077; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; }
-.statValue { color: #1f2a22; font-size: 14px; font-weight: 700; line-height: 1.35; }
-.emptyText { margin: auto; color: #687269; font-size: 14px; text-align: center; }
+.statLabel { color: #748077; font-size: 13px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; }
+.statValue { color: #1f2a22; font-size: 16px; font-weight: 700; line-height: 1.35; }
+.emptyText { margin: auto; color: #687269; font-size: 16px; text-align: center; }
 .skeletonTitle, .skeletonButton, .skeletonStat { background: #edf1ed; border-radius: 8px; }
 .skeletonTitle { width: 90px; height: 24px; }
 .skeletonButton { width: 90px; height: 31px; }

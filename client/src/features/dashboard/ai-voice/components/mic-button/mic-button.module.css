@@ -1,7 +1,7 @@
 .micButton {
 	position: relative;
-	width: 80px;
-	height: 80px;
+	width: 62px;
+	height: 62px;
 	border-radius: 999px;
 	border: none;
 	padding: 0;
@@ -9,11 +9,13 @@
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
-	transition: opacity 0.3s ease;
+	box-shadow: 0 8px 20px rgba(36, 92, 50, .2);
+	transition: opacity 0.3s ease, transform .18s ease;
 }
 
 .micButton:hover {
-	opacity: 0.85;
+	opacity: 0.92;
+	transform: translateY(-1px);
 }
 
 .micButton:focus-visible {
@@ -27,8 +29,8 @@
 }
 
 .micIcon {
-	width: 30px;
-	height: 30px;
+	width: 25px;
+	height: 25px;
 	object-fit: contain;
 }
 
@@ -163,12 +165,12 @@
 
 @media (max-width: 900px) {
 	.micButton {
-		width: 84px;
-		height: 84px;
+		width: 64px;
+		height: 64px;
 	}
 
 	.micIcon {
-		width: 32px;
-		height: 32px;
+		width: 26px;
+		height: 26px;
 	}
 }

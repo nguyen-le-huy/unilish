@@ -10,20 +10,15 @@ const objectIdSchema = z
 export const updateProfileSchema = z.object({
     body: z.object({
         fullName: z.string().min(2).max(50).optional(),
-        bio: z.string().max(200).optional(),
-        phoneNumber: z.string().optional(),
-        targetLevel: z.string().optional(),
+        avatarUrl: z.string().url().nullable().optional(),
+        phoneNumber: z.string().trim().max(20).nullable().optional(),
+        dateOfBirth: z.string().date().nullable().optional(),
+        targetLevel: z.enum(['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']).optional(),
         currentLevel: z.enum(['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']).optional(),
         lastActiveCourseId: objectIdSchema.nullable().optional(),
         learningGoal: z.string().min(1).nullable().optional(),
         nativeLanguage: z.string().min(2).max(10).optional(),
         gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
-        address: z
-            .object({
-                country: z.string(),
-                city: z.string(),
-            })
-            .optional(),
     }),
 });
 

@@ -1,24 +1,125 @@
 .panel {
-    flex: 1;
-    padding: 20px;
-    border-radius: 20px;
-    border: 1px solid var(--dark-grey);
+    min-width: 0;
+    padding: 22px;
+    border: 1px solid #dde5de;
+    border-radius: 16px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    min-height: 80vh;
+    gap: 18px;
+    min-height: 660px;
+    background: #fff;
+    box-shadow: 0 5px 18px rgba(30, 59, 37, 0.04);
 }
 
-.title {
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.eyebrow {
+    display: block;
+    margin-bottom: 5px;
+    color: #477153;
+    font-size: 11px;
+    font-weight: 760;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+}
+
+.header h2 {
     margin: 0;
-    padding: 20px;
-    font-size: var(--text-base);
-    font-weight: 500;
-    line-height: 1.3;
-    border: 1px solid var(--dark-grey);
+    color: #17211a;
+    font-size: 20px;
+    font-weight: 720;
+    letter-spacing: -.02em;
+}
+
+.languageBadge {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 10px;
+    color: #245c32;
+    background: #edf5ee;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.promptBox {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid #d8e2da;
+    border-radius: 13px;
+    background: #f7faf7;
+}
+
+.promptIcon {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    color: #fff;
+    background: #245c32;
+    font-family: Georgia, serif;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.promptBox p {
+    margin: 0;
+    color: #263029;
+    font-size: 16px;
+    line-height: 1.55;
+}
+
+.figure {
+    min-height: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    margin: 0;
+    padding: 14px;
+    overflow: hidden;
+    border: 1px solid #e3e9e4;
+    border-radius: 14px;
+    background: #fbfcfb;
 }
 
 .imageQuestion {
     width: 100%;
-    border-radius: 20px;
+    max-height: 430px;
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+.figure figcaption {
+    color: #7b857e;
+    font-size: 12px;
+    text-align: center;
+}
+
+@media (max-width: 1050px) {
+    .panel {
+        min-height: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    .panel {
+        padding: 16px;
+    }
+
+    .promptBox p {
+        font-size: 15px;
+    }
 }

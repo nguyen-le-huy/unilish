@@ -1,4 +1,3 @@
-import { Button } from '@/components/core/Button';
 import styles from './level-selector.module.css';
 
 interface LevelOption {
@@ -15,25 +14,32 @@ interface LevelSelectorProps {
 const LevelSelector = ({ options, selectedLevelId, onSelectLevel }: LevelSelectorProps) => {
 	return (
 		<section className={styles.section} aria-label="Chọn level luyện nói">
-			<h2 className={styles.title}>Level:</h2>
-			<div className={styles.optionList}>
+			<div className={styles.heading}>
+				<span className={styles.sectionNumber}>2</span>
+				<div>
+					<h2 className={styles.title}>Chọn trình độ</h2>
+					<p>AI sẽ điều chỉnh tốc độ và từ vựng phù hợp.</p>
+				</div>
+			</div>
+			<div className={styles.optionList} role="radiogroup" aria-label="Trình độ luyện nói">
 				{options.map((option) => {
 					const isSelected = selectedLevelId === option.id;
+					const className = isSelected
+						? `${styles.optionButton} ${styles.optionButtonSelected}`
+						: styles.optionButton;
 
 					return (
-						<Button
+						<button
 							key={option.id}
 							type="button"
-							variant={isSelected ? 'primary' : 'outline'}
-							padding="B"
-
-							borderColor={isSelected ? undefined : '#000'}
-							textColor={isSelected ? undefined : '#000'}
+							className={className}
 							aria-pressed={isSelected}
+							role="radio"
+							aria-checked={isSelected}
 							onClick={() => onSelectLevel(option.id)}
 						>
 							{option.label}
-						</Button>
+						</button>
 					);
 				})}
 			</div>

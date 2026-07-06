@@ -1,204 +1,207 @@
-/* Backdrop overlay */
 .backdrop {
 	position: fixed;
 	inset: 0;
-	background: rgba(0, 0, 0, 0.6);
+	z-index: 1000;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	z-index: 1000;
 	padding: 24px;
-	animation: fadeIn 0.2s ease forwards;
+	background: rgba(13, 23, 15, .72);
+	backdrop-filter: blur(7px);
+	animation: fadeIn .18s ease forwards;
 }
 
-/* Modal card */
 .modal {
 	position: relative;
-	background: var(--background-body);
-	border-radius: 20px;
-	width: 100%;
-	max-width: 600px;
-	max-height: 90vh;
+	width: min(100%, 760px);
+	max-height: calc(100dvh - 48px);
 	overflow-y: auto;
-	padding: 20px;
 	display: flex;
 	flex-direction: column;
-	gap: 30px;
-	border: 1px solid var(--grey);
-	box-shadow:
-		0 20px 60px rgba(0, 0, 0, 0.18),
-		0 4px 16px rgba(0, 0, 0, 0.08);
-	animation: slideUp 0.25s ease forwards;
+	gap: 20px;
+	padding: 30px;
+	border: 1px solid rgba(255,255,255,.7);
+	border-radius: 22px;
+	background: #fff;
+	box-shadow: 0 30px 80px rgba(7,18,10,.32);
+	animation: slideUp .22s ease forwards;
 }
 
-/* Close button */
 .closeButton {
 	position: absolute;
-	top: 20px;
-	right: 20px;
-	width: 30px;
-	height: 30px;
-	border: none;
-	background: transparent;
-	cursor: pointer;
-	font-size: 18px;
-	color: black;
+	top: 18px;
+	right: 18px;
+	width: 38px;
+	height: 38px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: 6px;
 	padding: 0;
-	line-height: 1;
-	transition: background 0.15s ease, color 0.15s ease;
+	border: 1px solid #dfe5e0;
+	border-radius: 10px;
+	background: #fff;
+	color: #59645c;
+	font-size: 17px;
+	cursor: pointer;
 }
 
-.closeButton:hover {
-	background: var(--light-grey);
-	color: #111;
-}
+.closeButton:hover { background: #f5f8f5; }
 
-/* Header */
 .header {
 	display: flex;
+	align-items: flex-start;
 	flex-direction: column;
-	align-items: center;
-	gap: 10px;
-	text-align: center;
+	gap: 9px;
+	padding: 2px 54px 22px 0;
+	border-bottom: 1px solid #e6ebe7;
+	text-align: left;
 }
 
-.oupLogo {
-	width: 140px;
-	height: auto;
-}
+.oupLogo { width: 124px; height: auto; margin-bottom: 5px; }
 
 .title {
-	font-size: 18px;
-	font-weight: 500;
+	margin: 0;
+	color: #17211a;
+	font-size: clamp(25px, 3vw, 34px);
+	font-weight: 740;
+	letter-spacing: -.035em;
 }
 
 .subtitle {
-	font-size: 14px;
-	color: var(--dark-grey);
-	max-width: 400px;
+	max-width: 590px;
+	margin: 0;
+	color: #6f7971;
+	font-size: 15px;
+	line-height: 1.55;
 }
 
-/* Sections */
 .section {
 	display: flex;
 	flex-direction: column;
-	gap: 10px;
-	padding: 20px;
-	border-radius: 20px;
+	gap: 12px;
+	padding: 0;
 }
 
 .sectionLabel {
-	font-size: 16px;
-	font-weight: 500;
 	margin: 0;
+	color: #263129;
+	font-size: 16px;
+	font-weight: 720;
 }
 
-/* Module table */
 .tableWrapper {
-	border-radius: 10px;
-	overflow: hidden;
-	border: 1px solid var(--dark-grey);
+	overflow-x: auto;
+	border: 1px solid #dfe5e0;
+	border-radius: 13px;
 }
 
 .table {
 	width: 100%;
 	border-collapse: collapse;
-	background: white;
+	background: #fff;
 	font-size: 13px;
 }
 
-.th {
-	padding: 10px 12px;
-	text-align: left;
-	font-weight: 500;
-	font-size: 14px;
-	border-bottom: 1px solid var(--dark-grey);
-}
-
-.thNum {
-	width: 36px;
-	padding: 10px 12px;
-	border-bottom: 1px solid var(--dark-grey);
-}
-
+.th,
+.thNum,
 .thTime {
-	padding: 10px 12px;
-	text-align: right;
-	white-space: nowrap;
-	font-weight: 500;
-	font-size: 14px;
-	border-bottom: 1px solid var(--dark-grey);
+	padding: 11px 13px;
+	border-bottom: 1px solid #dfe5e0;
+	background: #f4f7f4;
+	color: #647068;
+	font-size: 11px;
+	font-weight: 720;
+	letter-spacing: .04em;
+	text-align: left;
+	text-transform: uppercase;
 }
 
-.tr {
-	border-bottom: 1px solid var(--dark-grey);
-}
+.thNum { width: 44px; }
+.thTime { text-align: right; white-space: nowrap; }
+.tr { border-bottom: 1px solid #e8ece9; }
+.tr:last-child { border-bottom: 0; }
 
-.tr:last-child {
-	border-bottom: none;
-}
-
-.tdNum {
-	padding: 12px 12px;
-	font-size: 14px;
-	vertical-align: top;
-}
-
-.tdName {
-	padding: 12px 12px;
-	font-weight: 500;
-	font-size: 14px;
-	vertical-align: top;
-	white-space: nowrap;
-}
-
-.tdContent {
-	padding: 12px 12px;
-	font-size: 14px;
-	vertical-align: top;
-	line-height: 1.5;
-}
-
+.tdNum,
+.tdName,
+.tdContent,
 .tdTime {
-	padding: 12px 12px;
-	text-align: right;
-	white-space: nowrap;
-	font-size: 14px;
+	padding: 13px;
+	color: #3e4941;
+	font-size: 13px;
 	vertical-align: top;
 }
 
-/* Checklist */
+.tdNum { color: #245c32; font-weight: 760; }
+.tdName { font-weight: 700; white-space: nowrap; }
+.tdContent { line-height: 1.45; }
+.tdTime { text-align: right; white-space: nowrap; font-weight: 650; }
+
 .checklist {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 9px;
 	margin: 0;
 	padding: 0;
 	list-style: none;
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
 	counter-reset: checklist;
 }
 
 .checklistItem {
-	counter-increment: checklist;
 	position: relative;
-	padding-left: 22px;
-	font-size: 14px;
-	line-height: 1.55;
+	min-height: 62px;
+	padding: 12px 12px 12px 44px;
+	border: 1px solid #e0e6e1;
+	border-radius: 11px;
+	background: #fafcfb;
+	color: #69736c;
+	font-size: 12px;
+	line-height: 1.45;
+	counter-increment: checklist;
 }
 
 .checklistItem::before {
-	content: counter(checklist) '.';
+	content: '✓';
 	position: absolute;
-	left: 0;
-	font-size: 14px;
+	top: 13px;
+	left: 13px;
+	width: 22px;
+	height: 22px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: #edf5ee;
+	color: #245c32;
+	font-size: 10px;
+	font-weight: 760;
 }
 
-/* Footer */
+.checklistItem strong { color: #344038; }
+
 .footer {
 	display: flex;
 	justify-content: flex-end;
+	padding-top: 18px;
+	border-top: 1px solid #e6ebe7;
+}
+
+.footer button {
+	min-height: 46px;
+	padding: 0 22px !important;
+	border-radius: 10px !important;
+	background: #245c32 !important;
+	border-color: #245c32 !important;
+	font-size: 14px !important;
+	font-weight: 700 !important;
+	box-shadow: 0 8px 20px rgba(36,92,50,.2) !important;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 650px) {
+	.backdrop { align-items: flex-end; padding: 10px; }
+	.modal { max-height: calc(100dvh - 20px); padding: 22px 16px; border-radius: 18px; }
+	.checklist { grid-template-columns: 1fr; }
+	.footer button { width: 100%; }
 }

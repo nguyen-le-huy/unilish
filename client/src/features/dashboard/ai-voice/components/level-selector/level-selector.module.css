@@ -2,38 +2,82 @@
 	width: 100%;
 	display: flex;
 	flex-direction: column;
-	gap: var(--space-5);
+	gap: 17px;
+}
+
+.heading {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+}
+
+.sectionNumber {
+	width: 28px;
+	height: 28px;
+	flex: 0 0 28px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 8px;
+	background: #edf5ee;
+	color: #245c32;
+	font-size: 13px;
+	font-weight: 760;
+}
+
+.title,
+.heading p {
+	margin: 0;
 }
 
 .title {
-	margin: 0;
+	color: #17211a;
 	font-size: 20px;
-	font-weight: 500;
-	line-height: normal;
+	font-weight: 720;
+}
+
+.heading p {
+	margin-top: 5px;
+	color: #6e7871;
+	font-size: 15px;
+	line-height: 1.35;
 }
 
 .optionList {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-5);
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 8px;
 }
 
 .optionButton {
-	min-width: 62px;
-	box-shadow: none;
-}
-
-.optionButtonSelected {
-	border-color: var(--dark-green);
-	background: var(--dark-green);
-	color: white;
+	min-width: 0;
+	min-height: 43px;
+	padding: 0 10px;
+	border: 1px solid #dfe5e0;
+	border-radius: 10px;
+	background: #fff;
+	color: #5f6862;
+	font-family: var(--font-family);
+	font-size: 14px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
 .optionButton:hover {
-	box-shadow: none;
+	border-color: #9eb2a3;
+	background: #fafcfb;
+	transform: translateY(-1px);
+}
+
+.optionButtonSelected {
+	border-color: #245c32;
+	background: #245c32;
+	color: #fff;
+	box-shadow: 0 5px 12px rgba(36, 92, 50, 0.15);
 }
 
 .optionButton:focus-visible {
-	outline: 2px solid var(--green);
+	outline: 3px solid rgba(36, 92, 50, 0.18);
 	outline-offset: 2px;
 }

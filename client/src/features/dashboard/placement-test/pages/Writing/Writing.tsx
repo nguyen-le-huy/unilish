@@ -150,21 +150,36 @@ const Writing = () => {
 
     return (
         <>
-            <div className={styles.writing}>
-                <WritingPromptPanel promptText={promptText} promptImageSrc={promptImageSrc} />
-                <WritingEditorPanel
-                    essay={essay}
-                    wordCount={wordCount}
-                    timeLabel={timeLabel}
-                    hasTimedOut={hasTimedOut}
-                    isTextareaDisabled={submitState === 'grading' || submitState === 'done'}
-                    canManualSubmit={canManualSubmit}
-                    submitButtonLabel={getSubmitButtonLabel(isSubmitting, submitState)}
-                    onEssayChange={setEssay}
-                    onSubmit={() => {
-                        void submitWriting(remainingSeconds);
-                    }}
-                />
+            <div className={styles.page}>
+                <header className={styles.pageHeader}>
+                    <div className={styles.headerCopy}>
+                        <span className={styles.eyebrow}>Bài đánh giá năng lực CEFR</span>
+                        <h1>Kiểm tra kỹ năng Viết</h1>
+                        <p>Đọc kỹ đề bài, phân tích dữ liệu và trình bày câu trả lời bằng tiếng Anh.</p>
+                    </div>
+
+                    <div className={styles.moduleProgress} aria-label="Tiến trình bài kiểm tra">
+                        <span>Phần 2 / 3</span>
+                        <strong>Writing</strong>
+                    </div>
+                </header>
+
+                <main className={styles.writing}>
+                    <WritingPromptPanel promptText={promptText} promptImageSrc={promptImageSrc} />
+                    <WritingEditorPanel
+                        essay={essay}
+                        wordCount={wordCount}
+                        timeLabel={timeLabel}
+                        hasTimedOut={hasTimedOut}
+                        isTextareaDisabled={submitState === 'grading' || submitState === 'done'}
+                        canManualSubmit={canManualSubmit}
+                        submitButtonLabel={getSubmitButtonLabel(isSubmitting, submitState)}
+                        onEssayChange={setEssay}
+                        onSubmit={() => {
+                            void submitWriting(remainingSeconds);
+                        }}
+                    />
+                </main>
             </div>
 
             {isSubmittedCardOpen && (
