@@ -12,7 +12,7 @@
 ## ADR-002 — Mở rộng `ExamTest`, không tạo content aggregate trùng lặp
 
 - **Ngày:** 2026-07-06
-- **Trạng thái:** Proposed
+- **Trạng thái:** Accepted — Phase 0
 - **Bối cảnh:** Server đã có `ExamTest` với status, version, repository, service và route CRUD, nhưng schema mặc định là full IELTS nhiều module.
 - **Quyết định:** Thêm `kind: skill_practice`, `slug`, `skill`, `questionType`, `publishedAt`; với `kind=skill_practice`, `modules` phải có đúng một module/content union.
 - **Lựa chọn khác:** Tạo collection `ieltspracticetests` mới. Không chọn vì trùng status/version/audit và tăng hai nguồn nội dung thi.
@@ -37,7 +37,7 @@
 - **Ngày:** 2026-07-06
 - **Trạng thái:** Accepted
 - **Quyết định:** CRUD Delete thực hiện soft delete sang `archived`; không xóa vật lý record có attempt/version/audit.
-- **Hệ quả:** `DELETE` idempotent; cleanup media chỉ xảy ra khi không còn version tham chiếu và theo retention policy.
+- **Hệ quả:** `DELETE` idempotent; MVP không cleanup learner media hoặc attempt đã phát sinh.
 
 ## ADR-006 — Snapshot nội dung tại start
 
@@ -49,21 +49,28 @@
 ## ADR-007 — Speaking tái sử dụng AI Voice ở tầng capability, không tái sử dụng flow tự do
 
 - **Ngày:** 2026-07-06
-- **Trạng thái:** Proposed
+- **Trạng thái:** Accepted — bám theo capability FE hiện có
 - **Bối cảnh:** Client hiện điều hướng mọi đề Speaking sang AI Voice chung, nơi learner chọn lại topic/level/scenario.
 - **Quyết định:** IELTS attempt truyền scenario cố định từ đề vào conversation capability và ghi transcript/audio vào attempt; learner không chọn lại topic.
 - **Hệ quả:** Cần entry route Speaking riêng và adapter cho ChatWindow/voice service.
 
-## ADR-008 — Chấm điểm hai tầng
+## ADR-008 — Chỉ chấm tự động Listening/Reading trong MVP
 
 - **Ngày:** 2026-07-06
-- **Trạng thái:** Proposed, cần xác nhận product
-- **Quyết định:** Listening/Reading chấm đồng bộ; Writing/Speaking qua BullMQ và grading version. Submission không bị rollback nếu worker lỗi.
-- **Hệ quả:** UI có trạng thái `pending_grading`, `graded`, `grading_failed`; worker Writing hiện đang prompt Task 2 nên không được dùng trực tiếp cho Task 1 trước khi sửa rubric/prompt.
+- **Trạng thái:** Accepted — Phase 0
+- **Quyết định:** Listening/Reading chấm đồng bộ ngay khi nộp. Writing/Speaking chỉ lưu submission với trạng thái `submitted`, chưa enqueue BullMQ và chưa sinh band/feedback.
+- **Hệ quả:** UI Writing/Speaking xác nhận đã nhận bài nhưng không hiển thị “đang chấm”. Worker Writing Task 2 và Speaking grading nằm ngoài MVP.
 
 ## ADR-009 — Quyền content creator
 
 - **Ngày:** 2026-07-06
-- **Trạng thái:** Open
+- **Trạng thái:** Accepted — Phase 0
 - **Hiện trạng:** `/api/exam-tests` cho content creator chỉ GET; admin mới được create/update/status/rollback.
-- **Cần quyết định:** Giữ nguyên read-only hay cho content creator tạo/sửa draft nhưng không publish/archive.
+- **Quyết định:** Giữ read-only. Mọi create/update/status/rollback/delete chỉ dành cho admin.
+
+## ADR-010 — Lưu dữ liệu learner vĩnh viễn
+
+- **Ngày:** 2026-07-06
+- **Trạng thái:** Accepted — Phase 0
+- **Quyết định:** Attempt, draft đã submit, essay, transcript và audio Speaking không có thời hạn xóa trong MVP.
+- **Hệ quả:** Không tạo TTL index, cleanup worker hoặc storage lifecycle xóa dữ liệu. Archive đề không xóa dữ liệu learner. Chính sách này chỉ thay đổi bằng ADR mới và kế hoạch migration riêng.

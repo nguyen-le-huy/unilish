@@ -79,6 +79,12 @@ const envSchema = z.object({
     // Deepgram (Word-level timestamp sync)
     DEEPGRAM_API_KEY: z.string().min(1, 'DEEPGRAM_API_KEY is required'),
 
+    // IELTS Practice — skill-level feature flags (Phase 5 rollout)
+    IELTS_PRACTICE_LISTENING_ENABLED: z.string().default('true'),
+    IELTS_PRACTICE_READING_ENABLED: z.string().default('true'),
+    IELTS_PRACTICE_WRITING_ENABLED: z.string().default('true'),
+    IELTS_PRACTICE_SPEAKING_ENABLED: z.string().default('true'),
+
     // Auth
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),

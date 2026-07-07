@@ -19,6 +19,9 @@ const QuestionBankPage = lazy(() => import("@/features/question-bank/pages/Quest
 const QuestionEditorPage = lazy(() => import("@/features/question-bank/pages/QuestionEditorPage/QuestionEditorPage"));
 const PlacementTestListPage = lazy(() => import("@/features/placement-test/pages/PlacementTestListPage/PlacementTestListPage"));
 const PlacementTestWizardPage = lazy(() => import("@/features/placement-test/pages/PlacementTestWizardPage/PlacementTestWizardPage"));
+const IeltsPracticeListPage = lazy(() => import("@/features/ielts-practice/pages/IeltsPracticeListPage"));
+const IeltsPracticeEditorPage = lazy(() => import("@/features/ielts-practice/pages/IeltsPracticeEditorPage"));
+const IeltsPracticeDetailPage = lazy(() => import("@/features/ielts-practice/pages/IeltsPracticeDetailPage"));
 const pageLoaderFallback = (
     <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -149,6 +152,39 @@ export const router = createBrowserRouter([
                 element: (
                     <Suspense fallback={pageLoaderFallback}>
                         <PlacementTestWizardPage />
+                    </Suspense>
+                ),
+            },
+            // ─── IELTS Practice ────────────────────────────────────
+            {
+                path: "ielts-practice",
+                element: (
+                    <Suspense fallback={pageLoaderFallback}>
+                        <IeltsPracticeListPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "ielts-practice/new",
+                element: (
+                    <Suspense fallback={pageLoaderFallback}>
+                        <IeltsPracticeEditorPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "ielts-practice/:id",
+                element: (
+                    <Suspense fallback={pageLoaderFallback}>
+                        <IeltsPracticeDetailPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "ielts-practice/:id/edit",
+                element: (
+                    <Suspense fallback={pageLoaderFallback}>
+                        <IeltsPracticeEditorPage />
                     </Suspense>
                 ),
             },

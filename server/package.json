@@ -31,6 +31,10 @@
     "recalculate:enrollments:dry": "tsx src/scripts/recalculate-enrollments.ts --dry-run",
     "e2e:learning-flow": "tsx src/scripts/e2e-validate-learning-flow.ts",
     "e2e:learning-flow:seed": "tsx src/scripts/e2e-validate-learning-flow.ts --seed-only",
+    "backfill:exam-test-kind": "tsx src/scripts/backfill-exam-test-kind.ts",
+    "backfill:exam-test-kind:dry": "tsx src/scripts/backfill-exam-test-kind.ts --dry-run",
+    "seed:ielts-practice": "tsx src/scripts/seed-ielts-practice.ts",
+    "seed:ielts-practice:yes": "tsx src/scripts/seed-ielts-practice.ts --yes",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare": "husky || true"
   },

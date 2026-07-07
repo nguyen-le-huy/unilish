@@ -1,179 +1,233 @@
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
 import { PATHS } from '@/config/paths';
+import { useIeltsTests } from '../hooks/use-ielts-tests';
+import {
+  type IeltsSkill,
+  type LearnerAttemptScore,
+  type TestSummaryDto,
+  IELTS_SKILL_LABELS,
+} from '../types/ielts-practice.types';
 import styles from './IeltsSkillPage.module.css';
 
-type SkillSlug = 'listening' | 'reading' | 'writing' | 'speaking';
+const SKILLS: IeltsSkill[] = ['listening', 'reading', 'writing', 'speaking'];
+const isSkillSlug = (value: string | undefined): value is IeltsSkill =>
+  Boolean(value && SKILLS.includes(value as IeltsSkill));
 
-interface PracticeTest {
-    id: string;
-    title: string;
-    questionLabel: string;
-    attempts: number;
-    duration: number;
-}
-
-const SKILL_CONTENT: Record<SkillSlug, { name: string; vietnamese: string; description: string; tests: PracticeTest[] }> = {
-    listening: {
-        name: 'Listening',
-        vietnamese: 'Nghe',
-        description: 'Luyện nghe theo cấu trúc đề thi thật với bốn phần và nhiều ngữ cảnh giao tiếp khác nhau.',
-        tests: [
-            ['cam-20-listening-1', 'Cam 20 Listening · Test 1', '10 câu hỏi', 472, 12],
-            ['cam-20-listening-2', 'Cam 20 Listening · Test 2', '10 câu hỏi', 305, 12],
-            ['cam-20-listening-3', 'Cam 20 Listening · Test 3', '10 câu hỏi', 211, 12],
-            ['cam-20-listening-4', 'Cam 20 Listening · Test 4', '10 câu hỏi', 173, 12],
-            ['cam-19-listening-1', 'Cam 19 Listening · Test 1', '10 câu hỏi', 890, 12],
-            ['cam-19-listening-2', 'Cam 19 Listening · Test 2', '10 câu hỏi', 634, 12],
-            ['cam-19-listening-3', 'Cam 19 Listening · Test 3', '10 câu hỏi', 428, 12],
-            ['cam-19-listening-4', 'Cam 19 Listening · Test 4', '10 câu hỏi', 316, 12],
-        ].map(([id, title, questionLabel, attempts, duration]) => ({ id, title, questionLabel, attempts, duration })) as PracticeTest[],
-    },
-    reading: {
-        name: 'Reading',
-        vietnamese: 'Đọc',
-        description: 'Thực hành đọc hiểu học thuật, quản lý thời gian và làm quen đầy đủ các dạng câu hỏi IELTS.',
-        tests: [
-            ['cam-20-reading-1', 'Cam 20 Reading · Test 1', '40 câu hỏi', 1848, 60],
-            ['cam-20-reading-2', 'Cam 20 Reading · Test 2', '40 câu hỏi', 1120, 60],
-            ['cam-20-reading-3', 'Cam 20 Reading · Test 3', '40 câu hỏi', 752, 60],
-            ['cam-20-reading-4', 'Cam 20 Reading · Test 4', '40 câu hỏi', 642, 60],
-            ['cam-19-reading-1', 'Cam 19 Reading · Test 1', '40 câu hỏi', 1532, 60],
-            ['cam-19-reading-2', 'Cam 19 Reading · Test 2', '40 câu hỏi', 988, 60],
-            ['cam-19-reading-3', 'Cam 19 Reading · Test 3', '40 câu hỏi', 734, 60],
-            ['cam-19-reading-4', 'Cam 19 Reading · Test 4', '40 câu hỏi', 519, 60],
-        ].map(([id, title, questionLabel, attempts, duration]) => ({ id, title, questionLabel, attempts, duration })) as PracticeTest[],
-    },
-    writing: {
-        name: 'Writing',
-        vietnamese: 'Viết',
-        description: 'Luyện Task 1 và Task 2 theo bộ đề Cambridge, có định hướng phân bổ thời gian sát kỳ thi.',
-        tests: [
-            ['cam-20-writing-1', 'Cam 20 Writing · Test 1', '1 bài viết', 328, 20],
-            ['cam-20-writing-2', 'Cam 20 Writing · Test 2', '1 bài viết', 241, 20],
-            ['cam-20-writing-3', 'Cam 20 Writing · Test 3', '1 bài viết', 196, 20],
-            ['cam-20-writing-4', 'Cam 20 Writing · Test 4', '1 bài viết', 142, 20],
-            ['cam-19-writing-1', 'Cam 19 Writing · Test 1', '1 bài viết', 459, 20],
-            ['cam-19-writing-2', 'Cam 19 Writing · Test 2', '1 bài viết', 367, 20],
-            ['cam-19-writing-3', 'Cam 19 Writing · Test 3', '1 bài viết', 284, 20],
-            ['cam-19-writing-4', 'Cam 19 Writing · Test 4', '1 bài viết', 219, 20],
-        ].map(([id, title, questionLabel, attempts, duration]) => ({ id, title, questionLabel, attempts, duration })) as PracticeTest[],
-    },
-    speaking: {
-        name: 'Speaking',
-        vietnamese: 'Nói',
-        description: 'Luyện đủ ba phần thi nói với chủ đề thường gặp và nâng phản xạ cùng AI Speaking Coach.',
-        tests: [
-            ['speaking-people', 'Speaking Practice · People & Relationships', '3 phần thi', 764, 15],
-            ['speaking-education', 'Speaking Practice · Education', '3 phần thi', 623, 15],
-            ['speaking-technology', 'Speaking Practice · Technology', '3 phần thi', 582, 15],
-            ['speaking-travel', 'Speaking Practice · Travel & Places', '3 phần thi', 491, 15],
-            ['speaking-work', 'Speaking Practice · Work & Career', '3 phần thi', 438, 15],
-            ['speaking-environment', 'Speaking Practice · Environment', '3 phần thi', 376, 15],
-            ['speaking-culture', 'Speaking Practice · Culture & Media', '3 phần thi', 312, 15],
-            ['speaking-health', 'Speaking Practice · Health & Lifestyle', '3 phần thi', 269, 15],
-        ].map(([id, title, questionLabel, attempts, duration]) => ({ id, title, questionLabel, attempts, duration })) as PracticeTest[],
-    },
+const SKILL_DESCRIPTIONS: Record<IeltsSkill, string> = {
+  listening: 'Luyện nghe theo cấu trúc đề thi thật với bốn phần và nhiều ngữ cảnh giao tiếp khác nhau.',
+  reading: 'Thực hành đọc hiểu học thuật, quản lý thời gian và làm quen đầy đủ các dạng câu hỏi IELTS.',
+  writing: 'Luyện Task 1 với biểu đồ, bảng số liệu và hướng dẫn triển khai ý rõ ràng.',
+  speaking: 'Tăng phản xạ giao tiếp cùng AI Coach theo chủ đề IELTS Speaking.',
 };
 
-const isSkillSlug = (value: string | undefined): value is SkillSlug => Boolean(value && value in SKILL_CONTENT);
-
 const MetaIcon = ({ type }: { type: 'document' | 'users' | 'clock' }) => {
-    if (type === 'users') {
-        return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.8a3.2 3.2 0 00-3.2-3.2H6.2A3.2 3.2 0 003 18.2V20M9.5 11.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM17 11a3 3 0 000-5.8M18 15.2a3.2 3.2 0 013 3V20" /></svg>;
-    }
-    if (type === 'clock') {
-        return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.2 2" /></svg>;
-    }
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6" /></svg>;
+  if (type === 'users') {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1.8a3.2 3.2 0 00-3.2-3.2H6.2A3.2 3.2 0 003 18.2V20M9.5 11.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM17 11a3 3 0 000-5.8M18 15.2a3.2 3.2 0 013 3V20" /></svg>;
+  }
+  if (type === 'clock') {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.2 2" /></svg>;
+  }
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6" /></svg>;
+};
+
+const formatAttemptDate = (attempt: LearnerAttemptScore): string => {
+  const value = attempt.submittedAt ?? attempt.startedAt;
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+  }).format(new Date(value));
+};
+
+const getPrimaryActionLabel = (test: TestSummaryDto): string => {
+  if (test.activeAttemptId) return 'Tiếp tục';
+  if ((test.learnerStats?.completedCount ?? 0) > 0) return 'Làm lại';
+  return 'Xem chi tiết';
 };
 
 const IeltsSkillPage = () => {
-    const { skill } = useParams();
-    const navigate = useNavigate();
+  const { skill } = useParams();
+  const navigate = useNavigate();
 
-    if (!isSkillSlug(skill)) {
-        return <Navigate to={PATHS.DASHBOARD.IELTS_PRACTICE} replace />;
+  const validatedSkill = isSkillSlug(skill) ? skill : undefined;
+  const skillMeta = validatedSkill ? IELTS_SKILL_LABELS[validatedSkill] : undefined;
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useIeltsTests({ skill: validatedSkill ?? 'listening', page: 1, limit: 100 });
+
+  const tests = data?.data ?? [];
+
+  if (!validatedSkill || !skillMeta) {
+    return <Navigate to={PATHS.DASHBOARD.IELTS_PRACTICE} replace />;
+  }
+
+  if (validatedSkill === 'speaking') {
+    return <Navigate to={PATHS.DASHBOARD.AI_VOICE} replace />;
+  }
+
+  const handleOpenTest = (test: TestSummaryDto) => {
+    if (validatedSkill === 'listening') {
+      navigate(PATHS.DASHBOARD.IELTS_LISTENING_TEST(test.slug));
+      return;
     }
+    if (validatedSkill === 'reading') {
+      navigate(PATHS.DASHBOARD.IELTS_READING_TEST(test.slug));
+      return;
+    }
+    if (validatedSkill === 'writing') {
+      navigate(PATHS.DASHBOARD.IELTS_WRITING_TEST(test.slug));
+      return;
+    }
+  };
 
-    const content = SKILL_CONTENT[skill];
-    const handleOpenTest = (test: PracticeTest) => {
-        if (skill === 'listening') {
-            navigate(PATHS.DASHBOARD.IELTS_LISTENING_TEST(test.id));
-            return;
-        }
+  return (
+    <main className={styles.page}>
+      <nav className={styles.breadcrumb} aria-label="Điều hướng IELTS">
+        <Link to={PATHS.DASHBOARD.IELTS_PRACTICE}>Luyện đề IELTS</Link>
+        <span aria-hidden="true">/</span>
+        <span>{skillMeta.name}</span>
+      </nav>
 
-        if (skill === 'reading') {
-            navigate(PATHS.DASHBOARD.IELTS_READING_TEST(test.id));
-            return;
-        }
+      <header className={styles.hero}>
+        <div>
+          <span className={styles.eyebrow}>IELTS {skillMeta.name}</span>
+          <h1>Luyện kỹ năng {skillMeta.name} <small>{skillMeta.label}</small></h1>
+          <p>{SKILL_DESCRIPTIONS[validatedSkill]}</p>
+        </div>
+        <div className={styles.summary}>
+          <strong>{data?.meta?.total ?? '—'}</strong>
+          <span>đề luyện tập</span>
+        </div>
+      </header>
 
-        if (skill === 'writing') {
-            navigate(PATHS.DASHBOARD.IELTS_WRITING_TEST(test.id));
-            return;
-        }
+      <section className={styles.testSection}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.sectionKicker}>Thư viện luyện tập</span>
+            <h2>Danh sách đề</h2>
+          </div>
+          <p>Chọn một đề để xem nội dung và bắt đầu luyện tập.</p>
+        </div>
 
-        if (skill === 'speaking') {
-            navigate(PATHS.DASHBOARD.AI_VOICE);
-            return;
-        }
-
-        toast.info(`${test.title} đang được hoàn thiện nội dung. Bạn sẽ sớm có thể bắt đầu làm đề.`);
-    };
-
-    return (
-        <main className={styles.page}>
-            <nav className={styles.breadcrumb} aria-label="Điều hướng IELTS">
-                <Link to={PATHS.DASHBOARD.IELTS_PRACTICE}>Luyện đề IELTS</Link>
-                <span aria-hidden="true">/</span>
-                <span>{content.name}</span>
-            </nav>
-
-            <header className={styles.hero}>
-                <div>
-                    <span className={styles.eyebrow}>IELTS {content.name}</span>
-                    <h1>Luyện kỹ năng {content.name} <small>{content.vietnamese}</small></h1>
-                    <p>{content.description}</p>
+        {/* Loading state */}
+        {isLoading && (
+          <div className={styles.testGrid}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <article key={i} className={`${styles.testCard} ${styles.skeletonTest}`} aria-busy="true">
+                <div className={styles.testInfo}>
+                  <div className={styles.titleRow}>
+                    <span className={styles.testNumber}>—</span>
+                    <h3 className={styles.skeletonTitle}>&nbsp;</h3>
+                    <span className={styles.skeletonBadge}>&nbsp;</span>
+                  </div>
+                  <div className={styles.testMeta}>
+                    <span className={styles.skeletonMeta}>&nbsp;</span>
+                  </div>
                 </div>
-                <div className={styles.summary}>
-                    <strong>{content.tests.length}</strong>
-                    <span>đề luyện tập</span>
-                </div>
-            </header>
+                <span className={styles.skeletonAction}>&nbsp;</span>
+              </article>
+            ))}
+          </div>
+        )}
 
-            <section className={styles.testSection}>
-                <div className={styles.sectionHeader}>
-                    <div>
-                        <span className={styles.sectionKicker}>Thư viện luyện tập</span>
-                        <h2>Danh sách đề</h2>
+        {/* Error state */}
+        {isError && (
+          <div className={styles.errorState} role="alert">
+            <p>Không thể tải danh sách đề.</p>
+            <p className={styles.errorDetail}>{(error as Error)?.message ?? 'Vui lòng thử lại sau.'}</p>
+            <button type="button" className={styles.retryButton} onClick={() => refetch()}>
+              Thử lại
+            </button>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!isLoading && !isError && tests.length === 0 && (
+          <div className={styles.emptyState}>
+            <p>Chưa có đề luyện tập cho kỹ năng này.</p>
+            <p className={styles.emptyHint}>Vui lòng quay lại sau hoặc chọn kỹ năng khác.</p>
+            <Link to={PATHS.DASHBOARD.IELTS_PRACTICE} className={styles.backLink}>
+              Quay lại IELTS Practice Hub
+            </Link>
+          </div>
+        )}
+
+        {/* Success state */}
+        {!isLoading && !isError && tests.length > 0 && (
+          <div className={styles.testGrid}>
+            {tests.map((test, index) => (
+              <article className={styles.testCard} key={test.id}>
+                <div className={styles.testInfo}>
+                  <div className={styles.titleRow}>
+                    <span className={styles.testNumber}>{String(index + 1).padStart(2, '0')}</span>
+                    <h3>{test.title}</h3>
+                    <span className={styles.freeBadge}>Miễn phí</span>
+                  </div>
+                  <div className={styles.testMeta}>
+                    <span>
+                      <MetaIcon type="document" />
+                      {test.questionType === 'academic_task_1_chart'
+                        ? '1 bài viết'
+                        : test.questionType === 'ai_conversation'
+                          ? '1 bài nói'
+                          : `${test.itemCount} câu hỏi`}
+                    </span>
+                    <span>
+                      <MetaIcon type="users" />
+                      {test.attemptCount.toLocaleString('vi-VN')}
+                    </span>
+                    <span>
+                      <MetaIcon type="clock" />
+                      {test.durationMinutes} phút
+                    </span>
+                  </div>
+                  {test.learnerStats && test.learnerStats.completedCount > 0 && (
+                    <div className={styles.historyPanel}>
+                      <div className={styles.historySummary}>
+                        <strong>Đã làm {test.learnerStats.completedCount} lần</strong>
+                        {test.learnerStats.latestAttempt?.scoreLabel && (
+                          <span>Gần nhất: {test.learnerStats.latestAttempt.scoreLabel}</span>
+                        )}
+                      </div>
+                      <div className={styles.scoreList} aria-label={`Điểm các lần làm ${test.title}`}>
+                        {test.learnerStats.scores.slice(0, 3).map((attempt, attemptIndex) => (
+                          <Link
+                            key={attempt.attemptId}
+                            className={styles.scorePill}
+                            to={PATHS.DASHBOARD.IELTS_RESULT(attempt.attemptId)}
+                          >
+                            <span>Lần {test.learnerStats!.completedCount - attemptIndex}</span>
+                            <strong>{attempt.scoreLabel ?? 'Đã nộp'}</strong>
+                            <small>{formatAttemptDate(attempt)}</small>
+                          </Link>
+                        ))}
+                      </div>
                     </div>
-                    <p>Chọn một đề để xem nội dung và bắt đầu luyện tập.</p>
+                  )}
                 </div>
+                <button type="button" onClick={() => handleOpenTest(test)}>
+                  {getPrimaryActionLabel(test)} <span aria-hidden="true">→</span>
+                </button>
+              </article>
+            ))}
+          </div>
+        )}
 
-                <div className={styles.testGrid}>
-                    {content.tests.map((test, index) => (
-                        <article className={styles.testCard} key={test.id}>
-                            <div className={styles.testInfo}>
-                                <div className={styles.titleRow}>
-                                    <span className={styles.testNumber}>{String(index + 1).padStart(2, '0')}</span>
-                                    <h3>{test.title}</h3>
-                                    <span className={styles.freeBadge}>Miễn phí</span>
-                                </div>
-                                <div className={styles.testMeta}>
-                                    <span><MetaIcon type="document" />{test.questionLabel}</span>
-                                    <span><MetaIcon type="users" />{test.attempts.toLocaleString('vi-VN')}</span>
-                                    <span><MetaIcon type="clock" />{test.duration} phút</span>
-                                </div>
-                            </div>
-                            <button type="button" onClick={() => handleOpenTest(test)}>
-                                Xem chi tiết <span aria-hidden="true">→</span>
-                            </button>
-                        </article>
-                    ))}
-                </div>
-            </section>
-        </main>
-    );
+        {/* Pagination */}
+        {data?.meta && data.meta.totalPages > 1 && (
+          <nav className={styles.pagination} aria-label="Phân trang">
+            <span>
+              Trang {data.meta.page}/{data.meta.totalPages}
+            </span>
+          </nav>
+        )}
+      </section>
+    </main>
+  );
 };
 
 export default IeltsSkillPage;

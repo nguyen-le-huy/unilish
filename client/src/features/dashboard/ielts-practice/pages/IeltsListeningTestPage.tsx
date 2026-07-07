@@ -1,165 +1,193 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
-import { PATHS } from '@/config/paths';
-import styles from './IeltsListeningTestPage.module.css';
+/* ──────────────────────────────────────────────────────────────
+ * IeltsListeningTestPage — Form Completion player
+ * Phase 5: Binds audio/items, answer draft, attempt engine
+ * ────────────────────────────────────────────────────────────── */
 
-type AnswerMap = Record<number, string>;
+import { useCallback, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
+import { useIeltsPlayer } from '../hooks/use-ielts-player';
+import ExamShell from '../components/ExamShell/ExamShell';
+import ConflictDialog from '../components/ConflictDialog/ConflictDialog';
+import { ListeningFormCompletion } from '../components/renderers/ListeningFormCompletion';
+import type { ListeningDetailDto } from '../types/ielts-practice.types';
 
-const PART = { number: 1, range: '1–10', duration: 426 } as const;
+const asideStyles: Record<string, React.CSSProperties> = {
+  panel: { padding: '1rem' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.375rem', marginBottom: '0.75rem' },
+  numBtn: { width: '100%', aspectRatio: '1', border: '1px solid #e5e5e5', borderRadius: '0.375rem', background: '#fff', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 },
+  numAnswered: { background: '#e8f5e9', borderColor: '#2e7d32', color: '#2e7d32' },
+  numFlagged: { borderColor: '#d97706' },
+  legend: { display: 'flex', flexDirection: 'column', gap: '0.375rem', fontSize: '0.75rem', color: '#666' },
+};
 
-const QUESTIONS = [
-    'Prices range from $105 to $ ___ per room per month.',
-    'The furniture is very ___.',
-    'Special offer: free ___ with every living room set.',
-    'The second company is ___ and Oliver.',
-    'There is a 12% monthly fee for ___.',
-    'Larch Furniture also supplies ___ items.',
-    'Customers must have their own ___.',
-    'The final company is called ___ Rentals.',
-    'See the ___ for the most up-to-date prices.',
-    '___ are allowed within seven days of delivery.',
-];
-
-const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+const ListeningProgress = ({
+  answers,
+  items,
+  flaggedIds,
+  onNavigate,
+}: {
+  answers: Record<string, string>;
+  items: Array<{ id: string; order: number }>;
+  flaggedIds: string[];
+  onNavigate: (id: string) => void;
+}) => {
+  const answered = Object.values(answers).filter((v) => v.trim()).length;
+  const total = items.length;
+  return (
+    <div style={asideStyles.panel}>
+      <div style={asideStyles.header}>
+        <span>Tiến độ</span>
+        <strong>{answered}/{total}</strong>
+      </div>
+      <div style={asideStyles.grid}>
+        {items.map((item) => {
+          const hasAnswer = !!answers[item.id]?.trim();
+          const flagged = flaggedIds.includes(item.id);
+          return (
+            <button
+              key={item.id}
+              type="button"
+              style={{
+                ...asideStyles.numBtn,
+                ...(hasAnswer ? asideStyles.numAnswered : {}),
+                ...(flagged ? asideStyles.numFlagged : {}),
+              }}
+              onClick={() => onNavigate(item.id)}
+              aria-label={`Câu ${item.order}${hasAnswer ? ', đã trả lời' : ''}${flagged ? ', đánh dấu' : ''}`}
+            >
+              {item.order}
+            </button>
+          );
+        })}
+      </div>
+      <div style={asideStyles.legend}>
+        <span>Đã trả lời ({answered})</span>
+        <span>Chưa ({total - answered})</span>
+        <span>Đánh dấu ({flaggedIds.length})</span>
+      </div>
+    </div>
+  );
 };
 
 const IeltsListeningTestPage = () => {
-    const navigate = useNavigate();
-    const { testId } = useParams();
-    const [answers, setAnswers] = useState<AnswerMap>({});
-    const [flagged, setFlagged] = useState<Set<number>>(() => new Set());
-    const [remainingSeconds, setRemainingSeconds] = useState(12 * 60);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [audioTime, setAudioTime] = useState(0);
-    const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const { testId: slug } = useParams<{ testId: string }>();
 
-    const answeredCount = Object.values(answers).filter((answer) => answer.trim().length > 0).length;
-    const progress = (answeredCount / 10) * 100;
+  const {
+    phase,
+    attempt,
+    testDetail,
+    isLoading,
+    error,
+    saveState,
+    conflictData,
+    clearConflict,
+    submitAttempt,
+    isSubmitting,
+    submitError,
+    answers,
+    flaggedIds,
+    answeredCount,
+    totalCount,
+    updateAnswers,
+    updateFlagged,
+  } = useIeltsPlayer({ slug });
 
-    useEffect(() => {
-        const timer = window.setInterval(() => setRemainingSeconds((current) => Math.max(0, current - 1)), 1000);
-        return () => window.clearInterval(timer);
-    }, []);
+  const detail = testDetail?.skill === 'listening' ? (testDetail as ListeningDetailDto) : null;
+  const items = detail?.content.items ?? [];
 
-    useEffect(() => {
-        if (!isPlaying) return;
-        const timer = window.setInterval(() => setAudioTime((current) => Math.min(PART.duration, current + 1)), 1000);
-        return () => window.clearInterval(timer);
-    }, [isPlaying]);
+  const handleAnswerChange = useCallback(
+    (id: string, value: string) => {
+      updateAnswers({ ...answers, [id]: value });
+    },
+    [answers, updateAnswers],
+  );
 
-    const updateAnswer = (questionNumber: number, value: string) => {
-        setAnswers((current) => ({ ...current, [questionNumber]: value }));
-    };
+  const handleFlagToggle = useCallback(
+    (id: string) => {
+      const next = flaggedIds.includes(id)
+        ? flaggedIds.filter((f: string) => f !== id)
+        : [...flaggedIds, id];
+      updateFlagged(next);
+    },
+    [flaggedIds, updateFlagged],
+  );
 
-    const toggleFlag = (questionNumber: number) => {
-        setFlagged((current) => {
-            const next = new Set(current);
-            if (next.has(questionNumber)) next.delete(questionNumber);
-            else next.add(questionNumber);
-            return next;
-        });
-    };
+  const handleNavigate = useCallback((id: string) => {
+    document.getElementById(`question-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
 
-    const goToQuestion = (questionNumber: number) => {
-        document.getElementById(`question-${questionNumber}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    };
+  const aside = useMemo(
+    () => (
+      <ListeningProgress
+        answers={answers}
+        items={items}
+        flaggedIds={flaggedIds}
+        onNavigate={handleNavigate}
+      />
+    ),
+    [answers, items, flaggedIds, handleNavigate],
+  );
 
-    const submitTest = () => {
-        setShowSubmitDialog(false);
-        toast.success('Bài thi Listening đã được ghi nhận.');
-        navigate(PATHS.DASHBOARD.IELTS_SKILL('listening'));
-    };
-
+  // ── Loading state ─────────────────────────────────────
+  if (isLoading || phase === 'initializing') {
     return (
-        <main className={styles.examPage}>
-            <header className={styles.topBar}>
-                <div className={styles.brandBlock}>
-                    <div><span>IELTS Listening</span><strong>{testId?.replace(/-/g, ' ') ?? 'Practice test'}</strong></div>
-                </div>
-                <div className={styles.timer} aria-label="Thời gian còn lại"><span aria-hidden="true">◷</span>{formatTime(remainingSeconds)}</div>
-                <div className={styles.headerActions}>
-                    <button type="button" className={styles.exitButton} onClick={() => navigate(PATHS.DASHBOARD.IELTS_SKILL('listening'))}>Thoát</button>
-                    <button type="button" className={styles.submitButton} onClick={() => setShowSubmitDialog(true)}>Nộp bài</button>
-                </div>
-            </header>
-
-            <div className={styles.workspace}>
-                <section className={styles.contentPane}>
-                    <div className={styles.contentInner}>
-                        <div className={styles.partLabel}>Listening <span>Câu {PART.range}</span></div>
-
-                        <div className={styles.audioPlayer}>
-                            <button type="button" className={styles.playButton} onClick={() => setIsPlaying((playing) => !playing)} aria-label={isPlaying ? 'Tạm dừng' : 'Phát'}>
-                                {isPlaying ? (
-                                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1" /><rect x="13.5" y="5" width="4" height="14" rx="1" /></svg>
-                                ) : (
-                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.8v12.4c0 .9 1 1.4 1.7.9l8.4-6.2a1.1 1.1 0 000-1.8L9.7 4.9C9 4.4 8 4.9 8 5.8z" /></svg>
-                                )}
-                            </button>
-                            <input className={styles.audioProgress} type="range" min={0} max={PART.duration} value={audioTime} onChange={(event) => setAudioTime(Number(event.target.value))} aria-label="Tiến độ audio" />
-                            <span className={styles.audioTime}>{formatTime(audioTime)} / {formatTime(PART.duration)}</span>
-                            <span className={styles.speed}>1×</span>
-                        </div>
-
-                        <div className={styles.instruction}>Write ONE WORD AND/OR A NUMBER for each answer.</div>
-
-                        <section className={styles.completionCard}>
-                            <div className={styles.completionHeading}><span>Form completion</span><h2>Furniture rental companies</h2></div>
-                            <div className={styles.completionList}>
-                                {QUESTIONS.map((item, index) => {
-                                    const questionNumber = index + 1;
-                                    const [before, after = ''] = item.split('___');
-                                    return (
-                                        <div className={styles.completionItem} id={`question-${questionNumber}`} key={questionNumber}>
-                                            <span className={styles.questionNumber}>{questionNumber}</span>
-                                            <p>{before}<input value={answers[questionNumber] ?? ''} onChange={(event) => updateAnswer(questionNumber, event.target.value)} aria-label={`Đáp án câu ${questionNumber}`} />{after}</p>
-                                            <button type="button" className={flagged.has(questionNumber) ? styles.flagActive : styles.flagButton} onClick={() => toggleFlag(questionNumber)} aria-label={`Đánh dấu câu ${questionNumber}`}>⚑</button>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </section>
-                    </div>
-                </section>
-
-                <aside className={styles.progressPanel}>
-                    <div className={styles.progressHeader}>
-                        <div><span>Tiến độ</span><strong>{answeredCount}/10</strong></div>
-                        <div className={styles.progressTrack}><span style={{ width: `${progress}%` }} /></div>
-                    </div>
-                    <div className={styles.questionNavigator}>
-                        <div className={styles.navigatorPart}>
-                            <span>Câu hỏi <small>({PART.range})</small></span>
-                            <div className={styles.numberGrid}>
-                                {Array.from({ length: 10 }, (_, index) => index + 1).map((number) => (
-                                    <button type="button" key={number} className={`${answers[number]?.trim() ? styles.numberAnswered : styles.numberButton} ${flagged.has(number) ? styles.numberFlagged : ''} ${styles.numberCurrentPart}`} onClick={() => goToQuestion(number)}>{number}</button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    <div className={styles.legend}>
-                        <span><i className={styles.answeredDot} />Đã trả lời ({answeredCount})</span>
-                        <span><i className={styles.emptyDot} />Chưa trả lời ({10 - answeredCount})</span>
-                        <span><i className={styles.flaggedDot} />Đánh dấu ({flagged.size})</span>
-                    </div>
-                </aside>
-            </div>
-
-            {showSubmitDialog && (
-                <div className={styles.modalBackdrop} role="presentation" onMouseDown={() => setShowSubmitDialog(false)}>
-                    <section className={styles.submitDialog} role="dialog" aria-modal="true" aria-labelledby="submit-title" onMouseDown={(event) => event.stopPropagation()}>
-                        <span className={styles.dialogIcon}>✓</span><h2 id="submit-title">Xác nhận nộp bài?</h2>
-                        <p>Bạn đã trả lời <strong>{answeredCount}/10 câu</strong>. Sau khi nộp, bạn sẽ không thể thay đổi đáp án.</p>
-                        <div><button type="button" onClick={() => setShowSubmitDialog(false)}>Tiếp tục làm bài</button><button type="button" className={styles.confirmSubmit} onClick={submitTest}>Nộp bài ngay</button></div>
-                    </section>
-                </div>
-            )}
-        </main>
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm text-ink-70">Đang chuẩn bị bài luyện…</p>
+        </div>
+      </div>
     );
+  }
+
+  // ── Error state ───────────────────────────────────────
+  if (error || phase === 'error') {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center max-w-md">
+          <h2 className="text-lg font-semibold mb-2">Không thể bắt đầu bài luyện</h2>
+          <p className="text-sm text-ink-70">{error ?? 'Vui lòng thử lại sau.'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!detail || !attempt) return null;
+
+  return (
+    <>
+      <ExamShell
+        skillName="Listening"
+        testTitle={detail.title}
+        deadlineAt={attempt.deadlineAt}
+        saveState={saveState}
+        answeredCount={answeredCount}
+        totalCount={totalCount}
+        isSubmitting={isSubmitting}
+        submitError={submitError}
+        onSubmit={submitAttempt}
+        aside={aside}
+      >
+        <ListeningFormCompletion
+          detail={detail}
+          answers={answers}
+          flaggedIds={flaggedIds}
+          onAnswerChange={handleAnswerChange}
+          onFlagToggle={handleFlagToggle}
+          disabled={phase === 'expired'}
+        />
+      </ExamShell>
+
+      <ConflictDialog
+        open={conflictData !== null}
+        latestRevision={conflictData?.latestRevision ?? 0}
+        savedAt={conflictData?.savedAt ?? ''}
+        onUseLocal={clearConflict}
+        onUseServer={clearConflict}
+      />
+    </>
+  );
 };
 
 export default IeltsListeningTestPage;

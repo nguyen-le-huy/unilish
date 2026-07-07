@@ -33,7 +33,7 @@
 }
 ```
 
-`errorCode` là field bổ sung `PROPOSED`; client không parse message để quyết định flow.
+`errorCode` là field contract bắt buộc cho lỗi nghiệp vụ; client không parse message để quyết định flow.
 
 ## 2. Enum
 
@@ -50,9 +50,7 @@ type ContentStatus = 'draft' | 'active' | 'paused' | 'archived';
 type AttemptStatus =
   | 'in_progress'
   | 'submitted'
-  | 'pending_grading'
   | 'graded'
-  | 'grading_failed'
   | 'expired'
   | 'abandoned';
 ```
@@ -228,7 +226,7 @@ Errors: `404 TEST_NOT_AVAILABLE`, `409 RETAKE_NOT_ALLOWED`, `429 RATE_LIMITED`.
 ### GET `/api/ielts-practice/attempts/:attemptId`
 
 - Ownership required; foreign attempt returns `404`.
-- Trả snapshot redacted, draft, revision, deadline và grading summary nếu có.
+- Trả snapshot redacted, draft, revision, deadline và objective result nếu đã có.
 - Success: `200`.
 
 ### PATCH `/api/ielts-practice/attempts/:attemptId/draft`
@@ -303,14 +301,19 @@ Other errors: `404 ATTEMPT_NOT_FOUND`, `409 ATTEMPT_LOCKED`, `409 ATTEMPT_EXPIRE
 }
 ```
 
-- Success async `202`:
+- Success Writing/Speaking chưa chấm `200`:
 
 ```json
 {
   "status": "success",
-  "code": 202,
-  "message": "Đã nhận bài và đang chấm",
-  "data": { "attemptId": "...", "status": "pending_grading", "submittedAt": "..." }
+  "code": 200,
+  "message": "Đã nhận bài Writing",
+  "data": {
+    "attemptId": "...",
+    "status": "submitted",
+    "submittedAt": "...",
+    "grading": "not_available"
+  }
 }
 ```
 
@@ -318,8 +321,8 @@ Errors: `409 UNSAVED_REVISION`, `409 ATTEMPT_EXPIRED`, `422 EMPTY_SUBMISSION`.
 
 ### GET `/api/ielts-practice/attempts/:attemptId/result`
 
-- Success: `200` cho `graded`, `202` cho `pending_grading`.
-- Result Writing/Speaking chỉ trả feedback learner-safe; không trả full system prompt/raw provider response.
+- Success: `200` cho `graded` hoặc `submitted`.
+- Với Writing/Speaking trong MVP, response là `{ status: "submitted", grading: "not_available" }`; không có band, criteria hoặc feedback.
 - `404` nếu không thuộc learner.
 
 ### POST `/api/ielts-practice/attempts/:attemptId/abandon`
@@ -348,7 +351,7 @@ interface IeltsPracticeUpsertBody {
 }
 ```
 
-Admin content thêm answer key/rubric:
+Admin content thêm answer key cho Listening/Reading:
 
 ```ts
 interface ListeningAdminContent {
@@ -384,7 +387,6 @@ interface WritingAdminContent {
   imageAssetId: string;
   imageAlt: string;
   minWords: 150;
-  gradingRubricVersion?: string;
 }
 
 interface SpeakingAdminContent {
@@ -393,7 +395,6 @@ interface SpeakingAdminContent {
   openingPrompt: string;
   expectedDurationMinutes: number;
   voice: string;
-  gradingRubricVersion?: string;
 }
 ```
 
@@ -418,7 +419,7 @@ Current endpoint. Admin/content_creator nhận full content gồm answer key. Gh
 ### POST `/api/exam-tests`
 
 - Current endpoint mở rộng payload `IeltsPracticeUpsertBody`.
-- Role hiện tại: admin. Content creator mutation chờ ADR-009.
+- Role: chỉ admin. Content creator gọi mutation nhận `403 FORBIDDEN`.
 - Tạo status `draft`, version tiếp theo.
 - Success: `201`.
 
@@ -460,7 +461,7 @@ Current endpoint. Admin/content_creator nhận full content gồm answer key. Gh
 
 ### DELETE `/api/exam-tests/:id`
 
-- `PROPOSED` alias rõ nghĩa cho archive soft-delete.
+- Alias rõ nghĩa cho archive soft-delete.
 - Body rỗng; success `200`; gọi lại idempotent.
 - Role: admin.
 
@@ -482,8 +483,7 @@ Thay stub hiện tại bằng:
   "completedAttempts": 401,
   "completionRate": 0.8496,
   "averageDurationSeconds": 618,
-  "averageNormalizedScore": 0.71,
-  "gradingFailed": 0
+  "averageNormalizedScore": 0.71
 }
 ```
 
@@ -518,7 +518,13 @@ Tận dụng upload service hiện có; content chỉ lưu stable `assetId` và 
 
 - Key scope: `(userId, route, Idempotency-Key)`.
 - Start lưu response 24 giờ; retry trả cùng attempt.
-- Submit lưu response ít nhất 24 giờ; chỉ enqueue một grading job.
+- Submit lưu response idempotency ít nhất 24 giờ; Writing/Speaking không enqueue grading job trong MVP.
 - Autosave không dùng idempotency key; dùng revision.
 - Publish/archive/rollback ghi audit log.
 - `attemptCount` tăng khi start mới thành công, không tăng khi resume/admin preview.
+
+## 10. Retention đã chốt
+
+- Attempt, submission, essay, transcript và audio Speaking được lưu vĩnh viễn.
+- Không tạo TTL index hoặc endpoint hard-delete learner data trong MVP.
+- Archive `ExamTest` không xóa attempt/content snapshot/media learner.

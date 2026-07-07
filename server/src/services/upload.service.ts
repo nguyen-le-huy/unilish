@@ -51,19 +51,24 @@ export class UploadService {
         });
     }
 
-    static async uploadMedia(file: Express.Multer.File): Promise<string> {
+    static async uploadMedia(file: Express.Multer.File, folder?: string): Promise<string> {
         if (!r2Client || !env.R2_BUCKET_NAME) {
             throw new AppError('R2 Storage not configured', HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         const fileName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const normalizedFolder = folder
+            ?.trim()
+            .replace(/^\/+|\/+$/g, '')
+            .replace(/[^a-zA-Z0-9/_-]/g, '_');
+        const key = normalizedFolder ? `${normalizedFolder}/${fileName}` : fileName;
 
         try {
             const upload = new Upload({
                 client: r2Client,
                 params: {
                     Bucket: env.R2_BUCKET_NAME,
-                    Key: fileName,
+                    Key: key,
                     Body: file.buffer,
                     ContentType: file.mimetype,
                 },
@@ -77,7 +82,7 @@ export class UploadService {
 
             const baseUrl = domain.endsWith('/') ? domain.slice(0, -1) : domain;
 
-            return `${baseUrl}/${fileName}`;
+            return `${baseUrl}/${key}`;
         } catch (error) {
             logger.error('R2 Upload Error:', error);
             throw new AppError('Failed to upload media to R2', HttpStatus.INTERNAL_SERVER_ERROR);

@@ -1,4 +1,3 @@
-import { useState, useCallback } from 'react';
 import { useDashboard } from '@/features/dashboard/learning/hooks/use-dashboard';
 import styles from './LearningProgressCard.module.css';
 
@@ -22,26 +21,14 @@ const formatDuration = (seconds: number): string => {
 
 export const LearningProgressCard = ({ className }: LearningProgressCardProps) => {
     const now = new Date();
-    const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
-    const [showMonthPicker, setShowMonthPicker] = useState(false);
-
     const currentYear = now.getFullYear();
-    const monthStr = `${currentYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+    const currentMonth = now.getMonth();
+    const monthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
 
     const { data, isLoading, isError } = useDashboard(monthStr);
     const cardClassName = className ? `${styles.card} ${className}` : styles.card;
 
     const summary = data?.summary;
-
-    const handlePrevMonth = useCallback(() => {
-        setSelectedMonth((prev) => (prev === 0 ? 11 : prev - 1));
-        setShowMonthPicker(false);
-    }, [setSelectedMonth, setShowMonthPicker]);
-
-    const handleNextMonth = useCallback(() => {
-        setSelectedMonth((prev) => (prev === 11 ? 0 : prev + 1));
-        setShowMonthPicker(false);
-    }, [setSelectedMonth, setShowMonthPicker]);
 
     // Loading skeleton
     if (isLoading) {
@@ -82,36 +69,7 @@ export const LearningProgressCard = ({ className }: LearningProgressCardProps) =
             <header className={styles.header}>
                 <h2 className={styles.title}>Tiến độ</h2>
                 <div className={styles.periodWrapper}>
-                    <button
-                        type="button"
-                        className={styles.monthNav}
-                        onClick={handlePrevMonth}
-                        aria-label="Tháng trước"
-                    >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                            <path d="M15 18l-6-6 6-6" />
-                        </svg>
-                    </button>
-                    <button
-                        type="button"
-                        className={styles.periodButton}
-                        onClick={() => setShowMonthPicker(!showMonthPicker)}
-                    >
-                        {MONTH_LABELS[selectedMonth]}
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                            <path d="M6 9l6 6 6-6" />
-                        </svg>
-                    </button>
-                    <button
-                        type="button"
-                        className={styles.monthNav}
-                        onClick={handleNextMonth}
-                        aria-label="Tháng sau"
-                    >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                            <path d="M9 18l6-6-6-6" />
-                        </svg>
-                    </button>
+                    <span className={styles.periodLabel}>{MONTH_LABELS[currentMonth]}</span>
                 </div>
             </header>
 

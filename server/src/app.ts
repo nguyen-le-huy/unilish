@@ -23,7 +23,10 @@ import session from 'express-session';
 import passport from 'passport';
 import './config/passport.js';
 
+import { requestIdMiddleware } from './middlewares/request-id.middleware.js';
+
 // Middlewares
+app.use(requestIdMiddleware);
 app.use(helmet({
     // API server — resources are intentionally loaded cross-origin (audio, images)
     crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -108,6 +111,7 @@ import questionRouter from './routes/question.route.js';
 import placementTestRuntimeRouter from './routes/placement-test-runtime.route.js';
 import placementTestRouter from './routes/placement-test.route.js';
 import examTestRouter from './routes/exam-test.route.js';
+import ieltsPracticeRouter from './routes/ielts-practice.route.js';
 import placementSessionRouter from './routes/placement-session.route.js';
 import speakingExaminerRouter from './routes/speaking-examiner.route.js';
 import azureSpeechRouter from './routes/azure-speech.route.js';
@@ -141,6 +145,7 @@ app.use('/api/questions', questionRouter);
 app.use('/api/placement-tests/runtime', placementTestRuntimeRouter);
 app.use('/api/placement-tests', placementTestRouter);
 app.use('/api/exam-tests', examTestRouter);
+app.use('/api/ielts-practice', ieltsPracticeRouter);
 app.use('/api/placement-sessions', placementSessionRouter);
 app.use('/api/speaking', speakingExaminerRouter);
 app.use('/api/v1/azure-speech', azureSpeechRouter);

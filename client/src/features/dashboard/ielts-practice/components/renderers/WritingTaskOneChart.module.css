@@ -1,0 +1,139 @@
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  min-height: 0;
+  height: 100%;
+}
+
+.promptPane {
+  border: 1px solid var(--color-border, #e5e5e5);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--color-surface, #fff);
+  overflow-y: auto;
+  max-height: calc(100vh - 220px);
+}
+
+.promptHeader {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--color-border, #e5e5e5);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-60, #888);
+}
+
+.promptContent {
+  padding: 1.25rem;
+}
+
+.timing {
+  font-size: 0.875rem;
+  color: var(--color-ink-60, #888);
+  margin: 0 0 0.75rem;
+}
+
+.prompt {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0 0 1rem;
+}
+
+.chartFigure {
+  margin: 0 0 1rem;
+  border: 1px solid var(--color-border, #e5e5e5);
+  border-radius: var(--radius-md, 0.5rem);
+  overflow: hidden;
+}
+
+.chartFigure img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.instruction {
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--color-ink-80, #333);
+  margin: 0 0 0.75rem;
+}
+
+.minWords {
+  font-size: 0.875rem;
+  color: var(--color-ink-60, #888);
+  margin: 0;
+}
+
+.editorPane {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border, #e5e5e5);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--color-surface, #fff);
+  overflow: hidden;
+}
+
+.editorHeader {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--color-border, #e5e5e5);
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.editor {
+  flex: 1;
+  padding: 1.25rem;
+  border: none;
+  resize: none;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--color-ink, #1a1a1a);
+  background: transparent;
+  min-height: 300px;
+}
+
+.editor:focus {
+  outline: none;
+}
+
+.editor:disabled {
+  opacity: 0.5;
+}
+
+.editorFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 1.25rem;
+  border-top: 1px solid var(--color-border, #e5e5e5);
+  font-size: 0.8125rem;
+  color: var(--color-ink-60, #888);
+}
+
+.wordCount {
+  font-weight: 600;
+  color: var(--color-ink-60, #888);
+}
+
+.wordCountOk {
+  font-weight: 600;
+  color: var(--color-primary, #2e7d32);
+}
+
+@media (max-width: 1023px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+
+  .promptPane {
+    max-height: none;
+  }
+
+  .editor {
+    min-height: 200px;
+  }
+}

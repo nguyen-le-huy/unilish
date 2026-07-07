@@ -1,0 +1,91 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-canvas, #faf9f6);
+  color: var(--color-ink, #1a1a1a);
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-surface, #fff);
+  border-bottom: 1px solid var(--color-border, #e5e5e5);
+}
+
+.topBar span {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-60, #888);
+}
+
+.topBar strong {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.headerActions button {
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, #e5e5e5);
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-ink-60, #888);
+}
+
+.headerActions button:hover {
+  background: var(--color-canvas-subtle, #f0f0f0);
+  color: var(--color-ink, #1a1a1a);
+}
+
+.placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  gap: 0.75rem;
+}
+
+.icon {
+  font-size: 3rem;
+  color: var(--color-primary, #2e7d32);
+}
+
+.placeholder h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.placeholder p {
+  max-width: 24rem;
+  color: var(--color-ink-70, #4a4a4a);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.backButton {
+  margin-top: 1rem;
+  padding: 0.625rem 1.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, #e5e5e5);
+  background: var(--color-surface, #fff);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.backButton:hover {
+  background: var(--color-canvas-subtle, #f0f0f0);
+}

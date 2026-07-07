@@ -97,7 +97,7 @@
 
 .testCard {
     min-width: 0;
-    min-height: 94px;
+    min-height: 104px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -110,7 +110,7 @@
 }
 
 .testCard:hover { transform: translateY(-2px); border-color: #b7cdbb; background: #fff; box-shadow: 0 10px 24px rgba(12, 10, 9, .06); }
-.testInfo { min-width: 0; }
+.testInfo { min-width: 0; flex: 1 1 auto; }
 .titleRow { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
 .testNumber { display: none; }
 .titleRow h3 { min-width: 0; margin: 0; color: var(--editorial-ink); font-size: 15px; font-weight: 650; line-height: 1.4; }
@@ -129,6 +129,79 @@
 .testMeta { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 8px; color: var(--editorial-muted); font-size: 12px; }
 .testMeta span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .testMeta svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.historyPanel {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--editorial-hairline);
+}
+
+.historySummary {
+    min-width: 142px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.historySummary strong {
+    color: var(--skill-green);
+    font-size: 12px;
+    font-weight: 750;
+}
+
+.historySummary span {
+    color: var(--editorial-muted);
+    font-size: 11px;
+}
+
+.scoreList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.scorePill {
+    min-height: 34px;
+    display: inline-grid;
+    grid-template-columns: auto auto;
+    gap: 0 7px;
+    align-items: center;
+    padding: 5px 8px;
+    border: 1px solid #d7e6da;
+    border-radius: 9px;
+    background: #f7fbf8;
+    color: var(--editorial-body);
+    text-decoration: none;
+    transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+
+.scorePill span {
+    color: var(--editorial-muted);
+    font-size: 10px;
+    font-weight: 650;
+}
+
+.scorePill strong {
+    color: var(--skill-green-dark);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.scorePill small {
+    grid-column: 1 / -1;
+    color: var(--editorial-muted);
+    font-size: 10px;
+}
+
+.scorePill:hover {
+    transform: translateY(-1px);
+    border-color: var(--skill-green);
+    background: #edf7ef;
+}
 
 .testCard button {
     min-width: 112px;
@@ -154,6 +227,142 @@
 .testCard button:hover { border-color: var(--skill-green); background: var(--skill-green); color: white; transform: translateY(-1px); }
 .testCard button:focus-visible { outline: 3px solid rgba(36,92,50,.16); outline-offset: 2px; }
 
+/* ─── Loading skeleton ──────────────────────────────────────── */
+
+.skeletonTest {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.skeletonTitle {
+  display: inline-block;
+  width: 12rem;
+  height: 1rem;
+  border-radius: 4px;
+  background: var(--editorial-hairline-strong, #ddd);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeletonBadge {
+  display: inline-block;
+  width: 4rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: var(--editorial-hairline-strong, #ddd);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeletonMeta {
+  display: inline-block;
+  width: 16rem;
+  height: 0.875rem;
+  border-radius: 4px;
+  background: var(--editorial-hairline-strong, #ddd);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeletonAction {
+  display: inline-block;
+  width: 6rem;
+  height: 2.375rem;
+  border-radius: 9px;
+  background: var(--editorial-hairline-strong, #ddd);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ─── Error state ──────────────────────────────────────────── */
+
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--editorial-body, #666);
+}
+
+.errorState p {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.errorDetail {
+  font-size: 0.8125rem;
+  color: var(--editorial-muted, #999);
+  margin-bottom: 1rem !important;
+}
+
+.retryButton {
+  padding: 0.625rem 1.5rem;
+  border: 1px solid var(--editorial-hairline-strong, #ccc);
+  border-radius: 999px;
+  background: var(--editorial-surface-card, #fff);
+  color: var(--editorial-ink, #1a1a1a);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.retryButton:hover {
+  background: var(--editorial-canvas-soft, #f5f5f5);
+  border-color: var(--skill-green, #245c32);
+}
+
+/* ─── Empty state ──────────────────────────────────────────── */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--editorial-body, #666);
+}
+
+.emptyState p {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.emptyHint {
+  font-size: 0.8125rem;
+  color: var(--editorial-muted, #999);
+  margin-bottom: 1.25rem !important;
+}
+
+.backLink {
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  background: var(--skill-green-soft, #edf5ee);
+  color: var(--skill-green, #245c32);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.backLink:hover {
+  background: #dff1e3;
+}
+
+/* ─── Pagination ───────────────────────────────────────────── */
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--editorial-hairline, #e5e5e5);
+  color: var(--editorial-muted, #999);
+  font-size: 0.875rem;
+}
+
 @media (max-width: 1200px) {
     .testGrid { grid-template-columns: 1fr; }
 }
@@ -164,5 +373,7 @@
     .sectionHeader { align-items: flex-start; flex-direction: column; }
     .testSection { padding: 18px; }
     .testCard { align-items: stretch; flex-direction: column; }
+    .historyPanel { align-items: stretch; flex-direction: column; }
+    .scoreList { display: grid; grid-template-columns: 1fr; }
     .testCard button { width: 100%; }
 }

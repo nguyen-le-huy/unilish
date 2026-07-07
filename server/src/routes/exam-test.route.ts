@@ -5,6 +5,8 @@ import { ExamTestController } from '../controllers/exam-test.controller.js';
 import {
     analyticsExamTestSchema,
     createExamTestSchema,
+    createVersionSchema,
+    deleteExamTestSchema,
     getExamTestByIdSchema,
     getExamTestsSchema,
     getVersionHistorySchema,
@@ -12,6 +14,7 @@ import {
     rollbackExamTestSchema,
     updateExamTestSchema,
     updateExamTestStatusSchema,
+    validatePublishSchema,
 } from '../validations/exam-test.validation.js';
 
 const router = express.Router();
@@ -69,9 +72,22 @@ router.post(
  * @swagger
  * /api/exam-tests/{id}:
  *   get:
- *     summary: Get exam test by id
+ *     summary: Get exam test by id (full admin content)
  */
 router.get('/:id', restrictTo('admin', 'content_creator'), validate(getExamTestByIdSchema), ExamTestController.getById);
+
+/**
+ * @swagger
+ * /api/exam-tests/{id}/preview:
+ *   get:
+ *     summary: Get redacted learner preview (no answer keys)
+ */
+router.get(
+    '/:id/preview',
+    restrictTo('admin', 'content_creator'),
+    validate(getExamTestByIdSchema),
+    ExamTestController.getPreview,
+);
 
 /**
  * @swagger
@@ -91,11 +107,58 @@ router.put('/:id', restrictTo('admin'), validate(updateExamTestSchema), ExamTest
 
 /**
  * @swagger
+ * /api/exam-tests/{id}:
+ *   delete:
+ *     summary: Soft-delete (archive) exam test
+ */
+router.delete('/:id', restrictTo('admin'), validate(deleteExamTestSchema), ExamTestController.delete);
+
+/**
+ * @swagger
+ * /api/exam-tests/{id}/hard-delete:
+ *   delete:
+ *     summary: Permanently delete a draft/archived exam test with no attempts
+ */
+router.delete(
+    '/:id/hard-delete',
+    restrictTo('admin'),
+    validate(deleteExamTestSchema),
+    ExamTestController.hardDelete,
+);
+
+/**
+ * @swagger
  * /api/exam-tests/{id}/status:
  *   patch:
  *     summary: Update exam test status
  */
 router.patch('/:id/status', restrictTo('admin'), validate(updateExamTestStatusSchema), ExamTestController.updateStatus);
+
+/**
+ * @swagger
+ * /api/exam-tests/{id}/versions:
+ *   post:
+ *     summary: Create a new draft version from active/paused record
+ */
+router.post(
+    '/:id/versions',
+    restrictTo('admin'),
+    validate(createVersionSchema),
+    ExamTestController.createVersion,
+);
+
+/**
+ * @swagger
+ * /api/exam-tests/{id}/validate-publish:
+ *   post:
+ *     summary: Validate content without changing status
+ */
+router.post(
+    '/:id/validate-publish',
+    restrictTo('admin'),
+    validate(validatePublishSchema),
+    ExamTestController.validatePublish,
+);
 
 /**
  * @swagger

@@ -28,6 +28,8 @@ export const PATHS = {
         IELTS_LISTENING_TEST: (testId: string) => `/dashboard/ielts-practice/listening/${encodeURIComponent(testId)}`,
         IELTS_READING_TEST: (testId: string) => `/dashboard/ielts-practice/reading/${encodeURIComponent(testId)}`,
         IELTS_WRITING_TEST: (testId: string) => `/dashboard/ielts-practice/writing/${encodeURIComponent(testId)}`,
+        IELTS_SPEAKING_TEST: (testId: string) => `/dashboard/ielts-practice/speaking/${encodeURIComponent(testId)}`,
+        IELTS_RESULT: (attemptId: string) => `/dashboard/ielts-practice/result/${encodeURIComponent(attemptId)}`,
         PROFILE: '/dashboard/profile',
         GOAL_SELECTION: '/dashboard/goal-selection',
         LANGUAGE_SELECTION: '/dashboard/language-selection',

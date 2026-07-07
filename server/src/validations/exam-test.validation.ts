@@ -1,9 +1,12 @@
 import { z } from 'zod';
+import { DraftIeltsPracticeContentSchema } from './ielts-content.validation.js';
 
 const mongoIdSchema = z.string().regex(/^[a-f\d]{24}$/i, 'ID không hợp lệ');
 
 const ExamFormatSchema = z.enum(['toeic_lr', 'ielts']);
 const ExamStatusSchema = z.enum(['draft', 'active', 'paused', 'archived']);
+const ExamKindSchema = z.enum(['full_exam', 'skill_practice']);
+const IeltsSkillSchema = z.enum(['listening', 'reading', 'writing', 'speaking']);
 
 const ExamQuestionItemSchema = z.object({
     question: z.string().trim().min(1),
@@ -106,13 +109,26 @@ const settingsSchema = z.object({
     timeLimitOverrideMinutes: z.number().int().positive().optional(),
 });
 
+// ─── Slug schema ─────────────────────────────────────────────────────────────
+
+const slugSchema = z
+    .string()
+    .trim()
+    .min(3)
+    .max(200)
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Slug chỉ gồm chữ thường, số và dấu gạch ngang');
+
+// ─── List query ──────────────────────────────────────────────────────────────
+
 export const getExamTestsSchema = z.object({
     query: z.object({
         page: z.coerce.number().int().positive().default(1),
         limit: z.coerce.number().int().positive().max(100).default(20),
         search: z.string().trim().max(200).optional(),
         format: ExamFormatSchema.optional(),
+        kind: ExamKindSchema.optional(),
         status: ExamStatusSchema.optional(),
+        skill: IeltsSkillSchema.optional(),
     }),
 });
 
@@ -134,28 +150,53 @@ export const parseQuestionsSchema = z.object({
     }),
 });
 
-export const createExamTestSchema = z.object({
-    body: z.object({
-        name: z.string().trim().min(3).max(200),
-        format: ExamFormatSchema,
-        languageId: mongoIdSchema,
-        language: z.string().trim().min(1).max(20),
-        description: z.string().trim().max(2000).optional(),
-        modules: z.array(ExamModuleSchema).optional(),
-        scoringConfig: ScoringConfigSchema.optional(),
-        settings: settingsSchema.optional(),
-    }),
+// ─── Base exam test body (no refinements — safe for .partial() in Zod v4) ────
+
+const examTestBaseBodySchema = z.object({
+    name: z.string().trim().min(3).max(200),
+    format: ExamFormatSchema,
+    kind: ExamKindSchema.optional().default('full_exam'),
+    slug: slugSchema.optional(),
+    languageId: mongoIdSchema,
+    language: z.string().trim().min(1).max(20),
+    description: z.string().trim().max(2000).optional(),
+    skill: IeltsSkillSchema.optional(),
+    durationMinutes: z.number().int().positive().optional(),
+    modules: z.array(ExamModuleSchema).optional(),
+    content: DraftIeltsPracticeContentSchema.optional(),
+    scoringConfig: ScoringConfigSchema.optional(),
+    settings: settingsSchema.optional(),
 });
+
+// ─── Create exam test (legacy + IELTS practice) ──────────────────────────────
+
+export const createExamTestSchema = z.object({
+    body: examTestBaseBodySchema.refine(
+        (data) => {
+            if (data.kind === 'skill_practice') {
+                return data.skill !== undefined && data.content !== undefined;
+            }
+            return true;
+        },
+        { message: 'skill và content là bắt buộc khi kind=skill_practice' },
+    ),
+});
+
+// ─── Update exam test ────────────────────────────────────────────────────────
 
 export const updateExamTestSchema = z.object({
     params: z.object({ id: mongoIdSchema }),
-    body: createExamTestSchema.shape.body.partial().omit({ format: true }),
+    body: examTestBaseBodySchema.partial().omit({ format: true }),
 });
+
+// ─── Status update ───────────────────────────────────────────────────────────
 
 export const updateExamTestStatusSchema = z.object({
     params: z.object({ id: mongoIdSchema }),
     body: z.object({ status: z.enum(['active', 'paused', 'archived']) }),
 });
+
+// ─── Rollback ────────────────────────────────────────────────────────────────
 
 export const rollbackExamTestSchema = z.object({
     params: z.object({
@@ -164,9 +205,56 @@ export const rollbackExamTestSchema = z.object({
     }),
 });
 
+// ─── Create version ──────────────────────────────────────────────────────────
+
+export const createVersionSchema = z.object({
+    params: z.object({ id: mongoIdSchema }),
+    body: z.object({
+        patch: z.record(z.string(), z.unknown()).optional(),
+    }),
+});
+
+// ─── Validate publish ────────────────────────────────────────────────────────
+
+export const validatePublishSchema = z.object({
+    params: z.object({ id: mongoIdSchema }),
+});
+
+// ─── Delete (soft-delete = archive) ──────────────────────────────────────────
+
+export const deleteExamTestSchema = z.object({
+    params: z.object({ id: mongoIdSchema }),
+});
+
+// ─── Learner schemas ─────────────────────────────────────────────────────────
+
+export const ieltsSummarySchema = z.object({
+    query: z.object({}),
+});
+
+export const ieltsListTestsSchema = z.object({
+    query: z.object({
+        skill: IeltsSkillSchema,
+        page: z.coerce.number().int().positive().default(1),
+        limit: z.coerce.number().int().positive().max(100).default(20),
+        search: z.string().trim().max(200).optional(),
+    }),
+});
+
+export const ieltsTestDetailSchema = z.object({
+    params: z.object({
+        slug: z.string().trim().min(1).max(200),
+    }),
+});
+
+// ─── Exported types ──────────────────────────────────────────────────────────
+
 export type GetExamTestsQuery = z.infer<typeof getExamTestsSchema>['query'];
 export type CreateExamTestBody = z.infer<typeof createExamTestSchema>['body'];
 export type UpdateExamTestBody = z.infer<typeof updateExamTestSchema>['body'];
 export type UpdateExamTestStatusBody = z.infer<typeof updateExamTestStatusSchema>['body'];
 export type RollbackExamTestParams = z.infer<typeof rollbackExamTestSchema>['params'];
 export type ParseQuestionsBody = z.infer<typeof parseQuestionsSchema>['body'];
+export type CreateVersionBody = z.infer<typeof createVersionSchema>['body'];
+export type IeltsListTestsQuery = z.infer<typeof ieltsListTestsSchema>['query'];
+export type IeltsTestDetailParams = z.infer<typeof ieltsTestDetailSchema>['params'];

@@ -25,7 +25,7 @@ interface SidebarItem {
 
 const primaryItems: SidebarItem[] = [
   { label: 'Trang chủ', path: PATHS.DASHBOARD.HOME, icon: globeIcon, match: (pathname) => pathname === PATHS.DASHBOARD.HOME },
-  { label: 'Giọng nói AI', path: '/dashboard/ai-voice', icon: micIcon },
+  { label: 'Luyện giao tiếp với AI', path: '/dashboard/ai-voice', icon: micIcon },
   {
     label: 'Luyện nghe & nói',
     path: '/dashboard/shadowing',

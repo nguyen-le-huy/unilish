@@ -38,7 +38,7 @@ flowchart TD
 | Reading | `IeltsReadingTestPage.tsx` | Bind only TFNG; remove Note Completion production block |
 | Writing | `IeltsWritingTestPage.tsx` | Bind one Task 1 DTO; server autosave replaces local-only save |
 | Speaking | AI Voice capability | Add dedicated attempt route; inject fixed scenario |
-| Result | New | Show objective score or grading status |
+| Result | New | L/R hiển thị objective score; W/S xác nhận đã nộp, chưa chấm |
 
 ## 4. Player shell wireframe
 
@@ -82,8 +82,7 @@ flowchart TD
 | Conflict | Modal so sánh timestamp; mặc định tải bản server an toàn |
 | Expired | Khóa input, cho xem draft, CTA quay lại list |
 | Submitting | Disable submit; idempotency key không đổi khi retry |
-| Pending grading | Cho rời trang; result tự refetch có backoff |
-| Grading failed | Không mất submission; CTA thử chấm lại chỉ dành admin/support |
+| Submitted ungraded | Writing/Speaking xác nhận đã lưu vĩnh viễn; không hiển thị spinner “đang chấm” |
 
 ## 6. Admin list
 
@@ -152,7 +151,7 @@ admin/src/features/ielts-practice/
 | Hub summary | `['ielts-practice','summary']` | publish/pause/archive |
 | Test list | `['ielts-practice','tests',filters]` | publish/pause/archive |
 | Test detail | `['ielts-practice','test',slug]` | publish version mới |
-| Attempt | `['ielts-practice','attempt',id]` | start/save/submit/grading event |
+| Attempt | `['ielts-practice','attempt',id]` | start/save/submit |
 | Admin list/detail | `['admin','ielts-practice',...]` | mọi CRUD/status mutation |
 
 Draft typing không đưa vào global Zustand. Dùng local component/form state; server draft đồng bộ qua mutation tuần tự hoặc latest-write queue.
@@ -175,6 +174,6 @@ Draft typing không đưa vào global Zustand. Dùng local component/form state;
 | `ielts_attempt_started` | attemptId, testId, resumed |
 | `ielts_draft_saved` | attemptId, revision, latencyMs |
 | `ielts_attempt_submitted` | attemptId, durationSeconds, answeredCount |
-| `ielts_grading_completed` | attemptId, gradingVersion, latencyMs |
+| `ielts_objective_graded` | attemptId, skill, latencyMs |
 
 Không gửi essay, transcript, answer text hoặc signed media URL vào analytics.

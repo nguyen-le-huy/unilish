@@ -11,9 +11,16 @@ import React from "react"
 
 const routeNameMap: Record<string, string> = {
     dashboard: "Tổng quan",
+    curriculum: "Đào tạo",
+    goals: "Mục tiêu & Chiến lược",
+    languages: "Ngôn ngữ",
     courses: "Khóa học (LMS)",
     lessons: "Bài học",
     questions: "Kho câu hỏi",
+    "placement-tests": "Bài Kiểm tra Đầu vào",
+    "ielts-practice": "Bài thi IELTS",
+    new: "Tạo mới",
+    edit: "Chỉnh sửa",
     videos: "Video / Youtube",
     news: "Tin tức (News)",
     users: "Học viên",

@@ -141,6 +141,11 @@ export const sidebarConfig: SidebarConfig = {
           url: "/placement-tests",
           description: "Quản lý bài kiểm tra xếp lớp theo ngôn ngữ",
         },
+        {
+          title: "Bài thi IELTS",
+          url: "/ielts-practice",
+          description: "CRUD đề luyện IELTS theo kỹ năng, phiên bản và publish",
+        },
       ],
     },
 

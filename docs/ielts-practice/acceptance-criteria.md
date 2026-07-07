@@ -104,12 +104,12 @@ Given Listening/Reading submission và answer key trong pinned snapshot
 When submit  
 Then correct/total/normalizedScore được tính từ snapshot; case/trim theo config; client answer key không được tin dùng.
 
-### AC-15 — Async grading bền vững
+### AC-15 — Writing/Speaking được lưu nhưng chưa chấm
 
 **Maps:** FR-11, NFR-09  
-Given Writing/Speaking được bật AI grading  
-When submit thành công nhưng worker tạm lỗi  
-Then submission vẫn pending, job retry tối đa 3 lần, không mất dữ liệu; hết retry chuyển grading_failed với safe error code.
+Given learner nộp Writing hoặc Speaking
+When submit thành công
+Then attempt chuyển `submitted`, dữ liệu được lưu vĩnh viễn, response ghi `grading=not_available`, không enqueue job và không sinh band/feedback.
 
 ## Admin CRUD
 
@@ -183,7 +183,7 @@ Then API từ chối đúng boundary; URL public không được client tự nh�
 **Maps:** NFR-01  
 Given dataset/index ở production-like load  
 When đo ít nhất 1.000 requests mỗi endpoint  
-Then P95 list/detail ≤500 ms và start/save/submit ≤800 ms, loại trừ upload/grading provider latency.
+Then P95 list/detail ≤500 ms và start/save/submit ≤800 ms, loại trừ upload media.
 
 ### AC-26 — Autosave latency
 
@@ -204,7 +204,7 @@ Then response business tương đương và không tạo side effect mới.
 **Maps:** NFR-04  
 Given test suite snapshot mọi learner endpoint cho bốn skill  
 When chạy CI  
-Then suite fail nếu xuất hiện key cấm hoặc system prompt/raw grading payload.
+Then suite fail nếu xuất hiện key cấm, answer key hoặc system prompt/config nội bộ.
 
 ### AC-29 — Accessibility/responsive
 
@@ -216,7 +216,7 @@ Then không có bước bắt buộc dùng chuột, focus không mất, label/co
 ### AC-30 — Observability/privacy
 
 **Maps:** NFR-07, NFR-09  
-Given save/submit/grading lỗi  
+Given save/submit hoặc objective grading lỗi
 When xem structured logs  
 Then có requestId/userId/testId/attemptId/safe error code; không có essay, transcript, answer text, signed URL/token.
 
@@ -237,4 +237,4 @@ Then line/branch threshold module đạt tối thiểu 80% và integration test 
 | Submit idempotent | ✓ | ✓ | ✓ | ✓ |
 | Answer key redaction | ✓ | ✓ | N/A rubric | N/A prompt/rubric |
 | Media unavailable | Audio | N/A | Image | Audio upload/mic |
-| Grading | Sync | Sync | Async/proposed | Async/proposed |
+| Grading | Sync | Sync | Chưa chấm | Chưa chấm |

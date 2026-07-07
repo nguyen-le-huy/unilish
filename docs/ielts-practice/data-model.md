@@ -7,7 +7,6 @@
 | Nội dung/version/status đề | MongoDB `examtests` |
 | Attempt/draft/submission/result | MongoDB `ieltspracticeattempts` |
 | Binary image/audio | R2/Cloudinary; Mongo chỉ lưu asset id/storage key |
-| Grading job state | BullMQ trong Redis; kết quả cuối phải ghi Mongo |
 | UI cache | TanStack Query/local recovery cache, không authoritative |
 
 ## 2. ERD logic
@@ -69,7 +68,7 @@ erDiagram
 | `skill` | enum | Một trong bốn skill; required khi `kind=skill_practice` |
 | `questionType` | enum | Phải đúng mapping ADR-001 |
 | `durationMinutes` | int | >0; default theo skill |
-| `content` | embedded union | Admin content, gồm answer key/rubric |
+| `content` | embedded union | Admin content; L/R gồm answer key |
 | `status` | enum | draft/active/paused/archived |
 | `version` | int | >=1, tăng theo logicalTestId |
 | `settings` | embedded | allowRetake/cooldown hiện có |
@@ -115,7 +114,6 @@ type IeltsPracticeContent =
       imageAssetId: string;
       imageAlt: string;
       minWords: 150;
-      gradingRubricVersion?: string;
     }
   | {
       questionType: 'ai_conversation';
@@ -124,7 +122,6 @@ type IeltsPracticeContent =
       openingPrompt: string;
       expectedDurationMinutes: number;
       voice: string;
-      gradingRubricVersion?: string;
     };
 ```
 
@@ -164,8 +161,7 @@ Partial unique index đề xuất cho một active version:
 | `deadlineAt` | Date | startedAt + duration |
 | `lastSavedAt` | Date? | Autosave success |
 | `submittedAt` | Date? | Immutable khi submit |
-| `result` | embedded? | Objective/AI result normalized |
-| `grading` | embedded? | state, version, jobId, attempts, timestamps, safe error code |
+| `result` | embedded? | Chỉ có objective result cho Listening/Reading trong MVP |
 | `createdAt`, `updatedAt` | Date | UTC |
 
 ### Draft union
@@ -201,15 +197,9 @@ interface ObjectiveResult {
   itemResults: Array<{ itemId: string; correct: boolean }>;
 }
 
-interface AiResult {
-  gradingType: 'ai';
-  overallBand?: number;
-  criteria?: Record<string, number>;
-  strengths: string[];
-  improvements: string[];
-  gradingVersion: string;
-}
 ```
+
+Writing/Speaking không có `result` trong MVP; trạng thái dừng ở `submitted`. AI result và grading metadata chỉ được bổ sung bằng contract version cùng ADR mới.
 
 ### Attempt indexes
 
@@ -218,7 +208,6 @@ interface AiResult {
 { examTestId: 1, status: 1 }
 { logicalTestId: 1, userId: 1, createdAt: -1 }
 { status: 1, deadlineAt: 1 }
-{ "grading.jobId": 1 } unique sparse
 ```
 
 Một active attempt/user/logical test dùng partial unique index:
@@ -236,7 +225,7 @@ flowchart LR
     B --> C["Learner detail redaction"]
     B --> D["Start: full server snapshot"]
     D --> E["Attempt.contentSnapshot select:false"]
-    E --> F["Objective/AI grader"]
+    E --> F["Objective grader cho L/R"]
     E --> G["Learner response redaction"]
 ```
 
@@ -247,10 +236,10 @@ flowchart LR
 ## 6. Lifecycle và cleanup
 
 - `ExamTest` archive không xóa attempts/snapshots.
-- Draft version không có attempt có thể được hard-delete chỉ khi retention policy cho phép; ngoài MVP.
+- Không hard-delete attempt/submission learner trong MVP.
 - Idempotency records TTL tối thiểu 24 giờ.
-- Expired attempt được giữ theo retention product chưa chốt.
-- Speaking audio cleanup cần tham chiếu attempt + retention; không xóa asset còn được result/audit dùng.
+- Attempt, essay, transcript và audio Speaking được lưu vĩnh viễn; không có TTL hoặc cleanup worker.
+- Speaking audio không áp dụng storage lifecycle xóa tự động.
 
 ## 7. Migration
 
@@ -270,6 +259,5 @@ Audit events tối thiểu:
 - `ielts_test.paused`
 - `ielts_test.archived`
 - `ielts_test.rollback_created`
-- `ielts_grading.retry_requested`
 
 Payload audit chứa actorId, target id/version, requestId, changed field names và timestamp; không chứa answer text, essay, transcript hoặc raw provider response.

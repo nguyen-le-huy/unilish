@@ -1,6 +1,6 @@
 ---
 feature: ielts-practice
-status: DRAFT
+status: READY FOR IMPLEMENTATION
 owner: BA
 last_updated: 2026-07-06
 related_client:
@@ -61,7 +61,7 @@ Admin quản lý đề theo vòng đời draft → active → paused/archived. L
 - Upload/tham chiếu media cần thiết cho Listening và Writing.
 - Danh sách đề learner theo kỹ năng, attempt count và thời lượng.
 - Start/resume/autosave/submit attempt.
-- Chấm tự động Listening/Reading; pipeline chấm bất đồng bộ cho Writing/Speaking sau khi adapter tương ứng sẵn sàng.
+- Chấm tự động Listening/Reading ngay khi nộp; Writing/Speaking chỉ lưu submission, chưa chấm trong MVP.
 - Phiên bản nội dung và snapshot attempt để đề thay đổi không làm sai lượt đang làm.
 - Phân quyền, audit, idempotency và trạng thái lỗi/empty/loading/offline.
 
@@ -85,8 +85,6 @@ flowchart LR
     L -->|autosave, submit, result| P
     P --> C
     P --> D[("MongoDB: ieltspracticeattempts")]
-    P --> Q["BullMQ grading queues"]
-    Q --> D
     M["R2 / Cloudinary"] --> B
     B -->|media URLs| C
 ```
@@ -94,7 +92,7 @@ flowchart LR
 ## Phụ thuộc
 
 - Auth/JWT và role hiện có: `admin`, `content_creator`, learner đã đăng nhập.
-- MongoDB/Mongoose, Redis/BullMQ, R2/Cloudinary và logger hiện có.
+- MongoDB/Mongoose, Redis, R2/Cloudinary và logger hiện có.
 - Chuẩn response `ApiEnvelope<T>` hiện tại.
 - Client dùng TanStack Query cho server state; CSS Modules và design token hiện có.
 - Admin dùng React Query, Tailwind và Shadcn/UI.
@@ -110,10 +108,9 @@ flowchart LR
 
 ## Trạng thái sẵn sàng
 
-**DRAFT.** Luồng, API và model đủ để FE/BE estimate, nhưng chưa được đánh dấu READY FOR IMPLEMENTATION vì còn ba quyết định sản phẩm cần xác nhận:
+**READY FOR IMPLEMENTATION.** Phase 0 đã được chốt ngày 2026-07-06:
 
-1. Retention của attempt/audio learner là bao lâu.
-2. Writing Task 1 và Speaking dùng AI grading ngay trong MVP hay chỉ lưu submission ở phase đầu.
-3. Content creator có được tạo/sửa draft hay tiếp tục chỉ đọc như quyền server hiện tại.
-
-Các lựa chọn mặc định trong tài liệu được đánh dấu `PROPOSED`, không được coi là quyết định sản phẩm cuối cùng.
+1. Attempt, bài viết, transcript và audio Speaking được lưu vĩnh viễn; MVP không có hard-delete/cleanup job.
+2. Listening/Reading chấm tự động ngay; Writing/Speaking chỉ lưu submission với trạng thái `submitted`, chưa chấm.
+3. Content creator chỉ được xem; chỉ admin được tạo, sửa, publish, pause, archive và rollback.
+4. Nội dung tiếp tục dùng aggregate `ExamTest` hiện có, mở rộng bằng `kind=skill_practice`.

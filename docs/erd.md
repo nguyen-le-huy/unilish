@@ -195,7 +195,6 @@ erDiagram
         Mixed draft
         string_array flaggedItemIds
         Mixed result
-        json grading
         Date startedAt
         Date deadlineAt
         Date lastSavedAt
@@ -255,7 +254,7 @@ erDiagram
 
     EXAM_TEST ||--o{ IELTS_PRACTICE_ATTEMPT : attemptedAsSnapshot
     EXAM_TEST ||--o{ AUDIT_LOG : auditTarget
-    IELTS_PRACTICE_ATTEMPT ||--o{ AUDIT_LOG : gradingAuditTarget
+    IELTS_PRACTICE_ATTEMPT ||--o{ AUDIT_LOG : attemptAuditTarget
 
     PLACEMENT_TEST ||--o{ PLACEMENT_TEST_ATTEMPT : has
     USER ||--o{ PLACEMENT_TEST_ATTEMPT : takes
@@ -278,7 +277,6 @@ erDiagram
 - Danh sách IELTS Practice dùng index `{ kind, format, skill, status, publishedAt }`.
 - `IeltsPracticeAttempt` chỉ có một attempt `in_progress` theo `{ userId, logicalTestId, status }` bằng partial unique index.
 - Autosave IELTS dùng `revision`; update chỉ thành công khi revision request bằng revision hiện tại.
-- `IeltsPracticeAttempt.grading.jobId` là sparse unique để worker không chấm trùng.
 - Các khóa ngoại thường xuyên được filter cần index: `languageId`, `learningGoalId`, `courseId`, `unitId`, `lessonId`, `userId`, `placementTestId`, `examTestId`.
 
 ## Constraint IELTS Practice
@@ -300,9 +298,7 @@ flowchart LR
     A -->|start| I["Attempt in_progress + content snapshot"]
     I -->|autosave + revision| I
     I -->|submit objective| G["Attempt graded"]
-    I -->|submit AI graded skill| P["Attempt pending_grading"]
-    P -->|worker success| G
-    P -->|retry exhausted| F["Attempt grading_failed"]
+    I -->|submit Writing/Speaking| S["Attempt submitted · chưa chấm"]
     A -->|pause/archive| X["Hidden from new starts"]
     X -.->|snapshot remains valid| I
 ```
@@ -318,9 +314,9 @@ ERD này là mô hình đích đã tối giản. Mongoose schema và service hi�
 - loại bỏ model, repository, service, route và admin UI của các module đã xóa;
 - backfill `ExamTest.kind = full_exam` cho dữ liệu hiện có trước khi thêm index mới;
 - mở rộng `ExamTest` với `logicalTestId`, `kind`, `slug`, `skill`, `questionType`, `durationMinutes`, `content` và `publishedAt`;
-- tạo `IeltsPracticeAttempt` với snapshot, revision, deadline, draft, result và grading state;
+- tạo `IeltsPracticeAttempt` với snapshot, revision, deadline, draft và objective result cho Listening/Reading;
 - thêm mapper redaction learner-safe; không serialize trực tiếp `contentSnapshot` hoặc answer key;
-- mở rộng `AuditLog` với `targetId`, `targetVersion` và action create/update/publish/pause/archive/rollback/retry grading;
+- mở rộng `AuditLog` với `targetId`, `targetVersion` và action create/update/publish/pause/archive/rollback;
 - giữ binary image/audio ở R2/Cloudinary; MongoDB chỉ lưu asset id/storage key ổn định.
 
 Chi tiết field, migration và lifecycle IELTS Practice nằm tại [docs/ielts-practice/data-model.md](ielts-practice/data-model.md).

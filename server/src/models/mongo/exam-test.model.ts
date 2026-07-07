@@ -17,6 +17,25 @@ export const EExamScoringFramework = {
     IELTS_BAND: 'ielts_band',
 } as const;
 
+export const EExamTestKind = {
+    FULL_EXAM: 'full_exam',
+    SKILL_PRACTICE: 'skill_practice',
+} as const;
+
+export const EIeltsSkill = {
+    LISTENING: 'listening',
+    READING: 'reading',
+    WRITING: 'writing',
+    SPEAKING: 'speaking',
+} as const;
+
+export const EIeltsQuestionType = {
+    FORM_COMPLETION: 'form_completion',
+    TRUE_FALSE_NOT_GIVEN: 'true_false_not_given',
+    ACADEMIC_TASK_1_CHART: 'academic_task_1_chart',
+    AI_CONVERSATION: 'ai_conversation',
+} as const;
+
 export interface IExamQuestionItem {
     question: string;
     options: { A: string; B: string; C: string; D: string };
@@ -113,14 +132,23 @@ export interface IExamTestSettings {
 export interface IExamTest extends mongoose.Document {
     name: string;
     format: typeof EExamFormat[keyof typeof EExamFormat];
+    kind: typeof EExamTestKind[keyof typeof EExamTestKind];
+    logicalTestId?: mongoose.Types.ObjectId;
+    slug?: string;
     languageId: mongoose.Types.ObjectId;
     language: string;
     description?: string;
     status: typeof EExamTestStatus[keyof typeof EExamTestStatus];
     version: number;
+    skill?: typeof EIeltsSkill[keyof typeof EIeltsSkill];
+    questionType?: typeof EIeltsQuestionType[keyof typeof EIeltsQuestionType];
+    durationMinutes?: number;
+    itemCount?: number;
     modules: IExamModule[];
+    content?: Record<string, unknown>;
     scoringConfig: IExamScoringConfig;
     settings: IExamTestSettings;
+    publishedAt?: Date;
     createdBy: mongoose.Types.ObjectId;
     updatedBy?: mongoose.Types.ObjectId;
     createdAt: Date;
@@ -287,14 +315,23 @@ const ExamTestSchema = new mongoose.Schema<IExamTest>(
     {
         name: { type: String, required: true, trim: true },
         format: { type: String, enum: Object.values(EExamFormat), required: true, index: true },
+        kind: { type: String, enum: Object.values(EExamTestKind), default: EExamTestKind.FULL_EXAM, index: true },
+        logicalTestId: { type: mongoose.Schema.Types.ObjectId, default: null },
+        slug: { type: String, trim: true, lowercase: true, default: null },
         languageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Language', required: true, index: true },
         language: { type: String, required: true, trim: true, index: true },
         description: { type: String, default: null },
         status: { type: String, enum: Object.values(EExamTestStatus), default: EExamTestStatus.DRAFT, index: true },
         version: { type: Number, default: 1, min: 1 },
+        skill: { type: String, enum: Object.values(EIeltsSkill), default: null },
+        questionType: { type: String, enum: Object.values(EIeltsQuestionType), default: null },
+        durationMinutes: { type: Number, default: null, min: 1 },
+        itemCount: { type: Number, default: null, min: 0 },
         modules: { type: [ExamModuleSchema], default: [] },
+        content: { type: mongoose.Schema.Types.Mixed, default: null },
         scoringConfig: { type: ExamScoringConfigSchema, required: true },
         settings: { type: ExamTestSettingsSchema, required: true },
+        publishedAt: { type: Date, default: null },
         createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
         updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     },
@@ -305,5 +342,9 @@ ExamTestSchema.index({ format: 1, status: 1 });
 ExamTestSchema.index({ language: 1, format: 1 });
 ExamTestSchema.index({ name: 1, format: 1, version: -1 });
 ExamTestSchema.index({ name: 1, format: 1 });
+ExamTestSchema.index({ kind: 1, format: 1, skill: 1, status: 1, publishedAt: -1 });
+ExamTestSchema.index({ logicalTestId: 1, version: -1 }, { unique: true, sparse: true });
+ExamTestSchema.index({ slug: 1, status: 1 });
+ExamTestSchema.index({ languageId: 1, kind: 1, skill: 1 });
 
 export const ExamTest = mongoose.model<IExamTest>('ExamTest', ExamTestSchema);

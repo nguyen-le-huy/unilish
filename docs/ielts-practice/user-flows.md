@@ -67,9 +67,9 @@ flowchart TD
     B -->|Tiếp tục| C["Đóng modal, giữ dữ liệu"]
     B -->|Xác nhận| D["POST submit + Idempotency-Key"]
     D -->|Listening/Reading| E["Chấm đồng bộ"]
-    D -->|Writing/Speaking| F["Ghi submission + enqueue grading"]
+    D -->|Writing/Speaking| F["Ghi submission chưa chấm"]
     E --> G["Result graded"]
-    F --> H["Result pending_grading"]
+    F --> H["Trạng thái submitted · grading not_available"]
     D -->|Đã submit| I["Trả lại submission cũ"]
     D -->|Hết hạn| J["Hiện trạng thái expired"]
 ```
@@ -98,7 +98,7 @@ flowchart TD
 2. Một textarea duy nhất ở pane phải; 20 phút mặc định; min 150 từ.
 3. Word count dùng cùng một hàm chuẩn hóa FE/BE được test bằng shared fixture.
 4. Dưới 150 từ: modal cảnh báo nhưng learner vẫn có thể xác nhận submit.
-5. Submission chuyển pending grading nếu AI grading được bật.
+5. Submission chuyển `submitted`; MVP chưa chấm và không hiển thị band/feedback.
 
 ### Speaking — AI Conversation
 

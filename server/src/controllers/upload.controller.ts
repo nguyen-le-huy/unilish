@@ -21,7 +21,7 @@ export class UploadController {
         if (mime.startsWith('image/')) {
             url = await UploadService.uploadImage(req.file, folder);
         } else if (mime.startsWith('audio/') || mime.startsWith('video/')) {
-            url = await UploadService.uploadMedia(req.file);
+            url = await UploadService.uploadMedia(req.file, folder);
         } else {
             throw new AppError('Unsupported file type. Only images, audio, and video are allowed.', HttpStatus.BAD_REQUEST);
         }

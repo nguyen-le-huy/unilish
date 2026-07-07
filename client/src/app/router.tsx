@@ -26,11 +26,13 @@ const DictationPage = React.lazy(() => import('@/features/dashboard/shadowing/pa
 const CourseOverviewPage = React.lazy(() => import('@/features/dashboard/learning/pages/CourseOverviewPage/CourseOverviewPage'));
 const LessonPlayerPage = React.lazy(() => import('@/features/dashboard/learning/pages/LessonPlayerPage/LessonPlayerPage'));
 const ProfilePage = React.lazy(() => import('@/features/dashboard/profile'));
-const IeltsPracticePage = React.lazy(() => import('@/features/dashboard/ielts-practice'));
+const IeltsPracticePage = React.lazy(() => import('@/features/dashboard/ielts-practice/pages/IeltsPracticePage'));
 const IeltsSkillPage = React.lazy(() => import('@/features/dashboard/ielts-practice/pages/IeltsSkillPage'));
 const IeltsListeningTestPage = React.lazy(() => import('@/features/dashboard/ielts-practice/pages/IeltsListeningTestPage'));
 const IeltsReadingTestPage = React.lazy(() => import('@/features/dashboard/ielts-practice/pages/IeltsReadingTestPage'));
 const IeltsWritingTestPage = React.lazy(() => import('@/features/dashboard/ielts-practice/pages/IeltsWritingTestPage'));
+const IeltsSpeakingTestPage = React.lazy(() => import('@/features/dashboard/ielts-practice/pages/IeltsSpeakingTestPage'));
+const IeltsResultPage = React.lazy(() => import('@/features/dashboard/ielts-practice/pages/IeltsResultPage'));
 
 export const router = createBrowserRouter([
     {
@@ -237,6 +239,22 @@ export const router = createBrowserRouter([
                         element: (
                             <Suspense fallback={<Loading />}>
                                 <IeltsWritingTestPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'ielts-practice/speaking/:testId',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <IeltsSpeakingTestPage />
+                            </Suspense>
+                        ),
+                    },
+                    {
+                        path: 'ielts-practice/result/:attemptId',
+                        element: (
+                            <Suspense fallback={<Loading />}>
+                                <IeltsResultPage />
                             </Suspense>
                         ),
                     },
