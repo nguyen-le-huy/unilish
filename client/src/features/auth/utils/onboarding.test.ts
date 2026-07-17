@@ -6,6 +6,7 @@ import {
     hasSelectedLanguage,
     hasSelectedLearningGoal,
     hasSelectedLevel,
+    hasCompletedPlacementTest,
 } from './onboarding';
 import type { User } from '../types';
 
@@ -76,7 +77,7 @@ describe('onboarding flow utils', () => {
         expect(getPostAuthRedirectPath(user)).toBe(PATHS.DASHBOARD.HOME);
     });
 
-    it('treats A0 as complete only when placement score > 0', () => {
+    it('treats A0 as complete when placement score is above 0', () => {
         const user = makeUser({
             learningLanguageId: '507f1f77bcf86cd799439011',
             nativeLanguage: 'en',
@@ -86,6 +87,38 @@ describe('onboarding flow utils', () => {
             placementTestScore: 65,
         });
 
+        expect(hasSelectedLevel(user)).toBe(true);
+        expect(getRequiredOnboardingPath(user)).toBeNull();
+    });
+
+    it('treats A0 with weak skills as completed placement even when score is 0', () => {
+        const user = makeUser({
+            learningLanguageId: '507f1f77bcf86cd799439011',
+            nativeLanguage: 'en',
+            learningGoalId: '507f1f77bcf86cd799439012',
+            learningGoal: 'travel_survival',
+            currentLevel: 'A0',
+            placementTestScore: 0,
+            weakSkills: ['listening', 'reading'],
+        });
+
+        expect(hasCompletedPlacementTest(user)).toBe(true);
+        expect(hasSelectedLevel(user)).toBe(true);
+        expect(getRequiredOnboardingPath(user)).toBeNull();
+    });
+
+    it('treats placement completion timestamp as completed even when score is 0', () => {
+        const user = makeUser({
+            learningLanguageId: '507f1f77bcf86cd799439011',
+            nativeLanguage: 'en',
+            learningGoalId: '507f1f77bcf86cd799439012',
+            learningGoal: 'travel_survival',
+            currentLevel: 'A0',
+            placementTestScore: 0,
+            placementTestCompletedAt: '2026-07-17T00:00:00.000Z',
+        });
+
+        expect(hasCompletedPlacementTest(user)).toBe(true);
         expect(hasSelectedLevel(user)).toBe(true);
         expect(getRequiredOnboardingPath(user)).toBeNull();
     });

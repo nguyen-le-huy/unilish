@@ -18,7 +18,6 @@ erDiagram
     USER ||--o{ IELTS_PRACTICE_ATTEMPT : owns
     USER ||--o{ EXAM_TEST : creates_updates
     EXAM_TEST ||--o{ IELTS_PRACTICE_ATTEMPT : attempted_as_snapshot
-    EXAM_TEST ||--o{ AUDIT_LOG : audited
     EXAM_TEST {
         ObjectId _id
         string logicalTestId

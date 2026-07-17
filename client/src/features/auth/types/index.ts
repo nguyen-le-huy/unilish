@@ -23,6 +23,7 @@ export interface User {
     currentLevel?: string;
     lastActiveCourseId?: string | null;
     placementTestScore?: number;
+    placementTestCompletedAt?: string | Date | null;
     targetLevel?: string;
     weakSkills?: string[];
     gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';

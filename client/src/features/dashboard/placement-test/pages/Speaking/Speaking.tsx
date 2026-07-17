@@ -27,6 +27,17 @@ const partList = [
 
 type SpeakingScreen = 'intro' | 'test-mic' | 'test-main';
 
+interface SpeakingDraft {
+    screen: SpeakingScreen;
+    currentPart1Question: number;
+    currentPart2Question: number;
+    currentPart3Question: number;
+    activePart: number;
+    completedParts: number[];
+}
+
+const getSpeakingDraftKey = (sessionId: string): string => `unilish-placement-speaking-draft:${sessionId}`;
+
 const Speaking = () => {
     const navigate = useNavigate();
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -41,6 +52,42 @@ const Speaking = () => {
     const [activePart, setActivePart] = useState(1);
     const [completedParts, setCompletedParts] = useState<number[]>([]);
     const [isSpeakingSubmitted, setIsSpeakingSubmitted] = useState(false);
+
+    useEffect(() => {
+        if (!sessionId) return;
+
+        try {
+            const raw = window.sessionStorage.getItem(getSpeakingDraftKey(sessionId));
+            if (!raw) return;
+            const draft = JSON.parse(raw) as Partial<SpeakingDraft>;
+            if (draft.screen === 'test-main' || draft.screen === 'test-mic') setScreen(draft.screen);
+            if (typeof draft.currentPart1Question === 'number') setCurrentPart1Question(draft.currentPart1Question);
+            if (typeof draft.currentPart2Question === 'number') setCurrentPart2Question(draft.currentPart2Question);
+            if (typeof draft.currentPart3Question === 'number') setCurrentPart3Question(draft.currentPart3Question);
+            if (typeof draft.activePart === 'number') setActivePart(draft.activePart);
+            if (Array.isArray(draft.completedParts)) setCompletedParts(draft.completedParts.filter((part): part is number => typeof part === 'number'));
+        } catch {
+            // Ignore an invalid recovery snapshot.
+        }
+    }, [sessionId]);
+
+    useEffect(() => {
+        if (!sessionId || isSpeakingSubmitted) return;
+
+        const draft: SpeakingDraft = {
+            screen,
+            currentPart1Question,
+            currentPart2Question,
+            currentPart3Question,
+            activePart,
+            completedParts,
+        };
+        try {
+            window.sessionStorage.setItem(getSpeakingDraftKey(sessionId), JSON.stringify(draft));
+        } catch {
+            // Ignore unavailable session storage.
+        }
+    }, [activePart, completedParts, currentPart1Question, currentPart2Question, currentPart3Question, isSpeakingSubmitted, screen, sessionId]);
 
     const speakingSessionQuery = useQuery<StartSpeakingAttemptResult, Error>({
         queryKey: ['placement-test', 'speaking', 'start', sessionId],
@@ -104,6 +151,7 @@ const Speaking = () => {
     const handleCompleteTest = async () => {
         try {
             await submitSpeakingMutation.mutateAsync();
+            if (sessionId) window.sessionStorage.removeItem(getSpeakingDraftKey(sessionId));
             setIsSpeakingSubmitted(true);
         } catch {
             toast.error('Không thể nộp bài Speaking. Vui lòng thử lại.');

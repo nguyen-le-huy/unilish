@@ -103,7 +103,7 @@ const DictationPlayer = ({ video }: DictationPlayerProps) => {
         if (!firstCue || !player.isReady) return;
         setCurrentIndex(0);
         setIsPlaying(true);
-        player.playCue(firstCue);
+        player.playFromVideoStart(firstCue);
     }, [player, video.cues]);
 
     const moveToCue = useCallback((nextIndex: number, autoPlay = false) => {

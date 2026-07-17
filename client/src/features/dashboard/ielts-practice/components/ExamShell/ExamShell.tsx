@@ -37,7 +37,7 @@ interface ExamShellProps {
   /** Called when user confirms submit */
   onSubmit: () => void;
   /** Called on exit / leave */
-  onExit?: () => void;
+  onExit?: () => void | Promise<void>;
   /** Back-to list URL */
   backUrl?: string;
 }
@@ -107,8 +107,8 @@ const ExamShell = ({
     prevRemainingRef.current = remainingSeconds;
   }, [remainingSeconds]);
 
-  const handleExit = useCallback(() => {
-    if (onExit) onExit();
+  const handleExit = useCallback(async () => {
+    if (onExit) await onExit();
     const skill = backUrl?.split('/').pop() ?? 'listening';
     navigate(backUrl ?? PATHS.DASHBOARD.IELTS_SKILL(skill));
   }, [navigate, onExit, backUrl]);

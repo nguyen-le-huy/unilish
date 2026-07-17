@@ -83,6 +83,7 @@ const IeltsListeningTestPage = () => {
     conflictData,
     clearConflict,
     submitAttempt,
+    exitAttempt,
     isSubmitting,
     submitError,
     answers,
@@ -167,6 +168,7 @@ const IeltsListeningTestPage = () => {
         isSubmitting={isSubmitting}
         submitError={submitError}
         onSubmit={submitAttempt}
+        onExit={exitAttempt}
         aside={aside}
       >
         <ListeningFormCompletion

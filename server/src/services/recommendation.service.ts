@@ -77,6 +77,10 @@ const normalizeObjectId = (value: unknown): string | null => {
     return null;
 };
 
+const getRecommendationLevel = (level: string): string => {
+    return level === 'A0' ? 'A1' : level;
+};
+
 export class RecommendationService {
     constructor(
         private readonly userRepo: UserMongoRepository,
@@ -101,12 +105,13 @@ export class RecommendationService {
         const learningLanguageId = normalizeObjectId(user.learningLanguageId);
         const learningGoalId = normalizeObjectId(user.learningGoalId);
 
-        if (!learningLanguageId || !learningGoalId || !currentLevel || currentLevel === 'A0') {
+        if (!learningLanguageId || !learningGoalId || !currentLevel) {
             return [];
         }
 
+        const recommendationLevel = getRecommendationLevel(currentLevel);
         const cacheKey = this.getCacheKey(userId);
-        const profileSignature = `${learningLanguageId}:${learningGoalId}:${currentLevel}:${RECOMMENDATION_CACHE_SIGNATURE_VERSION}`;
+        const profileSignature = `${learningLanguageId}:${learningGoalId}:${recommendationLevel}:${RECOMMENDATION_CACHE_SIGNATURE_VERSION}`;
 
         const cached = await this.getCachedRecommendations(cacheKey, profileSignature);
         if (cached) {
@@ -119,7 +124,7 @@ export class RecommendationService {
         ]);
 
         const queryText = this.embeddings.buildUserQueryText({
-            currentLevel,
+            currentLevel: recommendationLevel,
             languageName: language?.nativeName ?? language?.name ?? null,
             learningGoalName: learningGoal?.title ?? null,
         });
@@ -131,7 +136,7 @@ export class RecommendationService {
             {
                 languageId: learningLanguageId,
                 learningGoalId,
-                userLevel: currentLevel,
+                userLevel: recommendationLevel,
                 isActive: true,
             },
             queryVector,

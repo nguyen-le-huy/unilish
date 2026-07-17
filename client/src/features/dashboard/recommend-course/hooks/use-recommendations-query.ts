@@ -14,6 +14,12 @@ export const useRecommendationsQuery = () => {
     const learningGoalId = useAuthStore((state) => state.user?.learningGoalId);
     const nativeLanguage = useAuthStore((state) => state.user?.nativeLanguage);
     const learningGoal = useAuthStore((state) => state.user?.learningGoal);
+    const placementTestScore = useAuthStore((state) => state.user?.placementTestScore);
+    const placementTestCompletedAt = useAuthStore((state) => state.user?.placementTestCompletedAt);
+    const weakSkills = useAuthStore((state) => state.user?.weakSkills);
+    const hasPlacementResult = Boolean(placementTestCompletedAt)
+        || typeof placementTestScore === 'number' && placementTestScore > 0
+        || Boolean(weakSkills?.length);
 
     return useQuery<RecommendedCourseDto[], AxiosError<ApiErrorResponse>>({
         queryKey: [
@@ -24,7 +30,7 @@ export const useRecommendationsQuery = () => {
             learningGoalId ?? learningGoal ?? null,
         ],
         queryFn: getRecommendations,
-        enabled: Boolean(userId && currentLevel && currentLevel !== 'A0'),
+        enabled: Boolean(userId && currentLevel && (currentLevel !== 'A0' || hasPlacementResult)),
         staleTime: 30 * 60 * 1000,
         retry: 1,
     });

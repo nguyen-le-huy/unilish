@@ -73,6 +73,7 @@ interface SubmitResult {
         placementTestScore: number;
         currentLevel: string;
         weakSkills: string[];
+        placementTestCompletedAt: string;
     };
 }
 
@@ -694,6 +695,7 @@ export class PlacementTestRuntimeService {
                 currentLevel: provisionalCefr,
                 weakSkills,
                 lastActiveAt: submittedAt,
+                placementTestCompletedAt: submittedAt,
             },
         );
 
@@ -726,6 +728,7 @@ export class PlacementTestRuntimeService {
                 placementTestScore,
                 currentLevel: provisionalCefr,
                 weakSkills,
+                placementTestCompletedAt: submittedAt.toISOString(),
             },
         };
     }

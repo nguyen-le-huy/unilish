@@ -7,6 +7,7 @@ export interface SubmitPlacementAttemptResult {
         placementTestScore: number;
         currentLevel: string;
         weakSkills: string[];
+        placementTestCompletedAt?: string;
     };
     sessionId?: string;
     placementSession?: {

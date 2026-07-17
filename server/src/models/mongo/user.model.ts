@@ -75,6 +75,7 @@ export interface IUser extends mongoose.Document {
     targetLevel:        keyof typeof ELevel;
     weakSkills:         (typeof ESkill[keyof typeof ESkill])[];
     placementTestScore: number;
+    placementTestCompletedAt?: Date | null;
 
     createdAt: Date;
     updatedAt: Date;
@@ -198,6 +199,10 @@ const UserSchema = new mongoose.Schema<IUser>(
             default: 0,
             min:     0,
             max:     100,
+        },
+        placementTestCompletedAt: {
+            type:    Date,
+            default: null,
         },
     },
     {

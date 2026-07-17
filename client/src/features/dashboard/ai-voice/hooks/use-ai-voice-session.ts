@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import type { AiVoiceChatMessage, AiVoiceScenario, ChatHistoryItem, PttStatus } from '../types/ai-voice.types';
+import { aiVoiceService } from '../api/ai-voice.service';
+import type { AiVoiceAssessmentResult, AiVoiceChatMessage, AiVoiceScenario, ChatHistoryItem, PttStatus } from '../types/ai-voice.types';
 import { useAiVoicePipeline } from './use-ai-voice-pipeline';
 import { usePttRecorder } from './use-ptt-recorder';
 
@@ -15,6 +16,7 @@ interface UseAiVoiceSessionReturn {
 	pttStatus: PttStatus;
 	chatMessages: AiVoiceChatMessage[];
 	isConversationEnded: boolean;
+	assessment: AiVoiceAssessmentResult | null;
 	sessionId: string;
 	startSession: () => Promise<void>;
 	handleToggleMic: () => Promise<void>;
@@ -72,6 +74,7 @@ export const useAiVoiceSession = ({
 	const [chatMessages, setChatMessages] = useState<AiVoiceChatMessage[]>([]);
 	const [isConversationEnded, setIsConversationEnded] = useState(false);
 	const [sessionId, setSessionId] = useState(createSessionId);
+	const [assessment, setAssessment] = useState<AiVoiceAssessmentResult | null>(null);
 
 	const { startRecording, stopRecording, reset: resetRecorder } = usePttRecorder();
 	const {
@@ -87,19 +90,42 @@ export const useAiVoiceSession = ({
 	const isProcessingRef = useRef(false);
 	const hasSessionStartedRef = useRef(false);
 	const hasNotifiedConversationEndedRef = useRef(false);
+	const userTurnsRef = useRef<Array<{ transcript: string; durationMs: number; blob: Blob }>>([]);
 
 	useEffect(() => {
 		messagesRef.current = chatMessages;
 	}, [chatMessages]);
 
+	const assessConversation = useCallback(async () => {
+		const turns = userTurnsRef.current;
+		if (turns.length === 0) {
+			return;
+		}
+
+		try {
+			const result = await aiVoiceService.assessConversation({
+				sessionId,
+				scenario,
+				level,
+				topic,
+				turns: turns.map(({ transcript, durationMs }) => ({ transcript, durationMs })),
+				audioBlobs: turns.map(({ blob }) => blob),
+			});
+			setAssessment(result);
+		} catch {
+			toast.error('Không thể chấm điểm phiên luyện nói. Vui lòng thử lại sau.');
+		}
+	}, [level, scenario, sessionId, topic]);
+
 	const markConversationEnded = useCallback(() => {
 		setIsConversationEnded(true);
 		setPttStatus('ended');
+		void assessConversation();
 		if (!hasNotifiedConversationEndedRef.current) {
 			hasNotifiedConversationEndedRef.current = true;
 			onConversationEnd?.();
 		}
-	}, [onConversationEnd]);
+	}, [assessConversation, onConversationEnd]);
 
 	const streamAssistantReply = useCallback(async (
 		assistantMessageId: string,
@@ -172,7 +198,7 @@ export const useAiVoiceSession = ({
 		setPttStatus('idle');
 	}, [level, markConversationEnded, playDirectly, scenario, sessionId, streamReply, topic, waitForAudio]);
 
-	const processTurn = useCallback(async (audioBlob: Blob): Promise<void> => {
+	const processTurn = useCallback(async (audioBlob: Blob, durationMs: number): Promise<void> => {
 		if (isProcessingRef.current || isConversationEnded) {
 			return;
 		}
@@ -182,6 +208,11 @@ export const useAiVoiceSession = ({
 
 		try {
 			const stt = await transcribe(audioBlob, sessionId);
+			userTurnsRef.current = [...userTurnsRef.current, {
+				transcript: stt.transcript,
+				durationMs,
+				blob: audioBlob,
+			}];
 			const userMessage = createMessage('user', stt.transcript);
 			const nextHistory: ChatHistoryItem[] = [...toHistory(messagesRef.current), { role: 'user', content: stt.transcript }];
 
@@ -256,7 +287,7 @@ export const useAiVoiceSession = ({
 				return;
 			}
 
-			await processTurn(result.blob);
+			await processTurn(result.blob, result.durationMs);
 		}
 	}, [processTurn, pttStatus, startRecording, stopRecording]);
 
@@ -268,8 +299,10 @@ export const useAiVoiceSession = ({
 		hasSessionStartedRef.current = false;
 		hasNotifiedConversationEndedRef.current = false;
 		messagesRef.current = [];
+		userTurnsRef.current = [];
 
 		setChatMessages([]);
+		setAssessment(null);
 		setIsConversationEnded(false);
 		setPttStatus('idle');
 		setSessionId(createSessionId());
@@ -286,9 +319,10 @@ export const useAiVoiceSession = ({
 		pttStatus,
 		chatMessages,
 		isConversationEnded,
+		assessment,
 		sessionId,
 		startSession,
 		handleToggleMic,
 		resetSession,
-	}), [chatMessages, handleToggleMic, isConversationEnded, pttStatus, resetSession, sessionId, startSession]);
+	}), [assessment, chatMessages, handleToggleMic, isConversationEnded, pttStatus, resetSession, sessionId, startSession]);
 };

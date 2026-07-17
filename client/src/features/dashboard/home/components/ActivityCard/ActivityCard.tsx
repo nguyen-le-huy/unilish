@@ -7,9 +7,10 @@ interface ActivityCardProps {
 }
 
 const DAYS_IN_WEEK = 7;
-const WEEKS_TO_SHOW = 5;
+const WEEKS_TO_SHOW = 6;
 
 const formatDuration = (seconds: number): string => {
+    if (seconds <= 0) return '0 phút';
     if (seconds < 60) return '1 phút';
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.round((seconds % 3600) / 60);
@@ -22,13 +23,20 @@ const getMonthName = (date: Date): string => {
     return `Tháng ${date.getMonth() + 1}`;
 };
 
+const toDateKey = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 export const ActivityCard = ({ className }: ActivityCardProps) => {
     const today = useMemo(() => new Date(), []);
     const monthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     const { data, isLoading, isError } = useDashboard(monthStr);
     const cardClassName = className ? `${styles.card} ${className}` : styles.card;
 
-    // Build activity dot grid from API data
+    // Build calendar-like activity dot grid for the current month.
     const { dotRows, totalActiveDays, totalMinutes } = useMemo(() => {
         const activityByDate = new Map<string, number>();
         if (data?.activityDays) {
@@ -37,40 +45,39 @@ export const ActivityCard = ({ className }: ActivityCardProps) => {
             }
         }
 
-        // Build grid: WEEKS_TO_SHOW rows × DAYS_IN_WEEK cols
-        // Align to end of current week (today)
-        const endOfWeek = new Date(today);
-        endOfWeek.setDate(endOfWeek.getDate() + (6 - endOfWeek.getDay()));
+        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        const gridStart = new Date(monthStart);
+        gridStart.setDate(monthStart.getDate() - monthStart.getDay());
 
-        const rows: { level: 'none' | 'low' | 'medium' | 'high' }[][] = [];
-        let activeDays = 0;
-        let totalMins = 0;
+        const rows: { level: 'none' | 'low' | 'medium' | 'high'; outsideMonth: boolean }[][] = [];
 
         for (let row = 0; row < WEEKS_TO_SHOW; row++) {
-            const week: { level: 'none' | 'low' | 'medium' | 'high' }[] = [];
+            const week: { level: 'none' | 'low' | 'medium' | 'high'; outsideMonth: boolean }[] = [];
             for (let col = 0; col < DAYS_IN_WEEK; col++) {
-                const dayOffset = (row * DAYS_IN_WEEK + col) - (WEEKS_TO_SHOW * DAYS_IN_WEEK - 1);
-                const cellDate = new Date(endOfWeek);
+                const dayOffset = row * DAYS_IN_WEEK + col;
+                const cellDate = new Date(gridStart);
                 cellDate.setDate(cellDate.getDate() + dayOffset);
-                const dateKey = cellDate.toISOString().split('T')[0];
+                const outsideMonth = cellDate.getMonth() !== today.getMonth();
+                const dateKey = toDateKey(cellDate);
                 const minutes = activityByDate.get(dateKey) ?? 0;
 
                 if (minutes >= 30) {
-                    week.push({ level: 'high' });
-                    activeDays++;
+                    week.push({ level: 'high', outsideMonth });
                 } else if (minutes > 0) {
-                    week.push({ level: 'low' });
-                    activeDays++;
+                    week.push({ level: 'low', outsideMonth });
                 } else {
-                    week.push({ level: 'none' });
+                    week.push({ level: 'none', outsideMonth });
                 }
-                totalMins += minutes;
             }
             rows.push(week);
         }
 
-        return { dotRows: rows, totalActiveDays: activeDays, totalMinutes: totalMins };
-    }, [data, today]);
+        const monthPrefix = monthStr;
+        const activeDays = (data?.activityDays ?? []).filter((day) => day.date.startsWith(monthPrefix) && day.minutes > 0);
+        const totalMins = activeDays.reduce((sum, day) => sum + day.minutes, 0);
+
+        return { dotRows: rows, totalActiveDays: activeDays.length, totalMinutes: totalMins };
+    }, [data, monthStr, today]);
 
     // Loading skeleton
     if (isLoading) {
@@ -119,7 +126,7 @@ export const ActivityCard = ({ className }: ActivityCardProps) => {
                                 {row.map((dot, colIndex) => (
                                     <span
                                         key={`dot-${rowIndex}-${colIndex}`}
-                                        className={`${styles.dot} ${dot.level === 'high' ? styles.dotActive : dot.level === 'low' ? styles.dotLow : ''}`}
+                                        className={`${styles.dot} ${dot.outsideMonth ? styles.dotMuted : ''} ${dot.level === 'high' ? styles.dotActive : dot.level === 'low' ? styles.dotLow : ''}`}
                                         aria-hidden="true"
                                     />
                                 ))}

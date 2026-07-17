@@ -115,6 +115,9 @@ export function useIeltsAutosave({
   const markDirty = useCallback(() => {
     isDirtyRef.current = true;
 
+    // Keep a local copy immediately so an immediate exit does not lose recent input.
+    persistToLocal(recoveryKey, buildPayload(), localRevision);
+
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }

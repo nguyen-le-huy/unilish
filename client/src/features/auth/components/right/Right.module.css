@@ -58,7 +58,7 @@
 .feedback {
     position: relative;
     z-index: 1;
-    max-width: 650px;
+    width: 100%;
     border-radius: 22px;
     background: rgba(12, 27, 16, 0.52);
     backdrop-filter: blur(16px);

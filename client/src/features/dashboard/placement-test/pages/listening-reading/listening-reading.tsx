@@ -24,6 +24,7 @@ import { mapAttemptToParts } from '../../utils/question-mapper';
 import { formatCountdownLabel } from '../../utils/timer';
 import { SubmissionSuccessCard } from '@/components/core/SubmissionSuccessCard';
 import { usePlacementTestStore } from '@/stores/placement-test.store';
+import { queryClient } from '@/lib/react-query';
 
 const getErrorStatus = (error: unknown): number | undefined => {
     if (!isAxiosError<ApiErrorResponse>(error)) {
@@ -185,11 +186,16 @@ const ListeningReading = () => {
             // Update user profile with placement test results
             const currentUser = useAuthStore.getState().user;
             if (currentUser && result.profileUpdate) {
-                useAuthStore.getState().setUser({
+                const nextUser = {
                     ...currentUser,
                     currentLevel: result.profileUpdate.currentLevel,
                     placementTestScore: result.profileUpdate.placementTestScore,
-                });
+                    weakSkills: result.profileUpdate.weakSkills,
+                    placementTestCompletedAt: result.profileUpdate.placementTestCompletedAt ?? new Date().toISOString(),
+                };
+
+                useAuthStore.getState().setUser(nextUser);
+                queryClient.setQueryData(['auth', 'me'], nextUser);
             }
 
             setAttemptId(attempt.attemptId);
@@ -213,6 +219,16 @@ const ListeningReading = () => {
     ]);
 
     const hasExpired = attempt?.expiresAt ? timeRemaining === 0 : false;
+
+    const handleExit = useCallback(async () => {
+        cancelScheduledSaves();
+        try {
+            await flushPendingChanges(false);
+        } catch {
+            // Pending answers remain in the in-memory attempt and will be retried on return.
+        }
+        navigate(PATHS.DASHBOARD.HOME);
+    }, [cancelScheduledSaves, flushPendingChanges, navigate]);
 
     useEffect(() => {
         if (attempt?.attemptId) {
@@ -265,7 +281,7 @@ const ListeningReading = () => {
                         padding="B"
                         variant="outline"
                         className={styles.exitButton}
-                        onClick={() => navigate(PATHS.DASHBOARD.HOME)}
+                        onClick={() => { void handleExit(); }}
                     >
                         ← Thoát bài kiểm tra
                     </Button>

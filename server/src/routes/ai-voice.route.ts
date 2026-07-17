@@ -5,6 +5,7 @@ import { validate } from '../middlewares/validate.middleware.js';
 import { aiVoiceController } from '../controllers/ai-voice.controller.js';
 import {
     aiVoiceChatSchema,
+    aiVoiceAssessmentSchema,
     aiVoiceGenerateScenariosSchema,
     aiVoiceSttSchema,
     aiVoiceTtsSchema,
@@ -17,7 +18,10 @@ import {
 } from '../middlewares/ai-voice-rate-limit.middleware.js';
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024, files: 12 },
+});
 
 router.use(protect);
 
@@ -46,6 +50,13 @@ router.post(
     aiVoiceChatRateLimit,
     validate(aiVoiceChatSchema),
     aiVoiceController.chat,
+);
+
+router.post(
+    '/assessment',
+    upload.array('audio', 12),
+    validate(aiVoiceAssessmentSchema),
+    aiVoiceController.assessment,
 );
 
 /**

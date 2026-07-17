@@ -28,7 +28,6 @@ import type {
 import type { PublishValidationResult, PublishValidationError, TestDetailDto } from '../types/ielts-practice.types.js';
 import { IeltsPracticeContentSchema } from '../validations/ielts-content.validation.js';
 import { toTestDetailDto } from '../mappers/ielts-practice.mapper.js';
-import { auditIeltsEvent } from './audit.service.js';
 
 const DEFAULT_TOEIC_BANDS: IExamBandThreshold[] = [
     { band: '10–250', minScore: 0, maxScore: 0.25 },
@@ -333,16 +332,6 @@ class ExamTestService {
             adminId,
         });
 
-        if (kind === EExamTestKind.SKILL_PRACTICE) {
-            await auditIeltsEvent({
-                actorId: adminId,
-                event: 'created',
-                testId: String(created._id),
-                testName: created.name,
-                version: created.version,
-            });
-        }
-
         return created;
     }
 
@@ -503,15 +492,6 @@ class ExamTestService {
                 adminId,
             });
 
-            // Audit log
-            await auditIeltsEvent({
-                actorId: adminId,
-                event: 'published',
-                testId: id,
-                testName: existing.name,
-                version: existing.version,
-            });
-
             return updated;
         }
 
@@ -530,20 +510,6 @@ class ExamTestService {
             status,
             adminId,
         });
-
-        // Audit log for pause/archive
-        const auditEvent = status === EExamTestStatus.PAUSED ? 'paused' as const
-            : status === EExamTestStatus.ARCHIVED ? 'archived' as const
-            : null;
-        if (auditEvent) {
-            await auditIeltsEvent({
-                actorId: adminId,
-                event: auditEvent,
-                testId: id,
-                testName: existing.name,
-                version: existing.version,
-            });
-        }
 
         return updated;
     }
@@ -722,16 +688,6 @@ class ExamTestService {
             targetVersion: newVersion,
             rollbackId: String(rollbackDraft._id),
             adminId,
-        });
-
-        // Audit log
-        await auditIeltsEvent({
-            actorId: adminId,
-            event: 'rollback_created',
-            testId: id,
-            testName: target.name,
-            version: newVersion,
-            metadata: { sourceVersion: version, rollbackId: String(rollbackDraft._id) },
         });
 
         return rollbackDraft;

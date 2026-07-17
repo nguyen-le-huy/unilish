@@ -1,7 +1,7 @@
 import { env } from '@/config/env';
 import { api, apiPostUnwrappedEnvelope } from '@/lib/axios';
 import { useAuthStore } from '@/stores/auth.store';
-import type { AiVoiceScenario, ChatHistoryItem } from '../types/ai-voice.types';
+import type { AiVoiceAssessmentResult, AiVoiceScenario, ChatHistoryItem } from '../types/ai-voice.types';
 
 const AI_VOICE_BASE = '/v1/ai-voice';
 const AI_VOICE_FETCH_BASE = `${env.API_URL}${AI_VOICE_BASE}`;
@@ -71,6 +71,11 @@ export interface AiVoiceChatParams {
 	topic: string;
 }
 
+export interface AiVoiceAssessmentTurn {
+	transcript: string;
+	durationMs: number;
+}
+
 export const aiVoiceService = {
 	async stt(audio: Blob, sessionId: string): Promise<AiVoiceSttResult> {
 		const formData = new FormData();
@@ -131,5 +136,30 @@ export const aiVoiceService = {
 		}
 
 		return response;
+	},
+
+	async assessConversation(params: {
+		sessionId: string;
+		scenario: AiVoiceScenario;
+		level: string;
+		topic: string;
+		turns: AiVoiceAssessmentTurn[];
+		audioBlobs: Blob[];
+	}): Promise<AiVoiceAssessmentResult> {
+		const formData = new FormData();
+		formData.append('sessionId', params.sessionId);
+		formData.append('scenario', JSON.stringify(params.scenario));
+		formData.append('level', params.level);
+		formData.append('topic', params.topic);
+		formData.append('turns', JSON.stringify(params.turns));
+		params.audioBlobs.forEach((blob, index) => {
+			formData.append('audio', blob, `turn-${index + 1}.webm`);
+		});
+
+		return apiPostUnwrappedEnvelope<AiVoiceAssessmentResult, FormData>(
+			`${AI_VOICE_BASE}/assessment`,
+			formData,
+			{ headers: { 'Content-Type': 'multipart/form-data' } },
+		);
 	},
 };

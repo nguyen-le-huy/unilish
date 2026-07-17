@@ -43,6 +43,7 @@ export interface UseIeltsPlayerResult {
 
   // Submit
   submitAttempt: () => Promise<void>;
+  exitAttempt: () => Promise<void>;
   isSubmitting: boolean;
   submitError: string | null;
   submitResult: { status: string; attemptId: string } | null;
@@ -165,6 +166,30 @@ export function useIeltsPlayer({
     [recoveryKey],
   );
 
+  const recoveryAppliedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!attempt || !localRecovery || recoveryAppliedRef.current === attempt.attemptId) {
+      return;
+    }
+
+    recoveryAppliedRef.current = attempt.attemptId;
+    if (localRecovery.revision < (attempt.revision ?? 0)) {
+      return;
+    }
+
+    const payload = localRecovery.payload;
+    if (payload.answers && typeof payload.answers === 'object') {
+      setAnswers(payload.answers as Record<string, string>);
+    }
+    if (typeof payload.essay === 'string') {
+      setEssayState(payload.essay);
+    }
+    if (Array.isArray(payload.flaggedItemIds)) {
+      setFlaggedIds(payload.flaggedItemIds.filter((id): id is string => typeof id === 'string'));
+    }
+    setRevision((current) => Math.max(current, localRecovery.revision));
+  }, [attempt, localRecovery]);
+
   // ── Submit ─────────────────────────────────────────────
   const submitMutation = useSubmitAttempt();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -202,6 +227,14 @@ export function useIeltsPlayer({
       setIsSubmitting(false);
     }
   }, [attempt, isSubmitting, flush, localRevision, submitMutation, recoveryKey, navigate]);
+
+  const exitAttempt = useCallback(async (): Promise<void> => {
+    try {
+      await flush();
+    } catch {
+      // Local recovery remains available when the network save fails.
+    }
+  }, [flush]);
 
   // ── Update handlers ────────────────────────────────────
   const updateAnswers = useCallback((newAnswers: Record<string, string>) => {
@@ -256,6 +289,7 @@ export function useIeltsPlayer({
     clearConflict,
 
     submitAttempt: handleSubmit,
+    exitAttempt,
     isSubmitting,
     submitError,
     submitResult,

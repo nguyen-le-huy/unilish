@@ -1,17 +1,19 @@
-# UniLish — ERD logic tổng thể
+# UniLish — ERD hiện trạng
 
-Đây là mô hình dữ liệu logic mục tiêu của UniLish, bao gồm học theo khóa, placement test, IELTS Practice và shadowing. ERD ưu tiên các aggregate đang dùng hoặc đã có thiết kế được duyệt; không thể hiện system setting, payment/transaction, coupon, course series, concept và user knowledge state.
-
-> **Trạng thái triển khai:** `IELTS_PRACTICE_ATTEMPT` và các field IELTS Practice mở rộng trên `EXAM_TEST` là mô hình đích theo [thiết kế IELTS Practice](ielts-practice/data-model.md), chưa phải schema đã triển khai hoàn chỉnh. `AUDIT_LOG` đã có model trên server nhưng cần mở rộng action/metadata để đáp ứng audit của IELTS Practice.
+ERD này phản ánh trực tiếp các Mongoose model đang được triển khai trong
+`server/src/models/mongo` tại thời điểm cập nhật. Đây là mô hình logic của
+MongoDB: các object lồng (`content`, `modules`, `snapshot`, `draft`, `feedback`,
+...) được giữ trong document và không tách thành collection riêng.
 
 Quy ước:
 
-- Chỉ thể hiện các trường cốt lõi và quan hệ giữa collection.
-- Các cấu trúc lồng như `content`, `modules`, `answerSheet`, `scoring` và `cues` được giữ dưới dạng `json`/`Mixed`.
-- `Course` liên kết trực tiếp với `Language` và `LearningGoal`, không còn qua `CourseSeries`.
-- `ExamTest.kind = full_exam` tiếp tục dùng `modules`; `kind = skill_practice` dùng đúng một `skill`, một `questionType` và một `content` union.
-- `IeltsPracticeAttempt.contentSnapshot` là snapshot server-only có thể chứa answer key; learner API phải redaction bằng allowlist.
-- `PK`: primary key, `FK`: reference, `UK`: unique key.
+- `PK`: khóa chính MongoDB.
+- `FK`: trường `ObjectId` có khai báo `ref` tới model khác.
+- `UK`: unique key hoặc thuộc unique compound index.
+- `ObjectId_array`: mảng reference; quan hệ vật lý được lưu ở một phía.
+- Các field trong sơ đồ là field cốt lõi, không phải toàn bộ schema.
+
+## ERD tổng thể
 
 ```mermaid
 erDiagram
@@ -20,7 +22,6 @@ erDiagram
         string code UK
         string name
         string nativeName
-        string flagIconUrl
         boolean isActive
     }
 
@@ -28,7 +29,6 @@ erDiagram
         ObjectId _id PK
         string slug UK
         string title
-        string description
         ObjectId_array supportedLanguages FK
         json skillWeights
         boolean isActive
@@ -41,14 +41,9 @@ erDiagram
         ObjectId prerequisiteCourseId FK
         string slug UK
         string name
-        string description
-        string thumbnailUrl
         string level
         number orderIndex
-        number totalUnits
         json finalExamConfig
-        ObjectId_array readingLessonIds FK
-        ObjectId_array listeningLessonIds FK
         boolean isActive
     }
 
@@ -56,57 +51,91 @@ erDiagram
         ObjectId _id PK
         ObjectId courseId FK
         string title
-        string description
-        string thumbnailUrl
         number orderIndex
         json contextSeed
+        string vectorId
     }
 
     LESSON {
         ObjectId _id PK
         ObjectId unitId FK
+        ObjectId_array taughtConcepts FK
         string title
         string type
         number orderIndex
         Mixed content
         json practiceConfig
-        ObjectId_array questionIds FK
+    }
+
+    CONCEPT {
+        ObjectId _id PK
+        ObjectId languageId FK
+        string key UK
+        string name
+        string type
+        Mixed metaData
     }
 
     QUESTION {
         ObjectId _id PK
         ObjectId languageId FK
+        ObjectId testedConcept FK
+        ObjectId createdBy FK
+        ObjectId reviewedBy FK
         string source
         string skill
         string type
         string difficulty
         string status
-        json stem
         Mixed content
-        string explanation
-        string_array tags
-        ObjectId createdBy FK
-        ObjectId reviewedBy FK
     }
 
     USER {
         ObjectId _id PK
         string email UK
         string googleId UK
-        string authProvider
-        string password
-        boolean isVerified
         string role
-        string fullName
-        string avatarUrl
-        Date lastActiveAt
         ObjectId lastActiveCourseId FK
         ObjectId learningLanguageId FK
         ObjectId learningGoalId FK
         string currentLevel
         string targetLevel
-        string_array weakSkills
-        number placementTestScore
+    }
+
+    COURSE_ENROLLMENT {
+        ObjectId _id PK
+        ObjectId userId FK
+        ObjectId courseId FK
+        ObjectId lastLessonId FK
+        string status
+        number completedLessonCount
+        number totalRequiredLessonCount
+        number timeSpentSeconds
+    }
+
+    LEARNER_LESSON_PROGRESS {
+        ObjectId _id PK
+        ObjectId userId FK
+        ObjectId enrollmentId FK
+        ObjectId courseId FK
+        ObjectId unitId FK
+        ObjectId lessonId FK
+        string status
+        number checkpointVersion
+        Mixed checkpoint
+        number bestScore
+    }
+
+    LEARNER_LESSON_ATTEMPT {
+        ObjectId _id PK
+        string clientAttemptId UK
+        ObjectId userId FK
+        ObjectId enrollmentId FK
+        ObjectId lessonId FK
+        string submissionKind
+        Mixed submittedAnswers
+        number score
+        boolean passed
     }
 
     USER_LESSON_PROGRESS {
@@ -114,24 +143,23 @@ erDiagram
         ObjectId userId FK
         ObjectId lessonId FK
         string sessionId UK
+        string traceId
         json sessionMetrics
         json transcript
         json evaluation
-        Date createdAt
     }
 
     PLACEMENT_TEST {
         ObjectId _id PK
         ObjectId languageId FK
+        ObjectId createdBy FK
+        ObjectId updatedBy FK
         string name
         string standard
         string status
         number version
-        json settings
         json modules
         json cefrMapping
-        ObjectId createdBy FK
-        ObjectId updatedBy FK
     }
 
     PLACEMENT_TEST_ATTEMPT {
@@ -141,7 +169,6 @@ erDiagram
         string status
         Date startedAt
         Date expiresAt
-        Date submittedAt
         json runtimeSnapshot
         json answerSheet
         json scoring
@@ -161,9 +188,10 @@ erDiagram
 
     EXAM_TEST {
         ObjectId _id PK
-        ObjectId logicalTestId
         ObjectId languageId FK
-        string name
+        ObjectId createdBy FK
+        ObjectId updatedBy FK
+        ObjectId logicalTestId
         string format
         string kind
         string slug
@@ -171,14 +199,8 @@ erDiagram
         string questionType
         string status
         number version
-        number durationMinutes
         Mixed content
         json modules
-        json scoringConfig
-        json settings
-        Date publishedAt
-        ObjectId createdBy FK
-        ObjectId updatedBy FK
     }
 
     IELTS_PRACTICE_ATTEMPT {
@@ -193,130 +215,124 @@ erDiagram
         number revision
         Mixed contentSnapshot
         Mixed draft
-        string_array flaggedItemIds
         Mixed result
-        Date startedAt
-        Date deadlineAt
-        Date lastSavedAt
-        Date submittedAt
-    }
-
-    AUDIT_LOG {
-        ObjectId _id PK
-        ObjectId actorId FK
-        string action
-        string target
-        ObjectId targetId
-        number targetVersion
-        Mixed diff
-        json metadata
-        Date createdAt
     }
 
     SHADOWING_VIDEO {
         ObjectId _id PK
         string videoId UK
+        ObjectId addedBy FK
         string title
         string thumbnailUrl
         number durationSeconds
-        ObjectId addedBy FK
         json cues
         string status
     }
 
-    LANGUAGE }o--o{ LEARNING_GOAL : supports
-    LANGUAGE ||--o{ COURSE : categorizes
-    LEARNING_GOAL ||--o{ COURSE : targets
-    COURSE ||--o| COURSE : prerequisite
-    COURSE ||--o{ UNIT : contains
-    UNIT ||--o{ LESSON : contains
-    LESSON }o--o{ QUESTION : uses
-    COURSE }o--o{ LESSON : finalExamPool
+    LANGUAGE }o--o{ LEARNING_GOAL : "supported by"
+    LANGUAGE ||--o{ COURSE : "categorizes"
+    LEARNING_GOAL ||--o{ COURSE : "targets"
+    COURSE o|--o{ COURSE : "prerequisite"
+    COURSE ||--o{ UNIT : "contains"
+    UNIT ||--o{ LESSON : "contains"
+    LANGUAGE ||--o{ CONCEPT : "defines"
+    CONCEPT }o--o{ LESSON : "taught in"
+    LANGUAGE ||--o{ QUESTION : "owns"
+    CONCEPT ||--o{ QUESTION : "tested by"
+    LESSON }o--o{ QUESTION : "fixed practice"
+    COURSE }o--o{ LESSON : "final exam pool"
 
-    LANGUAGE ||--o{ QUESTION : has
-    LANGUAGE ||--o{ PLACEMENT_TEST : has
-    LANGUAGE ||--o{ EXAM_TEST : has
+    LANGUAGE o|--o{ USER : "learning language"
+    LEARNING_GOAL o|--o{ USER : "selected goal"
+    COURSE o|--o{ USER : "last active course"
+    USER ||--o{ COURSE_ENROLLMENT : "enrolls"
+    COURSE ||--o{ COURSE_ENROLLMENT : "receives"
+    LESSON o|--o{ COURSE_ENROLLMENT : "last position"
 
-    USER }o--o| LANGUAGE : learns
-    USER }o--o| LEARNING_GOAL : follows
-    USER }o--o| COURSE : lastActiveCourse
-    USER ||--o{ USER_LESSON_PROGRESS : records
-    LESSON ||--o{ USER_LESSON_PROGRESS : progressFor
+    USER ||--o{ LEARNER_LESSON_PROGRESS : "owns"
+    COURSE_ENROLLMENT ||--o{ LEARNER_LESSON_PROGRESS : "groups"
+    COURSE ||--o{ LEARNER_LESSON_PROGRESS : "denormalizes"
+    UNIT ||--o{ LEARNER_LESSON_PROGRESS : "denormalizes"
+    LESSON ||--o{ LEARNER_LESSON_PROGRESS : "tracks"
 
-    USER ||--o{ QUESTION : creates
-    USER ||--o{ QUESTION : reviews
-    USER ||--o{ PLACEMENT_TEST : creates
-    USER ||--o{ PLACEMENT_TEST : updates
-    USER ||--o{ EXAM_TEST : creates
-    USER ||--o{ EXAM_TEST : updates
-    USER ||--o{ IELTS_PRACTICE_ATTEMPT : owns
-    USER ||--o{ AUDIT_LOG : acts
+    USER ||--o{ LEARNER_LESSON_ATTEMPT : "submits"
+    COURSE_ENROLLMENT ||--o{ LEARNER_LESSON_ATTEMPT : "groups"
+    LESSON ||--o{ LEARNER_LESSON_ATTEMPT : "attempted"
+    USER ||--o{ USER_LESSON_PROGRESS : "owns speaking session"
+    LESSON ||--o{ USER_LESSON_PROGRESS : "speaking result"
 
-    EXAM_TEST ||--o{ IELTS_PRACTICE_ATTEMPT : attemptedAsSnapshot
-    EXAM_TEST ||--o{ AUDIT_LOG : auditTarget
-    IELTS_PRACTICE_ATTEMPT ||--o{ AUDIT_LOG : attemptAuditTarget
+    LANGUAGE ||--o{ PLACEMENT_TEST : "configures"
+    USER ||--o{ PLACEMENT_TEST : "creates"
+    USER o|--o{ PLACEMENT_TEST : "updates"
+    USER ||--o{ PLACEMENT_TEST_ATTEMPT : "takes"
+    PLACEMENT_TEST ||--o{ PLACEMENT_TEST_ATTEMPT : "snapshots"
+    USER ||--o{ PLACEMENT_SESSION : "owns"
+    PLACEMENT_TEST ||--o{ PLACEMENT_SESSION : "drives"
+    PLACEMENT_TEST_ATTEMPT ||--o| PLACEMENT_SESSION : "continues as"
 
-    PLACEMENT_TEST ||--o{ PLACEMENT_TEST_ATTEMPT : has
-    USER ||--o{ PLACEMENT_TEST_ATTEMPT : takes
-    PLACEMENT_TEST ||--o{ PLACEMENT_SESSION : drives
-    PLACEMENT_TEST_ATTEMPT ||--o| PLACEMENT_SESSION : starts
-    USER ||--o{ PLACEMENT_SESSION : owns
+    LANGUAGE ||--o{ EXAM_TEST : "configures"
+    USER ||--o{ EXAM_TEST : "creates"
+    USER o|--o{ EXAM_TEST : "updates"
+    USER ||--o{ IELTS_PRACTICE_ATTEMPT : "takes"
+    EXAM_TEST ||--o{ IELTS_PRACTICE_ATTEMPT : "snapshotted by"
 
-    USER ||--o{ SHADOWING_VIDEO : adds
+    USER ||--o{ QUESTION : "creates"
+    USER o|--o{ QUESTION : "reviews"
+    USER ||--o{ SHADOWING_VIDEO : "adds"
 ```
 
-## Index và constraint chính
+## Nhóm chức năng
 
-- `Language.code`, `LearningGoal.slug`, `Course.slug`, `User.email`, `UserLessonProgress.sessionId` và `ShadowingVideo.videoId` là unique.
-- `User.googleId` là sparse unique.
-- `Course` nên unique theo `{ languageId, learningGoalId, level, orderIndex }`.
-- `Unit` unique theo `{ courseId, orderIndex }`.
-- `PlacementSession` unique theo `{ userId, lrAttemptId }`.
-- `ExamTest` version unique theo `{ logicalTestId, version }` đối với record có `logicalTestId`.
-- `ExamTest` chỉ có một active version theo partial unique index `{ logicalTestId, status }` với `status = active`.
-- Danh sách IELTS Practice dùng index `{ kind, format, skill, status, publishedAt }`.
-- `IeltsPracticeAttempt` chỉ có một attempt `in_progress` theo `{ userId, logicalTestId, status }` bằng partial unique index.
-- Autosave IELTS dùng `revision`; update chỉ thành công khi revision request bằng revision hiện tại.
-- Các khóa ngoại thường xuyên được filter cần index: `languageId`, `learningGoalId`, `courseId`, `unitId`, `lessonId`, `userId`, `placementTestId`, `examTestId`.
-
-## Constraint IELTS Practice
-
-| `skill` | `questionType` duy nhất | Constraint nội dung MVP |
+| Nhóm | Collection | Vai trò |
 |---|---|---|
-| `listening` | `form_completion` | Đúng 10 item, có audio và accepted answers |
-| `reading` | `true_false_not_given` | Một passage, statements có đáp án enum |
-| `writing` | `academic_task_1_chart` | Một prompt/image, 20 phút, tối thiểu 150 từ |
-| `speaking` | `ai_conversation` | Một scenario cố định, opening prompt và duration |
+| Danh mục học | `languages`, `learninggoals`, `courses`, `units`, `lessons` | Cấu trúc chương trình học |
+| Knowledge graph/CMS | `concepts`, `questions` | Concept và ngân hàng câu hỏi |
+| Tiến độ học | `courseenrollments`, `learnerlessonprogresses`, `learnerlessonattempts` | Enrollment, checkpoint và lịch sử nộp bài |
+| Speaking legacy | `userlessonprogresses` | Kết quả từng phiên luyện nói; không phải progress tổng quát |
+| Placement | `placementtests`, `placementtestattempts`, `placementsessions` | Cấu hình đề, L/R attempt và chuỗi Writing/Speaking |
+| IELTS/Exam | `examtests`, `ieltspracticeattempts` | Full exam/skill practice và attempt snapshot |
+| Vận hành | `shadowing_videos` | Nội dung shadowing |
 
-`skill_practice` không dùng nhiều module hoặc nhiều question type. Reading Note Completion, Writing Task 2 và full IELTS simulation nằm ngoài MVP.
+## Constraint và index quan trọng
 
-## Vòng đời IELTS Practice
+| Collection | Constraint chính |
+|---|---|
+| `languages` | `code` unique |
+| `learninggoals` | `slug` unique |
+| `courses` | `slug` unique; `{ languageId, learningGoalId, level, orderIndex }` unique |
+| `units` | `{ courseId, orderIndex }` unique |
+| `concepts` | `{ languageId, key }` unique |
+| `users` | `email` unique; `googleId` sparse unique |
+| `courseenrollments` | `{ userId, courseId }` unique |
+| `learnerlessonprogresses` | `{ userId, lessonId }` unique |
+| `learnerlessonattempts` | `{ userId, clientAttemptId }` unique |
+| `userlessonprogresses` | `sessionId` unique |
+| `placementsessions` | `{ userId, lrAttemptId }` unique |
+| `examtests` | `{ logicalTestId, version }` sparse unique |
+| `ieltspracticeattempts` | Một `in_progress` attempt cho `{ userId, logicalTestId }` bằng partial unique index |
+| `shadowing_videos` | `videoId` unique |
 
-```mermaid
-flowchart LR
-    D["ExamTest draft"] -->|publish| A["ExamTest active"]
-    A -->|start| I["Attempt in_progress + content snapshot"]
-    I -->|autosave + revision| I
-    I -->|submit objective| G["Attempt graded"]
-    I -->|submit Writing/Speaking| S["Attempt submitted · chưa chấm"]
-    A -->|pause/archive| X["Hidden from new starts"]
-    X -.->|snapshot remains valid| I
-```
+## Lưu ý kiến trúc
 
-## Tác động cần đồng bộ vào code
+1. `Course.seriesId` vẫn tồn tại để tương thích migration nhưng trỏ tới
+   `CourseSeries`, trong khi project hiện không còn model `CourseSeries`; vì vậy
+   quan hệ này không được đưa vào ERD chính.
+2. `Lesson.taughtConcepts` và `Question.testedConcept` vẫn đang tồn tại trong
+   schema hiện hành, dù tài liệu migration trước đó từng đề xuất loại bỏ.
+3. `LearnerLessonProgress` là aggregate tiến độ chung. `UserLessonProgress` là
+   kết quả phiên Speaking cũ; hai collection không nên được hiểu là cùng một
+   loại dữ liệu.
+4. `ExamTest.logicalTestId` và `IeltsPracticeAttempt.logicalTestId` là khóa gom
+   version theo nghiệp vụ, không khai báo Mongoose `ref`, nên không vẽ như FK.
+5. Pinecone không phải MongoDB collection. `Unit.vectorId` và
+   `KnowledgeVectorMetadata.mongo_id` là liên kết cross-store mềm, không có ràng
+   buộc FK.
+6. Các snapshot và nội dung polymorphic được embed trong document để giữ đúng
+   cách MongoDB/Mongoose đang lưu dữ liệu; chúng không phải entity độc lập.
 
-ERD này là mô hình đích đã tối giản. Mongoose schema và service hiện tại cần được cập nhật riêng để:
+## Nguồn đối chiếu
 
-- chuyển liên kết `Course.seriesId` sang `Course.languageId` và `Course.learningGoalId`;
-- đổi `Course.orderInSeries` thành `Course.orderIndex` và bổ sung `slug` nếu dùng route theo slug;
-- bỏ `Lesson.taughtConcepts` và `Question.testedConcept`;
-- bỏ `User.subscription` và `User.subscription.lastTransactionId`;
-- loại bỏ model, repository, service, route và admin UI của các module đã xóa;
-- backfill `ExamTest.kind = full_exam` cho dữ liệu hiện có trước khi thêm index mới;
-- mở rộng `ExamTest` với `logicalTestId`, `kind`, `slug`, `skill`, `questionType`, `durationMinutes`, `content` và `publishedAt`;
-- tạo `IeltsPracticeAttempt` với snapshot, revision, deadline, draft và objective result cho Listening/Reading;
-- thêm mapper redaction learner-safe; không serialize trực tiếp `contentSnapshot` hoặc answer key;
-- mở rộng `AuditLog` với `targetId`, `targetVersion` và action create/update/publish/pause/archive/rollback;
-- giữ binary image/audio ở R2/Cloudinary; MongoDB chỉ lưu asset id/storage key ổn định.
-
-Chi tiết field, migration và lifecycle IELTS Practice nằm tại [docs/ielts-practice/data-model.md](ielts-practice/data-model.md).
+- Mongo models: `server/src/models/mongo/*.model.ts`
+- Vector metadata: `server/src/models/vector/*.ts`
+- Luồng học: `docs/course-learning/data-model.md`
+- IELTS Practice: `docs/ielts-practice/data-model.md`

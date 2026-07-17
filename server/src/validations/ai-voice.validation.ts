@@ -44,6 +44,16 @@ export const aiVoiceGenerateScenariosSchema = z.object({
     }),
 });
 
+export const aiVoiceAssessmentSchema = z.object({
+    body: z.object({
+        sessionId: z.string().uuid('Invalid sessionId'),
+        scenario: z.string().min(1).max(5000),
+        level: z.enum(AI_VOICE_LEVELS),
+        topic: z.enum(AI_VOICE_TOPICS),
+        turns: z.string().min(2).max(50_000),
+    }),
+});
+
 export type AiVoiceLevel = (typeof AI_VOICE_LEVELS)[number];
 export type AiVoiceTopic = (typeof AI_VOICE_TOPICS)[number];
 
@@ -54,3 +64,4 @@ export type AiVoiceSttBody = z.infer<typeof aiVoiceSttSchema>['body'];
 export type AiVoiceChatBody = z.infer<typeof aiVoiceChatSchema>['body'];
 export type AiVoiceTtsBody = z.infer<typeof aiVoiceTtsSchema>['body'];
 export type AiVoiceGenerateScenariosBody = z.infer<typeof aiVoiceGenerateScenariosSchema>['body'];
+export type AiVoiceAssessmentBody = z.infer<typeof aiVoiceAssessmentSchema>['body'];

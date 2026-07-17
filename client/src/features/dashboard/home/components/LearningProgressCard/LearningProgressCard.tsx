@@ -11,6 +11,7 @@ const MONTH_LABELS = [
 ];
 
 const formatDuration = (seconds: number): string => {
+    if (seconds <= 0) return '0 phút';
     if (seconds < 60) return '1 phút';
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.round((seconds % 3600) / 60);

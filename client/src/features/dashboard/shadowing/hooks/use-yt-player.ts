@@ -36,6 +36,7 @@ interface UseYtPlayerReturn {
     playerRef: MutableRefObject<YouTubePlayerInstance | null>;
     isReady: boolean;
     playCue: (cue: Cue) => void;
+    playFromVideoStart: (cue: Cue) => void;
     replayCue: (cue: Cue) => void;
     pausePlayer: () => void;
 }
@@ -139,6 +140,27 @@ export const useYtPlayer = (
         }, CUE_POLLING_MS);
     }, [clearCuePolling, onCueEnd]);
 
+    const playFromVideoStart = useCallback((cue: Cue): void => {
+        const player = playerRef.current;
+        if (!player) {
+            return;
+        }
+
+        const cueEndSeconds = cue.endMs / 1000;
+        clearCuePolling();
+        player.seekTo(0, true);
+        player.playVideo();
+
+        cuePollingRef.current = window.setInterval(() => {
+            const currentTime = player.getCurrentTime();
+            if (currentTime >= cueEndSeconds) {
+                clearCuePolling();
+                player.pauseVideo();
+                onCueEnd();
+            }
+        }, CUE_POLLING_MS);
+    }, [clearCuePolling, onCueEnd]);
+
     const replayCue = useCallback((cue: Cue) => {
         clearCuePolling();
         playCue(cue);
@@ -158,6 +180,7 @@ export const useYtPlayer = (
             playerRef.current = new api.Player(containerId, {
                 videoId,
                 playerVars: {
+                    autoplay: 0,
                     controls: 0,
                     disablekb: 1,
                     fs: 0,
@@ -190,20 +213,12 @@ export const useYtPlayer = (
         };
     }, [clearCuePolling, containerId, videoId]);
 
-    useEffect(() => {
-        if (!isReady || !playerRef.current) {
-            return;
-        }
-
-        playerRef.current.loadVideoById(videoId, 0);
-        clearCuePolling();
-    }, [clearCuePolling, isReady, videoId]);
-
     return useMemo(() => ({
         playerRef,
         isReady,
         playCue,
+        playFromVideoStart,
         replayCue,
         pausePlayer,
-    }), [isReady, pausePlayer, playCue, replayCue]);
+    }), [isReady, pausePlayer, playCue, playFromVideoStart, replayCue]);
 };

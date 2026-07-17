@@ -1,10 +1,15 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import styles from './placement-test-intro-modal.module.css';
 import { Button } from '@/components/core/Button';
 import oupLogo from '@/assets/images/Oxford_University_Press.svg';
 import { PATHS } from '@/config/paths';
+import { queryClient } from '@/lib/react-query';
+import { useAuthStore } from '@/stores/auth.store';
+import { useOnboardingDraftStore } from '@/stores/onboarding.store';
+import { useUpdateOnboardingProfile } from '@/features/dashboard/user';
 
 interface Props {
 	onClose: () => void;
@@ -40,6 +45,16 @@ const CHECKLIST: ChecklistItem[] = [
 
 const PlacementTestIntroModal = ({ onClose }: Props) => {
 	const navigate = useNavigate();
+	const [isStarting, setIsStarting] = useState(false);
+	const user = useAuthStore((state) => state.user);
+	const setUser = useAuthStore((state) => state.setUser);
+	const draftLanguageCode = useOnboardingDraftStore((state) => state.languageCode)?.trim() || null;
+	const draftLearningGoal = useOnboardingDraftStore((state) => state.learningGoal)?.trim() || null;
+	const profileLanguageCode = user?.nativeLanguage?.trim() || null;
+	const profileLearningGoal = user?.learningGoal?.trim() || null;
+	const resolvedLanguageCode = draftLanguageCode ?? profileLanguageCode;
+	const resolvedLearningGoal = draftLearningGoal ?? profileLearningGoal;
+	const updateOnboardingProfileMutation = useUpdateOnboardingProfile();
 
 	const handleKeyDown = useCallback(
 		(e: KeyboardEvent) => {
@@ -59,10 +74,52 @@ const PlacementTestIntroModal = ({ onClose }: Props) => {
 
 	const handleBackdropClick = useCallback(() => onClose(), [onClose]);
 
-	const handleStart = useCallback(() => {
-		onClose();
-		navigate(PATHS.DASHBOARD.PLACEMENT_TEST.LISTENING);
-	}, [onClose, navigate]);
+	const handleStart = useCallback(async () => {
+		if (isStarting) {
+			return;
+		}
+
+		if (!resolvedLanguageCode || !resolvedLearningGoal) {
+			toast.error('Vui lòng chọn ngôn ngữ và mục tiêu học tập trước khi làm bài kiểm tra.');
+			onClose();
+			navigate(!resolvedLanguageCode ? PATHS.DASHBOARD.LANGUAGE_SELECTION : PATHS.DASHBOARD.GOAL_SELECTION);
+			return;
+		}
+
+		try {
+			setIsStarting(true);
+			const updatedUser = await updateOnboardingProfileMutation.mutateAsync({
+				nativeLanguage: resolvedLanguageCode,
+				learningGoal: resolvedLearningGoal,
+			});
+			const mergedUser = {
+				...updatedUser,
+				nativeLanguage: updatedUser.nativeLanguage?.trim() || resolvedLanguageCode,
+				learningGoal: updatedUser.learningGoal?.trim() || resolvedLearningGoal,
+				learningLanguageId: updatedUser.learningLanguageId ?? user?.learningLanguageId,
+				learningGoalId: updatedUser.learningGoalId ?? user?.learningGoalId,
+			};
+
+			setUser(mergedUser);
+			queryClient.setQueryData(['auth', 'me'], mergedUser);
+			onClose();
+			navigate(PATHS.DASHBOARD.PLACEMENT_TEST.LISTENING);
+		} catch {
+			toast.error('Không thể lưu lựa chọn học tập. Vui lòng thử lại.');
+		} finally {
+			setIsStarting(false);
+		}
+	}, [
+		isStarting,
+		navigate,
+		onClose,
+		resolvedLanguageCode,
+		resolvedLearningGoal,
+		setUser,
+		updateOnboardingProfileMutation,
+		user?.learningGoalId,
+		user?.learningLanguageId,
+	]);
 
 	return createPortal(
 		<div
@@ -148,9 +205,10 @@ const PlacementTestIntroModal = ({ onClose }: Props) => {
 						type="button"
 						variant="primary"
 						padding="B"
+						disabled={isStarting}
 						onClick={handleStart}
 					>
-						Tôi đã sẵn sàng
+						{isStarting ? 'Đang chuẩn bị...' : 'Tôi đã sẵn sàng'}
 					</Button>
 				</div>
 			</div>

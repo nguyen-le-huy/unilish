@@ -16,11 +16,15 @@ const RecommendCourse = () => {
     const navigate = useNavigate();
     const [joiningCourseId, setJoiningCourseId] = useState<string | null>(null);
     const currentLevel = useAuthStore((state) => state.user?.currentLevel);
+    const placementTestScore = useAuthStore((state) => state.user?.placementTestScore);
+    const weakSkills = useAuthStore((state) => state.user?.weakSkills);
     const { data, isLoading, isError } = useRecommendationsQuery();
     const { mutate: enrollCourse, isPending: isEnrolling } = useEnrollCourse();
 
     const recommendations = data ?? [];
-    const shouldShowOnboardingMessage = !currentLevel || currentLevel === 'A0';
+    const hasPlacementResult = typeof placementTestScore === 'number' && placementTestScore > 0
+        || Boolean(weakSkills?.length);
+    const shouldShowOnboardingMessage = !currentLevel || (currentLevel === 'A0' && !hasPlacementResult);
     const shouldShowEmpty = !isLoading && !isError && recommendations.length === 0;
 
     const handleJoinCourse = useCallback((courseId: string, slug: string) => {

@@ -11,14 +11,33 @@ export const hasSelectedLearningGoal = (user: User | null): boolean => {
     return Boolean(user?.learningGoalId || user?.learningGoal);
 };
 
+export const hasCompletedPlacementTest = (user: User | null): boolean => {
+    if (!user) {
+        return false;
+    }
+
+    if (user.placementTestCompletedAt) {
+        return true;
+    }
+
+    if (typeof user.placementTestScore === 'number' && user.placementTestScore > 0) {
+        return true;
+    }
+
+    if (Array.isArray(user.weakSkills) && user.weakSkills.length > 0) {
+        return true;
+    }
+
+    return Boolean(user.currentLevel && user.currentLevel !== 'A0');
+};
+
 export const hasSelectedLevel = (user: User | null): boolean => {
     if (!user?.currentLevel) {
         return false;
     }
 
-    // If user has completed placement test (has score), consider level as selected
-    // even if result is A0
-    if (user.placementTestScore && user.placementTestScore > 0) {
+    // A submitted placement test may legitimately place the learner at A0.
+    if (hasCompletedPlacementTest(user)) {
         return true;
     }
 
@@ -27,24 +46,11 @@ export const hasSelectedLevel = (user: User | null): boolean => {
 };
 
 export const getRequiredOnboardingPath = (user: User | null): string | null => {
-    // If user has completed placement test (has score OR has level other than A0)
-    // consider them fully onboarded. They can set language/goal later from settings.
-    if (user?.placementTestScore && user.placementTestScore > 0) {
-        return null;
-    }
-
-    // If user has a level set (not default A0), they've completed placement test
-    // even if placementTestScore wasn't properly saved
-    if (user?.currentLevel && user.currentLevel !== 'A0') {
-        return null;
-    }
-
     const hasLevel = hasSelectedLevel(user);
     const hasGoal = hasSelectedLearningGoal(user);
     const hasLanguage = hasSelectedLanguage(user);
 
-    // If user already has a level and a learning goal they are fully onboarded
-    if (hasLevel && hasGoal) {
+    if (hasLevel && hasGoal && hasLanguage) {
         return null;
     }
 

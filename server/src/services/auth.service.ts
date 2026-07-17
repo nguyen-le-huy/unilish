@@ -30,6 +30,7 @@ interface AuthenticatedUserResponse {
     currentLevel: IUser['currentLevel'];
     learningGoalId: IUser['learningGoalId'];
     placementTestScore: number;
+    placementTestCompletedAt: Date | null | undefined;
     phoneNumber: string | undefined;
     dateOfBirth: Date | undefined;
 }
@@ -169,6 +170,7 @@ export class AuthService {
                     currentLevel: existingUser.currentLevel,
                     learningGoalId: existingUser.learningGoalId,
                     placementTestScore: existingUser.placementTestScore,
+                    placementTestCompletedAt: existingUser.placementTestCompletedAt,
                     phoneNumber: existingUser.phoneNumber,
                     dateOfBirth: existingUser.dateOfBirth,
                 },
@@ -243,6 +245,7 @@ export class AuthService {
                 currentLevel: user.currentLevel,
                 learningGoalId: user.learningGoalId,
                 placementTestScore: user.placementTestScore,
+                placementTestCompletedAt: user.placementTestCompletedAt,
                 phoneNumber: user.phoneNumber,
                 dateOfBirth: user.dateOfBirth,
             },
@@ -337,6 +340,7 @@ export class AuthService {
                 currentLevel: user.currentLevel,
                 learningGoalId: user.learningGoalId,
                 placementTestScore: user.placementTestScore,
+                placementTestCompletedAt: user.placementTestCompletedAt,
                 phoneNumber: user.phoneNumber,
                 dateOfBirth: user.dateOfBirth,
             },

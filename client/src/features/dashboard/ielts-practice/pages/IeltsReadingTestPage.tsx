@@ -76,6 +76,7 @@ const IeltsReadingTestPage = () => {
     conflictData,
     clearConflict,
     submitAttempt,
+    exitAttempt,
     isSubmitting,
     submitError,
     answers,
@@ -158,6 +159,7 @@ const IeltsReadingTestPage = () => {
         isSubmitting={isSubmitting}
         submitError={submitError}
         onSubmit={submitAttempt}
+        onExit={exitAttempt}
         aside={aside}
       >
         <ReadingTrueFalseNotGiven

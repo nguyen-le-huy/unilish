@@ -6,6 +6,7 @@ import { logger } from '../utils/logger.js';
 import { aiVoiceService } from '../services/ai-voice.service.js';
 import type {
     AiVoiceChatBody,
+    AiVoiceAssessmentBody,
     AiVoiceGenerateScenariosBody,
     AiVoiceSttBody,
     AiVoiceTtsBody,
@@ -98,6 +99,31 @@ export const aiVoiceController = {
         } finally {
             res.end();
         }
+    }),
+
+    assessment: catchAsync(async (req: Request<{}, {}, AiVoiceAssessmentBody>, res: Response) => {
+        const files = Array.isArray(req.files) ? req.files : [];
+        const { sessionId, scenario, level, topic, turns: turnsJson } = req.body;
+
+        let scenarioData: unknown;
+        let turns: unknown;
+        try {
+            scenarioData = JSON.parse(scenario);
+            turns = JSON.parse(turnsJson);
+        } catch {
+            throw new AppError('Assessment payload is invalid.', HttpStatus.BAD_REQUEST);
+        }
+
+        const result = await aiVoiceService.assessConversation({
+            sessionId,
+            scenario: scenarioData,
+            level,
+            topic,
+            turns,
+            audioFiles: files,
+        });
+
+        res.status(HttpStatus.OK).json(result);
     }),
 
     tts: catchAsync(async (req: Request<{}, {}, AiVoiceTtsBody>, res: Response) => {

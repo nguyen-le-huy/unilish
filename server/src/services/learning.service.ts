@@ -19,6 +19,9 @@ import mongoose from 'mongoose';
 import { User } from '../models/mongo/user.model.js';
 import { LearnerLessonAttempt, type ILearnerLessonAttempt } from '../models/mongo/learner-lesson-attempt.model.js';
 import { LearnerLessonAttemptMongoRepository } from '../repositories/mongo/learner-lesson-attempt.mongo.repository.js';
+import { IeltsPracticeAttempt } from '../models/mongo/ielts-practice-attempt.model.js';
+import { PlacementTestAttempt } from '../models/mongo/placement-test-attempt.model.js';
+import { PlacementSession } from '../models/mongo/placement-session.model.js';
 import type { LessonSubmission, ObjectiveAnswer } from '../validations/learning.validation.js';
 import { resolveEffectivePracticeConfig } from '../utils/lesson-practice-config.js';
 
@@ -218,6 +221,20 @@ export class LearningService {
         };
         activityDays: Array<{ date: string; minutes: number }>;
     }> {
+        const completedCourses = await CourseEnrollment.countDocuments({
+            userId: new mongoose.Types.ObjectId(userId),
+            status: EEnrollmentStatus.COMPLETED,
+        }).exec();
+
+        const activeCourses = await CourseEnrollment.countDocuments({
+            userId: new mongoose.Types.ObjectId(userId),
+            status: EEnrollmentStatus.ACTIVE,
+        }).exec();
+
+        const monthlyActivity = _period === 'month' && _month
+            ? await this.getMonthlyActivitySummary(userId, _month)
+            : { days: [] as Array<{ date: string; minutes: number }>, totalSeconds: 0 };
+
         // 1. Find active enrollment
         let enrollment = await this.enrollmentRepo.findActiveByUser(userId);
 
@@ -235,14 +252,14 @@ export class LearningService {
 
         if (!enrollment) {
             // AC-04: No active enrollment — return null activeCourse with zero summary
-            const activityDays = _period === 'month' && _month
-                ? await this.getMonthlyActivity(userId, _month)
-                : [];
-
             return {
                 activeCourse: null,
-                summary: { timeSpentSeconds: 0, completedCourses: 0, activeCourses: 0 },
-                activityDays,
+                summary: {
+                    timeSpentSeconds: monthlyActivity.totalSeconds,
+                    completedCourses,
+                    activeCourses,
+                },
+                activityDays: monthlyActivity.days,
             };
         }
 
@@ -254,14 +271,14 @@ export class LearningService {
 
         if (!course) {
             // Course was deleted — enrollment is orphaned
-            const activityDays = _period === 'month' && _month
-                ? await this.getMonthlyActivity(userId, _month)
-                : [];
-
             return {
                 activeCourse: null,
-                summary: { timeSpentSeconds: 0, completedCourses: 0, activeCourses: 0 },
-                activityDays,
+                summary: {
+                    timeSpentSeconds: monthlyActivity.totalSeconds,
+                    completedCourses,
+                    activeCourses,
+                },
+                activityDays: monthlyActivity.days,
             };
         }
 
@@ -315,22 +332,6 @@ export class LearningService {
             userId,
         );
 
-        // 8. Summary statistics (honest, before Phase 6 analytics)
-        const completedCourses = await CourseEnrollment.countDocuments({
-            userId: new mongoose.Types.ObjectId(userId),
-            status: EEnrollmentStatus.COMPLETED,
-        }).exec();
-
-        const activeCourses = await CourseEnrollment.countDocuments({
-            userId: new mongoose.Types.ObjectId(userId),
-            status: EEnrollmentStatus.ACTIVE,
-        }).exec();
-
-        // 9. Compute activity days for the requested month (Phase 6: BE-14)
-        const activityDays = _period === 'month' && _month
-            ? await this.getMonthlyActivity(userId, _month)
-            : [];
-
         return {
             activeCourse: {
                 id: String(enrollment.courseId),
@@ -347,11 +348,13 @@ export class LearningService {
                 status: courseStatus,
             },
             summary: {
-                timeSpentSeconds: totalTimeSpent,
+                timeSpentSeconds: _period === 'month' && _month
+                    ? monthlyActivity.totalSeconds
+                    : totalTimeSpent,
                 completedCourses,
                 activeCourses,
             },
-            activityDays,
+            activityDays: monthlyActivity.days,
         };
     }
 
@@ -367,10 +370,7 @@ export class LearningService {
      *
      * Implements AC-18 (Monthly Activity).
      */
-    private async getMonthlyActivity(
-        userId: string,
-        month: string, // "YYYY-MM" format
-    ): Promise<Array<{ date: string; minutes: number }>> {
+    private getMonthRangeUtc(month: string): { start: Date; end: Date } {
         // Parse month boundaries in Asia/Ho_Chi_Minh (UTC+7)
         const [yearStr, monthStr] = month.split('-');
         const year = parseInt(yearStr!, 10);
@@ -384,71 +384,136 @@ export class LearningService {
         const endICT = new Date(Date.UTC(year, mon, 1, 0, 0, 0, 0));
         endICT.setHours(endICT.getHours() - 7); // Convert ICT → UTC
 
-        // Query all progress records with lastAccessedAt in the month
+        return { start: startICT, end: endICT };
+    }
+
+    private getIctDateKey(date: Date): string {
+        const ICT_OFFSET_MS = 7 * 60 * 60 * 1000;
+        return new Date(date.getTime() + ICT_OFFSET_MS).toISOString().slice(0, 10);
+    }
+
+    private addActivitySeconds(dayMap: Map<string, number>, date: Date | null | undefined, seconds: number): void {
+        if (!date || !Number.isFinite(seconds) || seconds <= 0) return;
+        const key = this.getIctDateKey(date);
+        dayMap.set(key, (dayMap.get(key) ?? 0) + Math.round(seconds));
+    }
+
+    private clampActivitySeconds(seconds: number, maxSeconds = 86_400): number {
+        if (!Number.isFinite(seconds) || seconds <= 0) return 0;
+        return Math.min(Math.round(seconds), maxSeconds);
+    }
+
+    private async getMonthlyActivitySummary(
+        userId: string,
+        month: string, // "YYYY-MM" format
+    ): Promise<{ days: Array<{ date: string; minutes: number }>; totalSeconds: number }> {
+        const { start, end } = this.getMonthRangeUtc(month);
+        const userObjectId = new mongoose.Types.ObjectId(userId);
+        const daySeconds = new Map<string, number>();
+
+        // 1. Immutable lesson attempts: most accurate source for submitted lesson time.
+        const lessonAttempts = await LearnerLessonAttempt.find({
+            userId: userObjectId,
+            submittedAt: { $gte: start, $lt: end },
+        })
+            .select('lessonId submittedAt durationSeconds')
+            .lean()
+            .exec() as Array<{ lessonId: mongoose.Types.ObjectId; submittedAt: Date; durationSeconds: number }>;
+
+        const attemptedLessonIds = new Set<string>();
+        for (const attempt of lessonAttempts) {
+            attemptedLessonIds.add(String(attempt.lessonId));
+            this.addActivitySeconds(
+                daySeconds,
+                attempt.submittedAt,
+                this.clampActivitySeconds(attempt.durationSeconds),
+            );
+        }
+
+        // 2. Progress/autosave fallback for lessons studied but not submitted yet.
         const progressRecords = await LearnerLessonProgress.find({
             userId: new mongoose.Types.ObjectId(userId),
             lastAccessedAt: {
-                $gte: startICT,
-                $lt: endICT,
+                $gte: start,
+                $lt: end,
             },
         })
-            .select('lastAccessedAt timeSpentSeconds')
+            .select('lessonId lastAccessedAt timeSpentSeconds')
             .lean()
-            .exec() as Array<{ lastAccessedAt: Date; timeSpentSeconds: number }>;
-
-        if (progressRecords.length === 0) {
-            return [];
-        }
-
-        // Group by date in Asia/Ho_Chi_Minh timezone
-        const dayMap = new Map<string, { count: number; timeSum: number }>();
-
-        // Add 7 hours (ICT offset) and extract date string YYYY-MM-DD
-        const ICT_OFFSET_MS = 7 * 60 * 60 * 1000;
+            .exec() as Array<{ lessonId: mongoose.Types.ObjectId; lastAccessedAt: Date; timeSpentSeconds: number }>;
 
         for (const record of progressRecords) {
-            const localDate = new Date(
-                record.lastAccessedAt.getTime() + ICT_OFFSET_MS,
+            if (attemptedLessonIds.has(String(record.lessonId))) continue;
+            this.addActivitySeconds(
+                daySeconds,
+                record.lastAccessedAt,
+                // Progress time is cumulative per lesson. Use it as a fallback
+                // and cap it to avoid inflating a single unfinished lesson day.
+                this.clampActivitySeconds(record.timeSpentSeconds, 7_200),
             );
-            const dateStr = localDate.toISOString().slice(0, 10); // "2026-07-15"
-
-            const existing = dayMap.get(dateStr);
-            if (existing) {
-                existing.count += 1;
-                // timeSpentSeconds is cumulative per lesson, so we can't just sum.
-                // Instead, count this as an activity day.
-            } else {
-                dayMap.set(dateStr, { count: 1, timeSum: 0 });
-            }
         }
 
-        // Calculate total monthly time by computing time delta from enrollment time
-        // Since timeSpentSeconds is cumulative, we use the enrollment-level total.
-        const enrollments = await CourseEnrollment.find({
-            userId: new mongoose.Types.ObjectId(userId),
+        // 3. IELTS Practice attempts: Listening/Reading/Writing practice time.
+        const ieltsAttempts = await IeltsPracticeAttempt.find({
+            userId: userObjectId,
+            submittedAt: { $gte: start, $lt: end },
         })
-            .select('timeSpentSeconds')
+            .select('startedAt submittedAt')
             .lean()
-            .exec() as Array<{ timeSpentSeconds: number }>;
+            .exec() as Array<{ startedAt: Date; submittedAt: Date }>;
 
-        const totalMonthlySeconds = enrollments.reduce(
-            (sum, e) => sum + (e.timeSpentSeconds || 0),
-            0,
-        );
+        for (const attempt of ieltsAttempts) {
+            const durationSeconds = (attempt.submittedAt.getTime() - attempt.startedAt.getTime()) / 1000;
+            this.addActivitySeconds(
+                daySeconds,
+                attempt.submittedAt,
+                this.clampActivitySeconds(durationSeconds, 14_400),
+            );
+        }
 
-        const activeDayCount = dayMap.size;
-        const avgMinutesPerDay =
-            activeDayCount > 0
-                ? Math.round(totalMonthlySeconds / 60 / activeDayCount)
-                : 0;
+        // 4. Placement LR attempts.
+        const placementAttempts = await PlacementTestAttempt.find({
+            userId: userObjectId,
+            submittedAt: { $gte: start, $lt: end },
+        })
+            .select('submittedAt durationSeconds')
+            .lean()
+            .exec() as Array<{ submittedAt: Date; durationSeconds?: number | null }>;
 
-        // Build result sorted by date
-        const sortedDates = Array.from(dayMap.keys()).sort();
+        for (const attempt of placementAttempts) {
+            this.addActivitySeconds(
+                daySeconds,
+                attempt.submittedAt,
+                this.clampActivitySeconds(attempt.durationSeconds ?? 0, 14_400),
+            );
+        }
 
-        return sortedDates.map((dateStr) => ({
-            date: dateStr,
-            minutes: avgMinutesPerDay,
-        }));
+        // 5. Placement writing/speaking session time where duration is stored.
+        const placementSessions = await PlacementSession.find({
+            userId: userObjectId,
+            updatedAt: { $gte: start, $lt: end },
+        })
+            .select('updatedAt writing.durationSeconds')
+            .lean()
+            .exec() as Array<{ updatedAt: Date; writing?: { durationSeconds?: number | null } }>;
+
+        for (const session of placementSessions) {
+            this.addActivitySeconds(
+                daySeconds,
+                session.updatedAt,
+                this.clampActivitySeconds(session.writing?.durationSeconds ?? 0, 7_200),
+            );
+        }
+
+        const totalSeconds = Array.from(daySeconds.values()).reduce((sum, seconds) => sum + seconds, 0);
+        const days = Array.from(daySeconds.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, seconds]) => ({
+                date,
+                minutes: Math.max(1, Math.round(seconds / 60)),
+            }));
+
+        return { days, totalSeconds };
     }
 
     /**

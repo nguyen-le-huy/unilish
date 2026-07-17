@@ -21,6 +21,7 @@ const IeltsSpeakingTestPage = () => {
     error,
     saveState,
     submitAttempt,
+    exitAttempt,
     isSubmitting,
     submitError,
     answeredCount,
@@ -64,6 +65,7 @@ const IeltsSpeakingTestPage = () => {
       isSubmitting={isSubmitting}
       submitError={submitError}
       onSubmit={submitAttempt}
+      onExit={exitAttempt}
     >
       <SpeakingAiConversation
         detail={detail}

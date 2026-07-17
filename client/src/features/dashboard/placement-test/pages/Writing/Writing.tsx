@@ -32,11 +32,32 @@ const getSubmitButtonLabel = (isSubmitting: boolean, submitState: 'idle' | 'grad
     return 'Nộp bài';
 };
 
+interface WritingDraft {
+    essay: string;
+    elapsedSeconds: number;
+}
+
+const getWritingDraftKey = (sessionId: string): string => `unilish-placement-writing-draft:${sessionId}`;
+
+const readWritingDraft = (sessionId: string): WritingDraft | null => {
+    try {
+        const raw = window.localStorage.getItem(getWritingDraftKey(sessionId));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as Partial<WritingDraft>;
+        if (typeof parsed.essay !== 'string' || typeof parsed.elapsedSeconds !== 'number') return null;
+        return { essay: parsed.essay, elapsedSeconds: Math.max(0, parsed.elapsedSeconds) };
+    } catch {
+        return null;
+    }
+};
+
 const Writing = () => {
     const navigate = useNavigate();
     const [isSubmittedCardOpen, setIsSubmittedCardOpen] = useState(false);
     const [essay, setEssay] = useState('');
+    const [initialElapsedSeconds, setInitialElapsedSeconds] = useState(0);
     const hasAutoSubmittedRef = useRef(false);
+    const hydratedDraftSessionRef = useRef<string | null>(null);
 
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const sessionId = usePlacementTestStore((state) => state.sessionId);
@@ -63,6 +84,19 @@ const Writing = () => {
     const promptText = writingSession?.prompt?.trim() || 'Chưa có đề Writing trong bài kiểm tra hiện tại.';
     const timeLimitMinutes = Math.max(1, writingSession?.timeLimitMinutes ?? cachedEssayModule?.timeLimitMinutes ?? 30);
 
+    useEffect(() => {
+        if (!sessionId || !writingSession?.writingAttemptId || hydratedDraftSessionRef.current === sessionId) {
+            return;
+        }
+
+        hydratedDraftSessionRef.current = sessionId;
+        const draft = readWritingDraft(sessionId);
+        if (draft) {
+            setEssay(draft.essay);
+            setInitialElapsedSeconds(draft.elapsedSeconds);
+        }
+    }, [sessionId, writingSession?.writingAttemptId]);
+
     const wordCount = essay
         .trim()
         .split(/\s+/)
@@ -83,6 +117,7 @@ const Writing = () => {
                 wordCount,
                 durationSeconds: elapsedSeconds,
             });
+            window.localStorage.removeItem(getWritingDraftKey(sessionId));
             setIsSubmittedCardOpen(true);
         } catch {
             toast.error('Không thể nộp phần Writing. Vui lòng thử lại.');
@@ -91,6 +126,7 @@ const Writing = () => {
 
     const { remainingSeconds } = useWritingTimer({
         timeLimitMinutes,
+        initialElapsedSeconds,
         isActive: Boolean(writingSession?.writingAttemptId) && !isSuccess,
         onExpire: () => {
             if (hasAutoSubmittedRef.current) {
@@ -101,6 +137,25 @@ const Writing = () => {
             void submitWriting(0);
         },
     });
+
+    useEffect(() => {
+        if (!sessionId || !writingSession?.writingAttemptId || isSuccess) {
+            return;
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            try {
+                window.localStorage.setItem(getWritingDraftKey(sessionId), JSON.stringify({
+                    essay,
+                    elapsedSeconds: Math.max(0, timeLimitMinutes * 60 - remainingSeconds),
+                } satisfies WritingDraft));
+            } catch {
+                // Ignore unavailable local storage.
+            }
+        }, 300);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [essay, isSuccess, remainingSeconds, sessionId, timeLimitMinutes, writingSession?.writingAttemptId]);
 
     const submitState: 'idle' | 'grading' | 'done' = isSubmitting ? 'grading' : isSuccess ? 'done' : 'idle';
     const canManualSubmit = !isSubmitting && !isSuccess;

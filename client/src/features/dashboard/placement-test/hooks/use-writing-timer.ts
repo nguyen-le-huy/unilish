@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 interface UseWritingTimerOptions {
     timeLimitMinutes: number;
+    initialElapsedSeconds?: number;
     isActive: boolean;
     onExpire: () => void;
 }
@@ -13,10 +14,11 @@ interface UseWritingTimerResult {
 
 export const useWritingTimer = ({
     timeLimitMinutes,
+    initialElapsedSeconds = 0,
     isActive,
     onExpire,
 }: UseWritingTimerOptions): UseWritingTimerResult => {
-    const initialSeconds = Math.max(1, Math.floor(timeLimitMinutes * 60));
+    const initialSeconds = Math.max(0, Math.floor(timeLimitMinutes * 60) - Math.max(0, initialElapsedSeconds));
     const remainingSecondsRef = useRef<number>(initialSeconds);
     const isExpiredRef = useRef<boolean>(false);
     const onExpireRef = useRef(onExpire);
@@ -25,11 +27,11 @@ export const useWritingTimer = ({
     onExpireRef.current = onExpire;
 
     useEffect(() => {
-        const nextInitialSeconds = Math.max(1, Math.floor(timeLimitMinutes * 60));
+        const nextInitialSeconds = Math.max(0, Math.floor(timeLimitMinutes * 60) - Math.max(0, initialElapsedSeconds));
         remainingSecondsRef.current = nextInitialSeconds;
         isExpiredRef.current = false;
         setRemainingSeconds(nextInitialSeconds);
-    }, [timeLimitMinutes]);
+    }, [timeLimitMinutes, initialElapsedSeconds]);
 
     useEffect(() => {
         if (!isActive) {

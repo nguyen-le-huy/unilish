@@ -58,6 +58,7 @@ const IeltsWritingTestPage = () => {
     conflictData,
     clearConflict,
     submitAttempt,
+    exitAttempt,
     isSubmitting,
     submitError,
     essay,
@@ -114,6 +115,7 @@ const IeltsWritingTestPage = () => {
         isSubmitting={isSubmitting}
         submitError={submitError}
         onSubmit={submitAttempt}
+        onExit={exitAttempt}
         aside={
           <WritingProgress
             wordCount={wordCount ?? 0}
