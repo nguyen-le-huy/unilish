@@ -1,0 +1,86 @@
+@startuml
+title Sequence Diagram - Luyện kỹ năng giao tiếp với AI
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam dpi 220
+skinparam responseMessageBelowArrow true
+skinparam sequence {
+    ArrowColor #C73535
+    LifeLineBorderColor #BDBDBD
+    LifeLineBackgroundColor white
+    ParticipantBorderColor #8A8A8A
+    ParticipantBackgroundColor #EEEEFF
+    ActorBorderColor #333333
+    ActorBackgroundColor white
+    BoxBorderColor #333333
+    BoxBackgroundColor white
+    GroupBorderColor #333333
+    GroupBackgroundColor white
+    DividerBorderColor #555555
+    DividerBackgroundColor white
+    DividerFontColor #111111
+}
+
+actor "Learner" as Learner
+boundary "AIPracticePage" as AIPage <<view>>
+control "aiPracticeService" as AIService <<ctrl>>
+control "AI Practice API\n(/api/ai-practice)" as AIAPI <<ctrl>>
+database "Practice DB" as PracticeDB <<entity>>
+control "Speech Service" as Speech <<external>>
+control "AI Provider" as AIProvider <<external>>
+boundary "Feedback UI" as FeedbackUI <<view>>
+
+Learner -> AIPage: Mở luyện giao tiếp AI
+AIPage -> AIService: getTopics()
+AIService -> AIAPI: GET /ai-practice/topics
+AIAPI -> PracticeDB: Lấy chủ đề luyện tập
+PracticeDB --> AIAPI: topics[]
+AIAPI --> AIService: topics[]
+AIService --> AIPage: Hiển thị danh sách chủ đề
+
+Learner -> AIPage: Chọn chủ đề giao tiếp
+AIPage -> AIService: startSession(topicId)
+AIService -> AIAPI: POST /ai-practice/sessions
+AIAPI -> PracticeDB: Tạo phiên luyện tập
+PracticeDB --> AIAPI: sessionId
+AIAPI -> AIProvider: Tạo lời mở đầu theo chủ đề
+AIProvider --> AIAPI: openingPrompt
+AIAPI --> AIService: sessionId, openingPrompt
+AIService --> AIPage: Hiển thị hội thoại ban đầu
+
+loop Trong phiên hội thoại
+    alt Learner nhập bằng văn bản
+        Learner -> AIPage: Nhập câu trả lời
+        AIPage -> AIService: sendMessage(sessionId, text)
+    else Learner nói bằng giọng nói
+        Learner -> AIPage: Ghi âm câu trả lời
+        AIPage -> Speech: Chuyển giọng nói thành văn bản
+        Speech --> AIPage: transcript
+        AIPage -> AIService: sendMessage(sessionId, transcript)
+    end
+
+    AIService -> AIAPI: POST /ai-practice/sessions/:id/messages
+    AIAPI -> PracticeDB: Lưu câu trả lời Learner
+    PracticeDB --> AIAPI: saved
+    AIAPI -> AIProvider: Gửi ngữ cảnh hội thoại\nvà câu trả lời Learner
+    AIProvider --> AIAPI: aiReply, correction,\nsuggestion
+    AIAPI -> PracticeDB: Lưu phản hồi AI\nvà nhận xét
+    PracticeDB --> AIAPI: saved
+    AIAPI --> AIService: aiReply, correction,\nsuggestion
+    AIService --> AIPage: Hiển thị phản hồi AI
+end
+
+Learner -> AIPage: Kết thúc phiên luyện tập
+AIPage -> AIService: finishSession(sessionId)
+AIService -> AIAPI: POST /ai-practice/sessions/:id/finish
+AIAPI -> PracticeDB: Tổng hợp lịch sử hội thoại
+PracticeDB --> AIAPI: messages[]
+AIAPI -> AIProvider: Tạo đánh giá tổng kết
+AIProvider --> AIAPI: summary, strengths,\nweaknesses, nextSuggestions
+AIAPI -> PracticeDB: Lưu kết quả luyện tập
+PracticeDB --> AIAPI: resultSaved
+AIAPI --> AIService: practiceResult
+AIService --> FeedbackUI: Hiển thị kết quả và gợi ý cải thiện
+
+@enduml

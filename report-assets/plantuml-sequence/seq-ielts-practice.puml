@@ -1,0 +1,94 @@
+@startuml
+title Sequence Diagram - Luyện đề IELTS
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam dpi 220
+skinparam responseMessageBelowArrow true
+skinparam sequence {
+    ArrowColor #C73535
+    LifeLineBorderColor #BDBDBD
+    LifeLineBackgroundColor white
+    ParticipantBorderColor #8A8A8A
+    ParticipantBackgroundColor #EEEEFF
+    ActorBorderColor #333333
+    ActorBackgroundColor white
+    BoxBorderColor #333333
+    BoxBackgroundColor white
+    GroupBorderColor #333333
+    GroupBackgroundColor white
+    DividerBorderColor #555555
+    DividerBackgroundColor white
+    DividerFontColor #111111
+}
+
+actor "Learner" as Learner
+boundary "IELTSPracticePage" as IELTSPage <<view>>
+control "ieltsService" as IELTSService <<ctrl>>
+control "IELTS API\n(/api/ielts)" as IELTSAPI <<ctrl>>
+database "IELTS Test DB" as TestDB <<entity>>
+database "Attempt DB" as AttemptDB <<entity>>
+control "Scoring Service" as Scoring <<ctrl>>
+control "Media Service" as Media <<external>>
+boundary "ResultPage" as ResultPage <<view>>
+
+Learner -> IELTSPage: Mở luyện đề IELTS
+IELTSPage -> IELTSService: getPracticeTests()
+IELTSService -> IELTSAPI: GET /ielts/tests
+IELTSAPI -> TestDB: Lấy danh sách đề đã xuất bản
+TestDB --> IELTSAPI: tests[]
+IELTSAPI --> IELTSService: tests[]
+IELTSService --> IELTSPage: Hiển thị danh sách đề
+
+Learner -> IELTSPage: Chọn đề và kỹ năng
+IELTSPage -> IELTSService: startAttempt(testId, skill)
+IELTSService -> IELTSAPI: POST /ielts/attempts
+IELTSAPI -> TestDB: Lấy nội dung đề,\ncâu hỏi, audio/media
+TestDB --> IELTSAPI: testContent
+IELTSAPI -> AttemptDB: Tạo attempt
+AttemptDB --> IELTSAPI: attemptId
+IELTSAPI --> IELTSService: attemptId, testContent
+IELTSService --> IELTSPage: Hiển thị đề luyện
+
+alt Kỹ năng Listening có audio
+    IELTSPage -> Media: Tải audio bài nghe
+    Media --> IELTSPage: audioUrl / audioStream
+else Kỹ năng Reading/Writing/Speaking
+    IELTSPage -> IELTSPage: Hiển thị nội dung theo kỹ năng
+end
+
+loop Trong quá trình làm bài
+    Learner -> IELTSPage: Trả lời câu hỏi
+    IELTSPage -> IELTSService: saveAnswer(attemptId, answer)
+    IELTSService -> IELTSAPI: PATCH /ielts/attempts/:id/answers
+    IELTSAPI -> AttemptDB: Lưu tạm câu trả lời
+    AttemptDB --> IELTSAPI: saved
+    IELTSAPI --> IELTSService: answerSaved
+    IELTSService --> IELTSPage: Cập nhật trạng thái câu hỏi
+end
+
+Learner -> IELTSPage: Nộp bài
+IELTSPage -> IELTSService: submitAttempt(attemptId)
+IELTSService -> IELTSAPI: POST /ielts/attempts/:id/submit
+IELTSAPI -> AttemptDB: Lấy câu trả lời
+AttemptDB --> IELTSAPI: answers[]
+IELTSAPI -> TestDB: Lấy đáp án và cấu trúc điểm
+TestDB --> IELTSAPI: answerKeys, scoringRules
+
+alt Listening / Reading
+    IELTSAPI -> Scoring: Chấm điểm tự động
+    Scoring --> IELTSAPI: bandScore, correctCount
+    IELTSAPI -> AttemptDB: Lưu điểm và trạng thái hoàn thành
+    AttemptDB --> IELTSAPI: resultSaved
+    IELTSAPI --> IELTSService: result
+    IELTSService --> IELTSPage: Hiển thị kết quả
+    IELTSPage -> ResultPage: Chuyển đến trang kết quả
+else Writing / Speaking
+    IELTSAPI -> AttemptDB: Lưu bài làm / bản ghi âm\nchờ đánh giá
+    AttemptDB --> IELTSAPI: submissionSaved
+    IELTSAPI --> IELTSService: submissionStatus
+    IELTSService --> IELTSPage: Hiển thị trạng thái đã nộp
+    IELTSPage -> ResultPage: Chuyển đến trang kết quả tạm thời
+end
+
+@enduml

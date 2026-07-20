@@ -1,0 +1,90 @@
+@startuml
+title Sequence Diagram - Admin quản lý ngôn ngữ
+
+skinparam backgroundColor white
+skinparam dpi 190
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequence {
+  ArrowColor #C73535
+  LifeLineBorderColor #B8B8B8
+  LifeLineBackgroundColor white
+  ParticipantBorderColor #7D7D7D
+  ParticipantBackgroundColor #F7F7FF
+  ActorBorderColor #7D7D7D
+  ActorBackgroundColor #F7F7FF
+  BoxBorderColor #303030
+  BoxBackgroundColor white
+  GroupBorderColor #303030
+  GroupBackgroundColor white
+  DividerBorderColor #303030
+  DividerBackgroundColor white
+}
+
+actor "Admin" as Admin
+boundary "LanguagePage" as LanguagePage <<view>>
+boundary "LanguageForm" as LanguageForm <<view>>
+control "languageService" as LanguageService <<ctrl>>
+control "Language API\n/api/languages" as LanguageAPI <<ctrl>>
+database "Language DB" as LanguageDB <<entity>>
+database "Content DB" as ContentDB <<entity>>
+
+Admin -> LanguagePage: Mở trang quản lý ngôn ngữ
+LanguagePage -> LanguageService: getLanguages(filters, page)
+LanguageService -> LanguageAPI: GET /languages?keyword&status&page
+LanguageAPI -> LanguageDB: Lấy danh sách ngôn ngữ
+LanguageDB --> LanguageAPI: languages[], pagination
+LanguageAPI --> LanguageService: Danh sách ngôn ngữ
+LanguageService --> LanguagePage: Hiển thị bảng ngôn ngữ
+
+Admin -> LanguagePage: Tạo/cập nhật ngôn ngữ
+LanguagePage -> LanguageForm: Mở form ngôn ngữ
+
+alt Tạo ngôn ngữ mới
+  Admin -> LanguageForm: Nhập tên, mã ngôn ngữ, biểu tượng, trạng thái
+  LanguageForm -> LanguageService: createLanguage(payload)
+  LanguageService -> LanguageAPI: POST /languages
+  LanguageAPI -> LanguageDB: Kiểm tra mã ngôn ngữ đã tồn tại chưa
+  LanguageDB --> LanguageAPI: Không trùng
+  LanguageAPI -> LanguageDB: Lưu ngôn ngữ mới
+  LanguageDB --> LanguageAPI: createdLanguage
+  LanguageAPI --> LanguageService: Tạo thành công
+  LanguageService --> LanguageForm: Hiển thị thông báo
+else Cập nhật ngôn ngữ
+  Admin -> LanguageForm: Chỉnh sửa tên, biểu tượng, trạng thái
+  LanguageForm -> LanguageService: updateLanguage(languageId, payload)
+  LanguageService -> LanguageAPI: PUT /languages/:id
+  LanguageAPI -> LanguageDB: Cập nhật thông tin ngôn ngữ
+  LanguageDB --> LanguageAPI: updatedLanguage
+  LanguageAPI --> LanguageService: Cập nhật thành công
+  LanguageService --> LanguageForm: Hiển thị thông báo
+end
+
+Admin -> LanguagePage: Xóa ngôn ngữ
+LanguagePage -> LanguageService: deleteLanguage(languageId)
+LanguageService -> LanguageAPI: DELETE /languages/:id
+LanguageAPI -> ContentDB: Kiểm tra course, bài học, mục tiêu đang sử dụng
+
+alt Chưa có nội dung liên kết
+  ContentDB --> LanguageAPI: Có thể xóa
+  LanguageAPI -> LanguageDB: Xóa ngôn ngữ
+  LanguageDB --> LanguageAPI: deleted
+  LanguageAPI --> LanguageService: Xóa thành công
+  LanguageService --> LanguagePage: Refresh danh sách ngôn ngữ
+else Đang được sử dụng
+  ContentDB --> LanguageAPI: Có dữ liệu liên kết
+  LanguageAPI -> LanguageDB: Chuyển trạng thái inactive
+  LanguageDB --> LanguageAPI: archivedLanguage
+  LanguageAPI --> LanguageService: Không xóa cứng, đã ẩn ngôn ngữ
+  LanguageService --> LanguagePage: Hiển thị cảnh báo
+end
+
+LanguagePage -> LanguageService: getLanguages(filters, page)
+LanguageService -> LanguageAPI: GET /languages?keyword&status&page
+LanguageAPI -> LanguageDB: Lấy danh sách mới nhất
+LanguageDB --> LanguageAPI: languages[], pagination
+LanguageAPI --> LanguageService: Danh sách đã cập nhật
+LanguageService --> LanguagePage: Cập nhật bảng ngôn ngữ
+
+@enduml

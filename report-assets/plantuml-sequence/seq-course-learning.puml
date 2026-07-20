@@ -1,0 +1,113 @@
+@startuml
+title Sequence Diagram - Học theo khóa học được đề xuất
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam dpi 150
+skinparam responseMessageBelowArrow true
+skinparam sequence {
+    ArrowColor #C73535
+    LifeLineBorderColor #BDBDBD
+    LifeLineBackgroundColor white
+    ParticipantBorderColor #8A8A8A
+    ParticipantBackgroundColor #EEEEFF
+    ActorBorderColor #333333
+    ActorBackgroundColor white
+    BoxBorderColor #333333
+    BoxBackgroundColor white
+    GroupBorderColor #333333
+    GroupBackgroundColor white
+    DividerBorderColor #555555
+    DividerBackgroundColor white
+    DividerFontColor #111111
+}
+
+actor "Learner" as Learner
+boundary "CoursePage" as CoursePage <<view>>
+boundary "LessonPage" as LessonPage <<view>>
+control "courseService" as CourseService <<ctrl>>
+control "Course API\n(/api/courses)" as CourseAPI <<ctrl>>
+control "Progress API\n(/api/progress)" as ProgressAPI <<ctrl>>
+database "Course DB" as CourseDB <<entity>>
+database "Progress DB" as ProgressDB <<entity>>
+boundary "Roadmap /\nResult UI" as Roadmap <<view>>
+
+Learner -> CoursePage: Mở khóa học được đề xuất
+CoursePage -> CourseService: getRecommendedCourses()
+CourseService -> CourseAPI: GET /courses/recommended
+CourseAPI -> CourseDB: Lấy khóa học phù hợp
+CourseAPI -> ProgressAPI: Lấy trạng thái học tập
+ProgressAPI -> ProgressDB: Query enrollment, progress
+ProgressDB --> ProgressAPI: progress
+ProgressAPI --> CourseAPI: progress
+CourseDB --> CourseAPI: courses[]
+CourseAPI --> CourseService: courses + progress
+CourseService --> CoursePage: Hiển thị danh sách khóa học
+
+Learner -> CoursePage: Chọn khóa học
+CoursePage -> CourseService: getCourseDetail(courseId)
+CourseService -> CourseAPI: GET /courses/:id
+CourseAPI -> CourseDB: Lấy thông tin khóa học
+CourseDB --> CourseAPI: courseDetail
+CourseAPI --> CourseService: courseDetail
+CourseService --> CoursePage: Hiển thị thông tin khóa học
+
+alt Chưa đăng ký khóa học
+    Learner -> CoursePage: Nhấn đăng ký học
+    CoursePage -> CourseService: enrollCourse(courseId)
+    CourseService -> ProgressAPI: POST /progress/enrollments
+    ProgressAPI -> ProgressDB: Tạo enrollment
+    ProgressDB --> ProgressAPI: enrollment
+    ProgressAPI --> CourseService: enrollment
+    CourseService --> CoursePage: Đăng ký thành công
+else Đã đăng ký khóa học
+    CoursePage -> CourseService: loadRoadmap(courseId)
+end
+
+CoursePage -> CourseService: getRoadmap(courseId)
+CourseService -> CourseAPI: GET /courses/:id/roadmap
+CourseAPI -> CourseDB: Lấy unit và lesson đã xuất bản
+CourseAPI -> ProgressAPI: Lấy tiến độ lesson
+ProgressAPI -> ProgressDB: Query lesson progress
+ProgressDB --> ProgressAPI: lessonProgress[]
+ProgressAPI --> CourseAPI: lessonProgress[]
+CourseDB --> CourseAPI: roadmap
+CourseAPI --> CourseService: roadmap + progress
+CourseService --> Roadmap: Hiển thị lộ trình học
+
+Learner -> Roadmap: Chọn lesson
+Roadmap -> CourseService: getLesson(lessonId)
+CourseService -> CourseAPI: GET /lessons/:id
+CourseAPI -> CourseDB: Lấy lesson, exercise, media
+CourseDB --> CourseAPI: lessonContent
+CourseAPI -> ProgressAPI: Lưu checkpoint mở bài
+ProgressAPI -> ProgressDB: update checkpoint
+ProgressDB --> ProgressAPI: checkpointSaved
+ProgressAPI --> CourseAPI: checkpointSaved
+CourseAPI --> CourseService: lessonContent
+CourseService --> LessonPage: Hiển thị bài học
+
+loop Trong quá trình học
+    Learner -> LessonPage: Học nội dung / làm bài tập
+    LessonPage -> CourseService: saveCheckpoint(lessonId, state)
+    CourseService -> ProgressAPI: PATCH /progress/checkpoint
+    ProgressAPI -> ProgressDB: Lưu trạng thái học
+    ProgressDB --> ProgressAPI: saved
+    ProgressAPI --> CourseService: checkpointSaved
+end
+
+Learner -> LessonPage: Nộp bài luyện tập
+LessonPage -> CourseService: submitLesson(lessonId, answers)
+CourseService -> CourseAPI: POST /lessons/:id/submit
+CourseAPI -> CourseDB: Lấy đáp án, tiêu chí chấm
+CourseDB --> CourseAPI: answerKeys, scoringRules
+CourseAPI -> CourseAPI: Chấm điểm bài làm
+CourseAPI -> ProgressAPI: Cập nhật điểm và hoàn thành lesson
+ProgressAPI -> ProgressDB: Lưu score, completion
+ProgressDB --> ProgressAPI: progressUpdated
+ProgressAPI --> CourseAPI: progressSummary
+CourseAPI --> CourseService: score, result, progressSummary
+CourseService --> LessonPage: Hiển thị kết quả
+LessonPage -> Roadmap: Cập nhật roadmap và tiến độ
+
+@enduml

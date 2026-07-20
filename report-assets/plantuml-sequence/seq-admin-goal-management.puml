@@ -1,0 +1,90 @@
+@startuml
+title Sequence Diagram - Admin quản lý mục tiêu
+
+skinparam backgroundColor white
+skinparam dpi 190
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequence {
+  ArrowColor #C73535
+  LifeLineBorderColor #B8B8B8
+  LifeLineBackgroundColor white
+  ParticipantBorderColor #7D7D7D
+  ParticipantBackgroundColor #F7F7FF
+  ActorBorderColor #7D7D7D
+  ActorBackgroundColor #F7F7FF
+  BoxBorderColor #303030
+  BoxBackgroundColor white
+  GroupBorderColor #303030
+  GroupBackgroundColor white
+  DividerBorderColor #303030
+  DividerBackgroundColor white
+}
+
+actor "Admin" as Admin
+boundary "GoalPage" as GoalPage <<view>>
+boundary "GoalForm" as GoalForm <<view>>
+control "goalService" as GoalService <<ctrl>>
+control "Goal API\n/api/goals" as GoalAPI <<ctrl>>
+database "Goal DB" as GoalDB <<entity>>
+database "Learning DB" as LearningDB <<entity>>
+
+Admin -> GoalPage: Mở trang quản lý mục tiêu
+GoalPage -> GoalService: getGoals(filters, page)
+GoalService -> GoalAPI: GET /goals?language&status&keyword&page
+GoalAPI -> GoalDB: Lọc và phân trang mục tiêu
+GoalDB --> GoalAPI: goals[], pagination
+GoalAPI --> GoalService: Danh sách mục tiêu
+GoalService --> GoalPage: Hiển thị bảng mục tiêu
+
+Admin -> GoalPage: Tạo/cập nhật mục tiêu
+GoalPage -> GoalForm: Mở form mục tiêu
+
+alt Tạo mục tiêu mới
+  Admin -> GoalForm: Nhập tên, mô tả, ngôn ngữ, trình độ, trạng thái
+  GoalForm -> GoalService: createGoal(payload)
+  GoalService -> GoalAPI: POST /goals
+  GoalAPI -> GoalDB: Kiểm tra mục tiêu đã tồn tại chưa
+  GoalDB --> GoalAPI: Không trùng
+  GoalAPI -> GoalDB: Lưu mục tiêu mới
+  GoalDB --> GoalAPI: createdGoal
+  GoalAPI --> GoalService: Tạo thành công
+  GoalService --> GoalForm: Hiển thị thông báo
+else Cập nhật mục tiêu
+  Admin -> GoalForm: Chỉnh sửa thông tin mục tiêu
+  GoalForm -> GoalService: updateGoal(goalId, payload)
+  GoalService -> GoalAPI: PUT /goals/:id
+  GoalAPI -> GoalDB: Cập nhật dữ liệu mục tiêu
+  GoalDB --> GoalAPI: updatedGoal
+  GoalAPI --> GoalService: Cập nhật thành công
+  GoalService --> GoalForm: Hiển thị thông báo
+end
+
+Admin -> GoalPage: Xóa mục tiêu
+GoalPage -> GoalService: deleteGoal(goalId)
+GoalService -> GoalAPI: DELETE /goals/:id
+GoalAPI -> LearningDB: Kiểm tra learner/course đang sử dụng mục tiêu
+
+alt Chưa có dữ liệu liên kết
+  LearningDB --> GoalAPI: Có thể xóa
+  GoalAPI -> GoalDB: Xóa mục tiêu
+  GoalDB --> GoalAPI: deleted
+  GoalAPI --> GoalService: Xóa thành công
+  GoalService --> GoalPage: Refresh danh sách mục tiêu
+else Đang được learner hoặc course sử dụng
+  LearningDB --> GoalAPI: Có dữ liệu liên kết
+  GoalAPI -> GoalDB: Chuyển trạng thái inactive
+  GoalDB --> GoalAPI: archivedGoal
+  GoalAPI --> GoalService: Không xóa cứng, đã ẩn mục tiêu
+  GoalService --> GoalPage: Hiển thị cảnh báo
+end
+
+GoalPage -> GoalService: getGoals(filters, page)
+GoalService -> GoalAPI: GET /goals?language&status&keyword&page
+GoalAPI -> GoalDB: Lấy danh sách mới nhất
+GoalDB --> GoalAPI: goals[], pagination
+GoalAPI --> GoalService: Danh sách đã cập nhật
+GoalService --> GoalPage: Cập nhật bảng mục tiêu
+
+@enduml

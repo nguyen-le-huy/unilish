@@ -1,0 +1,123 @@
+@startuml
+title Sequence Diagram - Admin quản lý đề IELTS
+
+skinparam backgroundColor white
+skinparam dpi 150
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequence {
+  ArrowColor #C73535
+  LifeLineBorderColor #B8B8B8
+  LifeLineBackgroundColor white
+  ParticipantBorderColor #7D7D7D
+  ParticipantBackgroundColor #F7F7FF
+  ActorBorderColor #7D7D7D
+  ActorBackgroundColor #F7F7FF
+  BoxBorderColor #303030
+  BoxBackgroundColor white
+  GroupBorderColor #303030
+  GroupBackgroundColor white
+  DividerBorderColor #303030
+  DividerBackgroundColor white
+}
+
+actor "Admin" as Admin
+boundary "IELTSTestPage" as IELTSPage <<view>>
+boundary "IELTSTestForm" as IELTSForm <<view>>
+control "ieltsTestService" as IELTSService <<ctrl>>
+control "IELTS API\n/api/ielts-tests" as IELTSAPI <<ctrl>>
+control "Questions API\n/api/questions" as QuestionsAPI <<ctrl>>
+database "IELTS Tests DB" as IELTSDB <<entity>>
+database "Questions DB" as QuestionsDB <<entity>>
+database "File Storage" as FileStorage <<entity>>
+
+Admin -> IELTSPage: Mở quản lý đề IELTS
+IELTSPage -> IELTSService: getIELTSTests(filters, page)
+IELTSService -> IELTSAPI: GET /ielts-tests?page&skill&status&keyword
+IELTSAPI -> IELTSDB: Lọc và phân trang đề IELTS
+IELTSDB --> IELTSAPI: tests[], pagination
+IELTSAPI --> IELTSService: Danh sách đề IELTS
+IELTSService --> IELTSPage: Hiển thị bảng đề
+
+Admin -> IELTSPage: Tạo/cập nhật đề IELTS
+IELTSPage -> IELTSForm: Mở form đề IELTS
+IELTSForm -> IELTSService: getQuestionBank(skill, level)
+IELTSService -> QuestionsAPI: GET /questions?module=ielts&skill&level
+QuestionsAPI -> QuestionsDB: Lấy câu hỏi phù hợp
+QuestionsDB --> QuestionsAPI: questionOptions[]
+QuestionsAPI --> IELTSService: Danh sách câu hỏi
+IELTSService --> IELTSForm: Hiển thị câu hỏi để chọn
+
+alt Tạo đề IELTS mới
+  Admin -> IELTSForm: Nhập tên đề, kỹ năng, thời gian, band mục tiêu
+  Admin -> IELTSForm: Gắn passage/audio/câu hỏi theo từng section
+  IELTSForm -> IELTSService: createIELTSTest(payload, files)
+  IELTSService -> IELTSAPI: POST /ielts-tests
+  IELTSAPI -> FileStorage: Lưu audio, hình ảnh hoặc tài liệu đính kèm
+  FileStorage --> IELTSAPI: fileUrls
+  IELTSAPI -> IELTSDB: Lưu cấu trúc đề và đáp án
+  IELTSAPI -> QuestionsDB: Liên kết câu hỏi với đề
+  QuestionsDB --> IELTSAPI: linkedQuestions
+  IELTSDB --> IELTSAPI: createdTest
+  IELTSAPI --> IELTSService: Tạo thành công
+  IELTSService --> IELTSForm: Hiển thị thông báo
+else Cập nhật đề IELTS
+  Admin -> IELTSForm: Chỉnh sửa section, câu hỏi, đáp án, tài nguyên
+  IELTSForm -> IELTSService: updateIELTSTest(testId, payload, files)
+  IELTSService -> IELTSAPI: PUT /ielts-tests/:id
+  IELTSAPI -> FileStorage: Cập nhật file đính kèm nếu có
+  FileStorage --> IELTSAPI: updatedFileUrls
+  IELTSAPI -> IELTSDB: Cập nhật cấu trúc đề
+  IELTSAPI -> QuestionsDB: Cập nhật liên kết câu hỏi
+  QuestionsDB --> IELTSAPI: updatedQuestions
+  IELTSDB --> IELTSAPI: updatedTest
+  IELTSAPI --> IELTSService: Cập nhật thành công
+  IELTSService --> IELTSForm: Hiển thị thông báo
+end
+
+Admin -> IELTSForm: Xem trước đề IELTS
+IELTSForm -> IELTSService: previewIELTSTest(testId)
+IELTSService -> IELTSAPI: GET /ielts-tests/:id/preview
+IELTSAPI -> IELTSDB: Lấy cấu trúc đề, scoring rules
+IELTSAPI -> QuestionsDB: Lấy câu hỏi và đáp án
+IELTSAPI -> FileStorage: Lấy URL audio/tài liệu
+QuestionsDB --> IELTSAPI: questions[]
+FileStorage --> IELTSAPI: fileUrls
+IELTSDB --> IELTSAPI: testConfig
+IELTSAPI --> IELTSService: previewData
+IELTSService --> IELTSForm: Hiển thị bản xem trước
+
+alt Đề hợp lệ
+  Admin -> IELTSForm: Publish đề IELTS
+  IELTSForm -> IELTSService: publishIELTSTest(testId)
+  IELTSService -> IELTSAPI: PATCH /ielts-tests/:id/publish
+  IELTSAPI -> IELTSDB: Cập nhật trạng thái published
+  IELTSDB --> IELTSAPI: publishedTest
+  IELTSAPI --> IELTSService: Publish thành công
+  IELTSService --> IELTSPage: Refresh danh sách đề
+else Thiếu section, câu hỏi hoặc đáp án
+  IELTSAPI --> IELTSService: validationErrors
+  IELTSService --> IELTSForm: Hiển thị lỗi cần chỉnh sửa
+end
+
+Admin -> IELTSPage: Xóa hoặc ẩn đề IELTS
+IELTSPage -> IELTSService: deleteOrArchiveIELTSTest(testId)
+IELTSService -> IELTSAPI: DELETE /ielts-tests/:id
+IELTSAPI -> IELTSDB: Kiểm tra đề đã có lượt luyện tập chưa
+
+alt Chưa có lượt luyện tập
+  IELTSDB --> IELTSAPI: Có thể xóa
+  IELTSAPI -> IELTSDB: Xóa đề IELTS
+  IELTSDB --> IELTSAPI: deleted
+  IELTSAPI --> IELTSService: Xóa thành công
+  IELTSService --> IELTSPage: Refresh danh sách đề
+else Đã có lịch sử luyện tập
+  IELTSDB --> IELTSAPI: Không thể xóa cứng
+  IELTSAPI -> IELTSDB: Chuyển trạng thái archived
+  IELTSDB --> IELTSAPI: archivedTest
+  IELTSAPI --> IELTSService: Đã ẩn đề
+  IELTSService --> IELTSPage: Hiển thị thông báo
+end
+
+@enduml

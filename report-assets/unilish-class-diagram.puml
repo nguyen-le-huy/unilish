@@ -1,0 +1,229 @@
+@startuml
+!pragma layout smetana
+title Class Diagram - Unilish
+
+skinparam backgroundColor white
+skinparam dpi 160
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam class {
+  BackgroundColor #F8C27A
+  BorderColor #222222
+  ArrowColor #C73535
+  FontColor #111111
+}
+skinparam package {
+  BackgroundColor white
+  BorderColor #B0B0B0
+}
+
+class User {
+  +id: integer
+  +name: string
+  +password: string
+  +isVerified: boolean
+  +role: string
+  +fullName: string
+  +avatarUrl: string
+  +lastActiveCourseId: string
+  +learningGoalId: integer
+  +currentLevel: string
+  +googleId: string
+  +placementTestScore: integer
+  +learningLanguageId: integer
+  --
+  +updateProfile(): void
+  +selectLearningGoal(): void
+  +selectLearningLanguage(): void
+}
+
+class Language {
+  +id: integer
+  +name: string
+  +nativeName: string
+  +isActive: boolean
+  +flagIconUrl: string
+  +greeting: string
+  +greetingSoundUrl: string
+  +learningGoalsId: integer
+  --
+  +activate(): void
+  +deactivate(): void
+}
+
+class LearningGoal {
+  +id: integer
+  +title: string
+  +systemPrompt: string
+  +isActive: boolean
+  +supportedLanguages: integer
+  +iconUrl: string
+  +description: string
+  --
+  +activate(): void
+  +deactivate(): void
+}
+
+class Course {
+  +id: integer
+  +title: string
+  +slug: string
+  +name: string
+  +level: string
+  +languageId: integer
+  +learningGoalId: integer
+  +isActive: boolean
+  --
+  +publish(): void
+  +archive(): void
+}
+
+class Unit {
+  +id: integer
+  +title: string
+  +orderIndex: integer
+  +courseId: integer
+  --
+  +reorder(): void
+}
+
+class Lesson {
+  +id: integer
+  +title: string
+  +type: string
+  +content: string
+  +orderIndex: integer
+  +unitId: integer
+  --
+  +markCompleted(): void
+}
+
+class CourseEnrollment {
+  +id: integer
+  +status: string
+  +timeSpentSeconds: integer
+  +completedLessonCount: integer
+  +userId: integer
+  +courseId: integer
+  +lastLessonId: integer
+  --
+  +updateProgress(): void
+}
+
+class UserLessonProgress {
+  +id: integer
+  +name: string
+  +password: string
+  +userId: integer
+  +lessonId: integer
+  --
+  +completeLesson(): void
+}
+
+class PlacementTest {
+  +id: integer
+  +title: string
+  +name: string
+  +isActive: boolean
+  +standard: string
+  +languageId: integer
+  --
+  +publish(): void
+  +deactivate(): void
+}
+
+class Question {
+  +id: integer
+  +skill: string
+  +type: string
+  +content: string
+  +isActive: boolean
+  +placementTestId: integer
+  --
+  +validateAnswer(): boolean
+}
+
+class PlacementTestAttempt {
+  +id: integer
+  +status: string
+  +isActive: boolean
+  +startedAt: date
+  +expiredAt: date
+  +scoring: integer
+  +placementTestId: integer
+  +userId: integer
+  --
+  +submit(): void
+  +calculateScore(): integer
+}
+
+class ShadowingVideo {
+  +id: integer
+  +videoId: string
+  +title: string
+  +thumbnailUrl: string
+  +isActive: boolean
+  +durationSeconds: integer
+  +cues: json
+  +userId: integer
+  --
+  +startPractice(): void
+  +submitResult(): void
+}
+
+class ExamTest {
+  +id: integer
+  +format: string
+  +title: string
+  +skill: string
+  +status: string
+  +content: string
+  +languageId: integer
+  --
+  +publish(): void
+  +archive(): void
+}
+
+class IeltsPracticeAttempt {
+  +id: integer
+  +format: string
+  +questionType: string
+  +skill: string
+  +status: string
+  +result: integer
+  +userId: integer
+  +examTestId: integer
+  --
+  +submit(): void
+  +calculateResult(): integer
+}
+
+LearningGoal "1" -- "0..*" Language
+LearningGoal "1" -- "0..*" User
+LearningGoal "1" -- "0..*" Course
+
+Language "1" -- "0..*" User
+Language "1" -- "0..*" Course
+Language "1" -- "0..*" PlacementTest
+Language "1" -- "0..*" ExamTest
+
+Course "1" -- "0..*" Unit
+Unit "1" -- "0..*" Lesson
+User "1" -- "0..*" CourseEnrollment
+Course "1" -- "0..*" CourseEnrollment
+Lesson "1" -- "0..*" CourseEnrollment
+User "1" -- "0..*" UserLessonProgress
+Lesson "1" -- "0..*" UserLessonProgress
+
+PlacementTest "1" -- "0..*" Question
+PlacementTest "1" -- "0..*" PlacementTestAttempt
+User "1" -- "0..*" PlacementTestAttempt
+
+User "1" -- "0..*" ShadowingVideo
+
+ExamTest "1" -- "0..*" IeltsPracticeAttempt
+User "1" -- "0..*" IeltsPracticeAttempt
+
+@enduml

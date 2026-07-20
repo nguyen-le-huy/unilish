@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1360" viewBox="0 0 1000 1360">
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#444"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<text x="500" y="55" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="700" fill="#222" style="">Use Case - Unilish</text>
+<rect x="255" y="88" width="490" height="1225" fill="none" stroke="#222" stroke-width="1.8"/>
+<text x="500" y="120" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#222" style="">Unilish</text>
+<circle cx="92" cy="645" r="17" fill="none" stroke="#555" stroke-width="1.4"/><line x1="92" y1="662" x2="92" y2="716" stroke="#555" stroke-width="1.4"/><line x1="60" y1="684" x2="124" y2="684" stroke="#555" stroke-width="1.4"/><line x1="92" y1="716" x2="61" y2="763" stroke="#555" stroke-width="1.4"/><line x1="92" y1="716" x2="123" y2="763" stroke="#555" stroke-width="1.4"/><text x="92" y="803" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#222" style="">Learner</text>
+<circle cx="908" cy="645" r="17" fill="none" stroke="#555" stroke-width="1.4"/><line x1="908" y1="662" x2="908" y2="716" stroke="#555" stroke-width="1.4"/><line x1="876" y1="684" x2="940" y2="684" stroke="#555" stroke-width="1.4"/><line x1="908" y1="716" x2="877" y2="763" stroke="#555" stroke-width="1.4"/><line x1="908" y1="716" x2="939" y2="763" stroke="#555" stroke-width="1.4"/><text x="908" y="803" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#222" style="">Admin</text>
+<ellipse cx="500" cy="155" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="161.0">Đăng ký</tspan></text>
+<ellipse cx="500" cy="233" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="239.0">Đăng nhập</tspan></text>
+<ellipse cx="500" cy="311" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="307.65">Làm bài kiểm tra đầu</tspan><tspan x="500" y="326.34999999999997">vào</tspan></text>
+<ellipse cx="500" cy="389" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="385.65">Luyện kỹ năng giao tiếp</tspan><tspan x="500" y="404.34999999999997">với AI</tspan></text>
+<ellipse cx="500" cy="467" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="463.65">Học theo khóa học được</tspan><tspan x="500" y="482.34999999999997">đề xuất</tspan></text>
+<ellipse cx="500" cy="545" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="551.0">Học với video YouTube</tspan></text>
+<ellipse cx="500" cy="623" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="629.0">Quản lý profile</tspan></text>
+<ellipse cx="500" cy="701" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="707.0">Luyện đề IELTS</tspan></text>
+<ellipse cx="500" cy="779" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="785.0">Quản lý ngôn ngữ</tspan></text>
+<ellipse cx="500" cy="857" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="863.0">Quản lý mục tiêu</tspan></text>
+<ellipse cx="500" cy="935" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="941.0">Quản lý nội dung học</tspan></text>
+<ellipse cx="500" cy="1013" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="1019.0">Quản lý user</tspan></text>
+<ellipse cx="500" cy="1091" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="1087.65">Quản lý ngân hàng câu</tspan><tspan x="500" y="1106.3500000000001">hỏi</tspan></text>
+<ellipse cx="500" cy="1169" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="1165.65">Quản lý bài kiểm tra</tspan><tspan x="500" y="1184.3500000000001">đầu vào</tspan></text>
+<ellipse cx="500" cy="1247" rx="155" ry="33" fill="#fff" stroke="#555" stroke-width="1.5"/><text text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#222"><tspan x="500" y="1253.0">Quản lý đề IELTS</tspan></text>
+<line x1="130" y1="690" x2="345" y2="155" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="130" y1="690" x2="345" y2="233" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="130" y1="690" x2="345" y2="311" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="130" y1="690" x2="345" y2="389" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="130" y1="690" x2="345" y2="467" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="130" y1="690" x2="345" y2="545" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="130" y1="690" x2="345" y2="623" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="130" y1="690" x2="345" y2="701" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="870" y1="690" x2="655" y2="779" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="870" y1="690" x2="655" y2="857" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="870" y1="690" x2="655" y2="935" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="870" y1="690" x2="655" y2="1013" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="870" y1="690" x2="655" y2="1091" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="870" y1="690" x2="655" y2="1169" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="870" y1="690" x2="655" y2="1247" stroke="#444" stroke-width="1.3" marker-end="url(#arrow)"/>
+</svg>

@@ -1,0 +1,105 @@
+@startuml
+title Sequence Diagram - Admin quản lý nội dung học
+
+skinparam backgroundColor white
+skinparam dpi 170
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequence {
+  ArrowColor #C73535
+  LifeLineBorderColor #B8B8B8
+  LifeLineBackgroundColor white
+  ParticipantBorderColor #7D7D7D
+  ParticipantBackgroundColor #F7F7FF
+  ActorBorderColor #7D7D7D
+  ActorBackgroundColor #F7F7FF
+  BoxBorderColor #303030
+  BoxBackgroundColor white
+  GroupBorderColor #303030
+  GroupBackgroundColor white
+  DividerBorderColor #303030
+  DividerBackgroundColor white
+  ReferenceBorderColor #303030
+  ReferenceBackgroundColor #FFF9D6
+}
+skinparam note {
+  BorderColor #C8C8A8
+  BackgroundColor #FFF9D6
+}
+
+actor "Admin" as Admin
+boundary "ContentPage" as ContentPage <<view>>
+control "contentService" as ContentService <<ctrl>>
+control "Course API\n/api/courses" as CourseAPI <<ctrl>>
+control "Question API\n/api/questions" as QuestionAPI <<ctrl>>
+control "AI Content\nService" as AIContent <<external>>
+database "Content DB" as ContentDB <<entity>>
+boundary "Preview /\nPublish UI" as PublishUI <<view>>
+
+Admin -> ContentPage: Mở trang quản lý nội dung học
+ContentPage -> ContentService: getCourseStructure()
+ContentService -> CourseAPI: GET /courses?include=units,lessons
+CourseAPI -> ContentDB: Truy vấn course, unit, lesson
+ContentDB --> CourseAPI: Cấu trúc nội dung
+CourseAPI --> ContentService: courseTree
+ContentService --> ContentPage: Hiển thị danh sách nội dung
+
+Admin -> ContentPage: Chọn course/unit/lesson cần chỉnh sửa
+ContentPage -> ContentService: getContentDetail(id, type)
+ContentService -> CourseAPI: GET /content/:id
+CourseAPI -> ContentDB: Lấy chi tiết nội dung
+ContentDB --> CourseAPI: contentDetail
+CourseAPI --> ContentService: contentDetail
+ContentService --> ContentPage: Hiển thị form chỉnh sửa
+
+alt Tạo hoặc cập nhật nội dung thủ công
+  Admin -> ContentPage: Nhập tiêu đề, mô tả, bài học, tài nguyên
+  ContentPage -> ContentService: saveContent(payload)
+  ContentService -> CourseAPI: POST/PUT /courses|units|lessons
+  CourseAPI -> ContentDB: Lưu bản nháp nội dung
+  ContentDB --> CourseAPI: draftContent
+  CourseAPI --> ContentService: Lưu thành công
+  ContentService --> ContentPage: Cập nhật dữ liệu trên giao diện
+else Sinh nội dung bằng AI
+  Admin -> ContentPage: Nhập yêu cầu sinh nội dung
+  ContentPage -> ContentService: generateContent(prompt, contentType)
+  ContentService -> CourseAPI: POST /content/generate
+  CourseAPI -> AIContent: Sinh vocabulary/grammar/exercise
+  AIContent --> CourseAPI: generatedContent
+  CourseAPI -> ContentDB: Lưu nội dung AI ở trạng thái nháp
+  ContentDB --> CourseAPI: draftContent
+  CourseAPI --> ContentService: generatedContent
+  ContentService --> ContentPage: Đổ nội dung vào form để Admin kiểm tra
+end
+
+Admin -> ContentPage: Gán câu hỏi/bài tập cho lesson
+ContentPage -> ContentService: linkQuestions(lessonId, questionIds)
+ContentService -> QuestionAPI: POST /lessons/:id/questions
+QuestionAPI -> ContentDB: Lưu liên kết câu hỏi
+ContentDB --> QuestionAPI: linkedQuestions
+QuestionAPI --> ContentService: Cập nhật thành công
+ContentService --> ContentPage: Refresh danh sách câu hỏi
+
+Admin -> ContentPage: Xem trước nội dung
+ContentPage -> ContentService: previewContent(contentId)
+ContentService -> CourseAPI: GET /content/:id/preview
+CourseAPI -> ContentDB: Lấy nội dung bản nháp
+ContentDB --> CourseAPI: previewData
+CourseAPI --> ContentService: previewData
+ContentService --> PublishUI: Hiển thị bản xem trước
+
+alt Nội dung hợp lệ
+  Admin -> PublishUI: Bấm Publish
+  PublishUI -> ContentService: publishContent(contentId)
+  ContentService -> CourseAPI: PATCH /content/:id/publish
+  CourseAPI -> ContentDB: Cập nhật trạng thái published
+  ContentDB --> CourseAPI: publishedContent
+  CourseAPI --> ContentService: Publish thành công
+  ContentService --> PublishUI: Hiển thị thông báo thành công
+else Thiếu thông tin hoặc dữ liệu không hợp lệ
+  CourseAPI --> ContentService: validationErrors
+  ContentService --> PublishUI: Hiển thị lỗi cần chỉnh sửa
+end
+
+@enduml

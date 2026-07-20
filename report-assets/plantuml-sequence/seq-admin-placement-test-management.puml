@@ -1,0 +1,114 @@
+@startuml
+title Sequence Diagram - Admin quản lý bài kiểm tra đầu vào
+
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequence {
+  ArrowColor #C73535
+  LifeLineBorderColor #B8B8B8
+  LifeLineBackgroundColor white
+  ParticipantBorderColor #7D7D7D
+  ParticipantBackgroundColor #F7F7FF
+  ActorBorderColor #7D7D7D
+  ActorBackgroundColor #F7F7FF
+  BoxBorderColor #303030
+  BoxBackgroundColor white
+  GroupBorderColor #303030
+  GroupBackgroundColor white
+  DividerBorderColor #303030
+  DividerBackgroundColor white
+}
+
+actor "Admin" as Admin
+boundary "PlacementTestPage" as TestPage <<view>>
+boundary "TestForm" as TestForm <<view>>
+control "placementTestService" as TestService <<ctrl>>
+control "Placement Test API\n/api/placement-tests" as TestAPI <<ctrl>>
+control "Questions API\n/api/questions" as QuestionsAPI <<ctrl>>
+database "Tests DB" as TestsDB <<entity>>
+database "Questions DB" as QuestionsDB <<entity>>
+
+Admin -> TestPage: Mở quản lý bài kiểm tra đầu vào
+TestPage -> TestService: getPlacementTests(filters, page)
+TestService -> TestAPI: GET /placement-tests?page&status&keyword
+TestAPI -> TestsDB: Lấy danh sách bài test
+TestsDB --> TestAPI: tests[], pagination
+TestAPI --> TestService: Danh sách bài test
+TestService --> TestPage: Hiển thị bảng bài test
+
+Admin -> TestPage: Tạo/cập nhật bài kiểm tra
+TestPage -> TestForm: Mở form cấu hình bài test
+TestForm -> TestService: getQuestionOptions(skill, level)
+TestService -> QuestionsAPI: GET /questions?skill&level&type
+QuestionsAPI -> QuestionsDB: Lọc câu hỏi phù hợp
+QuestionsDB --> QuestionsAPI: questionOptions[]
+QuestionsAPI --> TestService: Danh sách câu hỏi
+TestService --> TestForm: Hiển thị câu hỏi để chọn
+
+alt Tạo bài kiểm tra mới
+  Admin -> TestForm: Nhập tên, thời gian, kỹ năng, ngưỡng điểm
+  Admin -> TestForm: Chọn danh sách câu hỏi
+  TestForm -> TestService: createPlacementTest(payload)
+  TestService -> TestAPI: POST /placement-tests
+  TestAPI -> TestsDB: Lưu cấu hình test và scoring rules
+  TestAPI -> QuestionsDB: Gắn danh sách câu hỏi vào test
+  QuestionsDB --> TestAPI: linkedQuestions
+  TestsDB --> TestAPI: createdTest
+  TestAPI --> TestService: Tạo thành công
+  TestService --> TestForm: Hiển thị thông báo
+else Cập nhật bài kiểm tra
+  Admin -> TestForm: Chỉnh sửa thông tin và câu hỏi
+  TestForm -> TestService: updatePlacementTest(testId, payload)
+  TestService -> TestAPI: PUT /placement-tests/:id
+  TestAPI -> TestsDB: Cập nhật cấu hình test
+  TestAPI -> QuestionsDB: Cập nhật liên kết câu hỏi
+  QuestionsDB --> TestAPI: updatedQuestions
+  TestsDB --> TestAPI: updatedTest
+  TestAPI --> TestService: Cập nhật thành công
+  TestService --> TestForm: Hiển thị thông báo
+end
+
+Admin -> TestForm: Xem trước bài kiểm tra
+TestForm -> TestService: previewPlacementTest(testId)
+TestService -> TestAPI: GET /placement-tests/:id/preview
+TestAPI -> TestsDB: Lấy cấu hình bài test
+TestAPI -> QuestionsDB: Lấy câu hỏi đã gắn
+QuestionsDB --> TestAPI: questions[]
+TestsDB --> TestAPI: testConfig
+TestAPI --> TestService: previewData
+TestService --> TestForm: Hiển thị bản xem trước
+
+alt Dữ liệu hợp lệ
+  Admin -> TestForm: Publish bài kiểm tra
+  TestForm -> TestService: publishPlacementTest(testId)
+  TestService -> TestAPI: PATCH /placement-tests/:id/publish
+  TestAPI -> TestsDB: Cập nhật trạng thái active
+  TestsDB --> TestAPI: publishedTest
+  TestAPI --> TestService: Publish thành công
+  TestService --> TestPage: Refresh danh sách bài test
+else Thiếu câu hỏi hoặc thiếu ngưỡng điểm
+  TestAPI --> TestService: validationErrors
+  TestService --> TestForm: Hiển thị lỗi cần chỉnh sửa
+end
+
+Admin -> TestPage: Xóa bài kiểm tra
+TestPage -> TestService: deletePlacementTest(testId)
+TestService -> TestAPI: DELETE /placement-tests/:id
+TestAPI -> TestsDB: Kiểm tra bài test đã có lượt làm chưa
+
+alt Chưa phát sinh kết quả làm bài
+  TestsDB --> TestAPI: Có thể xóa
+  TestAPI -> TestsDB: Xóa bài test
+  TestsDB --> TestAPI: deleted
+  TestAPI --> TestService: Xóa thành công
+  TestService --> TestPage: Refresh danh sách
+else Đã có kết quả làm bài
+  TestsDB --> TestAPI: Không thể xóa
+  TestAPI --> TestService: Chuyển sang trạng thái inactive
+  TestService --> TestPage: Hiển thị thông báo
+end
+
+@enduml

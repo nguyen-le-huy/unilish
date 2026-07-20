@@ -1,0 +1,96 @@
+@startuml
+title Sequence Diagram - Learner học với video YouTube
+
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequence {
+  ArrowColor #C73535
+  LifeLineBorderColor #B8B8B8
+  LifeLineBackgroundColor white
+  ParticipantBorderColor #7D7D7D
+  ParticipantBackgroundColor #F7F7FF
+  ActorBorderColor #7D7D7D
+  ActorBackgroundColor #F7F7FF
+  BoxBorderColor #303030
+  BoxBackgroundColor white
+  GroupBorderColor #303030
+  GroupBackgroundColor white
+  DividerBorderColor #303030
+  DividerBackgroundColor white
+}
+
+actor "Learner" as Learner
+boundary "YouTubeLearningPage" as YoutubePage <<view>>
+boundary "PracticePanel" as PracticePanel <<view>>
+control "youtubeLearningService" as YoutubeService <<ctrl>>
+control "Video API\n/api/videos" as VideoAPI <<ctrl>>
+control "Progress API\n/api/progress" as ProgressAPI <<ctrl>>
+control "YouTube Player\nIFrame API" as YoutubeAPI <<external>>
+database "Video DB" as VideoDB <<entity>>
+database "Progress DB" as ProgressDB <<entity>>
+
+Learner -> YoutubePage: Mở chức năng học với video YouTube
+YoutubePage -> YoutubeService: getRecommendedVideos(language, level, goal)
+YoutubeService -> VideoAPI: GET /videos?language&level&goal
+VideoAPI -> VideoDB: Lấy danh sách video phù hợp
+VideoDB --> VideoAPI: videos[]
+VideoAPI --> YoutubeService: Danh sách video
+YoutubeService --> YoutubePage: Hiển thị danh sách video
+
+Learner -> YoutubePage: Chọn một video để học
+YoutubePage -> YoutubeService: getVideoDetail(videoId)
+YoutubeService -> VideoAPI: GET /videos/:id
+VideoAPI -> VideoDB: Lấy metadata, transcript, bài tập
+VideoDB --> VideoAPI: videoDetail
+VideoAPI --> YoutubeService: videoDetail
+YoutubeService -> YoutubeAPI: loadVideo(youtubeVideoId)
+YoutubeAPI --> YoutubeService: Player ready
+YoutubeService --> YoutubePage: Hiển thị video và transcript
+
+alt Luyện nghe chép chính tả
+  Learner -> PracticePanel: Chọn bài nghe chép chính tả
+  PracticePanel -> YoutubeService: startDictation(videoId, segmentId)
+  YoutubeService -> YoutubeAPI: playSegment(startTime, endTime)
+  YoutubeAPI --> PracticePanel: Phát đoạn audio/video
+  Learner -> PracticePanel: Nhập câu trả lời
+  PracticePanel -> YoutubeService: submitDictationAnswer(answer)
+  YoutubeService -> VideoAPI: POST /videos/:id/dictation/check
+  VideoAPI -> VideoDB: Lấy transcript chuẩn
+  VideoDB --> VideoAPI: expectedText
+  VideoAPI --> YoutubeService: score, mistakes, correctText
+  YoutubeService --> PracticePanel: Hiển thị kết quả và sửa lỗi
+else Luyện nối đuôi
+  Learner -> PracticePanel: Chọn bài nối đuôi
+  PracticePanel -> YoutubeService: startShadowing(videoId, segmentId)
+  YoutubeService -> YoutubeAPI: playSegment(startTime, endTime)
+  YoutubeAPI --> PracticePanel: Phát mẫu câu
+  Learner -> PracticePanel: Ghi âm/nhập phần nói theo
+  PracticePanel -> YoutubeService: submitShadowingResult(result)
+  YoutubeService -> VideoAPI: POST /videos/:id/shadowing/check
+  VideoAPI --> YoutubeService: pronunciationScore, feedback
+  YoutubeService --> PracticePanel: Hiển thị điểm và nhận xét
+end
+
+Learner -> PracticePanel: Hoàn thành bài luyện tập
+PracticePanel -> YoutubeService: saveLearningResult(videoId, result)
+YoutubeService -> ProgressAPI: POST /progress/video-learning
+ProgressAPI -> ProgressDB: Lưu điểm, thời lượng học, trạng thái hoàn thành
+ProgressDB --> ProgressAPI: savedProgress
+ProgressAPI --> YoutubeService: Lưu thành công
+YoutubeService --> YoutubePage: Cập nhật tiến độ video
+
+alt Đạt yêu cầu hoàn thành
+  YoutubePage -> YoutubeService: unlockNextRecommendation()
+  YoutubeService -> ProgressAPI: PATCH /progress/recommendations
+  ProgressAPI -> ProgressDB: Cập nhật đề xuất tiếp theo
+  ProgressDB --> ProgressAPI: nextRecommendation
+  ProgressAPI --> YoutubeService: Nội dung gợi ý mới
+  YoutubeService --> YoutubePage: Hiển thị video/bài học đề xuất
+else Chưa đạt yêu cầu
+  YoutubeService --> YoutubePage: Gợi ý luyện lại đoạn chưa đúng
+end
+
+@enduml

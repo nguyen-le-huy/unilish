@@ -1,0 +1,102 @@
+@startuml
+title Sequence Diagram - Admin quản lý ngân hàng câu hỏi
+
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequence {
+  ArrowColor #C73535
+  LifeLineBorderColor #B8B8B8
+  LifeLineBackgroundColor white
+  ParticipantBorderColor #7D7D7D
+  ParticipantBackgroundColor #F7F7FF
+  ActorBorderColor #7D7D7D
+  ActorBackgroundColor #F7F7FF
+  BoxBorderColor #303030
+  BoxBackgroundColor white
+  GroupBorderColor #303030
+  GroupBackgroundColor white
+  DividerBorderColor #303030
+  DividerBackgroundColor white
+}
+
+actor "Admin" as Admin
+boundary "QuestionBankPage" as QuestionPage <<view>>
+boundary "QuestionForm" as QuestionForm <<view>>
+control "questionService" as QuestionService <<ctrl>>
+control "Questions API\n/api/questions" as QuestionsAPI <<ctrl>>
+control "AI Generate API\n/api/ai" as AiAPI <<ctrl>>
+database "Questions DB" as QuestionsDB <<entity>>
+database "Content DB" as ContentDB <<entity>>
+
+Admin -> QuestionPage: Mở ngân hàng câu hỏi
+QuestionPage -> QuestionService: getQuestions(filters, page, limit)
+QuestionService -> QuestionsAPI: GET /questions?skill&level&type&keyword&page
+QuestionsAPI -> QuestionsDB: Tìm kiếm, lọc và phân trang câu hỏi
+QuestionsDB --> QuestionsAPI: questions[], pagination
+QuestionsAPI --> QuestionService: Danh sách câu hỏi
+QuestionService --> QuestionPage: Hiển thị bảng câu hỏi
+
+Admin -> QuestionPage: Chọn tạo/cập nhật câu hỏi
+QuestionPage -> QuestionForm: Mở form câu hỏi
+
+alt Tạo câu hỏi thủ công
+  Admin -> QuestionForm: Nhập nội dung, đáp án, giải thích, kỹ năng, cấp độ
+  QuestionForm -> QuestionService: createQuestion(payload)
+  QuestionService -> QuestionsAPI: POST /questions
+  QuestionsAPI -> QuestionsDB: Lưu câu hỏi mới
+  QuestionsDB --> QuestionsAPI: createdQuestion
+  QuestionsAPI --> QuestionService: Tạo thành công
+  QuestionService --> QuestionForm: Hiển thị thông báo
+else Cập nhật câu hỏi
+  Admin -> QuestionForm: Chỉnh sửa câu hỏi đã có
+  QuestionForm -> QuestionService: updateQuestion(questionId, payload)
+  QuestionService -> QuestionsAPI: PUT /questions/:id
+  QuestionsAPI -> QuestionsDB: Cập nhật nội dung câu hỏi
+  QuestionsDB --> QuestionsAPI: updatedQuestion
+  QuestionsAPI --> QuestionService: Cập nhật thành công
+  QuestionService --> QuestionForm: Hiển thị thông báo
+else Sinh câu hỏi bằng AI
+  Admin -> QuestionForm: Nhập chủ đề, kỹ năng, trình độ, số lượng
+  QuestionForm -> QuestionService: generateQuestions(prompt, config)
+  QuestionService -> AiAPI: POST /ai/questions/generate
+  AiAPI -> ContentDB: Lấy ngữ cảnh bài học/liên kết nội dung
+  ContentDB --> AiAPI: lessonContext
+  AiAPI --> QuestionService: generatedQuestions
+  QuestionService --> QuestionForm: Đổ câu hỏi nháp vào form
+  Admin -> QuestionForm: Kiểm tra và lưu câu hỏi
+  QuestionForm -> QuestionService: createManyQuestions(questions)
+  QuestionService -> QuestionsAPI: POST /questions/bulk
+  QuestionsAPI -> QuestionsDB: Lưu danh sách câu hỏi
+  QuestionsDB --> QuestionsAPI: createdQuestions
+  QuestionsAPI --> QuestionService: Lưu thành công
+  QuestionService --> QuestionForm: Hiển thị thông báo
+end
+
+Admin -> QuestionPage: Xóa câu hỏi
+QuestionPage -> QuestionService: deleteQuestion(questionId)
+QuestionService -> QuestionsAPI: DELETE /questions/:id
+QuestionsAPI -> QuestionsDB: Kiểm tra câu hỏi có đang được sử dụng không
+
+alt Câu hỏi chưa được gắn vào bài học/đề thi
+  QuestionsDB --> QuestionsAPI: Có thể xóa
+  QuestionsAPI -> QuestionsDB: Xóa câu hỏi
+  QuestionsDB --> QuestionsAPI: deleted
+  QuestionsAPI --> QuestionService: Xóa thành công
+  QuestionService --> QuestionPage: Refresh danh sách câu hỏi
+else Câu hỏi đang được sử dụng
+  QuestionsDB --> QuestionsAPI: Đang liên kết nội dung
+  QuestionsAPI --> QuestionService: Không cho phép xóa
+  QuestionService --> QuestionPage: Hiển thị cảnh báo
+end
+
+QuestionPage -> QuestionService: getQuestions(filters, page, limit)
+QuestionService -> QuestionsAPI: GET /questions?skill&level&type&keyword&page
+QuestionsAPI -> QuestionsDB: Lấy danh sách mới nhất
+QuestionsDB --> QuestionsAPI: questions[], pagination
+QuestionsAPI --> QuestionService: Danh sách đã cập nhật
+QuestionService --> QuestionPage: Cập nhật bảng câu hỏi
+
+@enduml

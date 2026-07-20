@@ -1,0 +1,80 @@
+@startuml
+title Sequence Diagram - Làm bài kiểm tra đầu vào
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam dpi 220
+skinparam responseMessageBelowArrow true
+skinparam sequence {
+    ArrowColor #C73535
+    LifeLineBorderColor #BDBDBD
+    LifeLineBackgroundColor white
+    ParticipantBorderColor #8A8A8A
+    ParticipantBackgroundColor #EEEEFF
+    ActorBorderColor #333333
+    ActorBackgroundColor white
+    BoxBorderColor #333333
+    BoxBackgroundColor white
+    GroupBorderColor #333333
+    GroupBackgroundColor white
+    DividerBorderColor #555555
+    DividerBackgroundColor white
+    DividerFontColor #111111
+}
+
+actor "Learner" as Learner
+boundary "PlacementTestPage" as TestPage <<view>>
+control "placementService" as PlacementService <<ctrl>>
+control "Placement API\n(/api/placement)" as PlacementAPI <<ctrl>>
+database "Question Bank" as QuestionBank <<entity>>
+database "User/Profile DB" as UserDB <<entity>>
+control "Recommendation\nService" as Recommend <<ctrl>>
+boundary "ResultPage" as ResultPage <<view>>
+
+Learner -> TestPage: Mở bài kiểm tra đầu vào
+TestPage -> PlacementService: startPlacementTest()
+PlacementService -> PlacementAPI: POST /placement/sessions
+PlacementAPI -> UserDB: Kiểm tra hồ sơ học tập
+UserDB --> PlacementAPI: language, goal, currentLevel
+PlacementAPI -> QuestionBank: Lấy bộ câu hỏi phù hợp
+QuestionBank --> PlacementAPI: Danh sách câu hỏi
+PlacementAPI -> UserDB: Tạo phiên làm bài
+UserDB --> PlacementAPI: sessionId
+PlacementAPI --> PlacementService: sessionId, questions
+PlacementService --> TestPage: Hiển thị câu hỏi
+
+loop Với mỗi câu hỏi
+    Learner -> TestPage: Chọn đáp án
+    TestPage -> PlacementService: saveAnswer(questionId, answer)
+    PlacementService -> PlacementAPI: PATCH /placement/sessions/:id/answers
+    PlacementAPI -> UserDB: Lưu tạm câu trả lời
+    UserDB --> PlacementAPI: Lưu thành công
+    PlacementAPI --> PlacementService: answerSaved
+    PlacementService --> TestPage: Cập nhật trạng thái câu hỏi
+end
+
+Learner -> TestPage: Nộp bài kiểm tra
+TestPage -> PlacementService: submitPlacementTest(sessionId)
+PlacementService -> PlacementAPI: POST /placement/sessions/:id/submit
+PlacementAPI -> UserDB: Lấy toàn bộ câu trả lời
+UserDB --> PlacementAPI: answers[]
+PlacementAPI -> QuestionBank: Lấy đáp án và thang điểm
+QuestionBank --> PlacementAPI: answerKeys, scoringRules
+PlacementAPI -> PlacementAPI: Chấm điểm và xác định trình độ
+
+alt Bài làm hợp lệ
+    PlacementAPI -> UserDB: Lưu điểm, level mới,\ntrạng thái hoàn thành
+    UserDB --> PlacementAPI: Cập nhật thành công
+    PlacementAPI -> Recommend: Tạo đề xuất khóa học
+    Recommend -> UserDB: Lấy mục tiêu, ngôn ngữ,\nlevel của Learner
+    UserDB --> Recommend: Dữ liệu hồ sơ học tập
+    Recommend --> PlacementAPI: recommendedCourses[]
+    PlacementAPI --> PlacementService: result, level,\nrecommendedCourses
+    PlacementService --> TestPage: Hiển thị kết quả
+    TestPage -> ResultPage: Chuyển đến trang kết quả
+else Bài làm không hợp lệ
+    PlacementAPI --> PlacementService: Lỗi nộp bài
+    PlacementService --> TestPage: Hiển thị thông báo lỗi
+end
+
+@enduml

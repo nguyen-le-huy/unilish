@@ -1,0 +1,71 @@
+@startuml
+title Sequence Diagram - Đăng nhập và phân quyền
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam dpi 220
+skinparam responseMessageBelowArrow true
+skinparam sequence {
+    ArrowColor #C73535
+    LifeLineBorderColor #BDBDBD
+    LifeLineBackgroundColor white
+    ParticipantBorderColor #8A8A8A
+    ParticipantBackgroundColor #EEEEFF
+    ActorBorderColor #333333
+    ActorBackgroundColor white
+    BoxBorderColor #333333
+    BoxBackgroundColor white
+    GroupBorderColor #333333
+    GroupBackgroundColor white
+    DividerBorderColor #555555
+    DividerBackgroundColor white
+    DividerFontColor #111111
+}
+
+actor "Learner / Admin" as User
+boundary "LoginPage" as LoginPage <<view>>
+control "authService" as AuthService <<ctrl>>
+control "Auth API\n(/api/auth)" as AuthAPI <<ctrl>>
+database "Database" as DB <<entity>>
+control "Google OAuth" as Google <<external>>
+boundary "Home / Admin CMS" as Home <<view>>
+
+User -> LoginPage: Mở trang đăng nhập
+LoginPage -> AuthService: render LoginPage
+
+alt Đăng nhập bằng email và mật khẩu
+    User -> LoginPage: Nhập email, password
+    LoginPage -> AuthService: login(email, password)
+    AuthService -> AuthAPI: POST /auth/login
+    AuthAPI -> DB: Tìm user theo email
+    DB --> AuthAPI: Thông tin user
+    AuthAPI -> AuthAPI: Kiểm tra mật khẩu\nvà trạng thái tài khoản
+    AuthAPI --> AuthService: accessToken,\nrefreshToken, role
+    AuthService --> LoginPage: Lưu token
+
+else Đăng nhập bằng Google OAuth
+    User -> LoginPage: Chọn Google Login
+    LoginPage -> Google: Mở xác thực Google
+    Google --> LoginPage: Trả credential /\nauthorization code
+    LoginPage -> AuthService: loginWithGoogle(credential)
+    AuthService -> AuthAPI: POST /auth/google
+    AuthAPI -> Google: Xác minh credential
+    Google --> AuthAPI: Google user info
+    AuthAPI -> DB: Tìm hoặc tạo user
+    DB --> AuthAPI: Thông tin user
+    AuthAPI --> AuthService: accessToken,\nrefreshToken, role
+    AuthService --> LoginPage: Lưu token
+end
+
+LoginPage -> AuthService: getCurrentUser()
+AuthService -> AuthAPI: GET /auth/me
+AuthAPI --> AuthService: Thông tin user + role
+AuthService --> LoginPage: Trả role
+
+alt Role = Admin
+    LoginPage -> Home: Điều hướng đến Admin CMS
+else Role = Learner
+    LoginPage -> Home: Điều hướng đến Learner Home
+end
+
+@enduml

@@ -1,0 +1,88 @@
+@startuml
+title Sequence Diagram - Admin quản lý người dùng
+
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequence {
+  ArrowColor #C73535
+  LifeLineBorderColor #B8B8B8
+  LifeLineBackgroundColor white
+  ParticipantBorderColor #7D7D7D
+  ParticipantBackgroundColor #F7F7FF
+  ActorBorderColor #7D7D7D
+  ActorBackgroundColor #F7F7FF
+  BoxBorderColor #303030
+  BoxBackgroundColor white
+  GroupBorderColor #303030
+  GroupBackgroundColor white
+  DividerBorderColor #303030
+  DividerBackgroundColor white
+}
+
+actor "Admin" as Admin
+boundary "UsersPage" as UsersPage <<view>>
+boundary "UserDetailPage" as UserDetailPage <<view>>
+control "userService" as UserService <<ctrl>>
+control "Auth API\n/api/auth" as AuthAPI <<ctrl>>
+control "Users API\n/api/users" as UsersAPI <<ctrl>>
+database "Users DB" as UsersDB <<entity>>
+database "Learning DB" as LearningDB <<entity>>
+
+Admin -> UsersPage: Mở trang quản lý user
+UsersPage -> UserService: getUsers(page, limit, filters)
+UserService -> UsersAPI: GET /users?page&limit&keyword&role&status
+UsersAPI -> UsersDB: Tìm kiếm, lọc và phân trang user
+UsersDB --> UsersAPI: users[], pagination
+UsersAPI --> UserService: Danh sách user
+UserService --> UsersPage: Hiển thị bảng user
+
+Admin -> UsersPage: Chọn một user
+UsersPage -> UserService: getUserDetail(userId)
+UserService -> UsersAPI: GET /users/:id
+UsersAPI -> UsersDB: Lấy hồ sơ và trạng thái tài khoản
+UsersDB --> UsersAPI: userProfile
+UsersAPI -> LearningDB: Lấy tiến độ học, mục tiêu, lịch sử bài làm
+LearningDB --> UsersAPI: learningSummary
+UsersAPI --> UserService: userDetail
+UserService --> UserDetailPage: Hiển thị chi tiết user
+
+alt Khóa hoặc mở khóa tài khoản
+  Admin -> UserDetailPage: Chọn khóa/mở khóa user
+  UserDetailPage -> UserService: updateUserStatus(userId, status, reason)
+  UserService -> UsersAPI: PATCH /users/:id/status
+  UsersAPI -> UsersDB: Cập nhật trạng thái isBanned/isActive
+  UsersDB --> UsersAPI: updatedUser
+  UsersAPI --> UserService: Cập nhật thành công
+  UserService --> UserDetailPage: Hiển thị trạng thái mới
+else Cập nhật quyền người dùng
+  Admin -> UserDetailPage: Chọn vai trò mới
+  UserDetailPage -> UserService: updateUserRole(userId, role)
+  UserService -> AuthAPI: PATCH /auth/users/:id/role
+  AuthAPI -> UsersDB: Kiểm tra quyền Admin hiện tại
+  UsersDB --> AuthAPI: hợp lệ
+  AuthAPI -> UsersDB: Cập nhật role
+  UsersDB --> AuthAPI: updatedRole
+  AuthAPI --> UserService: Cập nhật quyền thành công
+  UserService --> UserDetailPage: Refresh thông tin user
+else Xác minh email thủ công
+  Admin -> UserDetailPage: Bấm xác minh email
+  UserDetailPage -> UserService: verifyEmail(userId)
+  UserService -> UsersAPI: POST /users/:id/verify-email
+  UsersAPI -> UsersDB: Cập nhật emailVerified = true
+  UsersDB --> UsersAPI: updatedUser
+  UsersAPI --> UserService: Xác minh thành công
+  UserService --> UserDetailPage: Hiển thị thông báo
+end
+
+Admin -> UserDetailPage: Quay lại danh sách
+UserDetailPage -> UserService: refreshUsers()
+UserService -> UsersAPI: GET /users?page&limit
+UsersAPI -> UsersDB: Lấy danh sách mới nhất
+UsersDB --> UsersAPI: users[], pagination
+UsersAPI --> UserService: Danh sách user đã cập nhật
+UserService --> UsersPage: Refresh bảng user
+
+@enduml

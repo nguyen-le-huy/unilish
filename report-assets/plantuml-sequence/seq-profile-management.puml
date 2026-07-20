@@ -1,0 +1,101 @@
+@startuml
+title Sequence Diagram - Learner quản lý profile
+
+skinparam backgroundColor white
+skinparam dpi 185
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam sequence {
+  ArrowColor #C73535
+  LifeLineBorderColor #B8B8B8
+  LifeLineBackgroundColor white
+  ParticipantBorderColor #7D7D7D
+  ParticipantBackgroundColor #F7F7FF
+  ActorBorderColor #7D7D7D
+  ActorBackgroundColor #F7F7FF
+  BoxBorderColor #303030
+  BoxBackgroundColor white
+  GroupBorderColor #303030
+  GroupBackgroundColor white
+  DividerBorderColor #303030
+  DividerBackgroundColor white
+}
+
+actor "Learner" as Learner
+boundary "ProfilePage" as ProfilePage <<view>>
+boundary "ProfileForm" as ProfileForm <<view>>
+control "profileService" as ProfileService <<ctrl>>
+control "User API\n/api/users" as UserAPI <<ctrl>>
+control "Learning API\n/api/learning" as LearningAPI <<ctrl>>
+database "Users DB" as UsersDB <<entity>>
+database "Learning DB" as LearningDB <<entity>>
+
+Learner -> ProfilePage: Mở trang profile
+ProfilePage -> ProfileService: getMyProfile()
+ProfileService -> UserAPI: GET /users/me
+UserAPI -> UsersDB: Lấy thông tin cá nhân
+UsersDB --> UserAPI: userProfile
+UserAPI -> LearningDB: Lấy ngôn ngữ, mục tiêu, trình độ hiện tại
+LearningDB --> UserAPI: learningPreferences
+UserAPI --> ProfileService: profileData
+ProfileService --> ProfilePage: Hiển thị hồ sơ người học
+
+Learner -> ProfilePage: Chọn chỉnh sửa profile
+ProfilePage -> ProfileForm: Mở form chỉnh sửa
+
+alt Cập nhật thông tin cá nhân
+  Learner -> ProfileForm: Nhập họ tên, ảnh đại diện, ngày sinh
+  ProfileForm -> ProfileService: updatePersonalInfo(payload)
+  ProfileService -> UserAPI: PATCH /users/me
+  UserAPI -> UsersDB: Cập nhật thông tin cá nhân
+  UsersDB --> UserAPI: updatedProfile
+  UserAPI --> ProfileService: Cập nhật thành công
+  ProfileService --> ProfileForm: Hiển thị thông báo
+else Chọn ngôn ngữ học
+  Learner -> ProfileForm: Chọn ngôn ngữ muốn học
+  ProfileForm -> ProfileService: updateLearningLanguage(languageId)
+  ProfileService -> LearningAPI: PATCH /learning/preferences/language
+  LearningAPI -> LearningDB: Cập nhật ngôn ngữ học
+  LearningDB --> LearningAPI: updatedLanguage
+  LearningAPI --> ProfileService: Cập nhật thành công
+  ProfileService --> ProfileForm: Refresh lựa chọn ngôn ngữ
+else Chọn mục tiêu học tập
+  Learner -> ProfileForm: Chọn mục tiêu học tập
+  ProfileForm -> ProfileService: updateLearningGoal(goalId)
+  ProfileService -> LearningAPI: PATCH /learning/preferences/goal
+  LearningAPI -> LearningDB: Cập nhật mục tiêu
+  LearningDB --> LearningAPI: updatedGoal
+  LearningAPI --> ProfileService: Cập nhật thành công
+  ProfileService --> ProfileForm: Refresh mục tiêu
+else Chọn trình độ hiện tại
+  Learner -> ProfileForm: Chọn trình độ hiện tại
+  ProfileForm -> ProfileService: updateCurrentLevel(level)
+  ProfileService -> LearningAPI: PATCH /learning/preferences/level
+  LearningAPI -> LearningDB: Cập nhật trình độ
+  LearningDB --> LearningAPI: updatedLevel
+  LearningAPI --> ProfileService: Cập nhật thành công
+  ProfileService --> ProfileForm: Refresh trình độ
+end
+
+ProfileForm -> ProfileService: reloadProfile()
+ProfileService -> UserAPI: GET /users/me
+UserAPI -> UsersDB: Lấy thông tin mới nhất
+UserAPI -> LearningDB: Lấy cấu hình học mới nhất
+UsersDB --> UserAPI: updatedProfile
+LearningDB --> UserAPI: updatedPreferences
+UserAPI --> ProfileService: profileData
+ProfileService --> ProfilePage: Cập nhật giao diện profile
+
+alt Thay đổi ngôn ngữ, mục tiêu hoặc trình độ
+  ProfilePage -> ProfileService: refreshLearningRecommendations()
+  ProfileService -> LearningAPI: POST /learning/recommendations/refresh
+  LearningAPI -> LearningDB: Tạo lại lộ trình và nội dung đề xuất
+  LearningDB --> LearningAPI: recommendations
+  LearningAPI --> ProfileService: Danh sách đề xuất mới
+  ProfileService --> ProfilePage: Hiển thị khóa học/bài học đề xuất mới
+else Chỉ thay đổi thông tin cá nhân
+  ProfileService --> ProfilePage: Giữ nguyên lộ trình học hiện tại
+end
+
+@enduml

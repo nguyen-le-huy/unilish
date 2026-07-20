@@ -1,0 +1,76 @@
+@startuml
+title Sequence Diagram - Đăng ký và xác thực OTP
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam dpi 220
+skinparam responseMessageBelowArrow true
+skinparam sequence {
+    ArrowColor #C73535
+    LifeLineBorderColor #BDBDBD
+    LifeLineBackgroundColor white
+    ParticipantBorderColor #8A8A8A
+    ParticipantBackgroundColor #EEEEFF
+    ActorBorderColor #333333
+    ActorBackgroundColor white
+    BoxBorderColor #333333
+    BoxBackgroundColor white
+    GroupBorderColor #333333
+    GroupBackgroundColor white
+    DividerBorderColor #555555
+    DividerBackgroundColor white
+    DividerFontColor #111111
+}
+
+actor "Learner" as Learner
+boundary "RegisterPage" as RegisterPage <<view>>
+control "authService" as AuthService <<ctrl>>
+control "Auth API\n(/api/auth)" as AuthAPI <<ctrl>>
+database "Database" as DB <<entity>>
+control "OTP Service" as OTP <<ctrl>>
+control "Email Service" as Email <<external>>
+boundary "LoginPage /\nOnboarding" as NextPage <<view>>
+
+Learner -> RegisterPage: Mở trang đăng ký
+RegisterPage -> AuthService: render RegisterPage
+
+Learner -> RegisterPage: Nhập họ tên,\nemail, mật khẩu
+RegisterPage -> AuthService: register(data)
+AuthService -> AuthAPI: POST /auth/register
+AuthAPI -> DB: Kiểm tra email tồn tại
+DB --> AuthAPI: Kết quả kiểm tra
+
+alt Email chưa tồn tại
+    AuthAPI -> AuthAPI: Mã hóa mật khẩu
+    AuthAPI -> OTP: Tạo mã OTP
+    OTP --> AuthAPI: otpCode, expiredAt
+    AuthAPI -> DB: Lưu user tạm thời\nvà OTP
+    DB --> AuthAPI: Lưu thành công
+    AuthAPI -> Email: Gửi email OTP
+    Email --> AuthAPI: Gửi thành công
+    AuthAPI --> AuthService: Yêu cầu xác thực OTP
+    AuthService --> RegisterPage: Hiển thị màn hình nhập OTP
+
+    Learner -> RegisterPage: Nhập mã OTP
+    RegisterPage -> AuthService: verifyOtp(email, otp)
+    AuthService -> AuthAPI: POST /auth/verify-otp
+    AuthAPI -> DB: Lấy OTP theo email
+    DB --> AuthAPI: Thông tin OTP
+
+    alt OTP hợp lệ
+        AuthAPI -> DB: Kích hoạt tài khoản
+        DB --> AuthAPI: Tài khoản đã xác thực
+        AuthAPI --> AuthService: Đăng ký thành công
+        AuthService --> RegisterPage: Thông báo thành công
+        RegisterPage -> NextPage: Chuyển đến đăng nhập\nhoặc onboarding
+    else OTP sai hoặc hết hạn
+        AuthAPI --> AuthService: Lỗi xác thực OTP
+        AuthService --> RegisterPage: Hiển thị thông báo lỗi
+    end
+
+else Email đã tồn tại
+    AuthAPI --> AuthService: Email đã được sử dụng
+    AuthService --> RegisterPage: Hiển thị thông báo lỗi
+end
+
+@enduml

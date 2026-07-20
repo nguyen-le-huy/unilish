@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1100" viewBox="0 0 900 1100">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+    <style>
+      .title { font-family: Arial, Helvetica, sans-serif; font-size: 28px; font-weight: 700; fill: #111; }
+      .system-title { font-family: Arial, Helvetica, sans-serif; font-size: 26px; font-weight: 700; fill: #111; }
+      .label { font-family: Arial, Helvetica, sans-serif; font-size: 22px; fill: #222; }
+      .caption { font-family: "Times New Roman", Times, serif; font-size: 20px; font-style: italic; fill: #111; }
+      .line { stroke: #333; stroke-width: 2.2; fill: none; }
+      .actor-line { stroke: #777; stroke-width: 2; fill: none; }
+      .oval { fill: #f7f7f7; stroke: #9b9b9b; stroke-width: 2; }
+      .boundary { fill: none; stroke: #222; stroke-width: 2.4; }
+      .arrowhead { fill: #333; stroke: none; }
+    </style>
+  </defs>
+
+  <rect width="900" height="1100" fill="#fff"/>
+  <text x="450" y="72" text-anchor="middle" class="title">Use Case - Unilish</text>
+
+  <rect x="365" y="105" width="440" height="845" rx="4" class="boundary"/>
+  <text x="585" y="145" text-anchor="middle" class="system-title">Unilish</text>
+
+  <!-- Learner actor -->
+  <circle cx="135" cy="405" r="15" class="actor-line"/>
+  <path d="M135 420 L135 485 M100 445 L170 445 M135 485 L105 535 M135 485 L165 535" class="actor-line"/>
+  <text x="135" y="575" text-anchor="middle" class="label">Learner</text>
+  <text x="135" y="602" text-anchor="middle" class="label">(Người học)</text>
+
+  <!-- Admin actor -->
+  <circle cx="135" cy="760" r="15" class="actor-line"/>
+  <path d="M135 775 L135 840 M100 800 L170 800 M135 840 L105 890 M135 840 L165 890" class="actor-line"/>
+  <text x="135" y="930" text-anchor="middle" class="label">Admin</text>
+  <text x="135" y="957" text-anchor="middle" class="label">(Quản trị viên)</text>
+
+  <!-- Use cases -->
+  <ellipse cx="585" cy="205" rx="145" ry="32" class="oval"/>
+  <text x="585" y="213" text-anchor="middle" class="label">Đăng ký / Đăng nhập</text>
+
+  <ellipse cx="585" cy="300" rx="150" ry="32" class="oval"/>
+  <text x="585" y="308" text-anchor="middle" class="label">Làm placement test</text>
+
+  <ellipse cx="585" cy="395" rx="155" ry="32" class="oval"/>
+  <text x="585" y="403" text-anchor="middle" class="label">Nhận gợi ý khóa học</text>
+
+  <ellipse cx="585" cy="490" rx="145" ry="32" class="oval"/>
+  <text x="585" y="498" text-anchor="middle" class="label">Học khóa học</text>
+
+  <ellipse cx="585" cy="585" rx="162" ry="32" class="oval"/>
+  <text x="585" y="593" text-anchor="middle" class="label">Luyện nghe, nói, AI</text>
+
+  <ellipse cx="585" cy="680" rx="155" ry="32" class="oval"/>
+  <text x="585" y="688" text-anchor="middle" class="label">Luyện IELTS Practice</text>
+
+  <ellipse cx="585" cy="775" rx="155" ry="32" class="oval"/>
+  <text x="585" y="783" text-anchor="middle" class="label">Quản lý nội dung học</text>
+
+  <ellipse cx="585" cy="870" rx="160" ry="32" class="oval"/>
+  <text x="585" y="878" text-anchor="middle" class="label">Quản lý người dùng</text>
+
+  <!-- Learner associations -->
+  <path d="M185 425 C260 330, 335 250, 445 210" class="line" marker-end="url(#arrow)"/>
+  <polygon points="445,210 424,198 430,222" class="arrowhead"/>
+  <path d="M185 440 C270 380, 350 320, 445 300" class="line" marker-end="url(#arrow)"/>
+  <polygon points="445,300 423,288 430,312" class="arrowhead"/>
+  <path d="M185 455 C280 435, 350 405, 432 395" class="line" marker-end="url(#arrow)"/>
+  <polygon points="432,395 410,383 416,407" class="arrowhead"/>
+  <path d="M185 472 C280 482, 355 487, 440 490" class="line" marker-end="url(#arrow)"/>
+  <polygon points="440,490 418,478 418,502" class="arrowhead"/>
+  <path d="M185 495 C285 540, 360 575, 425 585" class="line" marker-end="url(#arrow)"/>
+  <polygon points="425,585 403,572 407,597" class="arrowhead"/>
+  <path d="M185 518 C300 610, 385 665, 430 680" class="line" marker-end="url(#arrow)"/>
+  <polygon points="430,680 408,666 412,692" class="arrowhead"/>
+
+  <!-- Admin associations -->
+  <path d="M185 790 C290 790, 370 780, 430 775" class="line" marker-end="url(#arrow)"/>
+  <polygon points="430,775 408,763 412,787" class="arrowhead"/>
+  <path d="M185 820 C300 855, 380 870, 428 870" class="line" marker-end="url(#arrow)"/>
+  <polygon points="428,870 406,858 410,882" class="arrowhead"/>
+
+  <text x="450" y="1018" text-anchor="middle" class="caption">Hình 2.1. Use Case Diagram tổng quát hệ thống Unilish</text>
+</svg>
