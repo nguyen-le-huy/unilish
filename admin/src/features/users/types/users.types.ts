@@ -4,7 +4,7 @@ export interface User {
     googleId?: string;
     authProvider: 'local' | 'google';
     isVerified: boolean;
-    role: 'student' | 'admin' | 'content_creator';
+    role: 'student' | 'admin';
 
     // Profile
     fullName: string;
@@ -62,7 +62,7 @@ export interface UserFilter {
     limit?: number;
     search?: string;
     level?: 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
-    role?: 'student' | 'admin' | 'content_creator';
+    role?: 'student' | 'admin';
 }
 
 export interface Pagination {
@@ -78,7 +78,7 @@ export interface UserResponse {
 }
 
 export interface UpdateRolePayload {
-    role: 'student' | 'admin' | 'content_creator';
+    role: 'student' | 'admin';
 }
 
 export interface UserStatsOverview {

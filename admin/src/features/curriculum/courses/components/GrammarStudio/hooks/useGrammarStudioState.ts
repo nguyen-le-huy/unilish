@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type GrammarPanel = 'hero' | 'block' | 'summary' | 'practice';
+export type GrammarPanel = 'hero' | 'block' | 'summary';
 
 interface GrammarStudioState {
     activePanel: GrammarPanel;
@@ -14,7 +14,6 @@ interface UseGrammarStudioStateReturn {
     activeBlockId: string | null;
     setHeroPanel: () => void;
     setSummaryPanel: () => void;
-    setPracticePanel: () => void;
     setActiveBlock: (blockId: string) => void;
 }
 
@@ -34,10 +33,6 @@ export const useGrammarStudioState = (): UseGrammarStudioStateReturn => {
         setState((prev) => ({ ...prev, activePanel: 'summary', activeBlockId: null }));
     }, []);
 
-    const setPracticePanel = useCallback(() => {
-        setState((prev) => ({ ...prev, activePanel: 'practice', activeBlockId: null }));
-    }, []);
-
     const setActiveBlock = useCallback((blockId: string) => {
         setState((prev) => ({ ...prev, activePanel: 'block', activeBlockId: blockId }));
     }, []);
@@ -47,7 +42,6 @@ export const useGrammarStudioState = (): UseGrammarStudioStateReturn => {
         activeBlockId: state.activeBlockId,
         setHeroPanel,
         setSummaryPanel,
-        setPracticePanel,
         setActiveBlock,
     };
 };

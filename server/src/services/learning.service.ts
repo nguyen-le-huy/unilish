@@ -38,7 +38,6 @@ export class LearningService {
      * Enroll in a Course.
      *
      * - Validates Course exists and is active.
-     * - Validates prerequisite Course is completed.
      * - If already enrolled, reactivates the existing enrollment idempotently.
      * - Pauses any other ACTIVE enrollment atomically.
      * - Synchronizes User.lastActiveCourseId as a compatibility projection.
@@ -58,9 +57,9 @@ export class LearningService {
     }> {
         // 1. Validate Course exists and is active
         const course = await Course.findById(courseId)
-            .select('_id slug isActive prerequisiteCourseId')
+            .select('_id slug isActive')
             .lean()
-            .exec() as { _id: unknown; slug: string; isActive: boolean; prerequisiteCourseId: unknown } | null;
+            .exec() as { _id: unknown; slug: string; isActive: boolean } | null;
 
         if (!course) {
             throw new AppError('Khóa học không tồn tại', HttpStatus.NOT_FOUND);
@@ -73,30 +72,7 @@ export class LearningService {
             );
         }
 
-        // 2. Validate prerequisite Course is completed (FR-01, AC-03)
-        if (course.prerequisiteCourseId) {
-            const prereqId = String(course.prerequisiteCourseId);
-            const prereqCompleted = await CourseEnrollment.findOne({
-                userId: new mongoose.Types.ObjectId(userId),
-                courseId: new mongoose.Types.ObjectId(prereqId),
-                status: EEnrollmentStatus.COMPLETED,
-            }).lean().exec();
-
-            if (!prereqCompleted) {
-                // Fetch prerequisite course name for a helpful error message
-                const prereqCourse = await Course.findById(prereqId)
-                    .select('name')
-                    .lean()
-                    .exec() as { name: string } | null;
-
-                throw new AppError(
-                    `Bạn cần hoàn thành "${prereqCourse?.name ?? 'khóa học tiên quyết'}" trước khi ghi danh khóa học này.`,
-                    HttpStatus.FORBIDDEN,
-                );
-            }
-        }
-
-        // 3. Check for existing enrollment
+        // 2. Check for existing enrollment
         const existing = await this.enrollmentRepo.findByUserAndCourse(userId, courseId);
 
         if (existing) {
@@ -561,7 +537,7 @@ export class LearningService {
     }> {
         // 1. Find course by slug
         const course = await Course.findOne({ slug })
-            .select('_id name slug description thumbnailUrl level languageId learningGoalId isActive prerequisiteCourseId')
+            .select('_id name slug description thumbnailUrl level languageId learningGoalId isActive')
             .lean()
             .exec() as {
                 _id: unknown;
@@ -573,7 +549,6 @@ export class LearningService {
                 languageId: unknown;
                 learningGoalId: unknown;
                 isActive: boolean;
-                prerequisiteCourseId: unknown;
             } | null;
 
         if (!course) {
@@ -593,27 +568,7 @@ export class LearningService {
             );
         }
 
-        // 3. For non-COMPLETED enrollments, verify prerequisite is met (AC-08)
-        if (
-            enrollment.status !== EEnrollmentStatus.COMPLETED &&
-            course.prerequisiteCourseId
-        ) {
-            const prereqId = String(course.prerequisiteCourseId);
-            const prereqCompleted = await CourseEnrollment.findOne({
-                userId: new mongoose.Types.ObjectId(userId),
-                courseId: new mongoose.Types.ObjectId(prereqId),
-                status: EEnrollmentStatus.COMPLETED,
-            }).lean().exec();
-
-            if (!prereqCompleted) {
-                throw new AppError(
-                    'Bạn cần hoàn thành khóa học tiên quyết trước khi truy cập khóa học này.',
-                    HttpStatus.FORBIDDEN,
-                );
-            }
-        }
-
-        // 4. Fetch language and learning goal
+        // 3. Fetch language and learning goal
         const [language, learningGoal] = await Promise.all([
             Language.findById(course.languageId)
                 .select('_id code name')

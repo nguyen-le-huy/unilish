@@ -45,6 +45,13 @@ export const useUpdateCourse = () => {
     });
 };
 
+export const useUploadCourseThumbnail = () => useMutation({
+    mutationFn: (file: File) => courseApi.uploadCourseThumbnail(file),
+    onError: (error) => {
+        toast.error(getApiErrorMessage(error, 'Tải ảnh khóa học thất bại'));
+    },
+});
+
 // ─── Toggle status (optimistic update) ───────────────────────────────────────
 
 export const useToggleCourseStatus = () => {

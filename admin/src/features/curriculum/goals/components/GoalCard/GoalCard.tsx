@@ -1,10 +1,9 @@
 import { memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit3, Copy } from 'lucide-react';
+import { Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { RadarSkillChart } from '../RadarSkillChart/RadarSkillChart';
 import type { LearningGoal } from '../../types/learning-goal.types';
 
 // ---------------------------------------------------------------------------
@@ -48,14 +47,12 @@ function GoalIcon({ iconUrl, title }: GoalIconProps) {
 interface GoalCardProps {
     goal: LearningGoal;
     onToggleStatus: (slug: string) => void;
-    onDuplicate: (goal: LearningGoal) => void;
 }
 
-export const GoalCard = memo(function GoalCard({ goal, onToggleStatus, onDuplicate }: GoalCardProps) {
+export const GoalCard = memo(function GoalCard({ goal, onToggleStatus }: GoalCardProps) {
     const navigate = useNavigate();
 
     const handleToggle = useCallback(() => onToggleStatus(goal.slug), [goal.slug, onToggleStatus]);
-    const handleDuplicate = useCallback(() => onDuplicate(goal), [goal, onDuplicate]);
     const handleEdit = useCallback(() => navigate(`/curriculum/goals/${goal.slug}`), [goal.slug, navigate]);
 
     return (
@@ -78,21 +75,14 @@ export const GoalCard = memo(function GoalCard({ goal, onToggleStatus, onDuplica
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
-                <RadarSkillChart skillWeights={goal.skillWeights} />
+                {goal.description ? (
+                    <p className="min-h-10 text-sm text-muted-foreground line-clamp-2">{goal.description}</p>
+                ) : null}
 
-                <div className="rounded-md bg-muted px-3 py-2 text-sm flex items-center justify-between">
-                    <span>Active Users</span>
-                    <span className="font-semibold">{goal.stats?.activeUsers ?? 0}</span>
-                </div>
-
-                <div className="flex gap-2">
-                    <Button className="flex-1" variant="outline" onClick={handleEdit}>
+                <div>
+                    <Button className="w-full" variant="outline" onClick={handleEdit}>
                         <Edit3 className="h-4 w-4 mr-2" />
                         Chỉnh sửa
-                    </Button>
-                    <Button className="flex-1" variant="secondary" onClick={handleDuplicate}>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Nhân bản
                     </Button>
                 </div>
             </CardContent>

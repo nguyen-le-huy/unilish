@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -42,13 +42,69 @@ const getInitials = (name: string): string => {
 
 interface ProfileContentProps {
     user: User;
+    onLearningDirectionUpdated: () => void;
 }
 
-const ProfileContent = ({ user }: ProfileContentProps) => {
+interface RecommendationPromptProps {
+    open: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+}
+
+const RecommendationPrompt = ({ open, onClose, onConfirm }: RecommendationPromptProps) => {
+    const confirmButtonRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        if (!open) return;
+
+        confirmButtonRef.current?.focus();
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') onClose();
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [open, onClose]);
+
+    if (!open) return null;
+
+    return (
+        <div
+            className={styles.dialogBackdrop}
+            role="presentation"
+            onMouseDown={(event) => {
+                if (event.target === event.currentTarget) onClose();
+            }}
+        >
+            <section
+                className={styles.recommendationDialog}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="recommendation-dialog-title"
+                aria-describedby="recommendation-dialog-description"
+            >
+                <span className={styles.dialogIcon} aria-hidden="true">★</span>
+                <h2 id="recommendation-dialog-title">Đề xuất lại khóa học?</h2>
+                <p id="recommendation-dialog-description">
+                    Định hướng học tập của bạn vừa thay đổi. Bạn có muốn xem lại các khóa học phù hợp với mục tiêu mới không?
+                </p>
+                <div className={styles.dialogActions}>
+                    <button type="button" className={styles.dialogSecondaryButton} onClick={onClose}>Để sau</button>
+                    <button ref={confirmButtonRef} type="button" className={styles.dialogPrimaryButton} onClick={onConfirm}>
+                        Xem khóa học đề xuất <span aria-hidden="true">→</span>
+                    </button>
+                </div>
+            </section>
+        </div>
+    );
+};
+
+const ProfileContent = ({ user, onLearningDirectionUpdated }: ProfileContentProps) => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const setUser = useAuthStore((state) => state.setUser);
     const avatarInputRef = useRef<HTMLInputElement>(null);
+    const shouldPromptRecommendationRef = useRef(false);
     const { data: languages = [], isLoading: isLoadingLanguages } = useLanguagesQuery();
     const { data: goals = [], isLoading: isLoadingGoals } = useLearningGoalsQuery();
     const { data: dashboard, isLoading: isLoadingDashboard } = useDashboard();
@@ -83,9 +139,17 @@ const ProfileContent = ({ user }: ProfileContentProps) => {
         onSuccess: (updated) => {
             syncUser(updated);
             void queryClient.invalidateQueries({ queryKey: ['learning', 'dashboard'] });
+            void queryClient.invalidateQueries({ queryKey: ['dashboard', 'recommendations'] });
             toast.success('Đã cập nhật hồ sơ.');
+            if (shouldPromptRecommendationRef.current) {
+                onLearningDirectionUpdated();
+            }
+            shouldPromptRecommendationRef.current = false;
         },
-        onError: () => toast.error('Không thể cập nhật hồ sơ. Vui lòng thử lại.'),
+        onError: () => {
+            shouldPromptRecommendationRef.current = false;
+            toast.error('Không thể cập nhật hồ sơ. Vui lòng thử lại.');
+        },
     });
 
     const avatarMutation = useMutation({
@@ -117,6 +181,8 @@ const ProfileContent = ({ user }: ProfileContentProps) => {
 
     const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        shouldPromptRecommendationRef.current = form.goalId !== initialForm.goalId
+            || form.targetLevel !== initialForm.targetLevel;
         const selectedLanguage = languages.find((item) => item._id === form.languageId);
         const selectedGoal = goals.find((item) => item._id === form.goalId);
         const payload: UpdateProfilePayload = {
@@ -216,17 +282,36 @@ const ProfileContent = ({ user }: ProfileContentProps) => {
                     </section>
                 </aside>
             </div>
+
         </div>
     );
 };
 
 const ProfilePage = () => {
+    const navigate = useNavigate();
+    const [isRecommendationPromptOpen, setIsRecommendationPromptOpen] = useState(false);
     const profileQuery = useQuery({ queryKey: ['auth', 'me'], queryFn: getCurrentUser, staleTime: 60_000 });
 
     if (profileQuery.isLoading) return <div className={styles.statePage}><Loading variant="inline" size="md" /></div>;
     if (profileQuery.isError || !profileQuery.data) return <div className={styles.statePage}><h1>Không thể tải hồ sơ</h1><p>Vui lòng tải lại trang và thử lại.</p><button type="button" onClick={() => void profileQuery.refetch()}>Thử lại</button></div>;
 
-    return <ProfileContent key={profileQuery.data.updatedAt ?? profileQuery.data._id} user={profileQuery.data} />;
+    return (
+        <>
+            <ProfileContent
+                key={profileQuery.data.updatedAt ?? profileQuery.data._id}
+                user={profileQuery.data}
+                onLearningDirectionUpdated={() => setIsRecommendationPromptOpen(true)}
+            />
+            <RecommendationPrompt
+                open={isRecommendationPromptOpen}
+                onClose={() => setIsRecommendationPromptOpen(false)}
+                onConfirm={() => {
+                    setIsRecommendationPromptOpen(false);
+                    navigate(PATHS.DASHBOARD.RECOMMEND_COURSE);
+                }}
+            />
+        </>
+    );
 };
 
 export default ProfilePage;

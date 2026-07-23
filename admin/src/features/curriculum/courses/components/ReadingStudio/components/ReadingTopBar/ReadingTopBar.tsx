@@ -1,46 +1,33 @@
 import { memo } from 'react';
-import { Save, Loader2, BookOpenText, Sparkles, HelpCircle, Volume2 } from 'lucide-react';
+import { Save, Loader2, BookOpenText, Sparkles, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ReadingPracticeSheet } from '../ReadingPracticeSheet/ReadingPracticeSheet';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
-    lessonId: string;
     lessonTitle: string;
     isSaving: boolean;
     isGenerating: boolean;
-    isGeneratingQuestions: boolean;
     isGeneratingAudio: boolean;
-    questionsCount: number;
-    questionIds: string[];
-    passingScore: number;
     onSave: () => void;
     onOpenAiModal: () => void;
-    onOpenGenerateModal: () => void;
     onGenerateAudio: () => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const ReadingTopBar = memo(function ReadingTopBar({
-    lessonId,
     lessonTitle,
     isSaving,
     isGenerating,
-    isGeneratingQuestions,
     isGeneratingAudio,
-    questionsCount,
-    questionIds,
-    passingScore,
     onSave,
     onOpenAiModal,
-    onOpenGenerateModal,
     onGenerateAudio,
 }: Props) {
-    const isBusy = isSaving || isGenerating || isGeneratingQuestions || isGeneratingAudio;
+    const isBusy = isSaving || isGenerating || isGeneratingAudio;
 
     return (
         <div className="flex shrink-0 items-center gap-3 border-b bg-background px-4 py-2.5">
@@ -56,12 +43,6 @@ export const ReadingTopBar = memo(function ReadingTopBar({
             <Badge variant="secondary" className="shrink-0 text-xs">
                 Đọc hiểu
             </Badge>
-
-            {questionsCount > 0 && (
-                <span className="shrink-0 text-xs text-muted-foreground">
-                    {questionsCount} câu hỏi
-                </span>
-            )}
 
             <Separator orientation="vertical" className="mx-1 h-5 shrink-0" />
 
@@ -81,29 +62,6 @@ export const ReadingTopBar = memo(function ReadingTopBar({
                     )}
                     Tạo âm thanh
                 </Button>
-
-                {/* Generate Questions */}
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onOpenGenerateModal}
-                    disabled={isBusy}
-                    aria-label="Tạo câu hỏi comprehension bằng AI"
-                >
-                    {isGeneratingQuestions ? (
-                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                    ) : (
-                        <HelpCircle className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                    )}
-                    Tạo câu hỏi
-                </Button>
-
-                {/* Practice Sheet */}
-                <ReadingPracticeSheet
-                    lessonId={lessonId}
-                    questionIds={questionIds}
-                    passingScore={passingScore}
-                />
 
                 <Separator orientation="vertical" className="mx-1 h-5 shrink-0" />
 

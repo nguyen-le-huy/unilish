@@ -1,21 +1,5 @@
 import { z } from 'zod';
 
-const SKILL_WEIGHT_TOLERANCE = 0.01;
-
-const skillWeightsSchema = z
-    .object({
-        listening: z.number().min(0).max(1),
-        speaking: z.number().min(0).max(1),
-        reading: z.number().min(0).max(1),
-        writing: z.number().min(0).max(1),
-        grammar: z.number().min(0).max(1),
-        vocabulary: z.number().min(0).max(1),
-    })
-    .refine((weights) => {
-        const total = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
-        return Math.abs(total - 1) <= SKILL_WEIGHT_TOLERANCE;
-    }, 'Total skill weights must equal 1.0');
-
 const paramsSlugSchema = z.object({
     slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug must be lowercase letters, numbers, and hyphens'),
 });
@@ -44,11 +28,10 @@ export const createLearningGoalSchema = z.object({
     body: z.object({
         slug: z.string().min(3).max(64).regex(/^[a-z0-9-]+$/, 'Invalid slug format'),
         title: z.string().min(3).max(120),
+        description: z.string().max(1000).optional(),
         targetAudience: z.string().max(300).optional(),
         iconUrl: z.string().url().optional(),
-        systemPrompt: z.string().min(30).max(5000),
-        skillWeights: skillWeightsSchema,
-        ignoredSkills: z.array(z.string().min(1)).default([]),
+        supportedLanguages: z.array(z.string().regex(/^[a-f\d]{24}$/i, 'Invalid language id')).default([]),
         isActive: z.boolean().default(true),
     }),
 });
@@ -58,41 +41,17 @@ export const updateLearningGoalSchema = z.object({
     body: z
         .object({
             title: z.string().min(3).max(120).optional(),
+            description: z.string().max(1000).nullable().optional(),
             targetAudience: z.string().max(300).nullable().optional(),
             iconUrl: z.string().url().nullable().optional(),
-            systemPrompt: z.string().min(30).max(5000).optional(),
-            skillWeights: skillWeightsSchema.optional(),
-            ignoredSkills: z.array(z.string().min(1)).optional(),
+            supportedLanguages: z.array(z.string().regex(/^[a-f\d]{24}$/i, 'Invalid language id')).optional(),
             isActive: z.boolean().optional(),
         })
         .refine((body) => Object.keys(body).length > 0, 'At least one field is required'),
 });
 
-export const duplicateLearningGoalSchema = z.object({
-    params: paramsSlugSchema,
-    body: z.object({
-        newSlug: z.string().min(3).max(64).regex(/^[a-z0-9-]+$/, 'Invalid slug format'),
-        newTitle: z.string().min(3).max(120),
-    }),
-});
-
 export const toggleLearningGoalSchema = z.object({
     params: paramsSlugSchema,
-});
-
-export const testLearningGoalSchema = z.object({
-    params: paramsSlugSchema,
-    body: z.object({
-        draftConfig: z.object({
-            systemPrompt: z.string().min(30).max(5000),
-            skillWeights: skillWeightsSchema,
-            ignoredSkills: z.array(z.string()).optional(),
-        }),
-        scenario: z.object({
-            userInput: z.string().min(1).max(500),
-            context: z.string().max(500).optional(),
-        }),
-    }),
 });
 
 export const updateLanguageTtsSchema = z.object({
@@ -115,6 +74,4 @@ export const getLanguagesSchema = z.object({
 export type GetLearningGoalsQuery = z.infer<typeof getLearningGoalsSchema>['query'];
 export type CreateLearningGoalBody = z.infer<typeof createLearningGoalSchema>['body'];
 export type UpdateLearningGoalBody = z.infer<typeof updateLearningGoalSchema>['body'];
-export type DuplicateLearningGoalBody = z.infer<typeof duplicateLearningGoalSchema>['body'];
-export type TestLearningGoalBody = z.infer<typeof testLearningGoalSchema>['body'];
 export type UpdateLanguageTtsBody = z.infer<typeof updateLanguageTtsSchema>['body'];

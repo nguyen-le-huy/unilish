@@ -70,4 +70,3 @@ const createRateLimitMiddleware = (
 export const aiVoiceSttRateLimit = createRateLimitMiddleware('stt', 20, 60);
 export const aiVoiceChatRateLimit = createRateLimitMiddleware('chat', 30, 60);
 export const aiVoiceTtsRateLimit = createRateLimitMiddleware('tts', 40, 60);
-export const aiVoiceGenerateRateLimit = createRateLimitMiddleware('generate', 10, 60);

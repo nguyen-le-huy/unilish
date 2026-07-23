@@ -5,10 +5,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PracticeEditor } from './sections/PracticeEditor';
 import type {
     GrammarBlogBlock,
-    GrammarContent,
     GrammarLessonFormValues,
     CEFRLevel,
 } from '../../../../types/course.types';
@@ -17,8 +15,6 @@ import type { GrammarPanel } from '../../hooks/useGrammarStudioState';
 interface Props {
     activePanel: GrammarPanel;
     activeBlockId: string | null;
-    lessonId: string;
-    questionIds: GrammarContent['practiceConfig']['questionIds'];
 }
 
 function HeroEditor() {
@@ -263,8 +259,6 @@ function BlockEditor({ block, index }: { block: GrammarBlogBlock; index: number 
 export const GrammarEditor = memo(function GrammarEditor({
     activePanel,
     activeBlockId,
-    lessonId,
-    questionIds,
 }: Props) {
     const { watch } = useFormContext<GrammarLessonFormValues>();
     const blocks = watch('blocks');
@@ -277,7 +271,6 @@ export const GrammarEditor = memo(function GrammarEditor({
         <ScrollArea className="h-full">
             {activePanel === 'hero' && <HeroEditor />}
             {activePanel === 'summary' && <SummaryEditor />}
-            {activePanel === 'practice' && <PracticeEditor lessonId={lessonId} questionIds={questionIds} />}
             {activePanel === 'block' && activeIndex >= 0 ? (
                 <BlockEditor block={blocks[activeIndex]!} index={activeIndex} />
             ) : null}

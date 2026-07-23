@@ -24,27 +24,6 @@ const slugSchema = z
     .trim()
     .toLowerCase();
 
-const structureMatrixSchema = z.object({
-    vocabCount: z.number().int().min(0).optional(),
-    grammarCount: z.number().int().min(0).optional(),
-    readingTaskCount: z.number().int().min(0).optional(),
-    listeningTaskCount: z.number().int().min(0).optional(),
-    writingTaskCount: z.number().int().min(0).optional(),
-    speakingTaskCount: z.number().int().min(0).optional(),
-});
-
-const finalExamConfigSchema = z.object({
-    durationMinutes: z.number().int().min(1).default(60),
-    passScore: z.number().min(0).max(100).default(65),
-    structureMatrix: structureMatrixSchema.optional(),
-    questionPool: z
-        .object({
-            readingLessonIds: z.array(objectIdSchema).default([]),
-            listeningLessonIds: z.array(objectIdSchema).default([]),
-        })
-        .optional(),
-});
-
 // ─── List query ─────────────────────────────────────────────────────────────
 
 export const getCoursesListSchema = z.object({
@@ -95,11 +74,8 @@ export const createCourseSchema = z.object({
             .trim(),
         slug: slugSchema,
         level: z.enum(CEFR_LEVELS, { message: 'Level không hợp lệ' }),
-        orderIndex: z.number().int().min(1, 'Vị trí phải lớn hơn 0'),
         description: z.string().max(2000).nullable().optional(),
         thumbnailUrl: z.string().url().nullable().optional(),
-        prerequisiteCourseId: objectIdSchema.nullable().optional(),
-        finalExamConfig: finalExamConfigSchema.optional(),
     }),
 });
 
@@ -112,13 +88,10 @@ export const updateCourseSchema = z.object({
             name: z.string().min(3).max(200).trim().optional(),
             slug: slugSchema.optional(),
             level: z.enum(CEFR_LEVELS).optional(),
-            orderIndex: z.number().int().min(1).optional(),
             description: z.string().max(2000).nullable().optional(),
             thumbnailUrl: z.string().url().nullable().optional(),
             languageId: objectIdSchema.optional(),
             learningGoalId: objectIdSchema.optional(),
-            prerequisiteCourseId: objectIdSchema.nullable().optional(),
-            finalExamConfig: finalExamConfigSchema.optional(),
             isActive: z.boolean().optional(),
         })
         .refine((body) => Object.keys(body).length > 0, 'Phải có ít nhất một trường cần cập nhật'),

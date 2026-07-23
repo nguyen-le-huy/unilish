@@ -194,11 +194,8 @@ export const VocabStudio = memo(function VocabStudio({ lesson }: Props) {
         <div className="flex h-full flex-col overflow-hidden">
             {/* Top Bar */}
             <VocabTopBar
-                lessonId={lessonId}
                 lessonTitle={lesson.title}
                 itemCount={items.length}
-                items={items}
-                passingScore={lesson.practiceConfig.passingScore}
                 generationStatus={generationStatus}
                 isGeneratingVocab={generateMutation.isPending}
                 isSaving={saveMutation.isPending}

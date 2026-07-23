@@ -49,7 +49,7 @@ export class LearningGoalMongoRepository extends BaseMongoRepository<ILearningGo
         const [goals, total] = await Promise.all([
             this.model
                 .find(queryFilter)
-                .select('-__v')
+                .select('-__v -systemPrompt -skillWeights -ignoredSkills')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
@@ -72,7 +72,7 @@ export class LearningGoalMongoRepository extends BaseMongoRepository<ILearningGo
     async findBySlug(slug: string): Promise<ILearningGoal | null> {
         return this.model
             .findOne({ slug })
-            .select('-__v')
+            .select('-__v -systemPrompt -skillWeights -ignoredSkills')
             .lean()
             .exec() as Promise<ILearningGoal | null>;
     }
@@ -88,29 +88,9 @@ export class LearningGoalMongoRepository extends BaseMongoRepository<ILearningGo
     async updateBySlug(slug: string, data: Partial<ILearningGoal>): Promise<ILearningGoal | null> {
         return this.model
             .findOneAndUpdate({ slug }, data, { new: true, runValidators: true })
-            .select('-__v')
+            .select('-__v -systemPrompt -skillWeights -ignoredSkills')
             .lean()
             .exec() as Promise<ILearningGoal | null>;
-    }
-
-    async duplicateBySlug(sourceSlug: string, newSlug: string, newTitle: string): Promise<ILearningGoal> {
-        const source = await this.findBySlug(sourceSlug);
-
-        if (!source) {
-            throw new Error('Source learning goal not found');
-        }
-
-        const duplicateData: Partial<ILearningGoal> = {
-            slug: newSlug,
-            title: newTitle,
-            systemPrompt: source.systemPrompt,
-            skillWeights: source.skillWeights,
-            ignoredSkills: source.ignoredSkills,
-            isActive: false,
-            ...(source.iconUrl ? { iconUrl: source.iconUrl } : {}),
-        };
-
-        return this.create(duplicateData);
     }
 
     async toggleStatus(slug: string): Promise<ILearningGoal | null> {
@@ -122,7 +102,7 @@ export class LearningGoalMongoRepository extends BaseMongoRepository<ILearningGo
 
         return this.model
             .findByIdAndUpdate(goal._id, { isActive: !goal.isActive }, { new: true, runValidators: true })
-            .select('-__v')
+            .select('-__v -systemPrompt -skillWeights -ignoredSkills')
             .lean()
             .exec() as Promise<ILearningGoal | null>;
     }

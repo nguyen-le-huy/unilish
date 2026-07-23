@@ -18,7 +18,7 @@ const levelGuidanceMap: Record<AiVoiceLevel, string> = {
     c2: 'Use fluent, nuanced, native-like language while staying concise and approachable.',
 };
 
-const topicGuidanceMap: Record<AiVoiceTopic, string> = {
+const topicGuidanceMap: Record<string, string> = {
     'free-talk': 'Keep the conversation broad, personal, and friendly without fixed scripts.',
     'ielts-speaking': 'Use IELTS-style spoken prompts naturally, but keep it as a real conversation.',
     travel: 'Prioritize travel situations such as airport, hotel, restaurant, transport, and directions.',
@@ -95,7 +95,7 @@ export const aiVoicePromptBuilder = {
         lines.push('');
         lines.push('Topic context:');
         lines.push(`- Topic: ${topic}.`);
-        lines.push(`- ${topicGuidanceMap[topic]}`);
+        lines.push(`- ${topicGuidanceMap[topic] ?? 'Follow the administrator-defined scenario and keep the role-play natural.'}`);
 
         lines.push('');
         lines.push('Conversation rules:');

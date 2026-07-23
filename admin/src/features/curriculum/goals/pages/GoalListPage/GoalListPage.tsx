@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -7,39 +7,26 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDebounce } from '@/hooks/useDebounce';
 import { GoalCard } from '../../components/GoalCard/GoalCard';
-import { DuplicateGoalDialog } from '../../components/DuplicateGoalDialog/DuplicateGoalDialog';
 import { useLearningGoals } from '../../hooks/useLearningGoals';
-import { useDuplicateLearningGoal, useToggleLearningGoalStatus } from '../../hooks/useLearningGoalMutations';
-import type { LearningGoal } from '../../types/learning-goal.types';
+import { useToggleLearningGoalStatus } from '../../hooks/useLearningGoalMutations';
 
 export default function GoalListPage() {
     const navigate = useNavigate();
 
     const [search, setSearch] = useState<string>('');
-    const [duplicateTarget, setDuplicateTarget] = useState<LearningGoal | null>(null);
 
     const debouncedSearch = useDebounce(search, 300);
     const { data, isLoading } = useLearningGoals({ page: 1, limit: 24, search: debouncedSearch });
     const toggleMutation = useToggleLearningGoalStatus();
-    const duplicateMutation = useDuplicateLearningGoal();
 
     const goals = data?.data ?? [];
-
-    const handleDuplicateConfirm = useCallback(
-        async (payload: { newSlug: string; newTitle: string }) => {
-            if (!duplicateTarget) return;
-            await duplicateMutation.mutateAsync({ slug: duplicateTarget.slug, payload });
-            setDuplicateTarget(null);
-        },
-        [duplicateTarget, duplicateMutation],
-    );
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <PageHeader
-                    title="Mục tiêu & Chiến lược"
-                    description="Quản lý cấu hình học tập và hành vi AI theo từng learning goal"
+                    title="Quản lý mục tiêu"
+                    description="Quản lý thông tin và trạng thái của các mục tiêu học tập"
                 />
                 <Button onClick={() => navigate('/curriculum/goals/new')} aria-label="Tạo mục tiêu học tập mới">
                     <Plus className="h-4 w-4 mr-2" />
@@ -69,21 +56,9 @@ export default function GoalListPage() {
                             key={goal._id}
                             goal={goal}
                             onToggleStatus={(slug) => toggleMutation.mutate(slug)}
-                            onDuplicate={setDuplicateTarget}
                         />
                     ))}
                 </div>
-            )}
-
-            {duplicateTarget && (
-                <DuplicateGoalDialog
-                    isOpen={Boolean(duplicateTarget)}
-                    onClose={() => setDuplicateTarget(null)}
-                    onConfirm={handleDuplicateConfirm}
-                    defaultSlug={duplicateTarget.slug}
-                    defaultTitle={duplicateTarget.title}
-                    isPending={duplicateMutation.isPending}
-                />
             )}
         </div>
     );

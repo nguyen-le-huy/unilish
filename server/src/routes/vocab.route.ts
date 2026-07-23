@@ -28,8 +28,8 @@ import {
 
 const router = Router({ mergeParams: true });
 
-// All vocab routes require authentication and content-creator / admin role
-router.use(protect, restrictTo('admin', 'content_creator'));
+// All vocabulary authoring routes require admin access.
+router.use(protect, restrictTo('admin'));
 
 // ─── Vocab Content ────────────────────────────────────────────────────────────
 

@@ -20,20 +20,6 @@ export const courseFormSchema = z.object({
     description: z.string().max(500).nullable().optional(),
     thumbnailUrl: z.string().url('URL không hợp lệ').nullable().optional(),
     level: z.enum([...CEFR_LEVELS] as [string, ...string[]]),
-    orderIndex: z.coerce.number().int().min(1),
-    prerequisiteCourseId: z.string().optional().nullable(),
-    finalExamConfig: z.object({
-        durationMinutes: z.coerce.number().int().min(1),
-        passScore: z.coerce.number().min(0).max(100),
-        structureMatrix: z.object({
-            vocabCount: z.coerce.number().int().min(0).default(0),
-            grammarCount: z.coerce.number().int().min(0).default(0),
-            readingTaskCount: z.coerce.number().int().min(0).default(0),
-            listeningTaskCount: z.coerce.number().int().min(0).default(0),
-            writingTaskCount: z.coerce.number().int().min(0).default(0),
-            speakingTaskCount: z.coerce.number().int().min(0).default(0),
-        }),
-    }),
 });
 
 export type CourseFormValues = z.infer<typeof courseFormSchema>;
@@ -55,20 +41,6 @@ export const useCourseForm = ({ course }: UseCourseFormOptions = {}) => {
             description: null,
             thumbnailUrl: null,
             level: 'A1',
-            orderIndex: 1,
-            prerequisiteCourseId: null,
-            finalExamConfig: {
-                durationMinutes: 60,
-                passScore: 65,
-                structureMatrix: {
-                    vocabCount: 0,
-                    grammarCount: 0,
-                    readingTaskCount: 0,
-                    listeningTaskCount: 0,
-                    writingTaskCount: 0,
-                    speakingTaskCount: 0,
-                },
-            },
         },
     });
 
@@ -83,20 +55,6 @@ export const useCourseForm = ({ course }: UseCourseFormOptions = {}) => {
                 description: course.description ?? null,
                 thumbnailUrl: course.thumbnailUrl ?? null,
                 level: course.level,
-                orderIndex: course.orderIndex,
-                prerequisiteCourseId: course.prerequisiteCourseId ?? null,
-                finalExamConfig: {
-                    durationMinutes: course.finalExamConfig.durationMinutes,
-                    passScore: course.finalExamConfig.passScore,
-                    structureMatrix: {
-                        vocabCount: course.finalExamConfig.structureMatrix.vocabCount ?? 0,
-                        grammarCount: course.finalExamConfig.structureMatrix.grammarCount ?? 0,
-                        readingTaskCount: course.finalExamConfig.structureMatrix.readingTaskCount ?? 0,
-                        listeningTaskCount: course.finalExamConfig.structureMatrix.listeningTaskCount ?? 0,
-                        writingTaskCount: course.finalExamConfig.structureMatrix.writingTaskCount ?? 0,
-                        speakingTaskCount: course.finalExamConfig.structureMatrix.speakingTaskCount ?? 0,
-                    },
-                },
             });
         }
     }, [course, form]);

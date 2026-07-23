@@ -33,6 +33,13 @@ export class ShadowingController {
         res.status(HttpStatus.OK).json(payload);
     });
 
+    static listAdminVideos = catchAsync(async (req: Request, res: Response) => {
+        const page = Number(req.query['page'] ?? 1);
+        const limit = Number(req.query['limit'] ?? 20);
+        const payload = await shadowingService.listAdminVideos(page, limit);
+        res.status(HttpStatus.OK).json(payload);
+    });
+
     static scorePronunciation = catchAsync(async (req: Request<{}, {}, ScorePronunciationBody>, res: Response) => {
         const file = req.file;
         if (!file || !file.buffer || file.buffer.length === 0) {
@@ -44,11 +51,6 @@ export class ShadowingController {
     });
 
     static updateCues = catchAsync(async (req: Request<{ videoId: string }, {}, UpdateCuesBody>, res: Response) => {
-        const userId = req.user?._id ? String(req.user._id) : '';
-        if (!userId) {
-            throw new AppError('Unauthorized', HttpStatus.UNAUTHORIZED);
-        }
-
         const normalizedCues: IShadowingCue[] = req.body.cues.map((cue) => ({
             id: cue.id,
             text: cue.text,
@@ -61,10 +63,14 @@ export class ShadowingController {
 
         const payload = await shadowingService.updateCues(
             req.params.videoId,
-            userId,
             normalizedCues,
             req.body.autoTranslate ?? false,
         );
         res.status(HttpStatus.OK).json(payload);
+    });
+
+    static deleteVideo = catchAsync(async (req: Request<{ videoId: string }>, res: Response) => {
+        await shadowingService.deleteVideo(req.params.videoId);
+        res.status(HttpStatus.NO_CONTENT).send();
     });
 }

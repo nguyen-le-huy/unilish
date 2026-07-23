@@ -23,10 +23,10 @@ router.use('/:lessonId/speaking', speakingRouter);
 router.get('/', validate(getLessonsByUnitIdSchema), LessonController.getLessonsByUnitId);
 router.get('/:lessonId', validate(getLessonByIdSchema), LessonController.getLessonById);
 
-// ─── Reorder (admin & content_creator) — before /:lessonId to avoid param clash
+// ─── Reorder (admin only) — before /:lessonId to avoid param clash
 router.patch(
     '/reorder',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(reorderLessonsSchema),
     LessonController.reorderLessons,
 );
@@ -34,13 +34,13 @@ router.patch(
 // ─── Write ────────────────────────────────────────────────────────────────────
 router.post(
     '/',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(createLessonSchema),
     LessonController.createLesson,
 );
 router.put(
     '/:lessonId',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(updateLessonSchema),
     LessonController.updateLesson,
 );

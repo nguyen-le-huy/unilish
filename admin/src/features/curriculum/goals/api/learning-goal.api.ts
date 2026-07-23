@@ -2,12 +2,9 @@ import apiClient from '@/lib/axios';
 import type { ApiResponse } from '@/types/api';
 import type {
     CreateLearningGoalPayload,
-    DuplicateLearningGoalPayload,
     LearningGoal,
     LearningGoalListQuery,
     LearningGoalListResponse,
-    TestLearningGoalPayload,
-    TestLearningGoalResult,
     UpdateLearningGoalPayload,
 } from '../types/learning-goal.types';
 
@@ -43,18 +40,8 @@ export const learningGoalApi = {
         return response.data.data;
     },
 
-    duplicateLearningGoal: async (slug: string, payload: DuplicateLearningGoalPayload): Promise<LearningGoal> => {
-        const response = await apiClient.post<ApiResponse<LearningGoal>>(`${BASE_PATH}/${slug}/duplicate`, payload);
-        return response.data.data;
-    },
-
     toggleLearningGoalStatus: async (slug: string): Promise<LearningGoal> => {
         const response = await apiClient.patch<ApiResponse<LearningGoal>>(`${BASE_PATH}/${slug}/toggle`);
-        return response.data.data;
-    },
-
-    testLearningGoal: async (slug: string, payload: TestLearningGoalPayload): Promise<TestLearningGoalResult> => {
-        const response = await apiClient.post<ApiResponse<TestLearningGoalResult>>(`${BASE_PATH}/${slug}/test`, payload);
         return response.data.data;
     },
 

@@ -35,6 +35,7 @@
     "backfill:exam-test-kind:dry": "tsx src/scripts/backfill-exam-test-kind.ts --dry-run",
     "seed:ielts-practice": "tsx src/scripts/seed-ielts-practice.ts",
     "seed:ielts-practice:yes": "tsx src/scripts/seed-ielts-practice.ts --yes",
+    "seed:ai-voice-content": "tsx src/scripts/seed-ai-voice-content.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare": "husky || true"
   },

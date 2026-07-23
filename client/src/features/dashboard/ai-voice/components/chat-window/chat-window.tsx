@@ -10,6 +10,7 @@ interface ChatWindowProps {
 	scenario: AiVoiceScenario;
 	level: string;
 	topic: string;
+	topicLabel: string;
 	onClose: () => void;
 }
 
@@ -19,13 +20,6 @@ const TRANSLATION_ERROR = '__error__';
 type TranslationMap = Record<string, string>;
 type SuggestionVisibilityMap = Record<string, boolean>;
 type GoogleTranslateChunk = [string, ...unknown[]];
-
-const TOPIC_LABELS: Record<string, string> = {
-	'free-talk': 'Trò chuyện tự do',
-	'ielts-speaking': 'IELTS Speaking',
-	travel: 'Du lịch',
-	office: 'Công sở',
-};
 
 const LEVEL_LABELS: Record<string, string> = {
 	'free-level': 'Tự do',
@@ -114,11 +108,11 @@ const translateToVietnamese = async (text: string): Promise<string> => {
 	return chunks.map((chunk) => chunk[0]).join('');
 };
 
-const ChatWindow = ({ scenario, level, topic, onClose }: ChatWindowProps) => {
+const ChatWindow = ({ scenario, level, topic, topicLabel, onClose }: ChatWindowProps) => {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [translationMap, setTranslationMap] = useState<TranslationMap>({});
 	const [suggestionVisibilityMap, setSuggestionVisibilityMap] = useState<SuggestionVisibilityMap>({});
-	const [isAssessmentOpen, setIsAssessmentOpen] = useState(false);
+	const [isAssessmentDismissed, setIsAssessmentDismissed] = useState(false);
 
 	const {
 		pttStatus,
@@ -143,12 +137,6 @@ const ChatWindow = ({ scenario, level, topic, onClose }: ChatWindowProps) => {
 			resetSession();
 		};
 	}, [resetSession]);
-
-	useEffect(() => {
-		if (assessment) {
-			setIsAssessmentOpen(true);
-		}
-	}, [assessment]);
 
 	useLayoutEffect(() => {
 		const container = scrollRef.current;
@@ -215,7 +203,7 @@ const ChatWindow = ({ scenario, level, topic, onClose }: ChatWindowProps) => {
 					<span className={styles.sessionEyebrow}>AI Speaking Coach</span>
 					<h1>{scenario.title}</h1>
 					<div className={styles.sessionBadges}>
-						<span>{TOPIC_LABELS[topic] ?? topic}</span>
+						<span>{topicLabel}</span>
 						<span>Trình độ {level === 'free-level' ? 'tự do' : level.toUpperCase()}</span>
 					</div>
 				</div>
@@ -311,7 +299,7 @@ const ChatWindow = ({ scenario, level, topic, onClose }: ChatWindowProps) => {
 					</footer>
 				</section>
 			</div>
-			{assessment && isAssessmentOpen && <AssessmentToast assessment={assessment} level={level} onClose={() => setIsAssessmentOpen(false)} />}
+			{assessment && !isAssessmentDismissed && <AssessmentToast assessment={assessment} level={level} onClose={() => setIsAssessmentDismissed(true)} />}
 		</section>
 	);
 };

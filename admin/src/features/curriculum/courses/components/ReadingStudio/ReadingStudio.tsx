@@ -7,7 +7,6 @@ import { useReadingContent } from '../../hooks/useReadingContent';
 import {
     useSaveReadingContent,
     useGenerateReadingContent,
-    useGenerateReadingQuestions,
     useGenerateReadingAudio,
     useFillGlossary,
 } from '../../hooks/useReadingMutations';
@@ -15,15 +14,10 @@ import { ReadingTopBar } from './components/ReadingTopBar/ReadingTopBar';
 import { ReadingNavigator } from './components/ReadingNavigator/ReadingNavigator';
 import { ReadingEditor } from './components/ReadingEditor/ReadingEditor';
 import { AiGenerateModal } from './components/AiGenerateModal/AiGenerateModal';
-import {
-    ReadingGenerateQuestionsModal,
-    type GenerateReadingQuestionsConfig,
-} from './components/ReadingGenerateQuestionsModal/ReadingGenerateQuestionsModal';
 import { useReadingStudioState } from './hooks/useReadingStudioState';
 import type {
     LessonSummary,
     ReadingLessonFormValues,
-    ReadingContent,
     ReadingGenerationPayload,
     CEFRLevel,
 } from '../../types/course.types';
@@ -63,14 +57,12 @@ export const ReadingStudio = memo(function ReadingStudio({ lesson, courseLevel }
     // ── Mutations ─────────────────────────────────────────────────────────────
     const saveMutation = useSaveReadingContent(lessonId);
     const generateContentMutation = useGenerateReadingContent(lessonId);
-    const generateQuestionsMutation = useGenerateReadingQuestions(lessonId);
     const generateAudioMutation = useGenerateReadingAudio(lessonId);
     const fillGlossaryMutation = useFillGlossary(lessonId);
 
     // ── UI state ──────────────────────────────────────────────────────────────
     const { activeSection, setActiveSection } = useReadingStudioState();
     const [isAiModalOpen, setIsAiModalOpen] = useState(false);
-    const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
 
     // ── Form ──────────────────────────────────────────────────────────────────
     const methods = useForm<ReadingLessonFormValues>({
@@ -97,9 +89,6 @@ export const ReadingStudio = memo(function ReadingStudio({ lesson, courseLevel }
             { keepDirtyValues: false },
         );
     }, [content, reset]);
-
-    // ── Derived ───────────────────────────────────────────────────────────────
-    const questionIds = content?.practiceConfig?.questionIds ?? [];
 
     // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -143,23 +132,6 @@ export const ReadingStudio = memo(function ReadingStudio({ lesson, courseLevel }
             });
         },
         [generateContentMutation, reset, setActiveSection],
-    );
-
-    const handleGenerateQuestions = useCallback(
-        ({ count, types }: GenerateReadingQuestionsConfig) => {
-            setIsGenerateModalOpen(false);
-            generateQuestionsMutation.mutate(
-                { count, types: types.length > 0 ? types : undefined },
-                {
-                    onSuccess: (data) => {
-                        notification.success(`Đã tạo ${data.count} câu hỏi comprehension`);
-                        setActiveSection('practice');
-                    },
-                    onError: () => notification.error('Lỗi khi tạo câu hỏi'),
-                },
-            );
-        },
-        [generateQuestionsMutation, setActiveSection],
     );
 
     const handleGenerateAudio = useCallback(() => {
@@ -211,21 +183,12 @@ export const ReadingStudio = memo(function ReadingStudio({ lesson, courseLevel }
             <div className="flex h-full flex-col overflow-hidden">
                 {/* Top Bar */}
                 <ReadingTopBar
-                    lessonId={lessonId}
                     lessonTitle={lesson.title}
                     isSaving={saveMutation.isPending}
                     isGenerating={generateContentMutation.isPending}
-                    isGeneratingQuestions={generateQuestionsMutation.isPending}
                     isGeneratingAudio={generateAudioMutation.isPending}
-                    questionsCount={questionIds.length}
-                    questionIds={questionIds}
-                    passingScore={
-                        content?.practiceConfig?.passingScore ??
-                        lesson.practiceConfig.passingScore
-                    }
                     onSave={handleSave}
                     onOpenAiModal={() => setIsAiModalOpen(true)}
-                    onOpenGenerateModal={() => setIsGenerateModalOpen(true)}
                     onGenerateAudio={handleGenerateAudio}
                 />
 
@@ -244,22 +207,12 @@ export const ReadingStudio = memo(function ReadingStudio({ lesson, courseLevel }
                     <div className="flex-1 overflow-hidden">
                         <ReadingEditor
                             activeSection={activeSection}
-                            lessonId={lessonId}
-                            questionIds={questionIds as ReadingContent['practiceConfig']['questionIds']}
                             isFillGlossaryPending={fillGlossaryMutation.isPending}
                             onFillGlossary={handleFillGlossary}
                         />
                     </div>
                 </div>
             </div>
-
-            {/* Generate Questions Config Modal */}
-            <ReadingGenerateQuestionsModal
-                open={isGenerateModalOpen}
-                isGenerating={generateQuestionsMutation.isPending}
-                onClose={() => setIsGenerateModalOpen(false)}
-                onGenerate={handleGenerateQuestions}
-            />
 
             {/* AI Generate Content Modal */}
             <AiGenerateModal

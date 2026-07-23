@@ -3,13 +3,14 @@
 export interface EnrollmentDto {
     enrollmentId: string;
     courseId: string;
-    courseSlug: string;
+    courseSlug?: string;
     status: 'ACTIVE' | 'PAUSED' | 'COMPLETED';
-    nextLessonId: string | null;
-}
-
-export interface EnrollmentsListResponse {
-    enrollments: EnrollmentDto[];
+    nextLessonId?: string | null;
+    completedLessonCount?: number;
+    totalRequiredLessonCount?: number;
+    timeSpentSeconds?: number;
+    startedAt?: string;
+    completedAt?: string | null;
 }
 
 // ─── Learning Status ──────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { diffWords } from 'diff';
-import { AlertTriangle, FlaskConical, Sparkles, Save, CheckCircle2, Circle } from 'lucide-react';
+import { AlertTriangle, Sparkles, Save, CheckCircle2, Circle } from 'lucide-react';
 import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -308,10 +308,6 @@ export const WritingStudio = forwardRef<WritingStudioRef, Props>(function Writin
                         <Button type="button" variant="outline" onClick={handleGenerate} disabled={generateMutation.isPending}>
                             <Sparkles className="mr-2 h-4 w-4" />
                             {generateMutation.isPending ? 'Đang tạo...' : 'AI Soạn Đề'}
-                        </Button>
-                        <Button type="button" variant="outline" onClick={() => setIsTestDriveOpen(true)}>
-                            <FlaskConical className="mr-2 h-4 w-4" />
-                            Test Drive
                         </Button>
                         <Button type="button" onClick={() => void handleSave()} disabled={saveMutation.isPending}>
                             <Save className="mr-2 h-4 w-4" />

@@ -57,6 +57,11 @@ export interface PaginatedVideosResponse {
     };
 }
 
+export interface PaginatedAdminVideosResponse {
+    data: IShadowingVideo[];
+    pagination: PaginatedVideosResponse['pagination'];
+}
+
 interface OEmbedResponse {
     title: string;
     thumbnail_url: string;
@@ -231,6 +236,25 @@ export class ShadowingService {
         };
     }
 
+    async listAdminVideos(page: number = 1, limit: number = 20): Promise<PaginatedAdminVideosResponse> {
+        const safePage = Math.max(1, page);
+        const safeLimit = Math.min(50, Math.max(1, limit));
+        const [videos, total] = await Promise.all([
+            this.shadowingRepo.listAllVideos(safePage, safeLimit),
+            this.shadowingRepo.countAllVideos(),
+        ]);
+
+        return {
+            data: videos,
+            pagination: {
+                page: safePage,
+                limit: safeLimit,
+                total,
+                totalPages: total === 0 ? 0 : Math.ceil(total / safeLimit),
+            },
+        };
+    }
+
     async scorePronunciation(audioBuffer: Buffer, referenceText: string, audioMimeType?: string): Promise<PronunciationResult> {
         const normalizedReferenceText = referenceText.trim();
         if (!normalizedReferenceText) {
@@ -242,7 +266,6 @@ export class ShadowingService {
 
     async updateCues(
         videoId: string,
-        userId: string,
         cues: IShadowingCue[],
         autoTranslate: boolean = false,
     ): Promise<UpdateCuesResponse> {
@@ -253,10 +276,6 @@ export class ShadowingService {
 
         if (video.status !== 'ready') {
             throw new AppError('Video is not ready for edits', HttpStatus.CONFLICT);
-        }
-
-        if (String(video.addedBy) !== userId) {
-            throw new AppError('Forbidden', HttpStatus.FORBIDDEN);
         }
 
         const existingById = new Map(video.cues.map((cue) => [cue.id, cue] as const));
@@ -355,12 +374,19 @@ export class ShadowingService {
             };
         });
 
-        const updated = await this.shadowingRepo.updateCues(videoId, userId, nextCues);
+        const updated = await this.shadowingRepo.updateCues(videoId, nextCues);
         if (!updated) {
             throw new AppError('Video not found', HttpStatus.NOT_FOUND);
         }
 
         return { status: 'ready', video: updated };
+    }
+
+    async deleteVideo(videoId: string): Promise<void> {
+        const deleted = await this.shadowingRepo.deleteByVideoId(videoId);
+        if (!deleted) {
+            throw new AppError('Video not found', HttpStatus.NOT_FOUND);
+        }
     }
 
     private async processVideo(videoId: string): Promise<void> {

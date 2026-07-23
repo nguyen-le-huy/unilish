@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { FileText, Music, Settings } from 'lucide-react';
+import { FileText, Music } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ListeningSection } from '../../hooks/useListeningStudioState';
 
@@ -10,7 +10,6 @@ interface Props {
     onSectionChange: (section: ListeningSection) => void;
     hasScriptError: boolean;
     hasKaraokeError: boolean;
-    hasInteractiveError: boolean;
 }
 
 interface NavItem {
@@ -35,12 +34,6 @@ const NAV_ITEMS: NavItem[] = [
         description: 'Timestamp từng từ & Gap-fill',
         Icon: Music,
     },
-    {
-        id: 'interactive',
-        label: 'Tương tác & Bài tập',
-        description: 'Cài đặt chế độ và câu hỏi',
-        Icon: Settings,
-    },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -50,12 +43,10 @@ export const ListeningNavigator = memo(function ListeningNavigator({
     onSectionChange,
     hasScriptError,
     hasKaraokeError,
-    hasInteractiveError,
 }: Props) {
     const hasError: Record<ListeningSection, boolean> = {
         script: hasScriptError,
         karaoke: hasKaraokeError,
-        interactive: hasInteractiveError,
     };
 
     return (

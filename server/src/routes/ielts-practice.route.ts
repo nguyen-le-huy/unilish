@@ -35,7 +35,7 @@ router.get('/tests/:slug', validate(ieltsTestDetailSchema), IeltsPracticeControl
 
 /**
  * POST /api/ielts-practice/tests/:testId/attempts
- * Start a new attempt or resume existing. Requires Idempotency-Key header.
+ * Start a new attempt. Requires Idempotency-Key header.
  * Rate-limited: 10 requests/60s per user.
  */
 router.post(

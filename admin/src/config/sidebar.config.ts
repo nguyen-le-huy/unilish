@@ -132,6 +132,16 @@ export const sidebarConfig: SidebarConfig = {
           description: "Quản lý Course → Unit → Lesson",
         },
         {
+          title: "Giao tiếp với AI",
+          url: "/ai-voice-content",
+          description: "Quản lý chủ đề và tình huống hội thoại",
+        },
+        {
+          title: "Học với YouTube",
+          url: "/shadowing",
+          description: "Quản lý video và transcript luyện nói đuổi",
+        },
+        {
           title: "Ngân hàng Câu hỏi",
           url: "/questions",
           description: "Question Bank tái sử dụng",

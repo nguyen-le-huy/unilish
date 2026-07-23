@@ -27,7 +27,7 @@ const primaryItems: SidebarItem[] = [
   { label: 'Trang chủ', path: PATHS.DASHBOARD.HOME, icon: globeIcon, match: (pathname) => pathname === PATHS.DASHBOARD.HOME },
   { label: 'Luyện giao tiếp với AI', path: '/dashboard/ai-voice', icon: micIcon },
   {
-    label: 'Luyện nghe & nói',
+    label: 'Học với YouTube',
     path: '/dashboard/shadowing',
     icon: waveIcon,
     badge: 'Mới',
@@ -52,7 +52,7 @@ const primaryItems: SidebarItem[] = [
 const pageTitles: Array<{ match: (pathname: string) => boolean; label: string }> = [
   { match: (pathname) => pathname === PATHS.DASHBOARD.HOME, label: 'Trang chủ' },
   { match: (pathname) => pathname.startsWith('/dashboard/ai-voice'), label: 'Giọng nói AI' },
-  { match: (pathname) => pathname.startsWith('/dashboard/shadowing'), label: 'Luyện nghe & nói' },
+  { match: (pathname) => pathname.startsWith('/dashboard/shadowing'), label: 'Học với YouTube' },
   { match: (pathname) => pathname.startsWith('/dashboard/dictation'), label: 'Chép chính tả' },
   { match: (pathname) => pathname.startsWith(PATHS.DASHBOARD.IELTS_PRACTICE), label: 'Luyện đề IELTS' },
   { match: (pathname) => pathname.startsWith(PATHS.DASHBOARD.PLACEMENT_TEST.ROOT), label: 'Kiểm tra trình độ' },

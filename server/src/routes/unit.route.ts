@@ -20,10 +20,10 @@ router.use(protect);
 router.get('/', validate(getUnitsByCoursIdSchema), UnitController.getUnitsByCourseId);
 router.get('/:unitId', validate(getUnitByIdSchema), UnitController.getUnitById);
 
-// ─── Reorder (admin & content_creator) — before /:unitId to avoid param clash
+// ─── Reorder (admin only) — before /:unitId to avoid param clash
 router.patch(
     '/reorder',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(reorderUnitsSchema),
     UnitController.reorderUnits,
 );
@@ -31,13 +31,13 @@ router.patch(
 // ─── Write ────────────────────────────────────────────────────────────────────
 router.post(
     '/',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(createUnitSchema),
     UnitController.createUnit,
 );
 router.put(
     '/:unitId',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(updateUnitSchema),
     UnitController.updateUnit,
 );

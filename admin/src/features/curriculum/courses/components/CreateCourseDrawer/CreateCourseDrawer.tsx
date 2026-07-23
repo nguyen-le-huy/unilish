@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import type { Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     Form,
@@ -33,8 +33,7 @@ import { Textarea } from '@/components/ui/textarea';
 // Cross-feature imports via public barrels (FSD §2)
 import { useLanguages } from '@/features/curriculum/languages';
 import { useLearningGoals } from '@/features/curriculum/goals';
-import { useCourses } from '../../hooks/useCourses';
-import { useCreateCourse } from '../../hooks/useCourseMutations';
+import { useCreateCourse, useUploadCourseThumbnail } from '../../hooks/useCourseMutations';
 import { CEFR_LEVELS } from '../../types/course.types';
 import type { CreateCoursePayload } from '../../types/course.types';
 
@@ -63,8 +62,6 @@ const createCourseSchema = z.object({
     description: z.string().max(500).optional(),
     thumbnailUrl: z.string().url('URL không hợp lệ').optional().or(z.literal('')),
     level: z.enum([...CEFR_LEVELS] as [string, ...string[]]),
-    orderIndex: z.coerce.number().int().min(1, 'Thứ tự phải ≥ 1'),
-    prerequisiteCourseId: z.string().nullable().optional(),
 });
 
 type CreateCourseFormValues = z.infer<typeof createCourseSchema>;
@@ -87,6 +84,7 @@ export function CreateCourseDrawer({
     defaultLearningGoalId,
 }: Props) {
     const createMutation = useCreateCourse();
+    const uploadThumbnailMutation = useUploadCourseThumbnail();
 
     const form = useForm<CreateCourseFormValues, unknown, CreateCourseFormValues>({
         resolver: zodResolver(createCourseSchema) as Resolver<
@@ -102,14 +100,13 @@ export function CreateCourseDrawer({
             description: '',
             thumbnailUrl: '',
             level: 'A1',
-            orderIndex: 1,
-            prerequisiteCourseId: null,
         },
     });
 
     const watchedLanguageId = form.watch('languageId');
     const watchedLearningGoalId = form.watch('learningGoalId');
     const watchedName = form.watch('name');
+    const thumbnailUrl = form.watch('thumbnailUrl');
     const isLanguageLocked = Boolean(defaultLanguageId);
     const isGoalLocked = Boolean(defaultLearningGoalId);
 
@@ -126,16 +123,6 @@ export function CreateCourseDrawer({
                 : allGoals,
         [allGoals, watchedLanguageId],
     );
-
-    // Courses matching the selected language + goal → populate Prerequisite dropdown
-    const { data: courseListData } = useCourses({
-        languageId: watchedLanguageId || undefined,
-        learningGoalId: watchedLearningGoalId || undefined,
-        limit: 100,
-        sort: 'orderIndex',
-        order: 'asc',
-    });
-    const existingCourses = courseListData?.data ?? [];
 
     // ── Keep pre-selected values in sync ─────────────────────────────────────
     useEffect(() => {
@@ -178,8 +165,6 @@ export function CreateCourseDrawer({
             description: '',
             thumbnailUrl: '',
             level: 'A1',
-            orderIndex: 1,
-            prerequisiteCourseId: null,
         });
         slugEditedRef.current = false;
     }, [defaultLanguageId, defaultLearningGoalId, form]);
@@ -200,8 +185,6 @@ export function CreateCourseDrawer({
             description: values.description?.trim() || null,
             thumbnailUrl: values.thumbnailUrl?.trim() || null,
             level: values.level as CreateCoursePayload['level'],
-            orderIndex: values.orderIndex,
-            prerequisiteCourseId: values.prerequisiteCourseId ?? null,
         };
         createMutation.mutate(payload, {
             onSuccess: () => onOpenChange(false),
@@ -224,8 +207,7 @@ export function CreateCourseDrawer({
                 <SheetHeader className="border-b px-6 pb-4 pt-6">
                     <SheetTitle>Tạo Khóa học mới</SheetTitle>
                     <SheetDescription>
-                        Điền thông tin cơ bản. Cấu hình nâng cao (AI Roadmap, Exam config) sẽ có
-                        ngay trong <strong>Course Studio</strong> sau khi tạo.
+                        Điền thông tin cơ bản để tạo khóa học mới.
                     </SheetDescription>
                 </SheetHeader>
 
@@ -259,10 +241,7 @@ export function CreateCourseDrawer({
                                         ) : (
                                             <Select
                                                 value={field.value}
-                                                onValueChange={(v) => {
-                                                    field.onChange(v);
-                                                    form.setValue('prerequisiteCourseId', null);
-                                                }}
+                                                onValueChange={field.onChange}
                                             >
                                                 <FormControl>
                                                     <SelectTrigger aria-label="Chọn ngôn ngữ">
@@ -305,10 +284,7 @@ export function CreateCourseDrawer({
                                         ) : (
                                             <Select
                                                 value={field.value}
-                                                onValueChange={(v) => {
-                                                    field.onChange(v);
-                                                    form.setValue('prerequisiteCourseId', null);
-                                                }}
+                                                onValueChange={field.onChange}
                                                 disabled={!watchedLanguageId}
                                             >
                                                 <FormControl>
@@ -390,8 +366,8 @@ export function CreateCourseDrawer({
                                 />
                             </div>
 
-                            {/* 4 · Level + Order (2-column grid) */}
-                            <div className="grid grid-cols-2 gap-4">
+                            {/* 4 · Level */}
+                            <div className="max-w-xs">
                                 <FormField
                                     control={form.control}
                                     name="level"
@@ -425,32 +401,6 @@ export function CreateCourseDrawer({
                                     )}
                                 />
 
-                                <FormField
-                                    control={form.control}
-                                    name="orderIndex"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>
-                                                Thứ tự{' '}
-                                                <span className="text-destructive" aria-hidden="true">
-                                                    *
-                                                </span>
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="number"
-                                                    min={1}
-                                                    aria-label="Thứ tự khóa học"
-                                                    {...field}
-                                                    onChange={(e) =>
-                                                        field.onChange(Number(e.target.value))
-                                                    }
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
                             </div>
 
                             {/* 5 · Description (optional) */}
@@ -478,85 +428,27 @@ export function CreateCourseDrawer({
                                 )}
                             />
 
-                            {/* 6 · Thumbnail URL (optional) */}
-                            <FormField
-                                control={form.control}
-                                name="thumbnailUrl"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>
-                                            URL Thumbnail{' '}
-                                            <span className="text-xs font-normal text-muted-foreground">
-                                                (Tùy chọn)
-                                            </span>
-                                        </FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                placeholder="https://example.com/thumb.jpg"
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            {/* 7 · Prerequisite (optional) */}
-                            <FormField
-                                control={form.control}
-                                name="prerequisiteCourseId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>
-                                            Khóa học tiên quyết{' '}
-                                            <span className="text-xs font-normal text-muted-foreground">
-                                                (Tùy chọn)
-                                            </span>
-                                        </FormLabel>
-                                        <Select
-                                            value={field.value ?? 'none'}
-                                            onValueChange={(v) =>
-                                                field.onChange(v === 'none' ? null : v)
-                                            }
-                                            disabled={
-                                                !watchedLanguageId ||
-                                                !watchedLearningGoalId ||
-                                                existingCourses.length === 0
-                                            }
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger aria-label="Khóa học tiên quyết">
-                                                    <SelectValue placeholder="Không yêu cầu" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="none">Không yêu cầu</SelectItem>
-                                                {existingCourses.map((c) => (
-                                                    <SelectItem key={c._id} value={c._id}>
-                                                        <span className="font-mono text-xs text-muted-foreground">
-                                                            [{c.level}]
-                                                        </span>{' '}
-                                                        {c.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        {(!watchedLanguageId || !watchedLearningGoalId) && (
-                                            <FormDescription>
-                                                Chọn Ngôn ngữ và Mục tiêu trước để xem danh sách.
-                                            </FormDescription>
-                                        )}
-                                        {watchedLanguageId &&
-                                            watchedLearningGoalId &&
-                                            existingCourses.length === 0 && (
-                                                <FormDescription>
-                                                    Chưa có khóa học nào cho ngôn ngữ và mục tiêu này.
-                                                </FormDescription>
-                                            )}
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                            {/* 6 · Thumbnail upload (optional) */}
+                            <FormItem>
+                                <FormLabel>Ảnh khóa học <span className="text-xs font-normal text-muted-foreground">(Tùy chọn)</span></FormLabel>
+                                <Input
+                                    type="file"
+                                    accept="image/*"
+                                    disabled={uploadThumbnailMutation.isPending}
+                                    onChange={(event) => {
+                                        const file = event.target.files?.[0];
+                                        event.target.value = '';
+                                        if (!file) return;
+                                        uploadThumbnailMutation.mutate(file, {
+                                            onSuccess: ({ url }) => form.setValue('thumbnailUrl', url, { shouldValidate: true }),
+                                        });
+                                    }}
+                                />
+                                <p className="flex items-center text-xs text-muted-foreground">
+                                    {uploadThumbnailMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang tải ảnh...</> : <><Upload className="mr-2 h-4 w-4" />Chọn ảnh từ thiết bị</>}
+                                </p>
+                                {thumbnailUrl ? <img src={thumbnailUrl} alt="Ảnh khóa học" className="h-32 w-full rounded-md border object-cover" /> : null}
+                            </FormItem>
                         </form>
                     </Form>
                 </div>
@@ -566,14 +458,14 @@ export function CreateCourseDrawer({
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
-                        disabled={createMutation.isPending}
+                        disabled={createMutation.isPending || uploadThumbnailMutation.isPending}
                     >
                         Hủy
                     </Button>
                     <Button
                         type="submit"
                         form="create-course-form"
-                        disabled={createMutation.isPending}
+                        disabled={createMutation.isPending || uploadThumbnailMutation.isPending}
                     >
                         {createMutation.isPending && (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />

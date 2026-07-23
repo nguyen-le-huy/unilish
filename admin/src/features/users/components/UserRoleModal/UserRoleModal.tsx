@@ -66,13 +66,11 @@ function UserRoleModalContent({ user, open, onOpenChange }: UserRoleModalContent
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="student">Học viên (Student)</SelectItem>
-                                <SelectItem value="content_creator">Nội dung (Content Creator)</SelectItem>
                                 <SelectItem value="admin">Quản trị viên (Admin)</SelectItem>
                             </SelectContent>
                         </Select>
                         <p className="text-xs text-muted-foreground mt-1">
                             * Admin: Toàn quyền hệ thống.
-                            <br />* Content Creator: Quản lý khóa học, bài học.
                             <br />* Student: Chỉ có quyền học tập.
                         </p>
                     </div>

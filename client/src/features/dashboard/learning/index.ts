@@ -12,7 +12,6 @@ export { useLesson, useStartLesson, useSaveCheckpoint, useSubmitLesson } from '.
 // Types
 export type {
     EnrollmentDto,
-    EnrollmentsListResponse,
     CourseRoadmapDto,
     LearnerLessonDto,
     LearningDashboardDto,

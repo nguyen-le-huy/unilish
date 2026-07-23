@@ -27,8 +27,8 @@ import {
 
 const router = Router({ mergeParams: true });
 
-// All grammar routes require authentication + content creator / admin role
-router.use(protect, restrictTo('admin', 'content_creator'));
+// All grammar authoring routes require admin access.
+router.use(protect, restrictTo('admin'));
 
 // ─── Grammar Content ──────────────────────────────────────────────────────────
 

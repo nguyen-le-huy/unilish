@@ -33,12 +33,6 @@ const NAV_ITEMS: NavItem[] = [
         description: 'Các từ được đánh dấu trong bài đọc',
         Icon: BookMarked,
     },
-    {
-        id: 'practice',
-        label: 'Luyện tập',
-        description: 'Câu hỏi comprehension',
-        Icon: ClipboardList,
-    },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -51,7 +45,6 @@ export const ReadingNavigator = memo(function ReadingNavigator({
     const hasError: Record<ReadingSection, boolean> = {
         text: hasTextError,
         glossary: false,
-        practice: false,
     };
 
     return (

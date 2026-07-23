@@ -104,9 +104,6 @@ async function seedTestData(): Promise<{
             title: 'E2E Test Goal',
             description: 'Temporary goal for end-to-end validation',
             supportedLanguages: [new mongoose.Types.ObjectId(languageId)],
-            systemPrompt: 'You are a test assistant.',
-            skillWeights: { listening: 0.2, speaking: 0.2, reading: 0.2, writing: 0.2, grammar: 0.1, vocabulary: 0.1 },
-            ignoredSkills: [],
             isActive: true,
         });
         console.log(`  Created learning goal: ${goal._id}`);
@@ -125,12 +122,6 @@ async function seedTestData(): Promise<{
             orderIndex: 9999,
             totalUnits: 0,
             isActive: true,
-            finalExamConfig: {
-                durationMinutes: 30,
-                passScore: 50,
-                structureMatrix: {},
-                questionPool: { readingLessonIds: [], listeningLessonIds: [] },
-            },
         });
         console.log(`  Created course: ${course._id}`);
     }

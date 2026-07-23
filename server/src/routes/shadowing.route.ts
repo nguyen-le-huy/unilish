@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { protect } from '../middlewares/auth.middleware.js';
+import { protect, restrictTo } from '../middlewares/auth.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
 import { ShadowingController } from '../controllers/shadowing.controller.js';
 import {
@@ -19,11 +19,24 @@ router.use(protect);
 
 /**
  * @swagger
- * /api/v1/shadowing/videos:
+ * /api/v1/shadowing/admin/videos:
  *   post:
  *     summary: Submit a YouTube video URL for shadowing processing
  */
-router.post('/videos', shadowingSubmitRateLimit, validate(submitVideoSchema), ShadowingController.submitVideo);
+router.post(
+    '/admin/videos',
+    restrictTo('admin'),
+    shadowingSubmitRateLimit,
+    validate(submitVideoSchema),
+    ShadowingController.submitVideo,
+);
+
+router.get(
+    '/admin/videos',
+    restrictTo('admin'),
+    validate(listVideosSchema),
+    ShadowingController.listAdminVideos,
+);
 
 /**
  * @swagger
@@ -43,11 +56,23 @@ router.get('/videos', validate(listVideosSchema), ShadowingController.listVideos
 
 /**
  * @swagger
- * /api/v1/shadowing/videos/{videoId}/cues:
+ * /api/v1/shadowing/admin/videos/{videoId}/cues:
  *   patch:
  *     summary: Update shadowing cues for a video
  */
-router.patch('/videos/:videoId/cues', validate(updateCuesSchema), ShadowingController.updateCues);
+router.patch(
+    '/admin/videos/:videoId/cues',
+    restrictTo('admin'),
+    validate(updateCuesSchema),
+    ShadowingController.updateCues,
+);
+
+router.delete(
+    '/admin/videos/:videoId',
+    restrictTo('admin'),
+    validate(videoIdParamSchema),
+    ShadowingController.deleteVideo,
+);
 
 /**
  * @swagger

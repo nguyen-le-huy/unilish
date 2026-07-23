@@ -98,23 +98,6 @@ const writeJson = (file: string, value: unknown): void => {
     fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf8');
 };
 
-const defaultFinalExamConfig = {
-    durationMinutes: 60,
-    passScore: 65,
-    structureMatrix: {
-        vocabCount: 0,
-        grammarCount: 0,
-        readingTaskCount: 0,
-        listeningTaskCount: 0,
-        writingTaskCount: 0,
-        speakingTaskCount: 0,
-    },
-    questionPool: {
-        readingLessonIds: [],
-        listeningLessonIds: [],
-    },
-};
-
 async function run(dryRun: boolean, confirmed: boolean): Promise<void> {
     console.log('\nConnecting to MongoDB...');
     await mongoose.connect(env.MONGO_URI);
@@ -248,9 +231,7 @@ async function run(dryRun: boolean, confirmed: boolean): Promise<void> {
         await courseCollection.insertMany(
             proposed.map(({ sourceSeriesId: _sourceSeriesId, ...item }) => ({
                 ...item,
-                prerequisiteCourseId: null,
                 totalUnits: 0,
-                finalExamConfig: defaultFinalExamConfig,
                 __v: 0,
             })),
             { ordered: true },

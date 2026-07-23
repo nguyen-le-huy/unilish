@@ -1,5 +1,5 @@
 import { memo, useCallback, useRef, type BaseSyntheticEvent } from 'react';
-import { Play, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -20,8 +20,8 @@ import {
 } from '@/components/ui/select';
 import { useUpdateLesson } from '../../hooks/useLessonMutations';
 import { useLessonForm, type LessonFormValues } from '../../hooks/useLessonForm';
-import type { LessonSummary, UpdateLessonPayload, LessonType, PracticeMode } from '../../types/course.types';
-import { LESSON_TYPES, PRACTICE_MODES } from '../../types/course.types';
+import type { LessonSummary, UpdateLessonPayload, LessonType } from '../../types/course.types';
+import { LESSON_TYPES } from '../../types/course.types';
 import { SpeakingStudio, type SpeakingStudioRef } from '../SpeakingStudio/SpeakingStudio';
 import { WritingStudio, type WritingStudioRef } from '../WritingStudio/WritingStudio';
 import { notification } from '@/lib/notification';
@@ -69,10 +69,6 @@ export const LessonEditor = memo(function LessonEditor({ lesson, courseId }: Pro
             const payload: UpdateLessonPayload = {
                 title: values.title,
                 type: values.type as LessonType,
-                practiceConfig: {
-                    mode: values.practiceConfig.mode as PracticeMode,
-                    passingScore: values.practiceConfig.passingScore,
-                },
             };
 
             updateMutation.mutate({ id: lesson._id, payload });
@@ -100,28 +96,6 @@ export const LessonEditor = memo(function LessonEditor({ lesson, courseId }: Pro
             <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">Cài đặt bài học</h2>
                 <div className="flex items-center gap-2">
-                    {selectedType === 'SPEAKING' && (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => speakingStudioRef.current?.openTestDrive()}
-                        >
-                            <Play className="mr-2 h-4 w-4" aria-hidden="true" />
-                            Test Drive
-                        </Button>
-                    )}
-
-                    {selectedType === 'WRITING' && (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => writingStudioRef.current?.openTestDrive()}
-                        >
-                            <Play className="mr-2 h-4 w-4" aria-hidden="true" />
-                            Test Drive
-                        </Button>
-                    )}
-
                     <Button size="sm" onClick={onSubmit} disabled={updateMutation.isPending}>
                         <Save className="mr-2 h-4 w-4" aria-hidden="true" />
                         {updateMutation.isPending ? 'Đang lưu...' : 'Lưu'}
@@ -180,58 +154,6 @@ export const LessonEditor = memo(function LessonEditor({ lesson, courseId }: Pro
                                 </CardContent>
                             </Card>
 
-                            {/* Practice Config */}
-                            <Card>
-                                <CardHeader className="pb-3">
-                                    <CardTitle className="text-sm font-medium">Cấu hình luyện tập</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="practiceConfig.mode"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Chế độ luyện tập</FormLabel>
-                                                <Select value={field.value} onValueChange={field.onChange}>
-                                                    <FormControl>
-                                                        <SelectTrigger aria-label="Chế độ luyện tập">
-                                                            <SelectValue placeholder="Chọn chế độ" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {PRACTICE_MODES.map((m) => (
-                                                            <SelectItem key={m} value={m}>
-                                                                {m === 'FIXED' ? 'Cố định (Câu hỏi cụ thể)' : 'Linh hoạt (AI tạo)'}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="practiceConfig.passingScore"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Điểm đậu (%)</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        type="number"
-                                                        min={0}
-                                                        max={100}
-                                                        {...field}
-                                                        onChange={(e) => field.onChange(Number(e.target.value))}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </CardContent>
-                            </Card>
                         </>
                     )}
 

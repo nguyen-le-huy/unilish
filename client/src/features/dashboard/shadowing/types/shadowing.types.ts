@@ -48,25 +48,9 @@ export interface PaginatedVideos {
     pagination: Pagination;
 }
 
-export interface SubmitVideoResponse {
-    status: 'processing' | 'ready';
-    videoId?: string;
-    video?: ShadowingVideo;
-}
-
 export interface VideoStatusResponse {
     status: 'processing' | 'ready' | 'failed';
     video?: ShadowingVideo;
-}
-
-export interface UpdateCuesPayload {
-    cues: Cue[];
-    autoTranslate?: boolean;
-}
-
-export interface UpdateCuesResponse {
-    status: 'ready';
-    video: ShadowingVideo;
 }
 
 export type PronunciationErrorType = 'None' | 'Omission' | 'Insertion' | 'Mispronunciation';

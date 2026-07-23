@@ -12,7 +12,7 @@ import type {
 export class IeltsAttemptController {
     /**
      * POST /api/ielts-practice/tests/:testId/attempts
-     * Start a new attempt or resume an existing one.
+     * Start a new attempt.
      */
     static readonly startAttempt = catchAsync(async (req: Request, res: Response) => {
         const { testId } = req.params as { testId: string };
@@ -34,7 +34,7 @@ export class IeltsAttemptController {
         sendResponse(
             res,
             statusCode,
-            result.resumed ? 'Tiếp tục lượt làm bài thành công' : 'Bắt đầu lượt luyện IELTS thành công',
+            result.resumed ? 'Lấy lượt làm bài thành công' : 'Bắt đầu lượt luyện IELTS thành công',
             result,
         );
     });

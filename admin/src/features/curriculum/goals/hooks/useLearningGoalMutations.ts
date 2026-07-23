@@ -5,9 +5,7 @@ import { learningGoalApi } from '../api/learning-goal.api';
 import { LEARNING_GOAL_QUERY_KEYS } from '../constants/query-keys';
 import type {
     CreateLearningGoalPayload,
-    DuplicateLearningGoalPayload,
     LearningGoalListResponse,
-    TestLearningGoalPayload,
     UpdateLearningGoalPayload,
 } from '../types/learning-goal.types';
 
@@ -39,22 +37,6 @@ export const useUpdateLearningGoal = () => {
         },
         onError: (error) => {
             toast.error(getApiErrorMessage(error, 'Cập nhật mục tiêu thất bại'));
-        },
-    });
-};
-
-export const useDuplicateLearningGoal = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: ({ slug, payload }: { slug: string; payload: DuplicateLearningGoalPayload }) =>
-            learningGoalApi.duplicateLearningGoal(slug, payload),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: LEARNING_GOAL_QUERY_KEYS.lists() });
-            toast.success('Nhân bản mục tiêu thành công');
-        },
-        onError: (error) => {
-            toast.error(getApiErrorMessage(error, 'Nhân bản mục tiêu thất bại'));
         },
     });
 };
@@ -94,16 +76,6 @@ export const useToggleLearningGoalStatus = () => {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: LEARNING_GOAL_QUERY_KEYS.lists() });
-        },
-    });
-};
-
-export const useTestLearningGoal = () => {
-    return useMutation({
-        mutationFn: ({ slug, payload }: { slug: string; payload: TestLearningGoalPayload }) =>
-            learningGoalApi.testLearningGoal(slug, payload),
-        onError: (error) => {
-            toast.error(getApiErrorMessage(error, 'Test AI thất bại'));
         },
     });
 };

@@ -19,25 +19,6 @@ export type PracticeMode = (typeof PRACTICE_MODES)[number];
 
 // ─── Sub-types ────────────────────────────────────────────────────────────────
 
-export interface StructureMatrix {
-    vocabCount?: number;
-    grammarCount?: number;
-    readingTaskCount?: number;
-    listeningTaskCount?: number;
-    writingTaskCount?: number;
-    speakingTaskCount?: number;
-}
-
-export interface FinalExamConfig {
-    durationMinutes: number;
-    passScore: number;
-    structureMatrix: StructureMatrix;
-    questionPool: {
-        readingLessonIds: string[];
-        listeningLessonIds: string[];
-    };
-}
-
 export interface ContextSeed {
     scenario?: string;
     keywords: string[];
@@ -68,8 +49,6 @@ export interface Course {
     orderIndex: number;
     totalUnits: number;
     isActive: boolean;
-    prerequisiteCourseId?: string | null;
-    finalExamConfig: FinalExamConfig;
     createdAt: string;
     updatedAt: string;
 }
@@ -118,9 +97,6 @@ export interface CreateCoursePayload {
     description?: string | null;
     thumbnailUrl?: string | null;
     level: CEFRLevel;
-    orderIndex: number;
-    prerequisiteCourseId?: string | null;
-    finalExamConfig?: Partial<FinalExamConfig>;
 }
 
 export interface UpdateCoursePayload {
@@ -129,11 +105,8 @@ export interface UpdateCoursePayload {
     description?: string | null;
     thumbnailUrl?: string | null;
     level?: CEFRLevel;
-    orderIndex?: number;
     languageId?: string;
     learningGoalId?: string;
-    prerequisiteCourseId?: string | null;
-    finalExamConfig?: Partial<FinalExamConfig>;
     isActive?: boolean;
 }
 

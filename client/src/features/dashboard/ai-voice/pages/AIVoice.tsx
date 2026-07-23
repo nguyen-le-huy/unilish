@@ -1,23 +1,14 @@
-import { useCallback, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { useState } from 'react';
 import happyImage from '@/assets/images/happy.svg';
 import { Loading } from '@/components/common/Loading/Loading';
 import { Button } from '@/components/core/Button';
 import { useAuthStore } from '@/stores/auth.store';
-import type { AiVoiceScenario } from '../types/ai-voice.types';
-import { useGenerateScenarios } from '../hooks/use-generate-scenarios';
+import { useAiVoiceCatalog } from '../hooks/use-ai-voice-catalog';
 import ChatWindow from '../components/chat-window/chat-window';
 import LevelSelector from '../components/level-selector/level-selector';
 import ScenarioSelector from '../components/scenario-selector/scenario-selector';
 import TopicSelector from '../components/topic-selector/topic-selector';
 import styles from './AIVoice.module.css';
-
-const TOPIC_OPTIONS = [
-	{ id: 'free-talk', label: 'Trò chuyện tự do', description: 'Nói về bất kỳ điều gì bạn thích', icon: '✦' },
-	{ id: 'ielts-speaking', label: 'IELTS Speaking', description: 'Luyện phản xạ theo chủ đề IELTS', icon: '◎' },
-	{ id: 'travel', label: 'Du lịch', description: 'Giao tiếp trong các chuyến đi', icon: '⌖' },
-	{ id: 'office', label: 'Công sở', description: 'Tình huống chuyên nghiệp hằng ngày', icon: '▣' },
-];
 
 const LEVEL_OPTIONS = [
 	{ id: 'free-level', label: 'Tự do' },
@@ -29,21 +20,22 @@ const LEVEL_OPTIONS = [
 	{ id: 'c2', label: 'C2' },
 ];
 
-const ERROR_GENERATE_SCENARIOS = 'Không thể tạo tình huống. Vui lòng thử lại.';
-
-type ScenarioState = 'idle' | 'loading' | 'ready' | 'error';
-
 const AIVoice = () => {
 	const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
 	const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
 	const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
-	const [generatedScenarios, setGeneratedScenarios] = useState<AiVoiceScenario[]>([]);
-	const [scenarioState, setScenarioState] = useState<ScenarioState>('idle');
 	const [isChatWindowVisible, setIsChatWindowVisible] = useState<boolean>(false);
 
 	const user = useAuthStore((state) => state.user);
-	const { mutate: generateScenarios } = useGenerateScenarios();
-	const generationRequestIdRef = useRef(0);
+	const { data: topics = [], isLoading: isCatalogLoading, isError: isCatalogError, refetch } = useAiVoiceCatalog();
+	const topicOptions = topics.map((topic) => ({
+		id: topic.slug,
+		label: topic.title,
+		description: topic.description,
+		icon: topic.icon,
+	}));
+	const selectedTopic = topics.find((topic) => topic.slug === selectedTopicId) ?? null;
+	const availableScenarios = selectedTopic?.scenarios ?? [];
 
 	const userDisplayName = (() => {
 		const fullName = user?.fullName?.trim() ?? '';
@@ -60,61 +52,17 @@ const AIVoice = () => {
 		return localPart || 'User';
 	})();
 
-	const runGenerateScenarios = useCallback((topicId: string, levelId: string) => {
-		const requestId = generationRequestIdRef.current + 1;
-		generationRequestIdRef.current = requestId;
-
-		setScenarioState('loading');
-		setGeneratedScenarios([]);
-		setSelectedScenarioId(null);
-		setIsChatWindowVisible(false);
-
-		generateScenarios(
-			{ topic: topicId, level: levelId },
-			{
-				onSuccess: (data) => {
-					if (requestId !== generationRequestIdRef.current) {
-						return;
-					}
-
-					setGeneratedScenarios(data);
-					setScenarioState('ready');
-				},
-				onError: () => {
-					if (requestId !== generationRequestIdRef.current) {
-						return;
-					}
-
-					setScenarioState('error');
-					toast.error(ERROR_GENERATE_SCENARIOS);
-				},
-			},
-		);
-	}, [generateScenarios]);
-
-	const selectedScenario = generatedScenarios.find((scenario) => scenario.id === selectedScenarioId) ?? null;
-	const canStartConversation = Boolean(selectedTopicId && selectedLevelId && selectedScenarioId && scenarioState === 'ready');
+	const selectedScenario = availableScenarios.find((scenario) => scenario.id === selectedScenarioId) ?? null;
+	const canStartConversation = Boolean(selectedTopicId && selectedLevelId && selectedScenarioId);
 
 	const handleSelectTopic = (topicId: string) => {
 		setSelectedTopicId(topicId);
-		if (selectedLevelId) {
-			runGenerateScenarios(topicId, selectedLevelId);
-		}
+		setSelectedScenarioId(null);
+		setIsChatWindowVisible(false);
 	};
 
 	const handleSelectLevel = (levelId: string) => {
 		setSelectedLevelId(levelId);
-		if (selectedTopicId) {
-			runGenerateScenarios(selectedTopicId, levelId);
-		}
-	};
-
-	const handleRetryGenerateScenarios = () => {
-		if (!selectedTopicId || !selectedLevelId) {
-			return;
-		}
-
-		runGenerateScenarios(selectedTopicId, selectedLevelId);
 	};
 
 	const handleStartConversation = () => {
@@ -178,7 +126,7 @@ const AIVoice = () => {
 
 							<div className={styles.selectorGrid}>
 							<TopicSelector
-								options={TOPIC_OPTIONS}
+								options={topicOptions}
 								selectedTopicId={selectedTopicId}
 								onSelectTopic={handleSelectTopic}
 							/>
@@ -188,50 +136,50 @@ const AIVoice = () => {
 								onSelectLevel={handleSelectLevel}
 							/>
 							</div>
-							{scenarioState === 'ready' && (
+							{selectedTopic && availableScenarios.length > 0 && (
 								<ScenarioSelector
-									options={generatedScenarios}
+									options={availableScenarios}
 									selectedScenarioId={selectedScenarioId}
 									onSelectScenario={setSelectedScenarioId}
 								/>
 							)}
 
-							{scenarioState !== 'ready' && (
+							{(!selectedTopic || availableScenarios.length === 0) && (
 								<section className={styles.scenarioSection} aria-live="polite">
 									<div className={styles.scenarioHeading}>
 										<span className={styles.sectionNumber}>3</span>
 										<div>
 											<h2 className={styles.scenarioSectionTitle}>Chọn tình huống hội thoại</h2>
-											<p>AI sẽ tạo các ngữ cảnh phù hợp với lựa chọn của bạn.</p>
+											<p>Các tình huống được quản trị viên biên soạn và phê duyệt.</p>
 										</div>
 									</div>
 
-									{scenarioState === 'idle' && (
+									{!isCatalogLoading && !isCatalogError && (
 										<div className={styles.scenarioPlaceholder}>
 											<span aria-hidden="true">✦</span>
 											<div>
-												<strong>Tình huống sẽ xuất hiện tại đây</strong>
-												<p className={styles.scenarioHint}>Hoàn thành chủ đề và trình độ để AI bắt đầu đề xuất.</p>
+												<strong>{selectedTopic ? 'Chủ đề này chưa có tình huống' : 'Tình huống sẽ xuất hiện tại đây'}</strong>
+												<p className={styles.scenarioHint}>{selectedTopic ? 'Vui lòng chọn chủ đề khác.' : 'Chọn một chủ đề để xem các tình huống đã được duyệt.'}</p>
 											</div>
 										</div>
 									)}
 
-									{scenarioState === 'loading' && (
+									{isCatalogLoading && (
 										<div className={styles.scenarioLoading} role="status">
 											<Loading variant="inline" size="sm" className={styles.inlineLoading} />
-											<p className={styles.scenarioHint}>AI đang tạo tình huống...</p>
+											<p className={styles.scenarioHint}>Đang tải danh sách tình huống...</p>
 										</div>
 									)}
 
-									{scenarioState === 'error' && (
+									{isCatalogError && (
 										<div className={styles.scenarioError}>
-											<p className={styles.scenarioHint}>{ERROR_GENERATE_SCENARIOS}</p>
+											<p className={styles.scenarioHint}>Không thể tải danh sách chủ đề và tình huống.</p>
 											<Button
 												type="button"
 												variant="outline"
 												padding="B"
 												className={styles.retryButton}
-												onClick={handleRetryGenerateScenarios}
+												onClick={() => void refetch()}
 											>
 												Thử lại
 											</Button>
@@ -265,6 +213,7 @@ const AIVoice = () => {
 						scenario={selectedScenario}
 						level={selectedLevelId}
 						topic={selectedTopicId}
+						topicLabel={selectedTopic?.title ?? selectedTopicId}
 						onClose={handleCloseConversation}
 					/>
 				)}

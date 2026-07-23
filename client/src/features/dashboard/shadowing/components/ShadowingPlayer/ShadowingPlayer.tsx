@@ -14,12 +14,7 @@ interface ShadowingPlayerProps {
     video: ShadowingVideo;
     mode: 'with-transcript' | 'without-transcript';
     onModeChange: (mode: 'with-transcript' | 'without-transcript') => void;
-    onSaveCues: (cues: ShadowingVideo['cues']) => Promise<ShadowingVideo['cues']>;
-    isSavingCues: boolean;
-    saveError: string | null;
 }
-
-type CueVocabularyItem = NonNullable<ShadowingVideo['cues'][number]['vocabulary']>[number];
 
 const getErrorMessage = (error: unknown): string => {
     if (error instanceof Error && error.message) {
@@ -45,30 +40,7 @@ const STATE_LABELS: Record<string, string> = {
     done: 'Hoàn thành',
 };
 
-const mergeVocabulary = (cues: ShadowingVideo['cues']): CueVocabularyItem[] => {
-    const uniqueByKey = new Map<string, CueVocabularyItem>();
-    cues.forEach((cue) => {
-        (cue.vocabulary ?? []).forEach((item) => {
-            const key = `${item.word.toLowerCase()}::${item.pos.toLowerCase()}`;
-            if (!uniqueByKey.has(key)) {
-                uniqueByKey.set(key, item);
-            }
-        });
-    });
-
-    return Array.from(uniqueByKey.values());
-};
-
-const mergeTranslation = (cues: ShadowingVideo['cues']): string | null => {
-    const merged = cues
-        .map((cue) => cue.translationVi?.trim() ?? '')
-        .filter(Boolean)
-        .join(' ');
-
-    return merged.length > 0 ? merged : null;
-};
-
-const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, saveError }: ShadowingPlayerProps) => {
+const ShadowingPlayer = ({ video, mode, onModeChange }: ShadowingPlayerProps) => {
     const playerRootRef = useRef<HTMLElement | null>(null);
     const onCueEndRef = useRef<(() => void) | null>(null);
     const hasAutoPlayedRef = useRef(false);
@@ -76,12 +48,6 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
 
     const [recorderError, setRecorderError] = useState<string | null>(null);
     const [recordingSeconds, setRecordingSeconds] = useState(0);
-    const [editableCues, setEditableCues] = useState(video.cues);
-    const [selectedCueIds, setSelectedCueIds] = useState<Set<string>>(new Set());
-    const [editingCueId, setEditingCueId] = useState<string | null>(null);
-    const [draftText, setDraftText] = useState('');
-    const [isDirty, setIsDirty] = useState(false);
-    const [editorError, setEditorError] = useState<string | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     const ytPlayer = useYtPlayer('yt-player-container', video.videoId, () => {
@@ -89,7 +55,7 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
     });
 
     const machine = useShadowingMachine({
-        cues: editableCues,
+        cues: video.cues,
         playCue: ytPlayer.playCue,
         replayCue: ytPlayer.replayCue,
     });
@@ -110,16 +76,16 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
     } = machine;
 
     const cueCounterLabel = useMemo(() => {
-        return `Câu ${Math.min(machine.currentCueIndex + 1, editableCues.length)} / ${editableCues.length}`;
-    }, [machine.currentCueIndex, editableCues.length]);
+        return `Câu ${Math.min(machine.currentCueIndex + 1, video.cues.length)} / ${video.cues.length}`;
+    }, [machine.currentCueIndex, video.cues.length]);
 
     const cueProgressPercent = useMemo(() => {
-        if (editableCues.length === 0) {
+        if (video.cues.length === 0) {
             return 0;
         }
 
-        return Math.round(((machine.currentCueIndex + 1) / editableCues.length) * 100);
-    }, [editableCues.length, machine.currentCueIndex]);
+        return Math.round(((machine.currentCueIndex + 1) / video.cues.length) * 100);
+    }, [machine.currentCueIndex, video.cues.length]);
 
     useEffect(() => {
         hasAutoPlayedRef.current = false;
@@ -253,13 +219,13 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
         clearError();
         setRecorderError(null);
         setRecordingSeconds(0);
-        const nextIndex = Math.min(machine.currentCueIndex + 1, editableCues.length - 1);
+        const nextIndex = Math.min(machine.currentCueIndex + 1, video.cues.length - 1);
         if (nextIndex === machine.currentCueIndex) {
             return;
         }
 
         machine.jumpAndPlay(nextIndex);
-    }, [clearError, editableCues.length, machine]);
+    }, [clearError, machine, video.cues.length]);
 
 
     const handleRestart = useCallback(() => {
@@ -290,223 +256,6 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
         machine.jumpAndPlay(index);
     }, [clearError, machine, ytPlayer]);
 
-
-    const isEditable = useMemo(() => {
-        return ['idle', 'waiting', 'result', 'done'].includes(machine.state) && !isSavingCues;
-    }, [isSavingCues, machine.state]);
-
-    const selectedIndices = useMemo(() => {
-        const indexMap = new Map(editableCues.map((cue, index) => [cue.id, index] as const));
-        return Array.from(selectedCueIds)
-            .map((id) => indexMap.get(id))
-            .filter((value): value is number => value !== undefined)
-            .sort((a, b) => a - b);
-    }, [editableCues, selectedCueIds]);
-
-    const isMergeable = useMemo(() => {
-        if (selectedIndices.length < 2) {
-            return false;
-        }
-
-        return selectedIndices.every((index, i) => (i === 0 ? true : index === selectedIndices[i - 1]! + 1));
-    }, [selectedIndices]);
-
-    const updateCues = useCallback((nextCues: ShadowingVideo['cues']) => {
-        setEditableCues(nextCues);
-        setIsDirty(true);
-    }, []);
-
-    const handleToggleSelect = useCallback((cueId: string) => {
-        setEditorError(null);
-        setSelectedCueIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(cueId)) {
-                next.delete(cueId);
-            } else {
-                next.add(cueId);
-            }
-            return next;
-        });
-    }, []);
-
-    const handleStartEdit = useCallback((cueId: string) => {
-        const cue = editableCues.find((item) => item.id === cueId);
-        if (!cue) {
-            return;
-        }
-
-        setEditorError(null);
-        setEditingCueId(cueId);
-        setDraftText(cue.text);
-    }, [editableCues]);
-
-    const handleCancelEdit = useCallback(() => {
-        setEditingCueId(null);
-        setDraftText('');
-        setEditorError(null);
-    }, []);
-
-    const handleSaveEdit = useCallback((cueId: string, text: string) => {
-        const nextText = text.trim();
-        if (!nextText) {
-            setEditorError('Cue text cannot be empty.');
-            return;
-        }
-
-        const nextCues = editableCues.map((cue) => (
-            cue.id === cueId
-                ? { ...cue, text: nextText }
-                : cue
-        ));
-
-        updateCues(nextCues);
-        setEditingCueId(null);
-        setDraftText('');
-        setEditorError(null);
-    }, [editableCues, updateCues]);
-
-    const createCueId = useCallback(() => {
-        return `cue-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    }, []);
-
-    const handleSplitCue = useCallback((cueId: string, text: string, splitIndex: number) => {
-        const cueIndex = editableCues.findIndex((item) => item.id === cueId);
-        if (cueIndex < 0) {
-            return;
-        }
-
-        const cue = editableCues[cueIndex];
-        if (!cue) {
-            return;
-        }
-
-        const totalDuration = cue.endMs - cue.startMs;
-        if (totalDuration < 2) {
-            setEditorError('Cue is too short to split.');
-            return;
-        }
-
-        const leftText = text.slice(0, splitIndex).trim();
-        const rightText = text.slice(splitIndex).trim();
-
-        if (!leftText || !rightText) {
-            setEditorError('Split position must leave text on both sides.');
-            return;
-        }
-
-        const leftRatio = leftText.length / (leftText.length + rightText.length);
-        const leftEnd = Math.min(
-            cue.endMs - 1,
-            cue.startMs + Math.max(1, Math.round(totalDuration * leftRatio)),
-        );
-
-        const leftCue = {
-            ...cue,
-            text: leftText,
-            endMs: leftEnd,
-        };
-
-        const rightCue = {
-            id: createCueId(),
-            text: rightText,
-            startMs: leftEnd,
-            endMs: cue.endMs,
-        };
-
-        const nextCues = [
-            ...editableCues.slice(0, cueIndex),
-            leftCue,
-            rightCue,
-            ...editableCues.slice(cueIndex + 1),
-        ];
-
-        updateCues(nextCues);
-        setSelectedCueIds(new Set([leftCue.id, rightCue.id]));
-        setEditingCueId(null);
-        setDraftText('');
-        setEditorError(null);
-    }, [createCueId, editableCues, updateCues]);
-
-    const handleMergeSelected = useCallback(async () => {
-        if (!isMergeable) {
-            setEditorError('Select consecutive cues to merge.');
-            return;
-        }
-
-        const firstIndex = selectedIndices[0];
-        const lastIndex = selectedIndices[selectedIndices.length - 1];
-
-        if (firstIndex === undefined || lastIndex === undefined) {
-            return;
-        }
-
-        const mergedCues = editableCues.slice(firstIndex, lastIndex + 1);
-        const mergedText = mergedCues.map((cue) => cue.text.trim()).filter(Boolean).join(' ');
-        const mergedTranslation = mergeTranslation(mergedCues);
-        const mergedVocabulary = mergeVocabulary(mergedCues);
-        const mergedCue = {
-            ...mergedCues[0]!,
-            text: mergedText,
-            translationVi: mergedTranslation,
-            startMs: mergedCues[0]!.startMs,
-            endMs: mergedCues[mergedCues.length - 1]!.endMs,
-            vocabulary: mergedVocabulary,
-            commonPhrases: [],
-        };
-
-        const nextCues = [
-            ...editableCues.slice(0, firstIndex),
-            mergedCue,
-            ...editableCues.slice(lastIndex + 1),
-        ];
-
-        setEditorError(null);
-        try {
-            const savedCues = await onSaveCues(nextCues);
-            setEditableCues(savedCues);
-            setIsDirty(false);
-            setSelectedCueIds(new Set([mergedCue.id]));
-            setEditingCueId(null);
-            setDraftText('');
-        } catch {
-            setEditorError('Unable to merge cues.');
-        }
-    }, [editableCues, isMergeable, onSaveCues, selectedIndices]);
-
-    const handleReorder = useCallback((fromIndex: number, toIndex: number) => {
-        if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) {
-            return;
-        }
-
-        const nextCues = [...editableCues];
-        const [moved] = nextCues.splice(fromIndex, 1);
-        if (!moved) {
-            return;
-        }
-
-        nextCues.splice(toIndex, 0, moved);
-        updateCues(nextCues);
-    }, [editableCues, updateCues]);
-
-    const handleResetEdits = useCallback(() => {
-        setEditableCues(video.cues);
-        setSelectedCueIds(new Set());
-        setEditingCueId(null);
-        setDraftText('');
-        setIsDirty(false);
-        setEditorError(null);
-    }, [video.cues]);
-
-    const handleSaveAll = useCallback(async () => {
-        setEditorError(null);
-        try {
-            const savedCues = await onSaveCues(editableCues);
-            setEditableCues(savedCues);
-            setIsDirty(false);
-        } catch {
-            setEditorError('Unable to save cue edits.');
-        }
-    }, [editableCues, onSaveCues]);
 
     if (!currentCue) {
         return (
@@ -661,28 +410,10 @@ const ShadowingPlayer = ({ video, mode, onModeChange, onSaveCues, isSavingCues, 
 
                 <div className={styles.rightColumn}>
                     <TranscriptPanel
-                        cues={editableCues}
+                        cues={video.cues}
                         activeCueIndex={machine.currentCueIndex}
                         mode={mode}
                         onCueClick={handleCueClick}
-                        isEditable={isEditable}
-                        selectedCueIds={selectedCueIds}
-                        editingCueId={editingCueId}
-                        draftText={draftText}
-                        isDirty={isDirty}
-                        isSaving={isSavingCues}
-                        isMergeable={isMergeable}
-                        editorError={editorError ?? saveError}
-                        onToggleSelect={handleToggleSelect}
-                        onStartEdit={handleStartEdit}
-                        onCancelEdit={handleCancelEdit}
-                        onDraftChange={setDraftText}
-                        onSaveEdit={handleSaveEdit}
-                        onSplitCue={handleSplitCue}
-                        onMergeSelected={handleMergeSelected}
-                        onReorder={handleReorder}
-                        onResetEdits={handleResetEdits}
-                        onSaveAll={handleSaveAll}
                     />
                 </div>
             </div>

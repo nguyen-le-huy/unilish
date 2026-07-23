@@ -69,16 +69,21 @@ export class ShadowingVideoMongoRepository
             .exec();
     }
 
-    async updateCues(videoId: string, addedBy: string, cues: IShadowingCue[]): Promise<IShadowingVideo | null> {
+    async updateCues(videoId: string, cues: IShadowingCue[]): Promise<IShadowingVideo | null> {
         return this.model
             .findOneAndUpdate(
-                { videoId, addedBy: new mongoose.Types.ObjectId(addedBy) },
+                { videoId },
                 { $set: { cues } },
                 { new: true },
             )
             .select(fullVideoSelect)
             .lean()
             .exec() as Promise<IShadowingVideo | null>;
+    }
+
+    async deleteByVideoId(videoId: string): Promise<boolean> {
+        const result = await this.model.deleteOne({ videoId }).exec();
+        return result.deletedCount > 0;
     }
 
     async markAsFailed(videoId: string): Promise<void> {
@@ -101,6 +106,22 @@ export class ShadowingVideoMongoRepository
 
     async countReadyVideos(): Promise<number> {
         return this.model.countDocuments({ status: 'ready' }).exec();
+    }
+
+    async listAllVideos(page: number, limit: number): Promise<IShadowingVideo[]> {
+        const skip = (page - 1) * limit;
+        return this.model
+            .find()
+            .select(fullVideoSelect)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .exec() as Promise<IShadowingVideo[]>;
+    }
+
+    async countAllVideos(): Promise<number> {
+        return this.model.countDocuments().exec();
     }
 }
 

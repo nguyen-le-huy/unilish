@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type ListeningSection = 'script' | 'karaoke' | 'interactive';
+export type ListeningSection = 'script' | 'karaoke';
 
 interface ListeningStudioState {
     activeSection: ListeningSection;

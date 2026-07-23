@@ -5,9 +5,8 @@ import mongoose from 'mongoose';
 // ============================================================
 
 export const EUserRole = {
-    STUDENT:         'student',
-    ADMIN:           'admin',
-    CONTENT_CREATOR: 'content_creator',
+    STUDENT: 'student',
+    ADMIN:   'admin',
 } as const;
 
 export const EAuthProvider = {

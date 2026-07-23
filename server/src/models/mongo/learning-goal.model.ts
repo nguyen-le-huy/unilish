@@ -11,26 +11,10 @@ export interface ILearningGoal extends mongoose.Document {
     // --- 2. SUPPORTED LANGUAGES ---
     supportedLanguages: mongoose.Types.ObjectId[];
 
-    // --- 3. AI PERSONA ---
-    systemPrompt: string;
-
-    // --- 4. WEIGHTED SKILLS ---
-    skillWeights: {
-        listening: number;
-        speaking: number;
-        reading: number;
-        writing: number;
-        grammar: number;
-        vocabulary: number;
-    };
-
-    // --- 5. AI CORRECTION RULES ---
-    ignoredSkills: string[];
-
-    // --- 6. STATUS ---
+    // --- 3. STATUS ---
     isActive: boolean;
 
-    // --- 7. METADATA ---
+    // --- 4. METADATA ---
     createdAt: Date;
     updatedAt: Date;
 }
@@ -76,31 +60,7 @@ const LearningGoalSchema = new mongoose.Schema<ILearningGoal>(
             },
         ],
 
-        // --- 3. AI PERSONA ---
-        systemPrompt: {
-            type: String,
-            required: true,
-        },
-
-        // --- 4. WEIGHTED SKILLS (Total should = 1.0) ---
-        skillWeights: {
-            listening: { type: Number, default: 0.25, min: 0, max: 1 },
-            speaking: { type: Number, default: 0.25, min: 0, max: 1 },
-            reading: { type: Number, default: 0.25, min: 0, max: 1 },
-            writing: { type: Number, default: 0.25, min: 0, max: 1 },
-            grammar: { type: Number, default: 0.0, min: 0, max: 1 },
-            vocabulary: { type: Number, default: 0.0, min: 0, max: 1 },
-        },
-
-        // --- 5. AI CORRECTION RULES ---
-        ignoredSkills: [
-            {
-                type: String,
-                trim: true,
-            },
-        ],
-
-        // --- 6. STATUS ---
+        // --- 3. STATUS ---
         isActive: {
             type: Boolean,
             default: true,
@@ -118,17 +78,5 @@ const LearningGoalSchema = new mongoose.Schema<ILearningGoal>(
 LearningGoalSchema.index({ slug: 1 }, { unique: true });
 LearningGoalSchema.index({ isActive: 1 });
 LearningGoalSchema.index({ supportedLanguages: 1 });
-
-// --- VIRTUALS ---
-LearningGoalSchema.virtual('totalWeight').get(function (this: ILearningGoal) {
-    return (
-        this.skillWeights.listening +
-        this.skillWeights.speaking +
-        this.skillWeights.reading +
-        this.skillWeights.writing +
-        this.skillWeights.grammar +
-        this.skillWeights.vocabulary
-    );
-});
 
 export const LearningGoal = mongoose.model<ILearningGoal>('LearningGoal', LearningGoalSchema);

@@ -16,8 +16,8 @@ import {
 
 const router = Router({ mergeParams: true });
 
-// All writing routes require authentication + content creator / admin role
-router.use(protect, restrictTo('admin', 'content_creator'));
+// All writing authoring routes require admin access.
+router.use(protect, restrictTo('admin'));
 
 // ─── Writing Content ──────────────────────────────────────────────────────────
 

@@ -22,7 +22,7 @@ router.use(protect);
 // ⚠️ Static routes MUST be registered before /:id to prevent conflict
 router.get(
     '/export',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(exportQuestionsSchema),
     QuestionController.exportQuestions,
 );
@@ -30,11 +30,11 @@ router.get(
 router.get('/', validate(getQuestionsSchema), QuestionController.getQuestions);
 router.get('/:id', validate(getQuestionByIdSchema), QuestionController.getQuestionById);
 
-// ─── Mutation routes (admin / content_creator only) ──────────────────────────
+// ─── Mutation routes (admin only) ───────────────────────────────────────────
 
 router.post(
     '/',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(createQuestionSchema),
     QuestionController.createQuestion,
 );
@@ -42,28 +42,28 @@ router.post(
 // ⚠️ /bulk MUST be registered before /:id
 router.post(
     '/bulk',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(bulkActionSchema),
     QuestionController.bulkAction,
 );
 
 router.put(
     '/:id',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(updateQuestionSchema),
     QuestionController.updateQuestion,
 );
 
 router.patch(
     '/:id/status',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(updateQuestionStatusSchema),
     QuestionController.updateQuestionStatus,
 );
 
 router.delete(
     '/:id',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(getQuestionByIdSchema),
     QuestionController.deleteQuestion,
 );

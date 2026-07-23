@@ -22,22 +22,22 @@ router.get('/', validate(getCoursesListSchema), CourseController.getCoursesList)
 router.get('/:courseId/tree', validate(getCourseTreeSchema), CourseController.getCourseTree);
 router.get('/:courseId', validate(getCourseByIdSchema), CourseController.getCourseById);
 
-// ─── Write (admin & content_creator) ────────────────────────────────────────
+// ─── Write (admin only) ─────────────────────────────────────────────────────
 router.post(
     '/',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(createCourseSchema),
     CourseController.createCourse,
 );
 router.put(
     '/:courseId',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(updateCourseSchema),
     CourseController.updateCourse,
 );
 router.patch(
     '/:courseId/status',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(toggleCourseSchema),
     CourseController.toggleCourseStatus,
 );

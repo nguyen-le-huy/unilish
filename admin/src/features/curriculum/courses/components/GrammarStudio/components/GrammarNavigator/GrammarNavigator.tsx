@@ -14,7 +14,7 @@ import {
     arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { BookOpen, Table2, ClipboardList, GripVertical, Plus, Copy, Trash2 } from 'lucide-react';
+import { BookOpen, Table2, GripVertical, Plus, Copy, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -32,7 +32,6 @@ interface Props {
     activeBlockId: string | null;
     onHeroClick: () => void;
     onSummaryClick: () => void;
-    onPracticeClick: () => void;
     onBlockClick: (blockId: string) => void;
     onAddBlock: (type: GrammarBlogBlock['type']) => void;
     onDuplicateBlock: (blockId: string) => void;
@@ -116,7 +115,6 @@ export const GrammarNavigator = memo(function GrammarNavigator({
     activeBlockId,
     onHeroClick,
     onSummaryClick,
-    onPracticeClick,
     onBlockClick,
     onAddBlock,
     onDuplicateBlock,
@@ -199,15 +197,6 @@ export const GrammarNavigator = memo(function GrammarNavigator({
                     Summary table
                 </Button>
 
-                <Button
-                    variant={activePanel === 'practice' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={onPracticeClick}
-                >
-                    <ClipboardList className="mr-1.5 h-3.5 w-3.5" />
-                    Final practice
-                </Button>
             </div>
         </div>
     );

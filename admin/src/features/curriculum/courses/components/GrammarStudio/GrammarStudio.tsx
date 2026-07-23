@@ -1,29 +1,22 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notification } from '@/lib/notification';
-import { getApiErrorMessage } from '@/lib/api-error';
 import { useGrammarContent } from '../../hooks/useGrammarContent';
 import {
     useSaveGrammarContent,
     useGenerateGrammarStory,
-    useGenerateGrammarQuestions,
     useGenerateGrammarAudio,
 } from '../../hooks/useGrammarMutations';
 import { GrammarTopBar } from './components/GrammarTopBar/GrammarTopBar';
 import { GrammarNavigator } from './components/GrammarNavigator/GrammarNavigator';
 import { GrammarEditor } from './components/GrammarEditor/GrammarEditor';
 import { AiStoryModal } from './components/AiStoryModal/AiStoryModal';
-import {
-    GenerateQuestionsModal,
-    type GenerateQuestionsConfig,
-} from './components/GenerateQuestionsModal/GenerateQuestionsModal';
 import { useGrammarStudioState } from './hooks/useGrammarStudioState';
 import type {
     LessonSummary,
     GrammarBlogBlock,
-    GrammarContent,
     GrammarLessonFormValues,
     GenerateGrammarStoryResponse,
     CEFRLevel,
@@ -88,7 +81,6 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson, courseLevel }
 
     const saveMutation = useSaveGrammarContent(lessonId);
     const generateStoryMutation = useGenerateGrammarStory(lessonId);
-    const generateQuestionsMutation = useGenerateGrammarQuestions(lessonId);
     const generateAudioMutation = useGenerateGrammarAudio(lessonId);
 
     const {
@@ -96,12 +88,10 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson, courseLevel }
         activeBlockId,
         setHeroPanel,
         setSummaryPanel,
-        setPracticePanel,
         setActiveBlock,
     } = useGrammarStudioState();
 
     const [isAiModalOpen, setIsAiModalOpen] = useState(false);
-    const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
     const [generatedAiData, setGeneratedAiData] = useState<GenerateGrammarStoryResponse | null>(null);
 
     const methods = useForm<GrammarLessonFormValues>({
@@ -110,7 +100,7 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson, courseLevel }
             level: courseLevel,
         },
     });
-    const { reset, watch, setValue, handleSubmit, getValues } = methods;
+    const { reset, watch, setValue, handleSubmit } = methods;
 
     useEffect(() => {
         if (!content) {
@@ -150,7 +140,6 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson, courseLevel }
     }, [content, courseLevel, reset, setActiveBlock, setHeroPanel, setValue]);
 
     const formBlocks = watch('blocks');
-    const questionIds = content?.practiceConfig?.questionIds ?? [];
 
     const handleSave = handleSubmit((formValues) => {
         saveMutation.mutate(
@@ -174,43 +163,6 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson, courseLevel }
         );
     });
 
-    const handleGenerateQuestions = useCallback(
-        async ({ count, types }: GenerateQuestionsConfig) => {
-            setIsGenerateModalOpen(false);
-
-            const formValues = getValues();
-            try {
-                await saveMutation.mutateAsync({
-                    level: formValues.level,
-                    readingTime: formValues.readingTime,
-                    conceptName: formValues.conceptName,
-                    hero: formValues.hero,
-                    blocks: formValues.blocks,
-                    summaryTable: formValues.summaryTable,
-                    practiceConfig: {
-                        mode: 'FIXED',
-                        passingScore: formValues.practiceConfig.passingScore,
-                    },
-                    taughtConcepts: formValues.taughtConcepts,
-                });
-            } catch (error) {
-                notification.error(getApiErrorMessage(error, 'Lỗi khi lưu grammar blog trước khi tạo câu hỏi'));
-                return;
-            }
-
-            generateQuestionsMutation.mutate(
-                { count, types: types.length > 0 ? types : undefined },
-                {
-                    onSuccess: (data) => {
-                        notification.success(`Đã tạo ${data.count} câu hỏi cuối bài`);
-                        setPracticePanel();
-                    },
-                    onError: (error) => notification.error(getApiErrorMessage(error, 'Lỗi khi tạo câu hỏi cuối bài')),
-                },
-            );
-        },
-        [generateQuestionsMutation, getValues, saveMutation, setPracticePanel],
-    );
 
     const handleGenerateAudio = useCallback(() => {
         generateAudioMutation.mutate(undefined, {
@@ -341,11 +293,6 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson, courseLevel }
         [setValue],
     );
 
-    const passingScore = useMemo(
-        () => content?.practiceConfig?.passingScore ?? lesson.practiceConfig.passingScore,
-        [content?.practiceConfig?.passingScore, lesson.practiceConfig.passingScore],
-    );
-
     if (isLoading) {
         return (
             <div className="flex h-full flex-col gap-3 p-4">
@@ -373,17 +320,11 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson, courseLevel }
         <FormProvider {...methods}>
             <div className="flex h-full flex-col overflow-hidden">
                 <GrammarTopBar
-                    lessonId={lessonId}
                     lessonTitle={lesson.title}
                     isSaving={saveMutation.isPending}
-                    isGeneratingQuestions={generateQuestionsMutation.isPending}
                     isGeneratingAudio={generateAudioMutation.isPending}
-                    questionsCount={questionIds.length}
-                    questionIds={questionIds}
-                    passingScore={passingScore}
                     onSave={handleSave}
                     onOpenAiModal={() => setIsAiModalOpen(true)}
-                    onOpenGenerateModal={() => setIsGenerateModalOpen(true)}
                     onGenerateAudio={handleGenerateAudio}
                 />
 
@@ -395,7 +336,6 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson, courseLevel }
                             activeBlockId={activeBlockId}
                             onHeroClick={setHeroPanel}
                             onSummaryClick={setSummaryPanel}
-                            onPracticeClick={setPracticePanel}
                             onBlockClick={setActiveBlock}
                             onAddBlock={handleAddBlock}
                             onDuplicateBlock={handleDuplicateBlock}
@@ -408,19 +348,10 @@ export const GrammarStudio = memo(function GrammarStudio({ lesson, courseLevel }
                         <GrammarEditor
                             activePanel={activePanel}
                             activeBlockId={activeBlockId}
-                            lessonId={lessonId}
-                            questionIds={questionIds as GrammarContent['practiceConfig']['questionIds']}
                         />
                     </div>
                 </div>
             </div>
-
-            <GenerateQuestionsModal
-                open={isGenerateModalOpen}
-                isGenerating={generateQuestionsMutation.isPending}
-                onClose={() => setIsGenerateModalOpen(false)}
-                onGenerate={handleGenerateQuestions}
-            />
 
             <AiStoryModal
                 open={isAiModalOpen}

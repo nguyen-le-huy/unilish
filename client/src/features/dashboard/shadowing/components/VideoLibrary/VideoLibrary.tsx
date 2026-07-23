@@ -60,11 +60,11 @@ const VideoLibrary = () => {
     }
 
     if (isError) {
-        return <p className={styles.statusMessage} role="alert">{error.response?.data.message ?? 'Không thể tải thư viện video.'}</p>;
+        return <p className={styles.statusMessage} role="alert">{error.response?.data.message ?? 'Không thể tải thư viện video YouTube.'}</p>;
     }
 
     if (!data || data.data.length === 0) {
-        return <p className={styles.statusMessage}>Chưa có video sẵn sàng để luyện tập.</p>;
+        return <p className={styles.statusMessage}>Chưa có video YouTube sẵn sàng để luyện tập.</p>;
     }
 
     return (
@@ -72,20 +72,20 @@ const VideoLibrary = () => {
             <section className={styles.library}>
                 <header className={styles.libraryHeader}>
                     <div>
-                        <span className={styles.eyebrow}>Khám phá nội dung</span>
-                        <h2>Thư viện luyện nghe &amp; nói</h2>
-                        <p>Chọn một video để chép chính tả hoặc luyện nói đuổi theo từng câu.</p>
+                        <span className={styles.eyebrow}>Nội dung từ YouTube</span>
+                        <h2>Thư viện video YouTube</h2>
+                        <p>Chọn một video YouTube để chép chính tả hoặc luyện nói đuổi theo từng câu.</p>
                     </div>
                     <div className={styles.libraryCount}>
                         <strong>{data.pagination.total}</strong>
-                        <span>video sẵn sàng</span>
+                        <span>video YouTube</span>
                     </div>
                 </header>
 
                 <div className={styles.sectionBar}>
                     <div className={styles.sectionTitle}>
                         <i aria-hidden="true" />
-                        <span>Video mới nhất</span>
+                        <span>Video YouTube mới nhất</span>
                     </div>
                     <span className={styles.sectionMeta}>{data.data.length} bài luyện</span>
                 </div>
@@ -116,7 +116,7 @@ const VideoLibrary = () => {
                             <div className={styles.modalHeading}>
                                 <span className={styles.modalIcon} aria-hidden="true">✦</span>
                                 <div>
-                                    <span className={styles.modalEyebrow}>Bài luyện tương tác</span>
+                                    <span className={styles.modalEyebrow}>Học với YouTube</span>
                                     <h3 id="practice-mode-title" className={styles.modalTitle}>Chọn chế độ luyện tập</h3>
                                 </div>
                             </div>

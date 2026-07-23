@@ -2,9 +2,6 @@ import { api } from '@/lib/axios';
 import type {
     PaginatedVideos,
     PronunciationResult,
-    SubmitVideoResponse,
-    UpdateCuesPayload,
-    UpdateCuesResponse,
     VideoStatusResponse,
 } from '../types/shadowing.types';
 
@@ -12,10 +9,6 @@ const SHADOWING_PATH = '/shadowing';
 const SHADOWING_VIDEOS_PATH = `${SHADOWING_PATH}/videos`;
 
 export const shadowingService = {
-    submitVideo(url: string): Promise<SubmitVideoResponse> {
-        return api.post<SubmitVideoResponse, SubmitVideoResponse>(SHADOWING_VIDEOS_PATH, { url });
-    },
-
     getVideoStatus(videoId: string): Promise<VideoStatusResponse> {
         return api.get<VideoStatusResponse, VideoStatusResponse>(
             `${SHADOWING_VIDEOS_PATH}/${encodeURIComponent(videoId)}/status`,
@@ -44,10 +37,4 @@ export const shadowingService = {
         );
     },
 
-    updateVideoCues(videoId: string, payload: UpdateCuesPayload): Promise<UpdateCuesResponse> {
-        return api.patch<UpdateCuesResponse, UpdateCuesResponse>(
-            `${SHADOWING_VIDEOS_PATH}/${encodeURIComponent(videoId)}/cues`,
-            payload,
-        );
-    },
 };

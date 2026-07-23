@@ -82,7 +82,6 @@
 
 .currentSeriesBox { grid-column: span 7; grid-row: span 2; }
 .progressBox, .streakBox { grid-column: span 5; }
-.rankBox { grid-column: 1 / -1; }
 
 @media (max-width: 1180px) {
   .currentSeriesBox { grid-column: span 12; grid-row: auto; }

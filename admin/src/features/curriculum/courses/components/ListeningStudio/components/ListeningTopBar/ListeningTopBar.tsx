@@ -1,5 +1,5 @@
-import { memo, type ReactNode } from 'react';
-import { Save, Loader2, Headphones, Sparkles, Music2, HelpCircle } from 'lucide-react';
+import { memo } from 'react';
+import { Save, Loader2, Headphones, Sparkles, Music2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -10,15 +10,12 @@ interface Props {
     lessonTitle: string;
     isSaving: boolean;
     isGeneratingScript: boolean;
-    isGeneratingQuestions: boolean;
     isSyncing: boolean;
     syncStatus?: string;
     syncProgress?: number;
     onSave: () => void;
     onGenerateScript: () => void;
-    onOpenGenerateQuestions: () => void;
     onMixAndSync: () => void;
-    practiceAction?: ReactNode;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -27,17 +24,14 @@ export const ListeningTopBar = memo(function ListeningTopBar({
     lessonTitle,
     isSaving,
     isGeneratingScript,
-    isGeneratingQuestions,
     isSyncing,
     syncStatus,
     syncProgress,
     onSave,
     onGenerateScript,
-    onOpenGenerateQuestions,
     onMixAndSync,
-    practiceAction,
 }: Props) {
-    const isBusy = isSaving || isGeneratingScript || isSyncing || isGeneratingQuestions;
+    const isBusy = isSaving || isGeneratingScript || isSyncing;
 
     return (
         <div className="flex shrink-0 items-center gap-3 border-b bg-background px-4 py-2.5">
@@ -73,23 +67,6 @@ export const ListeningTopBar = memo(function ListeningTopBar({
                     )}
                     {isGeneratingScript ? 'Đang viết...' : 'AI Viết Kịch bản'}
                 </Button>
-
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onOpenGenerateQuestions}
-                    disabled={isBusy}
-                    aria-label="Mở cấu hình tạo câu hỏi"
-                >
-                    {isGeneratingQuestions ? (
-                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                    ) : (
-                        <HelpCircle className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
-                    )}
-                    {isGeneratingQuestions ? 'Đang tạo...' : 'Tạo câu hỏi'}
-                </Button>
-
-                {practiceAction}
 
                 <Separator orientation="vertical" className="h-5" />
 

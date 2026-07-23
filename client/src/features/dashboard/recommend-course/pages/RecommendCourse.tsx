@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { AxiosError } from 'axios';
 import { toast } from 'sonner';
@@ -8,6 +8,8 @@ import { useAuthStore } from '@/stores/auth.store';
 import type { ApiErrorResponse } from '@/types/common';
 import { useRecommendationsQuery } from '../hooks/use-recommendations-query';
 import { useEnrollCourse } from '../../learning/hooks/use-enroll-course';
+import { useEnrollments } from '../../learning/hooks/use-enrollments';
+import { getJoinLabel } from './recommend-course.utils';
 import styles from './RecommendCourse.module.css';
 
 const SKELETON_CARD_COUNT = 4;
@@ -19,6 +21,7 @@ const RecommendCourse = () => {
     const placementTestScore = useAuthStore((state) => state.user?.placementTestScore);
     const weakSkills = useAuthStore((state) => state.user?.weakSkills);
     const { data, isLoading, isError } = useRecommendationsQuery();
+    const { data: enrollmentsData } = useEnrollments();
     const { mutate: enrollCourse, isPending: isEnrolling } = useEnrollCourse();
 
     const recommendations = data ?? [];
@@ -26,6 +29,9 @@ const RecommendCourse = () => {
         || Boolean(weakSkills?.length);
     const shouldShowOnboardingMessage = !currentLevel || (currentLevel === 'A0' && !hasPlacementResult);
     const shouldShowEmpty = !isLoading && !isError && recommendations.length === 0;
+    const enrollmentByCourseId = useMemo(() => new Map(
+        (enrollmentsData ?? []).map((enrollment) => [enrollment.courseId, enrollment]),
+    ), [enrollmentsData]);
 
     const handleJoinCourse = useCallback((courseId: string, slug: string) => {
         if (isEnrolling) {
@@ -48,6 +54,15 @@ const RecommendCourse = () => {
             },
         });
     }, [isEnrolling, enrollCourse, navigate]);
+
+    const handleCourseAction = useCallback((courseId: string, slug: string) => {
+        if (enrollmentByCourseId.has(courseId)) {
+            navigate(PATHS.COURSE_DETAIL(slug));
+            return;
+        }
+
+        handleJoinCourse(courseId, slug);
+    }, [enrollmentByCourseId, handleJoinCourse, navigate]);
 
     return (
         <section className={styles.recommendCourse}>
@@ -105,18 +120,21 @@ const RecommendCourse = () => {
 
             {!isLoading && !isError && recommendations.length > 0 && (
                 <div className={styles.courseGrid}>
-                    {recommendations.map((course) => (
-                        <CourseCard
-                            key={course.id}
-                            title={course.title}
-                            description={course.description}
-                            imageUrl={course.thumbnailUrl}
-                            badge={course.level}
-                            totalUnits={course.totalUnits}
-                            onJoin={() => handleJoinCourse(course.id, course.slug)}
-                            joinLabel={isEnrolling && joiningCourseId === course.id ? 'Đang tham gia...' : 'Tham gia'}
-                        />
-                    ))}
+                    {recommendations.map((course) => {
+                        const enrollment = enrollmentByCourseId.get(course.id);
+                        return (
+                            <CourseCard
+                                key={course.id}
+                                title={course.title}
+                                description={course.description}
+                                imageUrl={course.thumbnailUrl}
+                                badge={course.level}
+                                totalUnits={course.totalUnits}
+                                onJoin={() => handleCourseAction(course.id, course.slug)}
+                                joinLabel={getJoinLabel(enrollment, isEnrolling && joiningCourseId === course.id)}
+                            />
+                        );
+                    })}
                 </div>
             )}
         </section>

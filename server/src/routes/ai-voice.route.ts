@@ -1,18 +1,21 @@
 import express from 'express';
 import multer from 'multer';
-import { protect } from '../middlewares/auth.middleware.js';
+import { protect, restrictTo } from '../middlewares/auth.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
 import { aiVoiceController } from '../controllers/ai-voice.controller.js';
 import {
     aiVoiceChatSchema,
     aiVoiceAssessmentSchema,
-    aiVoiceGenerateScenariosSchema,
     aiVoiceSttSchema,
     aiVoiceTtsSchema,
 } from '../validations/ai-voice.validation.js';
 import {
+    createAiVoiceTopicSchema,
+    deleteAiVoiceTopicSchema,
+    updateAiVoiceTopicSchema,
+} from '../validations/ai-voice-content.validation.js';
+import {
     aiVoiceChatRateLimit,
-    aiVoiceGenerateRateLimit,
     aiVoiceSttRateLimit,
     aiVoiceTtsRateLimit,
 } from '../middlewares/ai-voice-rate-limit.middleware.js';
@@ -24,6 +27,12 @@ const upload = multer({
 });
 
 router.use(protect);
+
+router.get('/catalog', aiVoiceController.getCatalog);
+router.get('/admin/topics', restrictTo('admin'), aiVoiceController.getAdminTopics);
+router.post('/admin/topics', restrictTo('admin'), validate(createAiVoiceTopicSchema), aiVoiceController.createTopic);
+router.put('/admin/topics/:id', restrictTo('admin'), validate(updateAiVoiceTopicSchema), aiVoiceController.updateTopic);
+router.delete('/admin/topics/:id', restrictTo('admin'), validate(deleteAiVoiceTopicSchema), aiVoiceController.deleteTopic);
 
 /**
  * @swagger
@@ -70,19 +79,6 @@ router.post(
     aiVoiceTtsRateLimit,
     validate(aiVoiceTtsSchema),
     aiVoiceController.tts,
-);
-
-/**
- * @swagger
- * /api/v1/ai-voice/generate-scenarios:
- *   post:
- *     summary: Generate 6 AI Voice scenarios by topic and level
- */
-router.post(
-    '/generate-scenarios',
-    aiVoiceGenerateRateLimit,
-    validate(aiVoiceGenerateScenariosSchema),
-    aiVoiceController.generateScenarios,
 );
 
 export default router;

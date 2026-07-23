@@ -17,7 +17,7 @@ import {
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-router.use(protect, restrictTo('admin', 'content_creator'));
+router.use(protect, restrictTo('admin'));
 
 router.post(
     '/stt',

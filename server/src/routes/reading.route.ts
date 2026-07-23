@@ -28,8 +28,8 @@ import {
 
 const router = Router({ mergeParams: true });
 
-// All reading routes require authentication + content creator / admin role
-router.use(protect, restrictTo('admin', 'content_creator'));
+// All reading authoring routes require admin access.
+router.use(protect, restrictTo('admin'));
 
 // ─── Reading Content ──────────────────────────────────────────────────────────
 

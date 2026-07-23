@@ -86,7 +86,7 @@ export function MCQModuleForm({ defaultValues, order, onSave, onCancel, draftKey
     const form = useForm<MCQModuleFormValues>({
         resolver: zodResolver(mcqModuleSchema) as Resolver<MCQModuleFormValues>,
         defaultValues: {
-            name: defaultValues?.name ?? 'TOEIC Compact (Listening + Reading)',
+            name: defaultValues?.name ?? 'TOEIC Listening + Reading',
             timeLimitMinutes: defaultValues?.timeLimitMinutes ?? 45,
             parts: buildNormalizedParts(defaultValues),
         },

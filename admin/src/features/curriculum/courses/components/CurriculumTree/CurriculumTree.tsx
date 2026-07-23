@@ -18,11 +18,7 @@ import {
 import {
     AlignLeft,
     BookOpen,
-    ClipboardList,
-    FileText,
     Headphones,
-    Mic,
-    PenLine,
 } from 'lucide-react';
 import { Loading } from '@/components/common/Loading';
 import { Button } from '@/components/ui/button';
@@ -75,11 +71,7 @@ interface LessonTypeOption {
 const LESSON_TYPE_OPTIONS: LessonTypeOption[] = [
     { type: 'VOCAB',     label: 'Từ vựng',   Icon: BookOpen,     color: 'text-blue-500' },
     { type: 'GRAMMAR',   label: 'Ngữ pháp',  Icon: AlignLeft,    color: 'text-violet-500' },
-    { type: 'READING',   label: 'Đọc hiểu',  Icon: FileText,     color: 'text-emerald-500' },
     { type: 'LISTENING', label: 'Nghe',       Icon: Headphones,   color: 'text-amber-500' },
-    { type: 'SPEAKING',  label: 'Nói',        Icon: Mic,          color: 'text-rose-500' },
-    { type: 'WRITING',   label: 'Viết',       Icon: PenLine,      color: 'text-cyan-500' },
-    { type: 'UNIT_TEST', label: 'Kiểm tra',   Icon: ClipboardList, color: 'text-slate-500' },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -329,7 +321,7 @@ export const CurriculumTree = memo(function CurriculumTree({ courseId }: Props) 
                         {/* Lesson type picker */}
                         <div className="space-y-2">
                             <Label>Loại bài học</Label>
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-3 gap-2">
                                 {LESSON_TYPE_OPTIONS.map(({ type, label, Icon, color }) => {
                                     const isSelected = newLessonType === type;
                                     return (

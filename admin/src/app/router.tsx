@@ -22,6 +22,8 @@ const PlacementTestWizardPage = lazy(() => import("@/features/placement-test/pag
 const IeltsPracticeListPage = lazy(() => import("@/features/ielts-practice/pages/IeltsPracticeListPage"));
 const IeltsPracticeEditorPage = lazy(() => import("@/features/ielts-practice/pages/IeltsPracticeEditorPage"));
 const IeltsPracticeDetailPage = lazy(() => import("@/features/ielts-practice/pages/IeltsPracticeDetailPage"));
+const AiVoiceContentPage = lazy(() => import("@/features/ai-voice-content/AiVoiceContentPage"));
+const ShadowingManagementPage = lazy(() => import("@/features/shadowing/ShadowingManagementPage"));
 const pageLoaderFallback = (
     <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -185,6 +187,22 @@ export const router = createBrowserRouter([
                 element: (
                     <Suspense fallback={pageLoaderFallback}>
                         <IeltsPracticeEditorPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "ai-voice-content",
+                element: (
+                    <Suspense fallback={pageLoaderFallback}>
+                        <AiVoiceContentPage />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "shadowing",
+                element: (
+                    <Suspense fallback={pageLoaderFallback}>
+                        <ShadowingManagementPage />
                     </Suspense>
                 ),
             },

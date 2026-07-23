@@ -2,7 +2,6 @@ import styles from './home-page.module.css';
 import { ActivityCard } from '../components/ActivityCard/ActivityCard';
 import { CurrentCourseCard } from '../components/CurrentSeriesCard/CurrentCourseCard';
 import { LearningProgressCard } from '../components/LearningProgressCard/LearningProgressCard';
-import { RankingCard } from '../components/RankingCard/RankingCard';
 import { useNavigate } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
 import { useAuthStore } from '@/stores/auth.store';
@@ -39,7 +38,6 @@ const DashboardHomePage = ({ className }: DashboardHomePageProps) => {
         <CurrentCourseCard className={styles.currentSeriesBox} />
         <LearningProgressCard className={styles.progressBox} />
         <ActivityCard className={styles.streakBox} />
-        <RankingCard className={styles.rankBox} />
       </div>
     </div>
   );

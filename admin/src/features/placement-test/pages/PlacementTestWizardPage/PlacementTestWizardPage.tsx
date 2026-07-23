@@ -28,7 +28,7 @@ const WIZARD_STEPS: WizardStep[] = [
 ];
 
 const DEFAULT_CEFR_MAPPING: ICEFRMapping = {
-    weights: { mcq: 0.4, writing: 0.3, speaking: 0.3 },
+    weights: { mcq: 1, writing: 0, speaking: 0 },
     thresholds: [
         { level: 'A1', mcqMin: 0, mcqMax: 0.25, writingMin: 0, writingMax: 0.25, speakingMin: 0, speakingMax: 0.25 },
         { level: 'A2', mcqMin: 0.25, mcqMax: 0.45, writingMin: 0.25, writingMax: 0.45, speakingMin: 0.25, speakingMax: 0.45 },
@@ -39,53 +39,17 @@ const DEFAULT_CEFR_MAPPING: ICEFRMapping = {
     ],
 };
 
-const sanitizeStringArray = (items: string[] | undefined): string[] =>
-    (items ?? []).map((item) => item.trim()).filter(Boolean);
-
 const normalizeModulesForApi = (modules: IPlacementTestModule[]): IPlacementTestModule[] => {
-    return modules.map((module, index) => {
-        if (module.type === 'mcq') {
-            return {
-                ...module,
-                order: index + 1,
-            };
-        }
-
-        if (module.type === 'essay') {
-            return {
-                ...module,
-                order: index + 1,
-            };
-        }
-
-        const normalizedCueCards = module.parts?.part2?.cueCards?.map((cueCard) => ({
-            ...cueCard,
-            shouldSay: sanitizeStringArray(cueCard.shouldSay),
-        }));
-
-        return {
-            ...module,
-            order: index + 1,
-            parts: module.parts
-                ? {
-                    ...module.parts,
-                    part2: module.parts.part2
-                        ? {
-                            ...module.parts.part2,
-                            cueCards: normalizedCueCards ?? [],
-                        }
-                        : module.parts.part2,
-                }
-                : module.parts,
-        };
-    });
+    return modules
+        .filter((module) => module.type === 'mcq')
+        .map((module, index) => ({ ...module, order: index + 1 }));
 };
 
 const DEFAULT_TEST_MODULES: IPlacementTestModule[] = [
     {
         order: 1,
         type: 'mcq',
-        name: 'TOEIC Compact (Listening + Reading)',
+        name: 'TOEIC Listening + Reading',
         timeLimitMinutes: 45,
         showCountdown: true,
         allowBackNavigation: false,
@@ -101,38 +65,10 @@ const DEFAULT_TEST_MODULES: IPlacementTestModule[] = [
             { part: 7, name: 'Part 7 — Reading Comprehension', questionsCount: 27, poolTag: 'toeic-reading-part7', difficultyDistribution: {}, excludeRecentDays: 30, topicFilter: [] },
         ],
     },
-    {
-        order: 2,
-        type: 'essay',
-        name: 'IELTS Writing Task 2',
-        timeLimitMinutes: 30,
-        aiModel: 'gpt-5-mini',
-        criteria: ['TR', 'CC', 'LR', 'GRA'],
-        wordLimits: { low: 150, mid: 250, high: 250 },
-        topicsByLevel: { low: [], mid: [], high: [] },
-        secureMode: { disablePaste: true, disableSpellcheck: true },
-        promptSource: 'ai_generated',
-    },
-    {
-        order: 3,
-        type: 'speaking',
-        name: 'IELTS Speaking (Lite)',
-        totalMinutes: 15,
-        conversationModel: 'gpt-4.1-mini',
-        ttsModel: 'tts-1',
-        ttsVoice: 'alloy',
-        gradingModel: 'gpt-5-mini',
-        speechAnalytics: 'azure-ai-speech',
-        silenceThresholdSeconds: 5,
-        criteria: ['fluency', 'lexical', 'grammar', 'pronunciation'],
-        parts: {
-            warmupMinutes: 1,
-            part1: { minutes: 5, questionsRange: [4, 6], topics: [] },
-            part2: { minutes: 4, prepSeconds: 60, cueCards: [] },
-            part3: { minutes: 5, questionsRange: [2, 3], topics: [] },
-        },
-    },
 ];
+
+const keepToeicModules = (modules: IPlacementTestModule[] | undefined): IPlacementTestModule[] =>
+    (modules ?? []).filter((module) => module.type === 'mcq');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -179,7 +115,8 @@ export default function PlacementTestWizardPage() {
     const [modules, setModules] = useState<IPlacementTestModule[]>(() => {
         if (id) return DEFAULT_TEST_MODULES; // will be populated from existingTest
         const draft = loadDraft();
-        return draft?.step2?.modules?.length ? draft.step2.modules : DEFAULT_TEST_MODULES;
+        const draftModules = keepToeicModules(draft?.step2?.modules);
+        return draftModules.length ? draftModules : DEFAULT_TEST_MODULES;
     });
     const [cefrMapping, setCefrMapping] = useState<ICEFRMapping>(DEFAULT_CEFR_MAPPING);
 
@@ -195,8 +132,9 @@ export default function PlacementTestWizardPage() {
             description: existingTest.description,
             settings: existingTest.settings,
         });
-        setModules(existingTest.modules ?? []);
-        setCefrMapping(existingTest.cefrMapping ?? DEFAULT_CEFR_MAPPING);
+        const toeicModules = keepToeicModules(existingTest.modules);
+        setModules(toeicModules.length ? toeicModules : DEFAULT_TEST_MODULES);
+        setCefrMapping(DEFAULT_CEFR_MAPPING);
     // existingTest is the only reactive dep — id cannot change after mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [existingTest]);
@@ -270,7 +208,7 @@ export default function PlacementTestWizardPage() {
         <div className="flex flex-col gap-6 p-6 max-w-3xl mx-auto">
             <PageHeader
                 title={isEditMode ? 'Chỉnh sửa bài kiểm tra' : 'Tạo bài kiểm tra mới'}
-                description="Chọn ngôn ngữ, sau đó soạn đề ngay với cấu trúc mặc định TOEIC Compact + IELTS Writing + IELTS Speaking."
+                description="Chọn ngôn ngữ, sau đó soạn đề TOEIC Listening + Reading."
             >
                 <Button variant="outline" onClick={() => navigate('/placement-tests')}>
                     Hủy

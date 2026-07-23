@@ -73,7 +73,7 @@ export class CourseMongoRepository extends BaseMongoRepository<ICourse> {
         const [courses, total] = await Promise.all([
             this.model
                 .find(query)
-                .select('-__v')
+                .select('-__v -prerequisiteCourseId -finalExamConfig')
                 .sort({ [sort]: sortDir })
                 .skip(skip)
                 .limit(limit)
@@ -131,6 +131,21 @@ export class CourseMongoRepository extends BaseMongoRepository<ICourse> {
         return count > 0;
     }
 
+    async getNextOrderIndex(languageId: string, learningGoalId: string, level: string): Promise<number> {
+        const lastCourse = await this.model
+            .findOne({
+                languageId: new mongoose.Types.ObjectId(languageId),
+                learningGoalId: new mongoose.Types.ObjectId(learningGoalId),
+                level,
+            })
+            .select('orderIndex')
+            .sort({ orderIndex: -1 })
+            .lean()
+            .exec() as { orderIndex?: number } | null;
+
+        return (lastCourse?.orderIndex ?? 0) + 1;
+    }
+
     // ── Single-read helpers ────────────────────────────────────────────────────
 
     /**
@@ -139,7 +154,7 @@ export class CourseMongoRepository extends BaseMongoRepository<ICourse> {
     async findByIdFull(courseId: string): Promise<ICourse | null> {
         return this.model
             .findById(courseId)
-            .select('-__v')
+            .select('-__v -prerequisiteCourseId -finalExamConfig')
             .lean()
             .exec() as Promise<ICourse | null>;
     }
@@ -166,13 +181,6 @@ export class CourseMongoRepository extends BaseMongoRepository<ICourse> {
         if (data.thumbnailUrl !== undefined) {
             doc.thumbnailUrl = data.thumbnailUrl;
         }
-        if (typeof data.prerequisiteCourseId === 'string' && data.prerequisiteCourseId.length > 0) {
-            doc.prerequisiteCourseId = new mongoose.Types.ObjectId(data.prerequisiteCourseId as string);
-        }
-        if (data.finalExamConfig) {
-            doc.finalExamConfig = data.finalExamConfig;
-        }
-
         return this.model.create(doc);
     }
 
@@ -198,19 +206,11 @@ export class CourseMongoRepository extends BaseMongoRepository<ICourse> {
         if (typeof data.learningGoalId === 'string') {
             update.learningGoalId = new mongoose.Types.ObjectId(data.learningGoalId);
         }
-        if (data.prerequisiteCourseId !== undefined) {
-            update.prerequisiteCourseId = typeof data.prerequisiteCourseId === 'string'
-                ? new mongoose.Types.ObjectId(data.prerequisiteCourseId)
-                : null;
-        }
-        if (typeof data.finalExamConfig === 'object' && data.finalExamConfig !== null) {
-            update.finalExamConfig = data.finalExamConfig;
-        }
         if (typeof data.isActive === 'boolean') update.isActive = data.isActive;
 
         return this.model
             .findByIdAndUpdate(courseId, update, { new: true, runValidators: true })
-            .select('-__v')
+            .select('-__v -prerequisiteCourseId -finalExamConfig')
             .lean()
             .exec() as Promise<ICourse | null>;
     }
@@ -300,6 +300,8 @@ export class CourseMongoRepository extends BaseMongoRepository<ICourse> {
                 {
                     $project: {
                         __v: 0,
+                        prerequisiteCourseId: 0,
+                        finalExamConfig: 0,
                     },
                 },
             ])

@@ -27,7 +27,7 @@ router.use(protect);
  *   get:
  *     summary: List exam tests
  */
-router.get('/', restrictTo('admin', 'content_creator'), validate(getExamTestsSchema), ExamTestController.getAll);
+router.get('/', restrictTo('admin'), validate(getExamTestsSchema), ExamTestController.getAll);
 
 /**
  * @swagger
@@ -37,7 +37,7 @@ router.get('/', restrictTo('admin', 'content_creator'), validate(getExamTestsSch
  */
 router.get(
     '/:id/versions',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(getVersionHistorySchema),
     ExamTestController.getVersionHistory,
 );
@@ -50,7 +50,7 @@ router.get(
  */
 router.get(
     '/:id/analytics',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(analyticsExamTestSchema),
     ExamTestController.getAnalytics,
 );
@@ -74,7 +74,7 @@ router.post(
  *   get:
  *     summary: Get exam test by id (full admin content)
  */
-router.get('/:id', restrictTo('admin', 'content_creator'), validate(getExamTestByIdSchema), ExamTestController.getById);
+router.get('/:id', restrictTo('admin'), validate(getExamTestByIdSchema), ExamTestController.getById);
 
 /**
  * @swagger
@@ -84,7 +84,7 @@ router.get('/:id', restrictTo('admin', 'content_creator'), validate(getExamTestB
  */
 router.get(
     '/:id/preview',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(getExamTestByIdSchema),
     ExamTestController.getPreview,
 );

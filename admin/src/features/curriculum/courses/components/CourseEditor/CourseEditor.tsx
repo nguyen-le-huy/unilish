@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { Save } from 'lucide-react';
+import { Loader2, Save, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -23,12 +23,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguages } from '@/features/curriculum/languages';
 import { useLearningGoals } from '@/features/curriculum/goals';
-import { useCourseDetail, useCourses } from '../../hooks/useCourses';
-import { useUpdateCourse } from '../../hooks/useCourseMutations';
+import { useCourseDetail } from '../../hooks/useCourses';
+import { useUpdateCourse, useUploadCourseThumbnail } from '../../hooks/useCourseMutations';
 import { useCourseForm } from '../../hooks/useCourseForm';
 import { CEFR_LEVELS } from '../../types/course.types';
 import type { UpdateCoursePayload } from '../../types/course.types';
-import { FinalExamConfigCard } from './FinalExamConfigCard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,6 +40,7 @@ interface Props {
 export const CourseEditor = memo(function CourseEditor({ courseId }: Props) {
     const { data: course, isLoading } = useCourseDetail(courseId);
     const updateMutation = useUpdateCourse();
+    const uploadThumbnailMutation = useUploadCourseThumbnail();
     const form = useCourseForm({ course: course ?? null });
 
     // Language + Goal data for selectors
@@ -49,7 +49,7 @@ export const CourseEditor = memo(function CourseEditor({ courseId }: Props) {
     const allGoals = goalsData?.data ?? [];
 
     const watchedLanguageId = form.watch('languageId');
-    const watchedLearningGoalId = form.watch('learningGoalId');
+    const thumbnailUrl = form.watch('thumbnailUrl');
 
     // Filter goals by selected language
     const filteredGoals = useMemo(
@@ -60,20 +60,6 @@ export const CourseEditor = memo(function CourseEditor({ courseId }: Props) {
         [allGoals, watchedLanguageId],
     );
 
-    // Prerequisite candidates: courses with same language + goal, excluding self
-    const { data: candidateData } = useCourses({
-        languageId: watchedLanguageId || undefined,
-        learningGoalId: watchedLearningGoalId || undefined,
-        limit: 100,
-        sort: 'orderIndex',
-        order: 'asc',
-    });
-    const allCandidates = candidateData?.data ?? [];
-    const prerequisiteOptions = useMemo(
-        () => allCandidates.filter((c) => c._id !== courseId),
-        [allCandidates, courseId],
-    );
-
     const onSubmit = form.handleSubmit((values) => {
         const payload: UpdateCoursePayload = {
             name: values.name,
@@ -81,11 +67,8 @@ export const CourseEditor = memo(function CourseEditor({ courseId }: Props) {
             description: values.description ?? undefined,
             thumbnailUrl: values.thumbnailUrl ?? undefined,
             level: values.level as UpdateCoursePayload['level'],
-            orderIndex: values.orderIndex,
             languageId: values.languageId,
             learningGoalId: values.learningGoalId,
-            prerequisiteCourseId: values.prerequisiteCourseId ?? undefined,
-            finalExamConfig: values.finalExamConfig,
         };
         updateMutation.mutate({ id: courseId, payload });
     });
@@ -110,7 +93,7 @@ export const CourseEditor = memo(function CourseEditor({ courseId }: Props) {
                 <Button
                     size="sm"
                     onClick={onSubmit}
-                    disabled={updateMutation.isPending}
+                    disabled={updateMutation.isPending || uploadThumbnailMutation.isPending}
                 >
                     <Save className="mr-2 h-4 w-4" aria-hidden="true" />
                     {updateMutation.isPending ? 'Đang lưu...' : 'Lưu'}
@@ -235,8 +218,8 @@ export const CourseEditor = memo(function CourseEditor({ courseId }: Props) {
                                 />
                             </div>
 
-                            {/* Level + Order row */}
-                            <div className="grid grid-cols-2 gap-4">
+                            {/* Level */}
+                            <div className="max-w-xs">
                                 <FormField
                                     control={form.control}
                                     name="level"
@@ -264,78 +247,7 @@ export const CourseEditor = memo(function CourseEditor({ courseId }: Props) {
                                         </FormItem>
                                     )}
                                 />
-
-                                <FormField
-                                    control={form.control}
-                                    name="orderIndex"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Thứ tự</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="number"
-                                                    min={1}
-                                                    {...field}
-                                                    onChange={(e) =>
-                                                        field.onChange(Number(e.target.value))
-                                                    }
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
                             </div>
-
-                            {/* Prerequisite */}
-                            <FormField
-                                control={form.control}
-                                name="prerequisiteCourseId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>
-                                            Khóa học tiên quyết{' '}
-                                            <span className="text-xs font-normal text-muted-foreground">
-                                                (Tùy chọn)
-                                            </span>
-                                        </FormLabel>
-                                        <Select
-                                            value={field.value ?? 'none'}
-                                            onValueChange={(v) =>
-                                                field.onChange(v === 'none' ? null : v)
-                                            }
-                                            disabled={prerequisiteOptions.length === 0}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger aria-label="Khóa học tiên quyết">
-                                                    <SelectValue placeholder="Không yêu cầu" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="none">
-                                                    Không yêu cầu
-                                                </SelectItem>
-                                                {prerequisiteOptions.map((c) => (
-                                                    <SelectItem key={c._id} value={c._id}>
-                                                        <span className="font-mono text-xs text-muted-foreground">
-                                                            [{c.level}]
-                                                        </span>{' '}
-                                                        {c.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        {prerequisiteOptions.length === 0 &&
-                                            watchedLanguageId &&
-                                            watchedLearningGoalId && (
-                                                <FormDescription>
-                                                    Không có khóa học nào khác để chọn làm tiên quyết.
-                                                </FormDescription>
-                                            )}
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
                         </CardContent>
                     </Card>
 
@@ -367,28 +279,31 @@ export const CourseEditor = memo(function CourseEditor({ courseId }: Props) {
                                 )}
                             />
 
-                            <FormField
-                                control={form.control}
-                                name="thumbnailUrl"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>URL Thumbnail</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                placeholder="https://example.com/thumb.jpg"
-                                                {...field}
-                                                value={field.value ?? ''}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                            <FormItem>
+                                <FormLabel>Ảnh khóa học</FormLabel>
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                    <Input
+                                        type="file"
+                                        accept="image/*"
+                                        disabled={uploadThumbnailMutation.isPending}
+                                        onChange={(event) => {
+                                            const file = event.target.files?.[0];
+                                            event.target.value = '';
+                                            if (!file) return;
+                                            uploadThumbnailMutation.mutate(file, {
+                                                onSuccess: ({ url }) => form.setValue('thumbnailUrl', url, { shouldValidate: true }),
+                                            });
+                                        }}
+                                    />
+                                    <span className="inline-flex min-w-28 items-center text-sm text-muted-foreground">
+                                        {uploadThumbnailMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang tải...</> : <><Upload className="mr-2 h-4 w-4" />Chọn ảnh</>}
+                                    </span>
+                                </div>
+                                {thumbnailUrl ? <img src={thumbnailUrl} alt="Ảnh khóa học" className="h-32 w-full rounded-md border object-cover sm:w-56" /> : null}
+                            </FormItem>
                         </CardContent>
                     </Card>
 
-                    {/* Final Exam Config */}
-                    <FinalExamConfigCard control={form.control} />
                 </form>
             </Form>
         </div>

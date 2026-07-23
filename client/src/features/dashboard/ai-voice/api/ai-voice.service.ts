@@ -1,7 +1,7 @@
 import { env } from '@/config/env';
-import { api, apiPostUnwrappedEnvelope } from '@/lib/axios';
+import { api, apiGetUnwrappedEnvelope, apiPostUnwrappedEnvelope } from '@/lib/axios';
 import { useAuthStore } from '@/stores/auth.store';
-import type { AiVoiceAssessmentResult, AiVoiceScenario, ChatHistoryItem } from '../types/ai-voice.types';
+import type { AiVoiceAssessmentResult, AiVoiceScenario, AiVoiceTopic, ChatHistoryItem } from '../types/ai-voice.types';
 
 const AI_VOICE_BASE = '/v1/ai-voice';
 const AI_VOICE_FETCH_BASE = `${env.API_URL}${AI_VOICE_BASE}`;
@@ -14,53 +14,6 @@ export interface AiVoiceSttResult {
 interface AiVoiceTtsPayload {
 	text: string;
 }
-
-interface GenerateScenariosPayload {
-	topic: string;
-	level: string;
-}
-
-interface GenerateScenariosResponse {
-	scenarios: AiVoiceScenario[];
-}
-
-const isAiVoiceScenario = (value: unknown): value is AiVoiceScenario => {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) {
-		return false;
-	}
-
-	const scenario = value as Record<string, unknown>;
-	return (
-		typeof scenario.id === 'string'
-		&& typeof scenario.title === 'string'
-		&& typeof scenario.description === 'string'
-	);
-};
-
-const isAiVoiceScenarioArray = (value: unknown): value is AiVoiceScenario[] => {
-	return Array.isArray(value) && value.every(isAiVoiceScenario);
-};
-
-const isGenerateScenariosResponse = (value: unknown): value is GenerateScenariosResponse => {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) {
-		return false;
-	}
-
-	const response = value as { scenarios?: unknown };
-	return isAiVoiceScenarioArray(response.scenarios);
-};
-
-const parseGenerateScenariosResponse = (value: unknown): AiVoiceScenario[] => {
-	if (isGenerateScenariosResponse(value)) {
-		return value.scenarios;
-	}
-
-	if (isAiVoiceScenarioArray(value)) {
-		return value;
-	}
-
-	throw new Error('Dữ liệu tình huống AI không hợp lệ.');
-};
 
 export interface AiVoiceChatParams {
 	sessionId: string;
@@ -77,6 +30,10 @@ export interface AiVoiceAssessmentTurn {
 }
 
 export const aiVoiceService = {
+	async getCatalog(): Promise<AiVoiceTopic[]> {
+		return apiGetUnwrappedEnvelope<AiVoiceTopic[]>(`${AI_VOICE_BASE}/catalog`);
+	},
+
 	async stt(audio: Blob, sessionId: string): Promise<AiVoiceSttResult> {
 		const formData = new FormData();
 		formData.append('audio', audio, 'recording.webm');
@@ -101,16 +58,6 @@ export const aiVoiceService = {
 		);
 
 		return new Blob([response], { type: 'audio/mpeg' });
-	},
-
-	async generateScenarios(topic: string, level: string): Promise<AiVoiceScenario[]> {
-		const payload: GenerateScenariosPayload = { topic, level };
-		const response = await apiPostUnwrappedEnvelope<GenerateScenariosResponse | AiVoiceScenario[], GenerateScenariosPayload>(
-			`${AI_VOICE_BASE}/generate-scenarios`,
-			payload,
-		);
-
-		return parseGenerateScenariosResponse(response);
 	},
 
 	async chat(params: AiVoiceChatParams, signal?: AbortSignal): Promise<Response> {

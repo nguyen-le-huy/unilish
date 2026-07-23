@@ -16,7 +16,6 @@ export interface ICourse extends mongoose.Document {
     seriesId?: mongoose.Types.ObjectId;
     languageId: mongoose.Types.ObjectId;
     learningGoalId: mongoose.Types.ObjectId;
-    prerequisiteCourseId?: mongoose.Types.ObjectId | null;
 
     // ── 2. BASIC INFO ───────────────────────────────────────────────────────
     name: string;
@@ -32,28 +31,10 @@ export interface ICourse extends mongoose.Document {
     // ── 3. STATISTICS ───────────────────────────────────────────────────────
     totalUnits: number;
 
-    // ── 4. FINAL EXAM CONFIGURATION ────────────────────────────────────────
-    finalExamConfig: {
-        durationMinutes: number;
-        passScore: number;
-        structureMatrix: {
-            vocabCount?: number;
-            grammarCount?: number;
-            readingTaskCount?: number;
-            listeningTaskCount?: number;
-            writingTaskCount?: number;
-            speakingTaskCount?: number;
-        };
-        questionPool: {
-            readingLessonIds: mongoose.Types.ObjectId[];
-            listeningLessonIds: mongoose.Types.ObjectId[];
-        };
-    };
-
-    // ── 5. STATUS ──────────────────────────────────────────────────────────
+    // ── 4. STATUS ──────────────────────────────────────────────────────────
     isActive: boolean;
 
-    // ── 6. METADATA ─────────────────────────────────────────────────────────
+    // ── 5. METADATA ─────────────────────────────────────────────────────────
     createdAt: Date;
     updatedAt: Date;
 }
@@ -80,12 +61,6 @@ const CourseSchema = new mongoose.Schema<ICourse>(
             required: true,
             index: true,
         },
-        prerequisiteCourseId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Course',
-            default: null,
-        },
-
         // ── 2. BASIC INFO ───────────────────────────────────────────────────
         name: {
             type: String,
@@ -136,44 +111,7 @@ const CourseSchema = new mongoose.Schema<ICourse>(
             min: 0,
         },
 
-        // ── 4. FINAL EXAM CONFIGURATION ─────────────────────────────────────
-        finalExamConfig: {
-            durationMinutes: {
-                type: Number,
-                default: 60,
-                min: 1,
-            },
-            passScore: {
-                type: Number,
-                default: 65,
-                min: 0,
-                max: 100,
-            },
-            structureMatrix: {
-                vocabCount: { type: Number, default: 0 },
-                grammarCount: { type: Number, default: 0 },
-                readingTaskCount: { type: Number, default: 0 },
-                listeningTaskCount: { type: Number, default: 0 },
-                writingTaskCount: { type: Number, default: 0 },
-                speakingTaskCount: { type: Number, default: 0 },
-            },
-            questionPool: {
-                readingLessonIds: [
-                    {
-                        type: mongoose.Schema.Types.ObjectId,
-                        ref: 'Lesson',
-                    },
-                ],
-                listeningLessonIds: [
-                    {
-                        type: mongoose.Schema.Types.ObjectId,
-                        ref: 'Lesson',
-                    },
-                ],
-            },
-        },
-
-        // ── 5. STATUS ───────────────────────────────────────────────────────
+        // ── 4. STATUS ───────────────────────────────────────────────────────
         isActive: {
             type: Boolean,
             default: true,
@@ -204,28 +142,10 @@ CourseSchema.index({ languageId: 1, learningGoalId: 1, isActive: 1, orderIndex: 
 // Query: filter by language+level
 CourseSchema.index({ languageId: 1, level: 1 });
 
-// Self-reference for prerequisite lookups
-CourseSchema.index({ prerequisiteCourseId: 1 });
-
 // Keep old indexes during migration window (remove in Phase 4)
 // CourseSchema.index({ seriesId: 1, orderInSeries: 1 }, { unique: true });
 // CourseSchema.index({ seriesId: 1, level: 1 });
 
 CourseSchema.index({ isActive: 1 });
-
-// ── VIRTUALS ────────────────────────────────────────────────────────────────
-
-// Virtual: Total exam questions
-CourseSchema.virtual('totalExamQuestions').get(function (this: ICourse) {
-    const matrix = this.finalExamConfig.structureMatrix;
-    return (
-        (matrix.vocabCount || 0) +
-        (matrix.grammarCount || 0) +
-        (matrix.readingTaskCount || 0) +
-        (matrix.listeningTaskCount || 0) +
-        (matrix.writingTaskCount || 0) +
-        (matrix.speakingTaskCount || 0)
-    );
-});
 
 export const Course = mongoose.model<ICourse>('Course', CourseSchema);

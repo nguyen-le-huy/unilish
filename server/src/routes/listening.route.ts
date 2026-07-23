@@ -33,8 +33,8 @@ import {
 // mergeParams: true — inherits :lessonId if this router is mounted on a parent
 const router = Router({ mergeParams: true });
 
-// All other listening routes require authentication + admin / content_creator role
-router.use(protect, restrictTo('admin', 'content_creator'));
+// All other listening authoring routes require admin access.
+router.use(protect, restrictTo('admin'));
 
 // ─── Listening Content ────────────────────────────────────────────────────────
 

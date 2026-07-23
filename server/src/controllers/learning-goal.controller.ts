@@ -3,9 +3,7 @@ import { HttpStatus } from '../constants/http-status.js';
 import { learningGoalService } from '../services/learning-goal.service.js';
 import type {
     CreateLearningGoalBody,
-    DuplicateLearningGoalBody,
     GetLearningGoalsQuery,
-    TestLearningGoalBody,
     UpdateLearningGoalBody,
 } from '../validations/learning-goal.validation.js';
 import { catchAsync } from '../utils/catch-async.js';
@@ -34,20 +32,10 @@ export class LearningGoalController {
         sendResponse(res, HttpStatus.OK, 'Update learning goal successfully', updated);
     });
 
-    static duplicateLearningGoal = catchAsync(async (req: Request, res: Response) => {
-        const slug = req.params.slug as string;
-        const duplicated = await learningGoalService.duplicateLearningGoal(slug, req.body as DuplicateLearningGoalBody);
-        sendResponse(res, HttpStatus.CREATED, 'Duplicate learning goal successfully', duplicated);
-    });
-
     static toggleLearningGoalStatus = catchAsync(async (req: Request, res: Response) => {
         const slug = req.params.slug as string;
         const updated = await learningGoalService.toggleLearningGoalStatus(slug);
         sendResponse(res, HttpStatus.OK, 'Toggle learning goal status successfully', updated);
     });
 
-    static testLearningGoal = catchAsync(async (req: Request, res: Response) => {
-        const result = await learningGoalService.testLearningGoalConfig(req.body as TestLearningGoalBody);
-        sendResponse(res, HttpStatus.OK, 'Test learning goal config successfully', result);
-    });
 }

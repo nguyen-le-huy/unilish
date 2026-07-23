@@ -17,7 +17,6 @@ export interface LearningGoalDomain {
     slug: string;
     title: string;
     supportedLanguages: ObjectId[];
-    skillWeights: JsonObject;
     isActive: boolean;
 }
 
@@ -25,12 +24,10 @@ export interface CourseDomain {
     _id: ObjectId;
     languageId: ObjectId;
     learningGoalId: ObjectId;
-    prerequisiteCourseId?: ObjectId;
     slug: string;
     name: string;
     level: string;
     orderIndex: number;
-    finalExamConfig?: JsonObject;
     isActive: boolean;
 }
 

@@ -14,6 +14,15 @@ export interface AiVoiceScenario {
 	description: string;
 }
 
+export interface AiVoiceTopic {
+	_id: string;
+	slug: string;
+	title: string;
+	description: string;
+	icon: string;
+	scenarios: AiVoiceScenario[];
+}
+
 export interface ChatHistoryItem {
 	role: 'user' | 'assistant';
 	content: string;

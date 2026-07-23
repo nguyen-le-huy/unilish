@@ -1,7 +1,6 @@
 /* ──────────────────────────────────────────────────────────────
- * useIeltsAttemptInit — Start new attempt or resume existing
+ * useIeltsAttemptInit — Start a new attempt or load a specific attempt
  * FR-05 / AC-06, AC-07: Idempotent start with retry safety
- * FR-08 / AC-11: Resume across devices
  * ────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -24,7 +23,7 @@ type InitState =
 
 interface UseIeltsAttemptInitOptions {
   slug: string | undefined;
-  /** Existing attempt to resume, if any */
+  /** Specific attempt to load, if any */
   existingAttemptId?: string;
   onReady?: (attempt: AttemptStartResponse) => void;
 }
@@ -64,7 +63,7 @@ export function useIeltsAttemptInit({
   const { data: testDetail, isLoading: detailLoading, isError: detailError } =
     useIeltsTestDetail(slug);
 
-  // ── Resume existing attempt if available ──────────────
+  // ── Load specific attempt if available ────────────────
   const {
     data: resumedAttempt,
     isLoading: resumeLoading,
@@ -114,7 +113,7 @@ export function useIeltsAttemptInit({
       return;
     }
 
-    // If we already have a resumed attempt
+    // If we already have a specific attempt loaded
     if (resumedAttempt) {
       if (resumedAttempt.status === 'expired') {
         setState({ status: 'expired' });
@@ -135,7 +134,7 @@ export function useIeltsAttemptInit({
       // Resume failed — will try to start new
     }
 
-    // No existing attempt — start a new one
+    // No specific attempt — start a new one
     if (!existingAttemptId) {
       doStart();
     }

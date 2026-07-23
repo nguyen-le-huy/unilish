@@ -17,11 +17,11 @@ router.use(protect);
 router.get('/', validate(getLanguagesSchema), LanguageController.getLanguages);
 router.get('/:code', validate(getLanguageByCodeSchema), LanguageController.getLanguageByCode);
 
-router.post('/', restrictTo('admin', 'content_creator'), validate(createLanguageSchema), LanguageController.createLanguage);
-router.put('/:code', restrictTo('admin', 'content_creator'), validate(updateLanguageSchema), LanguageController.updateLanguage);
+router.post('/', restrictTo('admin'), validate(createLanguageSchema), LanguageController.createLanguage);
+router.put('/:code', restrictTo('admin'), validate(updateLanguageSchema), LanguageController.updateLanguage);
 router.patch(
     '/:code/toggle',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(toggleLanguageStatusSchema),
     LanguageController.toggleLanguageStatus,
 );

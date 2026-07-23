@@ -122,7 +122,7 @@ function buildResultDetails(attempt: IIeltsPracticeAttempt): ObjectiveResultDeta
 
 export class IeltsAttemptService {
     /**
-     * Start a new attempt or resume an existing in-progress attempt.
+     * Start a fresh attempt. Any existing in-progress attempt for the same test is abandoned first.
      */
     async startAttempt(
         testId: string,
@@ -164,7 +164,7 @@ export class IeltsAttemptService {
         const questionType = test.questionType!;
         const durationMinutes = test.durationMinutes ?? 30;
 
-        // ── Check existing in-progress attempt ───────────────────────────────
+        // ── Discard existing in-progress attempt ────────────────────────────
         if (test.logicalTestId) {
             const existing = await ieltsPracticeAttemptMongoRepository.findInProgress(
                 userId,
@@ -172,12 +172,7 @@ export class IeltsAttemptService {
             );
 
             if (existing) {
-                // Resume existing attempt
-                const testDto = toTestDetailDto(test);
-                const response = toAttemptResponse(existing, testDto, true);
-
-                await setIdempotencyResponse(idKey, response);
-                return response;
+                await ieltsPracticeAttemptMongoRepository.abandonAttempt(String(existing._id));
             }
         }
 

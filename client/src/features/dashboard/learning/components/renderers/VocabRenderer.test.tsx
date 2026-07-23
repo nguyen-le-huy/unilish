@@ -52,16 +52,24 @@ afterEach(() => {
     MockAudio.created = [];
 });
 
-    it('renders the vocab card layout and hides the scenario context line', () => {
+    it('renders one flashcard and reveals the details after flipping', () => {
         render(<VocabRenderer content={content} />);
 
         expect(screen.queryByText('Travel vocabulary')).toBeNull();
-        expect(screen.getByText('nomination')).not.toBeNull();
-        expect(screen.getByText('/ˌnɒm.ɪˈneɪ.ʃən/')).not.toBeNull();
+        expect(screen.getAllByText('nomination')).toHaveLength(2);
+        expect(screen.getAllByText('/ˌnɒm.ɪˈneɪ.ʃən/')).toHaveLength(2);
+        expect(screen.getByText('Flashcard 1 / 1')).not.toBeNull();
+        expect(screen.getByText('Định nghĩa').closest('[aria-hidden]')?.getAttribute('aria-hidden')).toBe('true');
+        expect(screen.getByRole('button', { name: 'Luyện phát âm từ nomination' })).not.toBeNull();
+
+        fireEvent.click(screen.getByRole('button', { name: /Mặt trước flashcard nomination/i }));
+
         expect(screen.getByText('(n)')).not.toBeNull();
-        expect(screen.getByText('Định nghĩa:')).not.toBeNull();
-        expect(screen.getByText('Ví dụ:')).not.toBeNull();
+        expect(screen.getByText('Định nghĩa')).not.toBeNull();
+        expect(screen.getByText('Ví dụ')).not.toBeNull();
         expect(screen.getByAltText('nomination')).not.toBeNull();
+        expect(screen.getByRole('button', { name: 'Luyện phát âm từ nomination' })).not.toBeNull();
+        expect(screen.getByText('Định nghĩa').closest('[aria-hidden]')?.getAttribute('aria-hidden')).toBe('false');
     });
 
     it('plays audio through the API proxy first', async () => {

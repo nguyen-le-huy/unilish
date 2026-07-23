@@ -39,7 +39,6 @@ const formatAttemptDate = (attempt: LearnerAttemptScore): string => {
 };
 
 const getPrimaryActionLabel = (test: TestSummaryDto): string => {
-  if (test.activeAttemptId) return 'Tiếp tục';
   if ((test.learnerStats?.completedCount ?? 0) > 0) return 'Làm lại';
   return 'Xem chi tiết';
 };

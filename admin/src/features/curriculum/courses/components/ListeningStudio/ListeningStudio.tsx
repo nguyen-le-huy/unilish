@@ -10,19 +10,12 @@ import {
     useMixAndSync,
     useCancelMixAndSync,
     useListeningSyncStatus,
-    useGenerateListeningQuestions,
 } from '../../hooks/useListeningMutations';
 import { useListeningStudioState } from './hooks/useListeningStudioState';
 import { ListeningTopBar } from './components/ListeningTopBar/ListeningTopBar';
-import {
-    ListeningGenerateQuestionsModal,
-    type ListeningQuestionDistribution,
-} from './components/ListeningTopBar/ListeningGenerateQuestionsModal';
-import { ListeningPracticeSheet } from './components/ListeningTopBar/ListeningPracticeSheet';
 import { ListeningNavigator } from './components/ListeningNavigator/ListeningNavigator';
 import { ScriptEditor } from './components/ScriptEditor/ScriptEditor';
 import { KaraokeSyncEditor } from './components/KaraokeSyncEditor/KaraokeSyncEditor';
-import { PracticeQuestionsPanel } from './components/InteractiveConfigEditor/PracticeQuestionsPanel';
 import { AiPipelineOverlay } from './components/AiPipelineOverlay/AiPipelineOverlay';
 import type {
     LessonSummary,
@@ -81,7 +74,6 @@ export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLev
     const lessonId = lesson._id;
     const [desiredScriptPrompt, setDesiredScriptPrompt] = useState('');
     const [scriptFormat, setScriptFormat] = useState<ListeningScriptFormat>('DIALOGUE');
-    const [isGenerateQuestionsModalOpen, setIsGenerateQuestionsModalOpen] = useState(false);
 
     // ── Data ──────────────────────────────────────────────────────────────────
     const { data: content, isLoading, isError } = useListeningContent(lessonId);
@@ -91,7 +83,6 @@ export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLev
     const generateScriptMutation = useGenerateListeningScript(lessonId);
     const mixAndSyncMutation = useMixAndSync(lessonId);
     const cancelMixAndSyncMutation = useCancelMixAndSync(lessonId);
-    const generateQuestionsMutation = useGenerateListeningQuestions(lessonId);
 
     // Sync-status polling — starts after Mix & Sync is triggered
     const generationStatus = content?.generationStatus ?? 'IDLE';
@@ -133,7 +124,6 @@ export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLev
         return transcript.some((line) => !line.words || line.words.length === 0);
     }, [audioUrl, transcript]);
 
-    const hasInteractiveError = false;
     const wasProcessingRef = useRef(false);
 
     // ── Seed form when data loads ─────────────────────────────────────────────
@@ -174,7 +164,6 @@ export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLev
     }, [isProcessing, effectiveGenerationStatus, openAiSyncOverlay, closeAiSyncOverlay]);
 
     // ── Derived ───────────────────────────────────────────────────────────────
-    const questionIds = content?.practiceConfig?.questionIds ?? [];
     const derived = derivePipelineStep(effectiveGenerationStatus);
     const step = derived.step;
     const progress = syncStatusQuery.data?.progress ?? derived.progress;
@@ -241,24 +230,6 @@ export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLev
         });
     }, [cancelMixAndSyncMutation]);
 
-    const handleGenerateQuestions = useCallback((distribution: ListeningQuestionDistribution) => {
-        generateQuestionsMutation.mutate(
-            {
-                distribution,
-            },
-            {
-                onSuccess: (data) => {
-                    notification.success(`Đã tạo ${data.count} câu hỏi listening.`);
-                    setIsGenerateQuestionsModalOpen(false);
-                    setActiveSection('interactive');
-                },
-                onError: () => {
-                    notification.error('Lỗi khi tạo câu hỏi listening.');
-                },
-            },
-        );
-    }, [generateQuestionsMutation, setActiveSection]);
-
     // ── Render ────────────────────────────────────────────────────────────────
 
     if (isLoading) {
@@ -296,24 +267,12 @@ export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLev
                     lessonTitle={lesson.title}
                     isSaving={saveMutation.isPending}
                     isGeneratingScript={generateScriptMutation.isPending}
-                    isGeneratingQuestions={generateQuestionsMutation.isPending}
                     isSyncing={mixAndSyncMutation.isPending || isProcessing}
                     syncStatus={effectiveGenerationStatus}
                     syncProgress={progress}
                     onSave={handleSave}
                     onGenerateScript={handleGenerateScript}
-                    onOpenGenerateQuestions={() => setIsGenerateQuestionsModalOpen(true)}
                     onMixAndSync={handleMixAndSync}
-                    practiceAction={
-                        <ListeningPracticeSheet
-                            lessonId={lessonId}
-                            questionIds={questionIds}
-                            passingScore={
-                                content?.practiceConfig?.passingScore
-                                ?? lesson.practiceConfig.passingScore
-                            }
-                        />
-                    }
                 />
 
                 {/* Split Pane: Navigator | Editor */}
@@ -325,7 +284,6 @@ export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLev
                             onSectionChange={setActiveSection}
                             hasScriptError={hasScriptError}
                             hasKaraokeError={hasKaraokeError}
-                            hasInteractiveError={hasInteractiveError}
                         />
                     </div>
 
@@ -342,15 +300,6 @@ export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLev
 
                         {activeSection === 'karaoke' && <KaraokeSyncEditor />}
 
-                        {activeSection === 'interactive' && (
-                            <div className="flex flex-col gap-6">
-                                <PracticeQuestionsPanel
-                                    lessonId={lessonId}
-                                    questionIds={questionIds}
-                                    questionCount={questionIds.length}
-                                />
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
@@ -364,12 +313,6 @@ export const ListeningStudio = memo(function ListeningStudio({ lesson, courseLev
                 onCancel={handleCancelMixAndSync}
             />
 
-            <ListeningGenerateQuestionsModal
-                open={isGenerateQuestionsModalOpen}
-                isGenerating={generateQuestionsMutation.isPending}
-                onClose={() => setIsGenerateQuestionsModalOpen(false)}
-                onGenerate={handleGenerateQuestions}
-            />
         </FormProvider>
     );
 });

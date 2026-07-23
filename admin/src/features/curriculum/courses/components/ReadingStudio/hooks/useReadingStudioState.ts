@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type ReadingSection = 'text' | 'glossary' | 'practice';
+export type ReadingSection = 'text' | 'glossary';
 
 interface ReadingStudioState {
     activeSection: ReadingSection;

@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { PATHS } from '@/config/paths';
 import { useIeltsAttemptInit } from './use-ielts-attempt-init';
 import { useIeltsAutosave, getLocalRecovery, clearLocalRecovery } from './use-ielts-autosave';
-import { useSubmitAttempt } from './use-ielts-attempt';
+import { useAbandonAttempt, useSubmitAttempt } from './use-ielts-attempt';
 import type {
   AttemptStartResponse,
   TestDetailDto,
@@ -73,6 +73,7 @@ export function useIeltsPlayer({
 }: UseIeltsPlayerOptions): UseIeltsPlayerResult {
   const navigate = useNavigate();
   const idempotencyRef = useRef(crypto.randomUUID());
+  const abandonIdempotencyRef = useRef(crypto.randomUUID());
 
   // ── Attempt init ───────────────────────────────────────
   const {
@@ -192,6 +193,7 @@ export function useIeltsPlayer({
 
   // ── Submit ─────────────────────────────────────────────
   const submitMutation = useSubmitAttempt();
+  const abandonMutation = useAbandonAttempt();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitResult, setSubmitResult] = useState<{
@@ -229,12 +231,18 @@ export function useIeltsPlayer({
   }, [attempt, isSubmitting, flush, localRevision, submitMutation, recoveryKey, navigate]);
 
   const exitAttempt = useCallback(async (): Promise<void> => {
+    if (!attempt) return;
+
     try {
-      await flush();
+      await abandonMutation.mutateAsync({
+        attemptId: attempt.attemptId,
+        idempotencyKey: abandonIdempotencyRef.current,
+      });
+      clearLocalRecovery(recoveryKey);
     } catch {
-      // Local recovery remains available when the network save fails.
+      // Keep navigation responsive; a future start will discard any stale in-progress attempt server-side.
     }
-  }, [flush]);
+  }, [abandonMutation, attempt, recoveryKey]);
 
   // ── Update handlers ────────────────────────────────────
   const updateAnswers = useCallback((newAnswers: Record<string, string>) => {

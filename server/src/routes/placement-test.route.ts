@@ -66,7 +66,7 @@ router.post(
 
 router.get(
     '/',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(getPlacementTestsSchema),
     PlacementTestController.getAll,
 );
@@ -74,35 +74,35 @@ router.get(
 // ⚠️ Static sub-routes MUST be registered before /:id
 router.get(
     '/:id/versions',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(getVersionHistorySchema),
     PlacementTestController.getVersionHistory,
 );
 
 router.get(
     '/:id/pool-validation',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(poolValidationSchema),
     PlacementTestController.validatePool,
 );
 
 router.get(
     '/:id/analytics',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(analyticsSchema),
     PlacementTestController.getAnalytics,
 );
 
 router.post(
     '/ai/parse-mcq-part3',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(parseMcqPart3ImportSchema),
     PlacementTestController.parseMcqPart3Import,
 );
 
 router.get(
     '/:id',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(getPlacementTestByIdSchema),
     PlacementTestController.getById,
 );

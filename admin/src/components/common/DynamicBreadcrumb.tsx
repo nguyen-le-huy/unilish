@@ -19,6 +19,8 @@ const routeNameMap: Record<string, string> = {
     questions: "Kho câu hỏi",
     "placement-tests": "Bài Kiểm tra Đầu vào",
     "ielts-practice": "Bài thi IELTS",
+    "ai-voice-content": "Giao tiếp với AI",
+    shadowing: "Học với YouTube",
     new: "Tạo mới",
     edit: "Chỉnh sửa",
     videos: "Video / Youtube",

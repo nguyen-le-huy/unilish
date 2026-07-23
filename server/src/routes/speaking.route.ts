@@ -30,21 +30,21 @@ router.get(
 
 router.put(
     '/content',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(saveSpeakingContentSchema),
     speakingController.saveSpeakingContent,
 );
 
 router.post(
     '/generate-mission',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(generateSpeakingMissionSchema),
     speakingController.generateSpeakingMission,
 );
 
 router.post(
     '/test-coach',
-    restrictTo('admin', 'content_creator'),
+    restrictTo('admin'),
     validate(testSpeakingCoachSchema),
     speakingController.testSpeakingCoach,
 );

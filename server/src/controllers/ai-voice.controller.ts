@@ -4,19 +4,46 @@ import { AppError } from '../utils/app-error.js';
 import { catchAsync } from '../utils/catch-async.js';
 import { logger } from '../utils/logger.js';
 import { aiVoiceService } from '../services/ai-voice.service.js';
+import { aiVoiceContentService } from '../services/ai-voice-content.service.js';
+import { sendResponse } from '../utils/send-response.js';
 import type {
     AiVoiceChatBody,
     AiVoiceAssessmentBody,
-    AiVoiceGenerateScenariosBody,
     AiVoiceSttBody,
     AiVoiceTtsBody,
 } from '../validations/ai-voice.validation.js';
+import type { AiVoiceTopicBody } from '../validations/ai-voice-content.validation.js';
 
 const toSseEvent = (event: string, payload: Record<string, unknown>): string => {
     return `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
 };
 
 export const aiVoiceController = {
+    getCatalog: catchAsync(async (_req: Request, res: Response) => {
+        const topics = await aiVoiceContentService.getPublicCatalog();
+        sendResponse(res, HttpStatus.OK, 'Get AI Voice catalog successfully', topics);
+    }),
+
+    getAdminTopics: catchAsync(async (_req: Request, res: Response) => {
+        const topics = await aiVoiceContentService.getAdminTopics();
+        sendResponse(res, HttpStatus.OK, 'Get AI Voice topics successfully', topics);
+    }),
+
+    createTopic: catchAsync(async (req: Request<{}, {}, AiVoiceTopicBody>, res: Response) => {
+        const topic = await aiVoiceContentService.createTopic(req.body);
+        sendResponse(res, HttpStatus.CREATED, 'Create AI Voice topic successfully', topic);
+    }),
+
+    updateTopic: catchAsync(async (req: Request<{ id: string }, {}, AiVoiceTopicBody>, res: Response) => {
+        const topic = await aiVoiceContentService.updateTopic(req.params.id, req.body);
+        sendResponse(res, HttpStatus.OK, 'Update AI Voice topic successfully', topic);
+    }),
+
+    deleteTopic: catchAsync(async (req: Request<{ id: string }>, res: Response) => {
+        await aiVoiceContentService.deleteTopic(req.params.id);
+        sendResponse(res, HttpStatus.OK, 'Delete AI Voice topic successfully', null);
+    }),
+
     stt: catchAsync(async (req: Request<{}, {}, AiVoiceSttBody>, res: Response) => {
         const file = req.file;
         if (!file || !file.buffer || file.buffer.length === 0) {
@@ -30,10 +57,11 @@ export const aiVoiceController = {
     chat: catchAsync(async (req: Request<{}, {}, AiVoiceChatBody>, res: Response) => {
         const { sessionId, scenario, transcript, chatHistory, level, topic } = req.body;
         const startedAt = Date.now();
+        const managedScenario = await aiVoiceContentService.getActiveScenario(topic, scenario.id);
 
         const completion = await aiVoiceService.createChatCompletion({
             sessionId,
-            scenario,
+            scenario: managedScenario,
             transcript,
             chatHistory,
             level,
@@ -66,7 +94,7 @@ export const aiVoiceController = {
                 try {
                     suggestedReply = await aiVoiceService.generateSuggestedReply({
                         sessionId,
-                        scenario,
+                        scenario: managedScenario,
                         level,
                         topic,
                         assistantReply: fullText,
@@ -114,9 +142,14 @@ export const aiVoiceController = {
             throw new AppError('Assessment payload is invalid.', HttpStatus.BAD_REQUEST);
         }
 
+        if (!scenarioData || typeof scenarioData !== 'object' || !('id' in scenarioData) || typeof scenarioData.id !== 'string') {
+            throw new AppError('Assessment scenario is invalid.', HttpStatus.BAD_REQUEST);
+        }
+        const managedScenario = await aiVoiceContentService.getActiveScenario(topic, scenarioData.id);
+
         const result = await aiVoiceService.assessConversation({
             sessionId,
-            scenario: scenarioData,
+            scenario: managedScenario,
             level,
             topic,
             turns,
@@ -138,11 +171,4 @@ export const aiVoiceController = {
         res.status(HttpStatus.OK).send(audioBuffer);
     }),
 
-    generateScenarios: catchAsync(async (req: Request<{}, {}, AiVoiceGenerateScenariosBody>, res: Response) => {
-        const { topic, level } = req.body;
-
-        const scenarios = await aiVoiceService.generateScenarios(topic, level);
-
-        res.status(HttpStatus.OK).json({ scenarios });
-    }),
 };

@@ -33,8 +33,6 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MCQModuleForm } from './modules/MCQModuleForm';
-import { EssayModuleForm } from './modules/EssayModuleForm';
-import { SpeakingModuleForm } from './modules/SpeakingModuleForm';
 import type { IPlacementTestModule, ModuleType, IModuleMCQ, IModuleEssay, IModuleSpeaking } from '../../types';
 
 // ─── Module type meta ─────────────────────────────────────────────────────────
@@ -232,12 +230,6 @@ export function Step2Structure({
                     <DropdownMenuItem onClick={() => setDialogType('mcq')}>
                         <BookOpen className="mr-2 h-4 w-4" /> MCQ (Trắc nghiệm)
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogType('essay')}>
-                        <FileText className="mr-2 h-4 w-4" /> Writing (Tự luận)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogType('speaking')}>
-                        <Mic className="mr-2 h-4 w-4" /> Speaking (Nói)
-                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
 
@@ -281,22 +273,6 @@ export function Step2Structure({
                             onSave={handleSaveModule}
                             onCancel={handleCancel}
                             draftKey={`placement-test:module-draft:mcq:${editingModule?.id ?? 'new'}`}
-                        />
-                    )}
-                    {dialogType === 'essay' && (
-                        <EssayModuleForm
-                            order={editingIndex !== null ? editingIndex + 1 : modules.length + 1}
-                            defaultValues={editingModule?.type === 'essay' ? editingModule : undefined}
-                            onSave={handleSaveModule}
-                            onCancel={handleCancel}
-                        />
-                    )}
-                    {dialogType === 'speaking' && (
-                        <SpeakingModuleForm
-                            order={editingIndex !== null ? editingIndex + 1 : modules.length + 1}
-                            defaultValues={editingModule?.type === 'speaking' ? editingModule : undefined}
-                            onSave={handleSaveModule}
-                            onCancel={handleCancel}
                         />
                     )}
                 </DialogContent>

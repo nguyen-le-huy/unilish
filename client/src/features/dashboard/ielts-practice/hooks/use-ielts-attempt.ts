@@ -165,6 +165,9 @@ export const useAbandonAttempt = () => {
       queryClient.invalidateQueries({
         queryKey: IELTS_PRACTICE_KEYS.summary(),
       });
+      queryClient.invalidateQueries({
+        queryKey: IELTS_PRACTICE_KEYS.lists(),
+      });
     },
   });
 };

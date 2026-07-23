@@ -57,6 +57,14 @@ export const courseApi = {
         return response.data.data;
     },
 
+    uploadCourseThumbnail: async (file: File): Promise<{ url: string; type: string }> => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'curriculum/courses/thumbnails');
+        const response = await apiClient.post<ApiResponse<{ url: string; type: string }>>('/upload/image', formData);
+        return response.data.data;
+    },
+
     /**
      * Toggle course active/inactive status.
      * Contract (BE-04): PATCH /curriculum/courses/:courseId/status
